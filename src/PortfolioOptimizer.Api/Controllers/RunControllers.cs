@@ -1,0 +1,81 @@
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using PortfolioOptimizer.Application.Backtesting;
+using PortfolioOptimizer.Application.Dtos;
+using PortfolioOptimizer.Application.Optimization;
+using PortfolioOptimizer.Application.Trading;
+
+namespace PortfolioOptimizer.Api.Controllers;
+
+/// <summary>Stored optimization runs.</summary>
+[ApiController]
+[Route("api/v1/optimization-runs")]
+public sealed class OptimizationRunsController(OptimizationService optimization, TradingService trading) : ControllerBase
+{
+    /// <summary>Full run: inputs, data window, weights, frontier, correlations, reference portfolios and diagnostics.</summary>
+    [HttpGet("{runId:guid}")]
+    [ProducesResponseType<OptimizationRunDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public Task<OptimizationRunDto> Get(Guid runId, CancellationToken ct) => optimization.GetAsync(runId, ct);
+
+    /// <summary>Recommended target weights of a run.</summary>
+    [HttpGet("{runId:guid}/allocation")]
+    public Task<IReadOnlyList<AllocationDto>> Allocation(Guid runId, CancellationToken ct) => optimization.GetAllocationAsync(runId, ct);
+
+    /// <summary>The latest trade proposal for this run; one is calculated from current prices and holdings if none exists yet.</summary>
+    [HttpGet("{runId:guid}/trade-proposal")]
+    [ProducesResponseType<TradeProposalDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public Task<TradeProposalDto> TradeProposal(Guid runId, CancellationToken ct) => trading.GetOrCreateForRunAsync(runId, ct);
+
+    /// <summary>Recalculates a fresh trade proposal for this run from the latest prices and holdings.</summary>
+    [HttpPost("{runId:guid}/trade-proposals")]
+    [ProducesResponseType<TradeProposalDto>(StatusCodes.Status201Created)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<TradeProposalDto>> CreateProposal(Guid runId, CancellationToken ct)
+    {
+        var p = await trading.CreateFromRunAsync(runId, ct);
+        return CreatedAtAction(nameof(TradeProposalsController.Get), "TradeProposals", new { id = p.Id }, p);
+    }
+}
+
+/// <summary>Trade proposals.</summary>
+[ApiController]
+[Route("api/v1/trade-proposals")]
+public sealed class TradeProposalsController(TradingService trading) : ControllerBase
+{
+    /// <summary>A trade proposal with all order lines.</summary>
+    [HttpGet("{id:guid}")]
+    [ProducesResponseType<TradeProposalDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public Task<TradeProposalDto> Get(Guid id, CancellationToken ct) => trading.GetProposalAsync(id, ct);
+}
+
+/// <summary>Historical strategy backtests (run asynchronously).</summary>
+[ApiController]
+[Route("api/v1/backtests")]
+public sealed class BacktestsController(BacktestService backtests) : ControllerBase
+{
+    /// <summary>Queues a backtest. Poll GET /api/v1/backtests/{id} until status is Succeeded or Failed.</summary>
+    /// <response code="202">Queued.</response>
+    [HttpPost]
+    [EnableRateLimiting("expensive")]
+    [ProducesResponseType<BacktestDto>(StatusCodes.Status202Accepted)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<BacktestDto>> Create(CreateBacktestRequest request, CancellationToken ct)
+    {
+        var b = await backtests.CreateAsync(request, ct);
+        return AcceptedAtAction(nameof(Get), new { id = b.Id }, b);
+    }
+
+    /// <summary>Backtests, newest first.</summary>
+    [HttpGet]
+    public Task<PagedResult<BacktestSummaryDto>> List(CancellationToken ct, [FromQuery] int page = 1, [FromQuery] int pageSize = 20) =>
+        backtests.ListAsync(page, pageSize, ct);
+
+    /// <summary>Backtest configuration, status and results.</summary>
+    [HttpGet("{id:guid}")]
+    [ProducesResponseType<BacktestDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public Task<BacktestDto> Get(Guid id, CancellationToken ct) => backtests.GetAsync(id, ct);
+}

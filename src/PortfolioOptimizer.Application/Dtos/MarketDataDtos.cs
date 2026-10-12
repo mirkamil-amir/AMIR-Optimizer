@@ -1,0 +1,165 @@
+using System.ComponentModel.DataAnnotations;
+using PortfolioOptimizer.Domain;
+
+namespace PortfolioOptimizer.Application.Dtos;
+
+public sealed record PagedResult<T>(IReadOnlyList<T> Items, int Page, int PageSize, int TotalCount)
+{
+    public int TotalPages => PageSize == 0 ? 0 : (int)Math.Ceiling(TotalCount / (double)PageSize);
+}
+
+public sealed record AssetDto(
+    int Id,
+    string Symbol,
+    string? Name,
+    string? Exchange,
+    string Currency,
+    AssetType AssetType,
+    string? Sector,
+    bool IsEnabled);
+
+public sealed record CreateAssetRequest
+{
+    /// <example>AAPL</example>
+    [Required, RegularExpression(@"^[A-Za-z0-9.\-^=]{1,15}$", ErrorMessage = "Symbol must be 1-15 characters: letters, digits, '.', '-', '^' or '='.")]
+    public string Symbol { get; init; } = "";
+
+    /// <example>Apple Inc.</example>
+    [StringLength(200)]
+    public string? Name { get; init; }
+
+    [StringLength(50)]
+    public string? Exchange { get; init; }
+
+    /// <example>USD</example>
+    [Required, RegularExpression("^[A-Z]{3}$", ErrorMessage = "Currency must be an ISO 4217 code such as USD.")]
+    public string Currency { get; init; } = "USD";
+
+    public AssetType AssetType { get; init; } = AssetType.Equity;
+
+    /// <example>Information Technology</example>
+    [StringLength(100)]
+    public string? Sector { get; init; }
+}
+
+public sealed record UpdateAssetRequest
+{
+    [StringLength(200)] public string? Name { get; init; }
+    [StringLength(100)] public string? Sector { get; init; }
+    public bool? IsEnabled { get; init; }
+}
+
+public sealed record PriceBarDto(
+    DateOnly Date,
+    decimal? Open,
+    decimal? High,
+    decimal? Low,
+    decimal Close,
+    decimal? AdjustedClose,
+    long? Volume,
+    string Source,
+    bool IsSimulated,
+    DateTime RetrievedAtUtc);
+
+public sealed record SyncRequest
+{
+    /// <summary>Symbols to refresh. Empty = all enabled assets.</summary>
+    public List<string> Symbols { get; init; } = [];
+
+    /// <summary>First date to download. Defaults to 5 years ago.</summary>
+    public DateOnly? StartDate { get; init; }
+
+    /// <summary>Last date to download. Defaults to today.</summary>
+    public DateOnly? EndDate { get; init; }
+
+    /// <summary>Provider name (Yahoo, AlphaVantage, Mock). Defaults to the active provider.</summary>
+    public string? Provider { get; init; }
+
+    /// <summary>Re-download the whole range even if cached.</summary>
+    public bool ForceFullRefresh { get; init; }
+}
+
+public sealed record SyncJobDto(
+    Guid Id,
+    JobStatus Status,
+    string Source,
+    IReadOnlyList<string> Symbols,
+    DateOnly StartDate,
+    DateOnly EndDate,
+    DateTime RequestedAtUtc,
+    DateTime? StartedAtUtc,
+    DateTime? CompletedAtUtc,
+    int AssetsTotal,
+    int AssetsCompleted,
+    int AssetsFailed,
+    string? Message,
+    IReadOnlyList<SyncLogDto> Logs);
+
+public sealed record SyncLogDto(
+    string Symbol,
+    bool Success,
+    int RowsReceived,
+    int RowsInserted,
+    int RowsUpdated,
+    int RowsRejected,
+    int DuplicatesSkipped,
+    string? Message,
+    DateTime CompletedAtUtc);
+
+public enum DataFreshness { Fresh, Stale, Missing }
+
+public sealed record AssetCoverageDto(
+    int AssetId,
+    string Symbol,
+    string? Name,
+    bool IsEnabled,
+    string Source,
+    bool IsSimulated,
+    int Observations,
+    DateOnly? FirstDate,
+    DateOnly? LastDate,
+    bool HasAdjustedClose,
+    DateTime? LastRetrievedAtUtc,
+    DataFreshness Freshness,
+    decimal? LatestPrice,
+    DateTime? LatestPriceAsOfUtc,
+    string? LastSyncMessage,
+    bool? LastSyncSuccess);
+
+public sealed record MarketDataStatusDto(
+    string ActiveProvider,
+    bool ActiveProviderIsSimulated,
+    IReadOnlyList<ProviderStatusDto> Providers,
+    IReadOnlyList<AssetCoverageDto> Coverage,
+    IReadOnlyList<SyncJobDto> RecentJobs,
+    int StalePriceDays,
+    DateTime GeneratedAtUtc);
+
+public sealed record ProviderStatusDto(
+    string Name,
+    string DisplayName,
+    bool IsSimulated,
+    bool RequiresApiKey,
+    bool IsConfigured,
+    bool ProvidesAdjustedClose,
+    string RateLimit,
+    string Terms);
+
+public sealed record SettingsDto(
+    string ActiveProvider,
+    string DefaultCurrency,
+    double DefaultRiskFreeRate,
+    string DefaultBenchmark,
+    int StalePriceDays,
+    IReadOnlyList<ProviderStatusDto> Providers,
+    bool ScheduledRefreshEnabled,
+    double ScheduledRefreshIntervalHours);
+
+public sealed record UpdateSettingsRequest
+{
+    [Required] public string ActiveProvider { get; init; } = "";
+    [Required, RegularExpression("^[A-Z]{3}$")] public string DefaultCurrency { get; init; } = "USD";
+    [Range(-0.05, 0.25)] public double DefaultRiskFreeRate { get; init; }
+    [Required, StringLength(15)] public string DefaultBenchmark { get; init; } = "SPY";
+    [Range(1, 60)] public int StalePriceDays { get; init; } = 5;
+}

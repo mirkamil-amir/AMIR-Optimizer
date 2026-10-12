@@ -1,0 +1,173 @@
+using Microsoft.EntityFrameworkCore;
+using PortfolioOptimizer.Application.Abstractions;
+using PortfolioOptimizer.Application.Common;
+using PortfolioOptimizer.Application.Dtos;
+using PortfolioOptimizer.Application.MarketData;
+using PortfolioOptimizer.Domain;
+
+namespace PortfolioOptimizer.Application.Portfolios;
+
+public sealed class PortfolioService(IApplicationDbContext db, PriceQueryService prices, TimeProvider clock)
+{
+    public async Task<IReadOnlyList<PortfolioSummaryDto>> ListAsync(CancellationToken ct)
+    {
+        var settings = await prices.SettingsAsync(ct);
+        var portfolios = await db.Portfolios.AsNoTracking().Include(p => p.Holdings).OrderBy(p => p.CreatedAtUtc).ToListAsync(ct);
+        var assetIds = portfolios.SelectMany(p => p.Holdings).Select(h => h.AssetId).Distinct().ToList();
+        var latest = await prices.GetLatestPricesAsync(assetIds, settings.ActiveProvider, settings.StalePriceDays, ct);
+        return portfolios.Select(p =>
+        {
+            var mv = p.Holdings.Where(h => h.Quantity > 0)
+                .Sum(h => latest.TryGetValue(h.AssetId, out var lp) ? h.Quantity * lp.Price : 0m);
+            return new PortfolioSummaryDto(p.Id, p.Name, p.BaseCurrency, p.InitialInvestment, p.CashBalance, mv, mv + p.CashBalance,
+                p.Holdings.Count(h => h.Quantity > 0), p.CreatedAtUtc, p.UpdatedAtUtc);
+        }).ToList();
+    }
+
+    public async Task<PortfolioDto> GetAsync(Guid id, CancellationToken ct) => ToDto(await LoadAsync(id, ct));
+
+    public async Task<PortfolioDto> CreateAsync(CreatePortfolioRequest request, CancellationToken ct)
+    {
+        var appSettings = await prices.SettingsAsync(ct);
+        if (!string.Equals(request.BaseCurrency, appSettings.DefaultCurrency, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ValidationException("baseCurrency",
+                $"Only {appSettings.DefaultCurrency} portfolios are supported: currency conversion is not implemented and all assets are priced in their own currency.");
+        }
+
+        var settings = request.Settings?.ToDomain() ?? await DefaultSettingsAsync(appSettings, ct);
+        await ValidateUniverseAsync(settings, request.BaseCurrency, ct);
+
+        var now = clock.GetUtcNow().UtcDateTime;
+        var portfolio = new Portfolio
+        {
+            Id = Guid.NewGuid(),
+            Name = request.Name.Trim(),
+            BaseCurrency = request.BaseCurrency.ToUpperInvariant(),
+            InitialInvestment = request.InitialInvestment,
+            Settings = settings,
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now,
+        };
+        portfolio.Deposit(request.InitialInvestment, now, "Initial investment (simulated cash)");
+        db.Portfolios.Add(portfolio);
+        await db.SaveChangesAsync(ct);
+        return ToDto(portfolio);
+    }
+
+    public async Task<PortfolioDto> UpdateAsync(Guid id, UpdatePortfolioRequest request, CancellationToken ct)
+    {
+        var portfolio = await LoadAsync(id, ct, tracking: true);
+        var settings = request.Settings.ToDomain();
+        await ValidateUniverseAsync(settings, portfolio.BaseCurrency, ct);
+        portfolio.Name = request.Name.Trim();
+        portfolio.Settings = settings;
+        portfolio.UpdatedAtUtc = clock.GetUtcNow().UtcDateTime;
+        await db.SaveChangesAsync(ct);
+        return ToDto(portfolio);
+    }
+
+    public async Task UpdateSettingsAsync(Guid id, PortfolioSettings settings, CancellationToken ct)
+    {
+        var portfolio = await LoadAsync(id, ct, tracking: true);
+        await ValidateUniverseAsync(settings, portfolio.BaseCurrency, ct);
+        portfolio.Settings = settings;
+        portfolio.UpdatedAtUtc = clock.GetUtcNow().UtcDateTime;
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>Deletes a portfolio and its entire simulated history (runs, proposals, ledger).</summary>
+    public async Task DeleteAsync(Guid id, CancellationToken ct)
+    {
+        var portfolio = await LoadAsync(id, ct, tracking: true);
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+        await db.Orders.Where(o => o.PortfolioId == id).ExecuteDeleteAsync(ct);
+        await db.PaperTradeBatches.Where(b => b.PortfolioId == id).ExecuteDeleteAsync(ct);
+        await db.TradeProposals.Where(p => p.PortfolioId == id).ExecuteDeleteAsync(ct);
+        await db.OptimizationRuns.Where(r => r.PortfolioId == id).ExecuteDeleteAsync(ct);
+        db.Portfolios.Remove(portfolio);
+        await db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
+    }
+
+    public async Task<PagedResult<TransactionDto>> GetTransactionsAsync(Guid id, int page, int pageSize, string? symbol, CancellationToken ct)
+    {
+        ValidatePaging(page, pageSize);
+        await EnsureExistsAsync(id, ct);
+        var q = db.Executions.AsNoTracking().Where(e => e.PortfolioId == id);
+        if (!string.IsNullOrWhiteSpace(symbol))
+        {
+            var s = Asset.NormalizeSymbol(symbol);
+            q = q.Where(e => e.Symbol == s);
+        }
+        var total = await q.CountAsync(ct);
+        var items = await q.OrderByDescending(e => e.ExecutedAtUtc).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
+        return new PagedResult<TransactionDto>(items.Select(e => e.ToDto()).ToList(), page, pageSize, total);
+    }
+
+    public async Task<PagedResult<CashEntryDto>> GetCashLedgerAsync(Guid id, int page, int pageSize, CancellationToken ct)
+    {
+        ValidatePaging(page, pageSize);
+        await EnsureExistsAsync(id, ct);
+        var q = db.CashLedger.AsNoTracking().Where(e => e.PortfolioId == id);
+        var total = await q.CountAsync(ct);
+        var items = await q.OrderByDescending(e => e.TimestampUtc).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
+        return new PagedResult<CashEntryDto>(
+            items.Select(e => new CashEntryDto(e.Id, e.Type, e.Amount, e.BalanceAfter, e.TimestampUtc, e.Description)).ToList(),
+            page, pageSize, total);
+    }
+
+    public async Task<PagedResult<OrderDto>> GetOrdersAsync(Guid id, int page, int pageSize, CancellationToken ct)
+    {
+        ValidatePaging(page, pageSize);
+        await EnsureExistsAsync(id, ct);
+        var q = db.Orders.AsNoTracking().Where(o => o.PortfolioId == id);
+        var total = await q.CountAsync(ct);
+        var items = await q.OrderByDescending(o => o.CreatedAtUtc).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
+        return new PagedResult<OrderDto>(items.Select(o => o.ToDto()).ToList(), page, pageSize, total);
+    }
+
+    public async Task<Portfolio> LoadAsync(Guid id, CancellationToken ct, bool tracking = false)
+    {
+        var q = db.Portfolios.Include(p => p.Holdings).AsQueryable();
+        if (!tracking) q = q.AsNoTracking();
+        return await q.SingleOrDefaultAsync(p => p.Id == id, ct) ?? throw new NotFoundException("Portfolio", id);
+    }
+
+    private async Task EnsureExistsAsync(Guid id, CancellationToken ct)
+    {
+        if (!await db.Portfolios.AnyAsync(p => p.Id == id, ct)) throw new NotFoundException("Portfolio", id);
+    }
+
+    private async Task<PortfolioSettings> DefaultSettingsAsync(ApplicationSettings app, CancellationToken ct)
+    {
+        var universe = await db.Assets.Where(a => a.IsEnabled && a.Symbol != app.DefaultBenchmark)
+            .OrderBy(a => a.Symbol).Select(a => a.Symbol).ToListAsync(ct);
+        return new PortfolioSettings { Universe = universe, RiskFreeRate = app.DefaultRiskFreeRate, BenchmarkSymbol = app.DefaultBenchmark };
+    }
+
+    private async Task ValidateUniverseAsync(PortfolioSettings settings, string currency, CancellationToken ct)
+    {
+        var errors = new Dictionary<string, string[]>();
+        var symbols = settings.Universe.Concat([settings.BenchmarkSymbol]).Distinct().ToList();
+        var assets = await db.Assets.AsNoTracking().Where(a => symbols.Contains(a.Symbol)).ToListAsync(ct);
+        var unknown = symbols.Except(assets.Select(a => a.Symbol)).ToList();
+        if (unknown.Count > 0) errors["settings.universe"] = [$"Unknown asset(s): {string.Join(", ", unknown)}."];
+        var disabled = assets.Where(a => !a.IsEnabled && settings.Universe.Contains(a.Symbol)).Select(a => a.Symbol).ToList();
+        if (disabled.Count > 0) errors["settings.universe"] = [.. errors.GetValueOrDefault("settings.universe", []), $"Disabled asset(s): {string.Join(", ", disabled)}."];
+        var otherCurrency = assets.Where(a => !string.Equals(a.Currency, currency, StringComparison.OrdinalIgnoreCase)).Select(a => $"{a.Symbol} ({a.Currency})").ToList();
+        if (otherCurrency.Count > 0)
+            errors["settings.universe"] = [.. errors.GetValueOrDefault("settings.universe", []), $"Assets not denominated in {currency} cannot be mixed without FX conversion: {string.Join(", ", otherCurrency)}."];
+        if (settings.Universe.Count == 0) errors["settings.universe"] = ["The universe must contain at least one asset."];
+        if (errors.Count > 0) throw new ValidationException(errors);
+    }
+
+    private static void ValidatePaging(int page, int pageSize)
+    {
+        if (page < 1) throw new ValidationException("page", "Page must be ≥ 1.");
+        if (pageSize is < 1 or > 500) throw new ValidationException("pageSize", "Page size must be between 1 and 500.");
+    }
+
+    private static PortfolioDto ToDto(Portfolio p) =>
+        new(p.Id, p.Name, p.BaseCurrency, p.InitialInvestment, p.CashBalance, p.Settings.ToDto(), p.CreatedAtUtc, p.UpdatedAtUtc, p.Version);
+}

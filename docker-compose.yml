@@ -1,0 +1,25 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: src/PortfolioOptimizer.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}   # Development enables Swagger UI
+      MarketData__DefaultProvider: ${MARKET_DATA_PROVIDER:-Yahoo}
+      MarketData__AlphaVantage__ApiKey: ${ALPHAVANTAGE_API_KEY:-}
+      Cors__AllowedOrigins__0: http://localhost:8081
+    ports:
+      - "5080:8080"
+    volumes:
+      - portfolio-data:/app/data   # SQLite database persists across restarts
+
+  web:
+    build:
+      context: frontend/portfolio-dashboard
+    ports:
+      - "8081:80"
+    depends_on:
+      - api
+
+volumes:
+  portfolio-data:

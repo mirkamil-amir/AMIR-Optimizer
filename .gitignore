@@ -1,0 +1,17 @@
+bin/
+obj/
+*.user
+.vs/
+.idea/
+*.db
+*.db-shm
+*.db-wal
+data/
+.env
+node_modules/
+dist/
+coverage/
+TestResults/
+.DS_Store
+.idea/
+*.DotSettings.user
