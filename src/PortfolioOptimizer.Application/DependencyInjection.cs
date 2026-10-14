@@ -35,6 +35,7 @@ public static class DependencyInjection
         services.AddScoped<OptimizationService>();
         services.AddScoped<TradingService>();
         services.AddScoped<PortfolioAnalyticsService>();
+        services.AddScoped<RealityCheckService>();
         services.AddScoped<BacktestService>();
         services.AddScoped<AuditQueryService>();
         services.AddScoped<CatalogueService>();

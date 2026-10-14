@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using PortfolioOptimizer.Api.Security;
+using PortfolioOptimizer.Application.Analytics;
 using PortfolioOptimizer.Application.Backtesting;
 using PortfolioOptimizer.Application.Dtos;
 using PortfolioOptimizer.Application.Optimization;
@@ -11,7 +13,7 @@ namespace PortfolioOptimizer.Api.Controllers;
 /// <summary>Stored optimization runs.</summary>
 [ApiController]
 [Route("api/v1/optimization-runs")]
-public sealed class OptimizationRunsController(OptimizationService optimization, TradingService trading) : ControllerBase
+public sealed class OptimizationRunsController(OptimizationService optimization, TradingService trading, RealityCheckService realityCheck) : ControllerBase
 {
     /// <summary>Optimization history of the current user across portfolios, newest first.</summary>
     /// <param name="portfolioId">Optional portfolio filter.</param>
@@ -29,6 +31,17 @@ public sealed class OptimizationRunsController(OptimizationService optimization,
     [ProducesResponseType<OptimizationRunDto>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public Task<OptimizationRunDto> Get(Guid runId, CancellationToken ct) => optimization.GetAsync(runId, ct);
+
+    /// <summary>
+    /// Portfolio Reality Check of a successful run: concentration, risk contributions, correlation on stress days, in-sample
+    /// and out-of-sample behaviour, sensitivity of the weights to the assumptions and implementation costs, with labelled findings.
+    /// </summary>
+    [HttpGet("{runId:guid}/reality-check")]
+    [EnableRateLimiting(RateLimitPolicies.Expensive)]
+    [ProducesResponseType<RealityCheckDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public Task<RealityCheckDto> RealityCheck(Guid runId, CancellationToken ct) => realityCheck.GetAsync(runId, ct);
 
     /// <summary>Recommended target weights of a run.</summary>
     [HttpGet("{runId:guid}/allocation")]
