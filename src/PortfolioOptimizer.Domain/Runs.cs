@@ -8,6 +8,8 @@ public class OptimizationRun
 {
     public Guid Id { get; set; }
     public Guid PortfolioId { get; set; }
+    /// <summary>Owner of the portfolio when the run was created (denormalized for per-user history queries).</summary>
+    public Guid OwnerId { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public ObjectiveKind Objective { get; set; }
     public OptimizationRunStatus Status { get; set; }
@@ -121,6 +123,7 @@ public class SimulatedOrder
 public class BacktestRun
 {
     public Guid Id { get; set; }
+    public Guid OwnerId { get; set; }
     public string Name { get; set; } = "";
     public JobStatus Status { get; set; }
     public DateTime CreatedAtUtc { get; set; }

@@ -1,3 +1,7 @@
+using PortfolioOptimizer.Application.MarketData;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -6,6 +10,9 @@ using Microsoft.Extensions.Options;
 using Polly;
 using PortfolioOptimizer.Application.Abstractions;
 using PortfolioOptimizer.Application.Common;
+using PortfolioOptimizer.Application.MachineLearning;
+using PortfolioOptimizer.Infrastructure.Identity;
+using PortfolioOptimizer.Infrastructure.ModelArtifacts;
 using PortfolioOptimizer.Infrastructure.Jobs;
 using PortfolioOptimizer.Infrastructure.MarketData;
 using PortfolioOptimizer.Infrastructure.Persistence;
@@ -17,15 +24,29 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<MarketDataOptions>(configuration.GetSection(MarketDataOptions.Section));
+        services.Configure<QuoteRefreshOptions>(configuration.GetSection(QuoteRefreshOptions.Section));
         services.Configure<YahooFinanceOptions>(configuration.GetSection(YahooFinanceOptions.Section));
         services.Configure<AlphaVantageOptions>(configuration.GetSection(AlphaVantageOptions.Section));
         services.Configure<MockProviderOptions>(configuration.GetSection(MockProviderOptions.Section));
         services.Configure<SeedOptions>(configuration.GetSection(SeedOptions.Section));
+        services.Configure<MachineLearningOptions>(configuration.GetSection(MachineLearningOptions.Section));
+        services.Configure<ModelArtifactOptions>(configuration.GetSection(ModelArtifactOptions.Section));
+        services.AddSingleton<IModelArtifactStore, LocalModelArtifactStore>();
 
-        var connectionString = configuration.GetConnectionString("Default") ?? "Data Source=data/portfolio.db";
-        services.AddDbContext<AppDbContext>(o => o.UseSqlite(connectionString, sql => sql.CommandTimeout(60)));
+        services.Configure<DatabaseOptions>(configuration.GetSection(DatabaseOptions.Section));
+        var connectionString = configuration.GetConnectionString(DatabaseOptions.ConnectionStringName);
+        if (string.IsNullOrWhiteSpace(connectionString))
+            throw new InvalidOperationException(
+                $"Connection string '{DatabaseOptions.ConnectionStringName}' is not configured. Set ConnectionStrings__{DatabaseOptions.ConnectionStringName} " +
+                "(e.g. Host=localhost;Port=5432;Database=portfolio;Username=portfolio_app;Password=...).");
+        var commandTimeout = configuration.GetValue($"{DatabaseOptions.Section}:CommandTimeoutSeconds", 60);
+        services.AddDbContext<AppDbContext>(o => o.UseNpgsql(connectionString, sql => sql.CommandTimeout(commandTimeout)));
         services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<AppDbContext>());
         services.AddScoped<DatabaseInitializer>();
+        services.AddScoped<UniverseSeeder>();
+        services.Configure<UniverseOptions>(configuration.GetSection(UniverseOptions.Section));
+        services.AddScoped<TestDataPurger>();
+        AddIdentity(services, configuration);
 
         AddProviderClient<YahooFinanceProvider, YahooFinanceOptions>(services, (o, c) =>
         {
@@ -39,6 +60,7 @@ public static class DependencyInjection
             c.Timeout = Timeout.InfiniteTimeSpan;
         }, o => o.MinRequestIntervalMs, o => o.TimeoutSeconds);
 
+        services.AddSingleton<AlphaVantageQuota>();
         services.AddSingleton<MockMarketDataProvider>();
         services.AddSingleton<IMarketDataProvider>(sp => sp.GetRequiredService<MockMarketDataProvider>());
         services.AddTransient<IMarketDataProvider>(sp => sp.GetRequiredService<YahooFinanceProvider>());
@@ -51,6 +73,55 @@ public static class DependencyInjection
 
         services.AddHealthChecks().AddDbContextCheck<AppDbContext>("database", tags: ["ready"]);
         return services;
+    }
+
+    /// <summary>
+    /// ASP.NET Core Identity with cookie authentication for the same-origin dashboard. API semantics: unauthenticated →
+    /// 401, forbidden → 403 (no login redirects). Cookies are HttpOnly and SameSite=Strict; state-changing requests also
+    /// require an antiforgery header (configured in the API).
+    /// </summary>
+    private static void AddIdentity(IServiceCollection services, IConfiguration configuration)
+    {
+        services.Configure<AdminBootstrapOptions>(configuration.GetSection(AdminBootstrapOptions.Section));
+        services.AddDataProtection().SetApplicationName("PortfolioOptimizer").PersistKeysToDbContext<AppDbContext>();
+        services.AddAuthentication(IdentityConstants.ApplicationScheme).AddIdentityCookies();
+        services.AddIdentityCore<ApplicationUser>(o =>
+            {
+                o.User.RequireUniqueEmail = true;
+                o.Password.RequiredLength = 10;
+                o.Password.RequireNonAlphanumeric = false;
+                o.Password.RequireUppercase = true;
+                o.Password.RequireLowercase = true;
+                o.Password.RequireDigit = true;
+                o.Lockout.AllowedForNewUsers = true;
+                o.Lockout.MaxFailedAccessAttempts = 5;
+                o.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+                o.SignIn.RequireConfirmedAccount = false; // access is granted by administrator approval instead
+            })
+            .AddRoles<IdentityRole<Guid>>()
+            .AddEntityFrameworkStores<AppDbContext>()
+            .AddSignInManager()
+            .AddDefaultTokenProviders();
+
+        services.ConfigureApplicationCookie(o =>
+        {
+            o.Cookie.Name = "po.auth";
+            o.Cookie.HttpOnly = true;
+            o.Cookie.SameSite = SameSiteMode.Strict;
+            o.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest; // HTTPS deployments get Secure cookies
+            o.ExpireTimeSpan = TimeSpan.FromHours(configuration.GetValue("Authentication:SessionHours", 8));
+            o.SlidingExpiration = true;
+            o.Events.OnRedirectToLogin = ctx => { ctx.Response.StatusCode = StatusCodes.Status401Unauthorized; return Task.CompletedTask; };
+            o.Events.OnRedirectToAccessDenied = ctx => { ctx.Response.StatusCode = StatusCodes.Status403Forbidden; return Task.CompletedTask; };
+        });
+        // Password changes and role/status changes rotate the security stamp; other sessions re-validate within a minute.
+        services.Configure<SecurityStampValidatorOptions>(o => o.ValidationInterval = TimeSpan.FromMinutes(1));
+
+        services.AddScoped<IAccountService, AccountService>();
+        services.AddScoped<IUserAdministrationService, UserAdministrationService>();
+        services.AddScoped<IAdminOverviewService, AdminOverviewService>();
+        services.AddScoped<IAuditLog, AuditLog>();
+        services.AddScoped<AdminBootstrapper>();
     }
 
     /// <summary>

@@ -1,0 +1,80 @@
+# Architectural decisions
+
+Short records of decisions that are not obvious from the code. Newest first. Format: context → decision → consequences.
+
+## D-14 Constituent lists from pinned Wikipedia revisions (2026-10-14)
+**Context:** S&P 500, DAX (current and historical 30), CAC 40, FTSE 100 and Nikkei 225 constituents were needed with
+sector and venue data; official index-provider files are licensed and not redistributable. **Decision:** build CSVs
+from pinned Wikipedia revisions (CC BY-SA 4.0) with `tools/universe-builder`, record source/revision/licence per index
+and stock, validate every symbol against Yahoo, never invent ISINs. **Consequences:** reproducible, attributable,
+updatable without code (admin upload, override directory, re-run builder); lists are snapshots (survivorship bias);
+quality depends on the Wikipedia tables (e.g. NTT listed twice → 224 Nikkei members).
+
+## D-13 Canonical symbols = Yahoo symbols (2026-10-14)
+**Context:** tickers collide across exchanges and providers use different suffixes. **Decision:** store one canonical
+symbol per listing in Yahoo form (`SAP.DE`, `TSCO.L`, `7203.T`, `BRK-B`) and translate per provider
+(`SymbolMapper`). **Consequences:** unique keys and readable symbols; Alpha Vantage needs `.DEX/.PAR/.LON` mapping
+and cannot serve Tokyo; an earlier mapping bug that turned `SAP.DE` into `SAP-DE` is gone.
+
+## D-12 Prices stored in ISO major units (2026-10-14)
+**Context:** London prices arrive in pence. **Decision:** convert at the provider boundary (`CurrencyUnits`) and reject
+implausible jumps (> 20×) on quote refresh. **Consequences:** all stored and displayed prices are in GBP/EUR/JPY/USD;
+analyses never see mixed units.
+
+## D-11 One currency per analysis, no FX (2026-10-14)
+**Context:** the universe now spans USD, EUR, GBP and JPY; there is no FX data. **Decision:** reject mixed-currency
+optimizations, ML experiments and comparisons with an explanation; switch the benchmark to the universe's index
+benchmark when needed (with a visible note). **Consequences:** results are interpretable; cross-market portfolios are
+out of scope until FX data is added.
+
+## D-10 Shared server-side quote refresh, triggered by sign-in (2026-10-14)
+**Context:** prices had to appear automatically after sign-in without every browser calling providers and without
+re-downloading history. **Decision:** a de-duplicated background cycle (`QuoteRefreshService`) per sign-in / schedule /
+admin request, Yahoo spark batches of 20, cached quotes reused for 15 minutes, synchronous page and single-stock
+refreshes with a cooldown, incremental history check for tracked instruments only. **Consequences:** ~45 provider
+requests refresh ~920 instruments in ~30 s; quota-limited providers (Alpha Vantage) refresh only tracked instruments
+within half of the remaining daily budget.
+
+## D-09 Yahoo stays the default provider; Alpha Vantage optional (2026-10-14)
+**Context:** the configured Alpha Vantage key is a free key (25 requests/day, ~1/s, no Tokyo, no adjusted series).
+**Decision:** keep Yahoo as default for quotes and history, support Alpha Vantage as an alternative with a client-side
+daily quota. **Consequences:** coverage of all five markets; dependence on an unofficial endpoint (documented).
+
+## D-08 Test data isolated by environment and reserved domain (2026-10-14)
+**Context:** Playwright runs against the development stack had left 11 test accounts in the admin view.
+**Decision:** e2e only on a disposable `po-e2e` stack (`scripts/e2e.sh`) enforced by `/api/v1/system/test-environment`;
+test accounts under the reserved `.test` domain are hidden, excluded from admin metrics, refused in Production and
+removable with `purge-test-data`. Rejected: an `IsTestData` column on every table (spoofable via the API and invasive).
+**Consequences:** no test pollution of real databases; purge is auditable and safe by default (dry run, Production
+refusal).
+
+## D-07 Result interpretations generated in the frontend from stored numbers (2026-10-14)
+**Context:** students need explanations of their actual results; explanations must never invent reasons.
+**Decision:** pure functions (`lib/interpretation.ts`) derive labelled statements (Calculated / Estimate / What it means
+/ Caution) from the run's stored outputs; strategy guides live in `lib/strategy-guide.ts` with computed worked
+examples. **Consequences:** testable without a backend; no new API; content must be kept in sync with the code
+(tests check structure and the worked-example math).
+
+## D-06 Shared portfolio simulator (2026-10-13)
+Classical backtests, ML backtests and strategy comparisons all run through `PortfolioSimulator`, verified
+bit-identical to the previous backtester on nine configurations, so comparisons are fair by construction.
+
+## D-05 ML engine separate from the optimizer (2026-10-13)
+`PortfolioOptimizer.MachineLearning` has no I/O and must not use the mean-variance optimizer (architecture test).
+ML portfolios use transparent construction rules; only the labelled hybrid strategy combines both.
+
+## D-04 ML.NET trees + in-house linear models (2026-10-13)
+LightGBM has no macOS arm64 binaries; ML.NET FastForest/FastTree are portable. Ridge and logistic regression are
+implemented directly (closed form / IRLS) for exact, explainable contributions.
+
+## D-03 Cookie sessions with administrator approval (2026-10-13)
+ASP.NET Core Identity cookies (HttpOnly, SameSite=Strict) + antiforgery header; status checked on every request so
+suspension is immediate. Rejected: JWT (no server-side revocation without extra state).
+
+## D-02 PostgreSQL with separate owner and application roles (2026-10-13)
+Migrations run as the owner in a one-shot `migrate` service; the API uses a DML-only role and refuses an outdated
+schema. SQLite data can be imported with `tools/PortfolioOptimizer.DataMigration`.
+
+## D-01 Stock selection is client memory only (2026-10-13)
+Selecting stocks never writes to the server or browser storage; the universe is stored only as part of a submitted
+run. Sign-out reloads the page so nothing carries over to the next user.

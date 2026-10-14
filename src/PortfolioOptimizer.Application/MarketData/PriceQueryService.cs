@@ -7,6 +7,11 @@ namespace PortfolioOptimizer.Application.MarketData;
 
 public sealed record PriceSeries(string Symbol, int AssetId, IReadOnlyList<PricePoint> Points, bool UsesAdjustedClose, bool IsSimulated);
 
+public readonly record struct DailyBar(DateOnly Date, double Price, long? Volume);
+
+/// <summary>Daily observations of one symbol; <see cref="LastRetrievedAtUtc"/> identifies the data vintage used.</summary>
+public sealed record DailySeries(string Symbol, string? Sector, IReadOnlyList<DailyBar> Bars, bool UsesAdjustedClose, bool IsSimulated, DateTime? LastRetrievedAtUtc);
+
 public sealed record LatestPrice(int AssetId, string Symbol, decimal Price, DateOnly PriceDate, DateTime AsOfUtc, string Origin, bool IsStale, bool IsSimulated);
 
 /// <summary>
@@ -35,6 +40,30 @@ public sealed class PriceQueryService(IApplicationDbContext db, TimeProvider clo
             var adjusted = rows.Count > 0 && rows.All(r => r.AdjustedClose.HasValue);
             var points = rows.Select(r => new PricePoint(r.Date, (double)(adjusted ? r.AdjustedClose!.Value : r.Close))).ToList();
             result[asset.Symbol] = new PriceSeries(asset.Symbol, asset.Id, points, adjusted, rows.Any(r => r.IsSimulated));
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Daily adjusted closes with volume (for ML features). Falls back to raw closes for a symbol only when the source never
+    /// provides adjusted data for it; one series never mixes adjusted and raw prices.
+    /// </summary>
+    public async Task<Dictionary<string, DailySeries>> GetDailyObservationsAsync(
+        IReadOnlyCollection<string> symbols, string source, DateOnly from, DateOnly to, CancellationToken ct)
+    {
+        var result = new Dictionary<string, DailySeries>(StringComparer.OrdinalIgnoreCase);
+        var assets = await db.Assets.AsNoTracking().Where(a => symbols.Contains(a.Symbol)).ToListAsync(ct);
+        foreach (var asset in assets)
+        {
+            var rows = await db.HistoricalPrices.AsNoTracking()
+                .Where(p => p.AssetId == asset.Id && p.Source == source && p.Date >= from && p.Date <= to)
+                .OrderBy(p => p.Date)
+                .Select(p => new { p.Date, p.Close, p.AdjustedClose, p.Volume, p.IsSimulated, p.RetrievedAtUtc })
+                .ToListAsync(ct);
+            var adjusted = rows.Count > 0 && rows.All(r => r.AdjustedClose.HasValue);
+            result[asset.Symbol] = new DailySeries(asset.Symbol, asset.Sector,
+                rows.Select(r => new DailyBar(r.Date, (double)(adjusted ? r.AdjustedClose!.Value : r.Close), r.Volume)).ToList(),
+                adjusted, rows.Any(r => r.IsSimulated), rows.Count == 0 ? null : rows.Max(r => r.RetrievedAtUtc));
         }
         return result;
     }

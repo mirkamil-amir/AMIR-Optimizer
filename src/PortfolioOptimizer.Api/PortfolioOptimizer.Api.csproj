@@ -6,6 +6,7 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);1591</NoWarn>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>portfolio-optimizer-api</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>

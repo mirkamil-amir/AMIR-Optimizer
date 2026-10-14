@@ -4,6 +4,7 @@ using PortfolioOptimizer.Application.Backtesting;
 using PortfolioOptimizer.Application.Dtos;
 using PortfolioOptimizer.Application.Optimization;
 using PortfolioOptimizer.Application.Trading;
+using PortfolioOptimizer.Domain;
 
 namespace PortfolioOptimizer.Api.Controllers;
 
@@ -12,6 +13,17 @@ namespace PortfolioOptimizer.Api.Controllers;
 [Route("api/v1/optimization-runs")]
 public sealed class OptimizationRunsController(OptimizationService optimization, TradingService trading) : ControllerBase
 {
+    /// <summary>Optimization history of the current user across portfolios, newest first.</summary>
+    /// <param name="portfolioId">Optional portfolio filter.</param>
+    /// <param name="status">Optional status filter.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <param name="page">1-based page.</param>
+    /// <param name="pageSize">Rows per page (max 200).</param>
+    [HttpGet]
+    public Task<PagedResult<OptimizationRunSummaryDto>> List([FromQuery] Guid? portfolioId, [FromQuery] OptimizationRunStatus? status,
+        CancellationToken ct, [FromQuery] int page = 1, [FromQuery] int pageSize = 25) =>
+        optimization.ListForUserAsync(portfolioId, status, page, pageSize, ct);
+
     /// <summary>Full run: inputs, data window, weights, frontier, correlations, reference portfolios and diagnostics.</summary>
     [HttpGet("{runId:guid}")]
     [ProducesResponseType<OptimizationRunDto>(StatusCodes.Status200OK)]

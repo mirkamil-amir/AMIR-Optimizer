@@ -6,6 +6,7 @@ using PortfolioOptimizer.Application.Dtos;
 using PortfolioOptimizer.Application.MarketData;
 using PortfolioOptimizer.Application.Portfolios;
 using PortfolioOptimizer.Domain;
+using PortfolioOptimizer.Infrastructure.Identity;
 
 namespace PortfolioOptimizer.Infrastructure.Persistence;
 
@@ -16,8 +17,14 @@ public sealed class SeedOptions
     /// <summary>Insert the default asset universe when the database has no assets.</summary>
     public bool Assets { get; set; } = true;
 
-    /// <summary>Create a demo portfolio (simulated cash) when no portfolio exists.</summary>
+    /// <summary>Create a demo portfolio (simulated cash) for the bootstrap administrator when it is first created.</summary>
     public bool DemoPortfolio { get; set; } = true;
+
+    /// <summary>
+    /// Load the bundled index universes (S&amp;P 500, DAX 40, DAX 30 historical, CAC 40, FTSE 100, Nikkei 225; Wikipedia,
+    /// CC BY-SA 4.0) as browsable, untracked instruments, plus the benchmark instruments. See <see cref="UniverseSeeder"/>.
+    /// </summary>
+    public bool Catalogue { get; set; } = true;
 
     /// <summary>Enqueue an initial history download when the active provider has no prices yet.</summary>
     public bool SyncOnEmptyDatabase { get; set; } = true;
@@ -25,13 +32,16 @@ public sealed class SeedOptions
     public int InitialHistoryYears { get; set; } = 5;
 }
 
-/// <summary>Applies EF Core migrations and inserts idempotent seed data. Safe to run on every start.</summary>
+/// <summary>Applies EF Core migrations (when allowed) and inserts idempotent seed data. Safe to run on every start.</summary>
 public sealed class DatabaseInitializer(
     AppDbContext db,
     PortfolioService portfolios,
     MarketDataService marketData,
+    UniverseSeeder universeSeeder,
+    AdminBootstrapper adminBootstrapper,
     IOptions<MarketDataOptions> marketOptions,
     IOptions<SeedOptions> seedOptions,
+    IOptions<DatabaseOptions> databaseOptions,
     TimeProvider clock,
     ILogger<DatabaseInitializer> logger)
 {
@@ -50,18 +60,43 @@ public sealed class DatabaseInitializer(
         ("SPY", "SPDR S&P 500 ETF Trust", "NYSE Arca", AssetType.Etf, null),
     ];
 
+    /// <summary>Applies pending migrations (used by the <c>migrate</c> command and, if enabled, on start-up).</summary>
+    public async Task MigrateAsync(CancellationToken ct)
+    {
+        var pending = (await db.Database.GetPendingMigrationsAsync(ct)).ToList();
+        if (pending.Count == 0)
+        {
+            logger.LogInformation("Database schema is up to date");
+            return;
+        }
+        logger.LogInformation("Applying {Count} migration(s): {Migrations}", pending.Count, string.Join(", ", pending));
+        await db.Database.MigrateAsync(ct);
+    }
+
+    /// <summary>
+    /// Start-up initialization: migrates when <see cref="DatabaseOptions.MigrateOnStartup"/> is set, otherwise refuses to
+    /// run against an outdated schema; then inserts idempotent seed data.
+    /// </summary>
     public async Task InitializeAsync(CancellationToken ct)
     {
-        var dataSource = db.Database.GetDbConnection().DataSource;
-        if (!string.IsNullOrEmpty(dataSource) && db.Database.IsSqlite())
+        if (databaseOptions.Value.MigrateOnStartup)
         {
-            var dir = Path.GetDirectoryName(Path.GetFullPath(dataSource));
-            if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
+            await MigrateAsync(ct);
+        }
+        else
+        {
+            var pending = (await db.Database.GetPendingMigrationsAsync(ct)).ToList();
+            if (pending.Count > 0)
+                throw new InvalidOperationException(
+                    $"The database schema is out of date ({pending.Count} pending migration(s): {string.Join(", ", pending)}). " +
+                    "Run the migration command (dotnet PortfolioOptimizer.Api.dll migrate) with the migration identity, or enable Database:MigrateOnStartup for local development.");
         }
 
-        if (db.Database.IsRelational()) await db.Database.MigrateAsync(ct);
-        else await db.Database.EnsureCreatedAsync(ct);
+        await SeedAsync(ct);
+    }
 
+    public async Task SeedAsync(CancellationToken ct)
+    {
         var now = clock.GetUtcNow().UtcDateTime;
         if (!await db.Settings.AnyAsync(ct))
         {
@@ -79,10 +114,13 @@ public sealed class DatabaseInitializer(
             logger.LogInformation("Seeded {Count} assets", DefaultUniverse.Length);
         }
 
-        if (seed.DemoPortfolio && !await db.Portfolios.AnyAsync(ct) && await db.Assets.AnyAsync(ct))
+        if (seed.Catalogue) await universeSeeder.SeedAsync(ct);
+
+        var bootstrappedAdmin = await adminBootstrapper.EnsureAsync(ct);
+        if (seed.DemoPortfolio && bootstrappedAdmin is { } adminId && !await db.Portfolios.AnyAsync(p => p.OwnerId == adminId, ct) && await db.Assets.AnyAsync(ct))
         {
-            await portfolios.CreateAsync(new CreatePortfolioRequest { Name = "Demo Portfolio", InitialInvestment = 100_000m, BaseCurrency = "USD" }, ct);
-            logger.LogInformation("Created demo portfolio with 100,000 USD simulated cash");
+            await portfolios.CreateForOwnerAsync(adminId, new CreatePortfolioRequest { Name = "Demo Portfolio", InitialInvestment = 100_000m, BaseCurrency = "USD" }, ct);
+            logger.LogInformation("Created demo portfolio with 100,000 USD simulated cash for the administrator");
         }
 
         if (seed.SyncOnEmptyDatabase)
@@ -104,4 +142,5 @@ public sealed class DatabaseInitializer(
             }
         }
     }
+
 }

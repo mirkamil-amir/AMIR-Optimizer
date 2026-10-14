@@ -1,6 +1,7 @@
 namespace PortfolioOptimizer.Domain;
 
-public enum AssetType { Equity, Etf }
+/// <summary>Index = a market index level used as a benchmark (e.g. ^GDAXI); it cannot be traded.</summary>
+public enum AssetType { Equity, Etf, Index }
 
 public enum ObjectiveKind { MinimumVariance, MaximumSharpe, TargetReturn, MaximumReturnForRisk, EqualWeight }
 

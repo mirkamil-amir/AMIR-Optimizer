@@ -13,9 +13,9 @@ import { cn } from '@/lib/utils'
 // Categorical slots in fixed order (validated palette); never cycled. Past 8 series → fold into "Other".
 export const SERIES_VARS = ['--series-1', '--series-2', '--series-3', '--series-4', '--series-5', '--series-6', '--series-7', '--series-8']
 export const seriesColor = (i: number) => `var(${SERIES_VARS[Math.min(i, SERIES_VARS.length - 1)]})`
-const OTHER_COLOR = 'var(--chart-axis)'
+export const OTHER_COLOR = 'var(--chart-axis)'
 
-const axisProps = {
+export const axisProps = {
   stroke: 'var(--chart-baseline)',
   tick: { fill: 'var(--chart-axis)', fontSize: 11 },
   tickLine: false,
@@ -120,7 +120,7 @@ function DataView({ table }: { table: TableView }) {
 
 // ------------------------------------------------------------------ tooltip shell
 
-function TooltipBox({ title, rows }: { title: ReactNode; rows: { name: string; color: string; value: string }[] }) {
+export function TooltipBox({ title, rows }: { title: ReactNode; rows: { name: string; color: string; value: string }[] }) {
   return (
     <div className="min-w-40 rounded-lg border bg-popover px-3 py-2 text-xs shadow-md">
       <div className="mb-1 font-medium text-foreground">{title}</div>

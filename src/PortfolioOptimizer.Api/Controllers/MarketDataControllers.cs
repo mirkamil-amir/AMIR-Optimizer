@@ -1,5 +1,7 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using PortfolioOptimizer.Api.Security;
 using PortfolioOptimizer.Application.Dtos;
 using PortfolioOptimizer.Application.MarketData;
 using PortfolioOptimizer.Application.Settings;
@@ -17,11 +19,12 @@ public sealed class AssetsController(MarketDataService marketData) : ControllerB
     [HttpGet]
     public Task<IReadOnlyList<AssetDto>> List([FromQuery] bool? enabled, CancellationToken ct) => marketData.GetAssetsAsync(enabled, ct);
 
-    /// <summary>Adds an asset to the universe. Prices are downloaded by a subsequent market-data sync.</summary>
+    /// <summary>Adds an asset to the universe (administrators). Prices are downloaded by a subsequent market-data sync.</summary>
     /// <response code="201">Asset created.</response>
     /// <response code="400">Invalid symbol or currency.</response>
     /// <response code="409">The symbol already exists.</response>
     [HttpPost]
+    [Authorize(Policy = Policies.Administrator)]
     [ProducesResponseType<AssetDto>(StatusCodes.Status201Created)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
@@ -31,8 +34,9 @@ public sealed class AssetsController(MarketDataService marketData) : ControllerB
         return CreatedAtAction(nameof(Prices), new { symbol = asset.Symbol }, asset);
     }
 
-    /// <summary>Updates name/sector or enables/disables an asset.</summary>
+    /// <summary>Updates name/sector or enables/disables an asset (administrators).</summary>
     [HttpPatch("{symbol}")]
+    [Authorize(Policy = Policies.Administrator)]
     [ProducesResponseType<AssetDto>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public Task<AssetDto> Update(string symbol, UpdateAssetRequest request, CancellationToken ct) => marketData.UpdateAssetAsync(symbol, request, ct);
@@ -91,8 +95,9 @@ public sealed class SettingsController(SettingsService settings) : ControllerBas
     [HttpGet]
     public Task<SettingsDto> Get(CancellationToken ct) => settings.GetAsync(ct);
 
-    /// <summary>Updates the active provider and defaults.</summary>
+    /// <summary>Updates the active provider and defaults (administrators).</summary>
     [HttpPut]
+    [Authorize(Policy = Policies.Administrator)]
     [ProducesResponseType<SettingsDto>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     public Task<SettingsDto> Update(UpdateSettingsRequest request, CancellationToken ct) => settings.UpdateAsync(request, ct);

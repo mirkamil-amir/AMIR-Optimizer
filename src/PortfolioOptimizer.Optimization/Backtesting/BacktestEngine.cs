@@ -96,22 +96,17 @@ public sealed class BacktestEngine(IPortfolioOptimizer optimizer, AnalyticsConve
         if (input.AssetPrices.Count == 0) throw new ArgumentException("At least one asset is required.");
 
         var warnings = new List<string>();
-        var symbols = input.AssetPrices.Keys.OrderBy(s => s, StringComparer.Ordinal).ToArray();
-        var priceMaps = symbols.ToDictionary(s => s, s => input.AssetPrices[s]
-            .Where(p => p.Price > 0 && double.IsFinite(p.Price))
-            .GroupBy(p => p.Date).ToDictionary(g => g.Key, g => g.Last().Price));
-        var sortedDates = symbols.ToDictionary(s => s, s => priceMaps[s].Keys.OrderBy(d => d).ToArray());
+        var grid = PriceGrid.Build(input.AssetPrices, settings.Start, settings.End);
+        var calendar = grid.Calendar;
+        var signalIndices = grid.SignalIndices(settings.Frequency);
 
-        var calendar = priceMaps.Values.SelectMany(m => m.Keys)
-            .Where(d => d >= settings.Start && d <= settings.End)
-            .Distinct().OrderBy(d => d).ToArray();
-        if (calendar.Length < 3) throw new ArgumentException("Fewer than three trading days of price data in the backtest period.");
-
-        var signalIndices = SignalIndices(calendar, settings.Frequency);
-
-        var strategy = Simulate(symbols, priceMaps, sortedDates, calendar, signalIndices, settings, warnings, cancellationToken);
-        var buyHold = Simulate(symbols, priceMaps, sortedDates, calendar, [0], settings, null, cancellationToken);
-        var equal = Simulate(symbols, priceMaps, sortedDates, calendar, [0], settings with { Objective = OptimizationObjective.EqualWeight }, null, cancellationToken);
+        var strategy = PortfolioSimulator.Run(grid, signalIndices, settings.InitialCapital, settings.TransactionCostBps,
+            ctx => Signal(grid, ctx, settings), warnings, cancellationToken);
+        var buyHold = PortfolioSimulator.Run(grid, [0], settings.InitialCapital, settings.TransactionCostBps,
+            ctx => Signal(grid, ctx, settings), null, cancellationToken);
+        var equalSettings = settings with { Objective = OptimizationObjective.EqualWeight };
+        var equal = PortfolioSimulator.Run(grid, [0], settings.InitialCapital, settings.TransactionCostBps,
+            ctx => Signal(grid, ctx, equalSettings), null, cancellationToken);
 
         var values = new Dictionary<string, IReadOnlyList<double>>
         {
@@ -178,161 +173,58 @@ public sealed class BacktestEngine(IPortfolioOptimizer optimizer, AnalyticsConve
             warnings.Distinct().ToList());
     }
 
-    private sealed record SimulationResult(double[] Values, List<RebalanceEvent> Events);
-
-    private SimulationResult Simulate(
-        string[] symbols,
-        Dictionary<string, Dictionary<DateOnly, double>> priceMaps,
-        Dictionary<string, DateOnly[]> sortedDates,
-        DateOnly[] calendar,
-        IReadOnlyList<int> signalIndices,
-        BacktestSettings settings,
-        List<string>? warnings,
-        CancellationToken ct)
+    /// <summary>Mean-variance signal: estimates on the trailing lookback window ending at the signal date, then optimizes.</summary>
+    private PortfolioDecision Signal(PriceGrid grid, SignalContext ctx, BacktestSettings settings, ISet<string>? allowed = null)
     {
-        var n = symbols.Length;
-        var units = new double[n];
-        var lastPrice = new double?[n];
-        var cash = settings.InitialCapital;
-        var values = new double[calendar.Length];
-        var events = new List<RebalanceEvent>();
-        var signalSet = signalIndices.ToHashSet();
-        (DateOnly Signal, double[]? Weights, List<string> Eligible, bool Ok, string Message)? pending = null;
-
-        for (var t = 0; t < calendar.Length; t++)
-        {
-            ct.ThrowIfCancellationRequested();
-            var date = calendar[t];
-            for (var i = 0; i < n; i++)
-            {
-                if (priceMaps[symbols[i]].TryGetValue(date, out var p)) lastPrice[i] = p;
-                else if (units[i] > 0 && warnings is not null)
-                    warnings.Add($"{symbols[i]} has no price on {date:yyyy-MM-dd}; last available price carried forward for valuation.");
-            }
-
-            // 1) Execute orders decided at the previous signal date, at today's close.
-            if (pending is { } order)
-            {
-                pending = null;
-                var value = cash + Enumerable.Range(0, n).Sum(i => units[i] * (lastPrice[i] ?? 0));
-                if (order.Weights is not null)
-                {
-                    var target = (double[])order.Weights.Clone();
-                    for (var i = 0; i < n; i++)
-                    {
-                        if (target[i] > 0 && !priceMaps[symbols[i]].ContainsKey(date))
-                        {
-                            warnings?.Add($"{symbols[i]} could not be traded on {date:yyyy-MM-dd} (no price); its target weight was left in cash.");
-                            target[i] = 0;
-                        }
-                    }
-
-                    var currentW = Enumerable.Range(0, n).Select(i => value > 0 ? units[i] * (lastPrice[i] ?? 0) / value : 0).ToArray();
-                    var bps = settings.TransactionCostBps / 10_000d;
-                    // Costs reduce the investable value; two fixed-point passes are sufficient for bps-level costs.
-                    var costs = 0d;
-                    for (var pass = 0; pass < 3; pass++)
-                    {
-                        var net = value - costs;
-                        costs = bps * Enumerable.Range(0, n).Sum(i => Math.Abs(net * target[i] - units[i] * (lastPrice[i] ?? 0)));
-                    }
-                    var investable = value - costs;
-                    for (var i = 0; i < n; i++)
-                        units[i] = target[i] > 0 ? investable * target[i] / lastPrice[i]!.Value : 0;
-                    cash = investable - Enumerable.Range(0, n).Sum(i => units[i] * (lastPrice[i] ?? 0));
-                    var newW = Enumerable.Range(0, n).Select(i => value > 0 ? units[i] * (lastPrice[i] ?? 0) / value : 0).ToArray();
-
-                    events.Add(new RebalanceEvent(order.Signal, date,
-                        Enumerable.Range(0, n).Where(i => target[i] > 0).ToDictionary(i => symbols[i], i => target[i]),
-                        order.Eligible, PerformanceMetrics.Turnover(currentW, newW), costs, value, order.Ok, order.Message));
-                }
-                else
-                {
-                    events.Add(new RebalanceEvent(order.Signal, date, new Dictionary<string, double>(), order.Eligible, 0, 0, value, false, order.Message));
-                }
-            }
-
-            // 2) Compute the signal at today's close with data dated ≤ today; execute tomorrow.
-            if (signalSet.Contains(t) && t < calendar.Length - 1)
-            {
-                var (weights, eligible, ok, message) = Signal(symbols, priceMaps, sortedDates, date, settings, units, lastPrice, cash);
-                pending = (date, weights, eligible, ok, message);
-            }
-
-            values[t] = cash + Enumerable.Range(0, n).Sum(i => units[i] * (lastPrice[i] ?? 0));
-        }
-
-        return new SimulationResult(values, events);
-    }
-
-    private (double[]? Weights, List<string> Eligible, bool Ok, string Message) Signal(
-        string[] symbols,
-        Dictionary<string, Dictionary<DateOnly, double>> priceMaps,
-        Dictionary<string, DateOnly[]> sortedDates,
-        DateOnly signalDate,
-        BacktestSettings settings,
-        double[] units,
-        double?[] lastPrice,
-        double cash)
-    {
+        var symbols = grid.Symbols;
         var lookback = settings.LookbackDays;
         var eligible = new List<string>();
         var windows = new Dictionary<string, IReadOnlyList<PricePoint>>();
         foreach (var s in symbols)
         {
-            var dates = sortedDates[s];
-            var end = UpperBound(dates, signalDate); // count of dates ≤ signal
-            if (end == 0 || dates[end - 1] != signalDate) continue; // must trade on the signal date
+            if (allowed is not null && !allowed.Contains(s)) continue;
+            var dates = grid.SortedDates[s];
+            var end = grid.CountUpTo(s, ctx.Date); // count of dates ≤ signal
+            if (end == 0 || dates[end - 1] != ctx.Date) continue; // must trade on the signal date
             if (end < lookback + 1) continue; // insufficient history: not yet investable
             var window = new List<PricePoint>(lookback + 1);
-            for (var k = end - lookback - 1; k < end; k++) window.Add(new PricePoint(dates[k], priceMaps[s][dates[k]]));
+            for (var k = end - lookback - 1; k < end; k++) window.Add(new PricePoint(dates[k], grid.Prices[s][dates[k]]));
             windows[s] = window;
             eligible.Add(s);
         }
 
         if (eligible.Count == 0)
-            return (null, eligible, false, "No asset had a full lookback window; the portfolio stays in cash.");
+            return PortfolioDecision.Hold(eligible, "No asset had a full lookback window; the portfolio stays in cash.");
 
         var matrix = ReturnMatrix.Build(windows, eligible);
         if (matrix.Observations < settings.MinimumObservations)
-            return (null, eligible, false, $"Only {matrix.Observations} aligned observations (minimum {settings.MinimumObservations}); holdings unchanged.");
+            return PortfolioDecision.Hold(eligible, $"Only {matrix.Observations} aligned observations (minimum {settings.MinimumObservations}); holdings unchanged.");
 
         var est = CovarianceEstimator.Estimate(matrix.Returns, settings.CovarianceMethod, conventions);
-        var value = cash + Enumerable.Range(0, symbols.Length).Sum(i => units[i] * (lastPrice[i] ?? 0));
-        var current = eligible.Select(s =>
-        {
-            var i = Array.IndexOf(symbols, s);
-            return value > 0 ? units[i] * (lastPrice[i] ?? 0) / value : 0;
-        }).ToArray();
+        var current = eligible.Select(s => ctx.CurrentWeights[Array.IndexOf(symbols, s)]).ToArray();
 
         var result = optimizer.Optimize(new OptimizationInput(
             eligible, est.ExpectedReturns, est.Covariance, settings.Objective, settings.Constraints, settings.RiskFreeRate, current));
         if (!result.Succeeded)
-            return (null, eligible, false, $"Optimization failed ({result.Status}): {result.Message} Holdings unchanged.");
+            return PortfolioDecision.Hold(eligible, $"Optimization failed ({result.Status}): {result.Message} Holdings unchanged.");
 
         var full = new double[symbols.Length];
         for (var k = 0; k < eligible.Count; k++) full[Array.IndexOf(symbols, eligible[k])] = result.Weights![k];
-        return (full, eligible, true, result.Diagnostics.Count > 0 ? string.Join(" ", result.Diagnostics) : "OK");
+        return new PortfolioDecision(full, eligible, true, result.Diagnostics.Count > 0 ? string.Join(" ", result.Diagnostics) : "OK");
     }
 
-    private static int[] SignalIndices(DateOnly[] calendar, RebalanceFrequency frequency)
-    {
-        var list = new List<int> { 0 };
-        if (frequency == RebalanceFrequency.None) return [.. list];
-        for (var t = 1; t < calendar.Length - 1; t++)
+    /// <summary>The mean-variance decision rule at one signal date (used by the strategy comparison engine).</summary>
+    public Func<SignalContext, PortfolioDecision> CreateDecisionRule(PriceGrid grid, BacktestSettings settings) => ctx => Signal(grid, ctx, settings);
+
+    /// <summary>The mean-variance rule restricted to symbols chosen at each signal date (e.g. a pre-screened set); null = no restriction.</summary>
+    public Func<SignalContext, PortfolioDecision> CreateDecisionRule(PriceGrid grid, BacktestSettings settings, Func<SignalContext, ISet<string>?> allowed) =>
+        ctx =>
         {
-            var d = calendar[t];
-            var next = calendar[t + 1];
-            var periodEnd = frequency switch
-            {
-                RebalanceFrequency.Monthly => d.Month != next.Month,
-                RebalanceFrequency.Quarterly => (d.Month - 1) / 3 != (next.Month - 1) / 3 || d.Year != next.Year,
-                _ => false,
-            };
-            if (periodEnd) list.Add(t);
-        }
-        return [.. list];
-    }
+            var set = allowed(ctx); // evaluated once: the screen may be stateful
+            return set is { Count: 0 }
+                ? PortfolioDecision.Hold([], "The screen selected no stocks; holdings unchanged.")
+                : Signal(grid, ctx, settings, set);
+        };
 
     private static double[]? BenchmarkSeries(IReadOnlyList<PricePoint> prices, DateOnly[] calendar, double capital, List<string> warnings, string name)
     {
@@ -377,17 +269,5 @@ public sealed class BacktestEngine(IPortfolioOptimizer optimizer, AnalyticsConve
         var r = new double[Math.Max(0, values.Count - 1)];
         for (var i = 1; i < values.Count; i++) r[i - 1] = values[i - 1] > 0 ? values[i] / values[i - 1] - 1 : 0;
         return r;
-    }
-
-    private static int UpperBound(DateOnly[] dates, DateOnly value)
-    {
-        int lo = 0, hi = dates.Length;
-        while (lo < hi)
-        {
-            var mid = (lo + hi) / 2;
-            if (dates[mid] <= value) lo = mid + 1;
-            else hi = mid;
-        }
-        return lo;
     }
 }

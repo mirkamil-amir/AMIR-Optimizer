@@ -22,6 +22,7 @@ public sealed class OptimizationService(
     PriceQueryService prices,
     IPortfolioOptimizer optimizer,
     AnalyticsConventions conventions,
+    ICurrentUser currentUser,
     TimeProvider clock,
     ILogger<OptimizationService> logger)
 {
@@ -52,6 +53,7 @@ public sealed class OptimizationService(
         {
             Id = Guid.NewGuid(),
             PortfolioId = portfolioId,
+            OwnerId = portfolio.OwnerId,
             CreatedAtUtc = clock.GetUtcNow().UtcDateTime,
             Objective = settings.Objective,
             PriceSource = source,
@@ -61,6 +63,17 @@ public sealed class OptimizationService(
         var diagnostics = new List<string>();
         var excludedForData = new List<string>();
         var universe = settings.Universe.Except(settings.ExcludedSymbols, StringComparer.OrdinalIgnoreCase).ToList();
+        if (universe.Count > 0)
+        {
+            // One currency per analysis (no FX conversion); the benchmark follows the universe's currency.
+            var currency = await UniverseCurrency.ResolveAsync(db, universe, settings.BenchmarkSymbol, ct);
+            if (currency.Note is not null) diagnostics.Add(currency.Note);
+            if (!string.Equals(currency.Currency, portfolio.BaseCurrency, StringComparison.OrdinalIgnoreCase))
+                diagnostics.Add($"The stocks trade in {currency.Currency} but the portfolio \"{portfolio.Name}\" is in {portfolio.BaseCurrency}: the analysis is valid, " +
+                                $"but paper trades need a portfolio in {currency.Currency} (create one under Settings).");
+            settings = settings with { BenchmarkSymbol = currency.Benchmark };
+            run.SettingsSnapshot = settings;
+        }
         var assets = await db.Assets.AsNoTracking().Where(a => universe.Contains(a.Symbol)).ToDictionaryAsync(a => a.Symbol, ct);
 
         var series = await prices.GetSeriesAsync(universe, source, null, null, ct, settings.LookbackDays + 1);
@@ -155,8 +168,23 @@ public sealed class OptimizationService(
     public async Task<PagedResult<OptimizationRunSummaryDto>> ListAsync(Guid portfolioId, int page, int pageSize, CancellationToken ct)
     {
         if (page < 1 || pageSize is < 1 or > 200) throw new ValidationException("Invalid paging parameters (page ≥ 1, 1 ≤ pageSize ≤ 200).");
-        if (!await db.Portfolios.AnyAsync(p => p.Id == portfolioId, ct)) throw new NotFoundException("Portfolio", portfolioId);
-        var q = db.OptimizationRuns.AsNoTracking().Where(r => r.PortfolioId == portfolioId);
+        await portfolios.EnsureExistsAsync(portfolioId, ct);
+        return await PageAsync(db.OptimizationRuns.AsNoTracking().Where(r => r.PortfolioId == portfolioId), page, pageSize, ct);
+    }
+
+    /// <summary>Optimization history of the current user across all portfolios, newest first.</summary>
+    public async Task<PagedResult<OptimizationRunSummaryDto>> ListForUserAsync(Guid? portfolioId, OptimizationRunStatus? status, int page, int pageSize, CancellationToken ct)
+    {
+        if (page < 1 || pageSize is < 1 or > 200) throw new ValidationException("Invalid paging parameters (page ≥ 1, 1 ≤ pageSize ≤ 200).");
+        var owner = currentUser.RequireUserId();
+        var q = db.OptimizationRuns.AsNoTracking().Where(r => r.OwnerId == owner);
+        if (portfolioId is { } pid) q = q.Where(r => r.PortfolioId == pid);
+        if (status is { } st) q = q.Where(r => r.Status == st);
+        return await PageAsync(q, page, pageSize, ct);
+    }
+
+    private static async Task<PagedResult<OptimizationRunSummaryDto>> PageAsync(IQueryable<OptimizationRun> q, int page, int pageSize, CancellationToken ct)
+    {
         var total = await q.CountAsync(ct);
         var runs = await q.OrderByDescending(r => r.CreatedAtUtc).Skip((page - 1) * pageSize).Take(pageSize)
             .Select(r => new { r.Id, r.PortfolioId, r.CreatedAtUtc, r.Objective, r.Status, r.Message, r.ExpectedReturn, r.Volatility, r.SharpeRatio, r.Symbols, r.PeriodStart, r.PeriodEnd, r.PriceSource, r.UsesSimulatedData })
@@ -175,9 +203,13 @@ public sealed class OptimizationService(
 
     public async Task<IReadOnlyList<AllocationDto>> GetAllocationAsync(Guid runId, CancellationToken ct) => (await GetAsync(runId, ct)).Allocation;
 
-    public async Task<OptimizationRun> LoadRunAsync(Guid runId, CancellationToken ct) =>
-        await db.OptimizationRuns.AsNoTracking().Include(r => r.Weights).SingleOrDefaultAsync(r => r.Id == runId, ct)
-        ?? throw new NotFoundException("Optimization run", runId);
+    /// <summary>Loads one of the current user's runs; runs of other users are reported as not found.</summary>
+    public async Task<OptimizationRun> LoadRunAsync(Guid runId, CancellationToken ct)
+    {
+        var owner = currentUser.RequireUserId();
+        return await db.OptimizationRuns.AsNoTracking().Include(r => r.Weights).SingleOrDefaultAsync(r => r.Id == runId && r.OwnerId == owner, ct)
+               ?? throw new NotFoundException("Optimization run", runId);
+    }
 
     // ------------------------------------------------------------------ helpers
 

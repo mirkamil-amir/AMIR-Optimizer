@@ -92,7 +92,7 @@ export function MetricValue({ metric, format }: { metric: Metric | undefined; fo
 export type DataKind = 'live' | 'cached' | 'stale' | 'simulated' | 'backtest' | 'estimate' | 'missing'
 
 const dataKindStyles: Record<DataKind, { label: string; className: string; icon: ReactNode; title: string }> = {
-  live: { label: 'Live data', className: 'border-gain/40 text-gain', icon: <Database className="size-3" />, title: 'Real market data from the provider.' },
+  live: { label: 'Market data', className: 'border-gain/40 text-gain', icon: <Database className="size-3" />, title: 'Real provider data (delayed or end-of-day, not live).' },
   cached: { label: 'Cached', className: 'border-border text-muted-foreground', icon: <Database className="size-3" />, title: 'Stored market data from the last synchronization.' },
   stale: { label: 'Stale', className: 'border-warn/50 text-warn', icon: <AlertTriangle className="size-3" />, title: 'The latest price is older than the staleness threshold.' },
   simulated: { label: 'SIMULATED', className: 'border-series-2/60 bg-series-2/10 text-foreground', icon: <FlaskConical className="size-3" />, title: 'Synthetic prices from the mock provider – not real market data.' },

@@ -3,12 +3,17 @@
   <ItemGroup>
     <ProjectReference Include="..\PortfolioOptimizer.Domain\PortfolioOptimizer.Domain.csproj" />
     <ProjectReference Include="..\PortfolioOptimizer.Optimization\PortfolioOptimizer.Optimization.csproj" />
+    <ProjectReference Include="..\PortfolioOptimizer.MachineLearning\PortfolioOptimizer.MachineLearning.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.12" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.12" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="PortfolioOptimizer.UnitTests" />
   </ItemGroup>
 
   <PropertyGroup>

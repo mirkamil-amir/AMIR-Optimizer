@@ -12,9 +12,14 @@ public sealed class MarketDataService(
     IMarketDataProviderRegistry providers,
     IBackgroundJobQueue queue,
     PriceQueryService prices,
+    ICurrentUser currentUser,
+    IAuditLog audit,
     TimeProvider clock,
     ILogger<MarketDataService> logger)
 {
+    /// <summary>Maximum number of symbols a non-administrator may synchronize per request.</summary>
+    public const int UserSyncSymbolLimit = 50;
+
     /// <summary>Days re-downloaded before the last stored date to pick up late corrections.</summary>
     private const int OverlapDays = 7;
     /// <summary>Relative change in overlapping adjusted closes that indicates new split/dividend adjustments.</summary>
@@ -47,6 +52,7 @@ public sealed class MarketDataService(
         };
         db.Assets.Add(asset);
         await db.SaveChangesAsync(ct);
+        await audit.RecordAsync(AuditActions.AssetCreated, "Asset", symbol, ct: ct);
         return asset.ToDto();
     }
 
@@ -57,6 +63,8 @@ public sealed class MarketDataService(
         if (request.Sector is not null) asset.Sector = request.Sector.Trim();
         if (request.IsEnabled is { } e) asset.IsEnabled = e;
         await db.SaveChangesAsync(ct);
+        await audit.RecordAsync(AuditActions.AssetUpdated, "Asset", asset.Symbol,
+            $"name={request.Name ?? "-"}, sector={request.Sector ?? "-"}, enabled={request.IsEnabled?.ToString() ?? "-"}", ct: ct);
         return asset.ToDto();
     }
 
@@ -78,8 +86,21 @@ public sealed class MarketDataService(
 
     // ------------------------------------------------------------------ sync jobs
 
+    /// <summary>
+    /// Queues a download. Approved users may refresh up to <see cref="UserSyncSymbolLimit"/> named catalogue symbols from the
+    /// active provider; full-universe syncs, forced full refreshes and other providers are administrator operations.
+    /// Seeding and the scheduler call this without a user.
+    /// </summary>
     public async Task<SyncJobDto> EnqueueSyncAsync(SyncRequest request, CancellationToken ct)
     {
+        if (currentUser.UserId is not null && !currentUser.IsAdministrator)
+        {
+            if (request.Symbols.Count == 0) throw new ForbiddenException("Only administrators can synchronize the whole universe; list the symbols to refresh.");
+            if (request.Symbols.Count > UserSyncSymbolLimit) throw new ValidationException("symbols", $"At most {UserSyncSymbolLimit} symbols per request.");
+            if (request.ForceFullRefresh || request.Provider is not null)
+                throw new ForbiddenException("Forced full refreshes and provider selection are administrator operations.");
+        }
+
         var settings = await prices.SettingsAsync(ct);
         var providerName = request.Provider ?? settings.ActiveProvider;
         var provider = providers.Get(providerName); // validates name/configuration
@@ -120,6 +141,25 @@ public sealed class MarketDataService(
         await db.SaveChangesAsync(ct);
         await queue.EnqueueAsync(new BackgroundJob(BackgroundJobKind.MarketDataSync, job.Id), ct);
         return job.ToDto();
+    }
+
+    /// <summary>
+    /// Queues a download for those symbols that have fewer than <paramref name="minimumObservations"/> stored prices from
+    /// the active source since <paramref name="from"/>. Background jobs run in order, so an analysis queued afterwards
+    /// finds the history in place. Returns the symbols that were queued.
+    /// </summary>
+    public async Task<IReadOnlyList<string>> EnsureHistoryAsync(IReadOnlyCollection<string> symbols, DateOnly from, int minimumObservations, CancellationToken ct)
+    {
+        var source = (await prices.SettingsAsync(ct)).ActiveProvider;
+        var list = symbols.Select(Asset.NormalizeSymbol).Distinct().ToList();
+        var counts = await db.HistoricalPrices.AsNoTracking()
+            .Where(p => list.Contains(p.Asset!.Symbol) && p.Source == source && p.Date >= from)
+            .GroupBy(p => p.Asset!.Symbol).Select(g => new { Symbol = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Symbol, x => x.Count, ct);
+        var lacking = list.Where(s => counts.GetValueOrDefault(s) < minimumObservations).Take(UserSyncSymbolLimit).ToList();
+        if (lacking.Count == 0) return [];
+        await EnqueueSyncAsync(new SyncRequest { Symbols = lacking, StartDate = from }, ct);
+        return lacking;
     }
 
     public async Task<SyncJobDto> GetJobAsync(Guid id, CancellationToken ct)
@@ -221,6 +261,8 @@ public sealed class MarketDataService(
             var quote = await provider.GetLatestQuoteAsync(symbol, ct);
             if (quote is not null) await UpsertQuoteAsync(asset, provider, quote, ct);
 
+            // A catalogue instrument whose prices were fetched on demand becomes tracked (kept fresh by scheduled refreshes).
+            if (!asset.IsEnabled && log.RowsReceived > 0) asset.IsEnabled = true;
             log.Success = true;
             log.Message = ranges.Count == 0 ? "Already up to date." : string.Join(" ", messages.Distinct().Take(10));
         }
@@ -328,6 +370,7 @@ public sealed class MarketDataService(
             db.LatestQuotes.Add(row);
         }
         row.Price = quote.Price;
+        row.PreviousClose = quote.PreviousClose;
         row.Currency = quote.Currency;
         row.AsOfUtc = quote.AsOfUtc;
         row.RetrievedAtUtc = clock.GetUtcNow().UtcDateTime;
@@ -341,7 +384,10 @@ public sealed class MarketDataService(
     {
         var settings = await prices.SettingsAsync(ct);
         var source = settings.ActiveProvider;
-        var assets = await db.Assets.AsNoTracking().OrderBy(a => a.Symbol).ToListAsync(ct);
+        // Tracked instruments plus any catalogue instrument with stored prices (the full catalogue is browsed via /stocks).
+        var assets = await db.Assets.AsNoTracking()
+            .Where(a => a.IsEnabled || db.HistoricalPrices.Any(p => p.AssetId == a.Id && p.Source == source))
+            .OrderBy(a => a.Symbol).ToListAsync(ct);
         var stats = await db.HistoricalPrices.AsNoTracking()
             .Where(p => p.Source == source)
             .GroupBy(p => p.AssetId)

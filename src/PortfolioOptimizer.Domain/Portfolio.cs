@@ -35,6 +35,8 @@ public sealed record PortfolioSettings
 public class Portfolio
 {
     public Guid Id { get; set; }
+    /// <summary>The user who owns this portfolio; only the owner can read or change it.</summary>
+    public Guid OwnerId { get; set; }
     public required string Name { get; set; }
     public string BaseCurrency { get; set; } = "USD";
     public decimal InitialInvestment { get; set; }

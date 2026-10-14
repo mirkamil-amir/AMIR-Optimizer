@@ -7,35 +7,28 @@ namespace PortfolioOptimizer.IntegrationTests;
 
 public sealed class ApiTests : IAsyncLifetime
 {
-    private readonly ApiFactory _factory = new();
+    private ApiFactory _factory = null!;
+    private HttpClient _admin = null!;
     private HttpClient _client = null!;
+    private CurrentUserDto _user = null!;
 
     private static readonly string[] Universe = ["AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "JPM", "XOM"];
 
     public async Task InitializeAsync()
     {
-        _client = _factory.CreateClient();
+        _factory = await ApiFactory.CreateAsync();
+        _admin = await _factory.CreateAdminSessionAsync();
         // Download simulated history for the universe and the benchmark through the real background job pipeline.
-        var job = await (await _client.PostJsonAsync("/api/v1/market-data/sync",
-            new SyncRequest { StartDate = DateOnly.FromDateTime(DateTime.UtcNow).AddYears(-3) })).ReadAsync<SyncJobDto>();
-        for (var i = 0; i < 100; i++)
-        {
-            var status = await (await _client.GetAsync($"/api/v1/market-data/jobs/{job.Id}")).ReadAsync<SyncJobDto>();
-            if (status.Status is JobStatus.Succeeded or JobStatus.Failed or JobStatus.PartiallySucceeded)
-            {
-                Assert.Equal(JobStatus.Succeeded, status.Status);
-                return;
-            }
-            await Task.Delay(100);
-        }
-        throw new TimeoutException("Market data sync did not finish.");
+        await _admin.SyncAndWaitAsync(new SyncRequest { StartDate = DateOnly.FromDateTime(DateTime.UtcNow).AddYears(-3) });
+        (_client, _user) = await _factory.CreateApprovedUserAsync(_admin);
     }
 
     public async Task DisposeAsync()
     {
         _client.Dispose();
+        _admin.Dispose();
         await _factory.DisposeAsync();
-        _factory.DeleteDatabase();
+        await _factory.DeleteDatabaseAsync();
     }
 
     private async Task<PortfolioDto> CreatePortfolioAsync(PortfolioSettingsDto? settings = null) =>
@@ -50,18 +43,22 @@ public sealed class ApiTests : IAsyncLifetime
     [Fact]
     public async Task HealthAndReadiness_AreHealthy()
     {
-        Assert.Equal(HttpStatusCode.OK, (await _client.GetAsync("/health")).StatusCode);
-        Assert.Equal("Healthy", await _client.GetStringAsync("/health/ready"));
+        using var anonymous = _factory.CreateClient();
+        Assert.Equal(HttpStatusCode.OK, (await anonymous.GetAsync("/health")).StatusCode);
+        Assert.Equal("Healthy", await anonymous.GetStringAsync("/health/ready"));
     }
 
     [Fact]
     public async Task Swagger_DocumentsEndpoints()
     {
-        var json = await _client.GetStringAsync("/swagger/v1/swagger.json");
+        using var anonymous = _factory.CreateClient();
+        var json = await anonymous.GetStringAsync("/swagger/v1/swagger.json");
         using var doc = JsonDocument.Parse(json);
         var paths = doc.RootElement.GetProperty("paths");
         Assert.True(paths.TryGetProperty("/api/v1/portfolios/{id}/paper-trades", out _));
         Assert.True(paths.TryGetProperty("/api/v1/backtests", out _));
+        Assert.True(paths.TryGetProperty("/api/v1/auth/login", out _));
+        Assert.True(paths.TryGetProperty("/api/v1/admin/users", out _));
     }
 
     [Fact]
@@ -76,6 +73,7 @@ public sealed class ApiTests : IAsyncLifetime
     [Fact]
     public async Task SecondSync_IsIncremental()
     {
+        // Approved users may refresh named symbols (whole-universe syncs are for administrators).
         var job = await (await _client.PostJsonAsync("/api/v1/market-data/sync", new SyncRequest { Symbols = ["AAPL"], StartDate = DateOnly.FromDateTime(DateTime.UtcNow).AddYears(-3) })).ReadAsync<SyncJobDto>();
         SyncJobDto status;
         do
@@ -237,8 +235,9 @@ public sealed class ApiTests : IAsyncLifetime
     public async Task Data_PersistsAcrossRestart()
     {
         var portfolio = await CreatePortfolioAsync();
-        await using var restarted = new ApiFactory(_factory.DatabasePath);
-        using var client = restarted.CreateClient();
+        await using var restarted = new ApiFactory(_factory.ConnectionString);
+        using var client = restarted.CreateSession();
+        await client.LoginAsync(_user.Email, ApiFactory.UserPassword);
         var loaded = await (await client.GetAsync($"/api/v1/portfolios/{portfolio.Id}")).ReadAsync<PortfolioDto>();
         Assert.Equal(portfolio.Name, loaded.Name);
         Assert.Equal(100_000m, loaded.CashBalance);

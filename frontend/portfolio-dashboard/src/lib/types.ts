@@ -511,3 +511,419 @@ export interface Backtest extends BacktestSummary {
   config: BacktestRequest
   result: BacktestResult | null
 }
+
+// ---------------------------------------------------------------- identity & administration
+
+export type UserAccountStatus = 'Pending' | 'Approved' | 'Rejected' | 'Suspended'
+
+export interface CurrentUser {
+  id: string
+  email: string
+  displayName: string
+  status: UserAccountStatus
+  roles: string[]
+  isAdministrator: boolean
+  createdAtUtc: string
+}
+
+export interface UserSummary {
+  id: string
+  email: string
+  displayName: string
+  status: UserAccountStatus
+  roles: string[]
+  createdAtUtc: string
+  statusChangedAtUtc: string | null
+  statusReason: string | null
+  lastLoginAtUtc: string | null
+  isLockedOut: boolean
+  /** Automated-test account (reserved .test domain). */
+  isTestAccount: boolean
+}
+
+export interface AdminOverview {
+  accounts: { pending: number; approved: number; rejected: number; suspended: number; administrators: number; testAccounts: number }
+  activity: {
+    optimizationRuns: number
+    optimizationRunsLast30Days: number
+    mlExperiments: number
+    mlExperimentsFailed: number
+    mlExperimentsActive: number
+    strategyComparisons: number
+    backtests: number
+    portfolios: number
+  }
+  recentRuns: { kind: string; id: string; name: string; status: string; ownerName: string; ownerEmail: string; createdAtUtc: string }[]
+  marketData: {
+    activeProvider: string
+    providers: { name: string; displayName: string; isConfigured: boolean; requiresApiKey: boolean; isSimulated: boolean; rateLimit: string; remainingRequestsToday: number | null }[]
+    indices: { code: string; name: string; members: number; withQuote: number; withQuoteToday: number; withHistory: number; verifiedOn: string | null }[]
+    recentQuoteRefreshes: QuoteRefreshRun[]
+    lastHistorySync: { id: string; status: string; requestedAtUtc: string; completedAtUtc: string | null; assetsTotal: number; assetsFailed: number; message: string | null } | null
+  }
+  generatedAtUtc: string
+}
+
+export interface AuditEvent {
+  id: number
+  timestampUtc: string
+  actorUserId: string | null
+  actorEmail: string | null
+  action: string
+  targetType: string | null
+  targetId: string | null
+  success: boolean
+  details: string | null
+  ipAddress: string | null
+}
+
+// ---------------------------------------------------------------- stock discovery
+
+export type QuoteKind = 'None' | 'DelayedQuote' | 'LastClose'
+
+export interface Sector {
+  name: string
+  stockCount: number
+  withPriceData: number
+}
+
+export interface MarketIndex {
+  code: string
+  name: string
+  country: string
+  currency: string
+  benchmarkSymbol: string | null
+  isHistorical: boolean
+  description: string | null
+  members: number
+  membersWithPriceHistory: number
+  membersWithQuotes: number
+  source: string
+  sourceUrl: string | null
+  sourceRevision: string | null
+  licence: string | null
+  verifiedOn: string | null
+}
+
+export interface Market {
+  country: string
+  name: string
+  indices: MarketIndex[]
+}
+
+export interface QuoteRefreshRun {
+  id: string
+  trigger: string
+  source: string
+  status: JobStatus
+  requestedAtUtc: string
+  startedAtUtc: string | null
+  completedAtUtc: string | null
+  symbolsRequested: number
+  updated: number
+  unchanged: number
+  failed: number
+  message: string | null
+  reused: boolean
+}
+
+export type QuoteRefreshOutcome = 'Updated' | 'Fresh' | 'Failed' | 'Unsupported' | 'NotFound'
+
+export interface QuoteRefreshResult {
+  items: { symbol: string; outcome: QuoteRefreshOutcome; message: string | null }[]
+  stocks: StockListItem[]
+}
+
+export interface StockQuote {
+  symbol: string
+  price: number | null
+  currency: string
+  kind: QuoteKind
+  priceDate: string | null
+  asOfUtc: string | null
+  previousClose: number | null
+  previousCloseDate: string | null
+  change: number | null
+  changePercent: number | null
+  provider: string | null
+  retrievedAtUtc: string | null
+  isSimulated: boolean
+  isStale: boolean
+  /** Retrieved longer ago than the server's cache window; a refresh may give a newer price. */
+  isCached: boolean
+  description: string
+}
+
+export interface StockListItem {
+  id: number
+  symbol: string
+  name: string | null
+  sector: string | null
+  industry: string | null
+  exchange: string | null
+  /** ISO country of the listing venue. */
+  country: string | null
+  /** Index codes the stock belongs to (SP500, DAX40, …). */
+  indices: string[]
+  currency: string
+  assetType: 'Equity' | 'Etf' | 'Index'
+  isTracked: boolean
+  observations: number
+  firstDate: string | null
+  lastDate: string | null
+  quote: StockQuote
+}
+
+export interface StockDetail {
+  stock: StockListItem
+  description: string | null
+  metadataSource: string | null
+  metadataUpdatedAtUtc: string | null
+  hasAdjustedCloses: boolean
+  dataSource: string
+  descriptionNote: string
+  isin: string | null
+  mic: string | null
+}
+
+export interface CatalogueImportResult {
+  rows: number
+  inserted: number
+  updated: number
+  unchanged: number
+  errors: string[]
+}
+
+// ---------------------------------------------------------------- machine learning
+
+export type ModelFamily = 'RidgeRegression' | 'LogisticRegression' | 'RandomForest' | 'GradientBoosting'
+export type PredictionTarget = 'ForwardReturn' | 'ForwardExcessReturn' | 'OutperformBenchmark' | 'ForwardVolatility'
+export type WeightingMethod = 'EqualWeight' | 'RankWeighted' | 'InverseVolatility' | 'ScoreProportional'
+
+export interface MlExperimentRequest {
+  name?: string | null
+  universe: string[]
+  benchmarkSymbol: string
+  modelFamily: ModelFamily
+  target: PredictionTarget
+  horizonDays: number
+  historyYears: number
+  features: string[]
+  sampleStepDays: number
+  trainFraction: number
+  validationFraction: number
+  embargoDays: number
+  hyperparameters?: Record<string, number> | null
+  seed: number
+  topK: number
+  weighting: WeightingMethod
+  maxWeight: number
+  cashReserve: number
+  minimumScore?: number | null
+  maxTurnover?: number | null
+  sectorLimits: Record<string, number>
+  rebalance: RebalanceKind
+  retrainEveryRebalances: number
+  trainingWindowDays?: number | null
+  transactionCostBps: number
+  initialCapital: number
+  riskFreeRate: number
+}
+
+export interface NamedOption { value: string; label: string; description: string }
+
+export interface MlCatalog {
+  modelFamilies: { value: ModelFamily; label: string; description: string; supportedTargets: PredictionTarget[]; defaultSearchSpaceRegression: Record<string, number>[]; defaultSearchSpaceClassification: Record<string, number>[] }[]
+  targets: NamedOption[]
+  features: { name: string; group: string; definition: string; windowDays: number; requiresVolume: boolean; requiresBenchmark: boolean; requiresSectorPeers: boolean }[]
+  featureSetVersion: string
+  missingValuePolicy: string
+  weightingMethods: NamedOption[]
+  validationMethodology: string
+  backtestMethodology: string
+  maxUniverse: number
+}
+
+export interface MlExperimentSummary {
+  id: string
+  name: string
+  status: JobStatus
+  progressPercent: number
+  progressMessage: string | null
+  modelFamily: ModelFamily
+  target: PredictionTarget
+  horizonDays: number
+  universeSize: number
+  createdAtUtc: string
+  completedAtUtc: string | null
+  usesSimulatedData: boolean
+  isExploratory: boolean
+  testRankCorrelation: number | null
+  testOutOfSampleR2: number | null
+  testRocAuc: number | null
+  backtestAnnualizedReturn: number | null
+  error: string | null
+}
+
+export interface RegressionMetrics { count: number; mae: number; rmse: number; outOfSampleR2: number | null; pooledRankCorrelation: number | null; directionalAccuracy: number | null }
+export interface CalibrationBin { meanPredicted: number; observedFrequency: number; count: number }
+export interface ClassificationMetrics {
+  count: number; baseRate: number; meanPredicted: number; rocAuc: number | null; brier: number; baseRateBrier: number; brierSkillScore: number | null
+  logLoss: number; accuracy: number; precision: number | null; recall: number | null; calibration: CalibrationBin[]
+}
+export interface RankingMetrics {
+  datesEvaluated: number; topK: number; meanInformationCoefficient: number | null; informationCoefficientStdDev: number | null
+  informationCoefficientTStat: number | null; nonOverlappingDates: number; topKMeanOutcome: number | null; universeMeanOutcome: number | null
+  topKExcessOverUniverse: number | null; topKHitRate: number | null; topMinusBottomSpread: number | null; rankStability: number | null
+}
+export interface PeriodMetrics { period: string; regression: RegressionMetrics | null; classification: ClassificationMetrics | null; ranking: RankingMetrics }
+export interface PeriodInfo { start: string; end: string; samples: number; decisionDates: number; purged: number }
+export interface MlResults {
+  targetDefinition: string
+  featureNames: string[]
+  trials: { hyperparameters: Record<string, number>; validationLoss: number; validationRankCorrelation: number | null }[]
+  selectedHyperparameters: Record<string, number>
+  trainMetrics: PeriodMetrics
+  validationMetrics: PeriodMetrics
+  testMetrics: PeriodMetrics
+  baselines: { name: string; description: string; regression: RegressionMetrics | null; classification: ClassificationMetrics | null; ranking: RankingMetrics | null }[]
+  permutationImportance: { feature: string; meanLossIncrease: number; stdDev: number }[]
+  nativeExplanation: { method: string; values: { name: string; value: number }[]; interpretation: string }
+  contributionMethod: string
+  trainPeriod: PeriodInfo
+  validationPeriod: PeriodInfo
+  testPeriod: PeriodInfo
+  totalSamples: number
+  droppedSamples: number
+  validationMethodology: string
+}
+export interface MlModelVersion {
+  id: string; version: number; role: string; modelFamily: string; trainedFrom: string; trainedThrough: string; trainingSamples: number
+  hyperparameters: Record<string, number>; featureNames: string[]; featureSetVersion: string; artifactSha256: string; artifactSizeBytes: number; createdAtUtc: string
+}
+export interface FeatureContribution { feature: string; featureValue: number | null; contribution: number }
+export interface MlPrediction {
+  symbol: string; name: string | null; sector: string | null; latestPrice: number | null; latestPriceDate: string | null
+  predictedValue: number; score: number; rank: number; selected: boolean; targetWeight: number
+  intervalLow: number | null; intervalHigh: number | null; drivers: FeatureContribution[]
+}
+export interface MlPredictionSet {
+  id: string; modelVersionId: string; modelVersion: number; modelRole: string; modelTrainedThrough: string; asOfDate: string; createdAtUtc: string
+  horizonDays: number; cashWeight: number; intervalMethod: string | null; notes: string[]; usesSimulatedData: boolean; predictions: MlPrediction[]
+}
+export interface MlExperiment {
+  summary: MlExperimentSummary
+  configuration: MlExperimentRequest
+  featureSetVersion: string
+  benchmarkSymbol: string
+  symbols: string[]
+  priceSource: string
+  historyStart: string
+  historyEnd: string
+  dataSnapshotHash: string | null
+  startedAtUtc: string | null
+  durationMs: number | null
+  warnings: string[]
+  results: MlResults | null
+  modelVersions: MlModelVersion[]
+  latestPredictions: MlPredictionSet | null
+  disclaimer: string
+}
+
+export interface StrategyPerformance {
+  name: string; totalReturn: number; annualizedReturn: Metric; annualizedVolatility: Metric; sharpeRatio: Metric; sortinoRatio: Metric
+  maxDrawdown: Metric; historicalVaR95: Metric; expectedShortfall95: Metric; totalTurnover: number; totalTransactionCosts: number
+  transactionCostsFraction: number; rebalances: number; averageHoldings: number; averageMaxWeight: number; averageEffectiveHoldings: number
+  excessAnnualizedReturn: Metric; beta: Metric; trackingError: Metric; informationRatio: Metric
+}
+export interface MlRebalanceRecord {
+  signalDate: string; modelTrainedThrough: string; modelTrainingSamples: number; retrained: boolean; selected: string[]
+  targetWeights: Record<string, number>; notes: string[]
+}
+export interface MlBacktest {
+  dates: string[]
+  values: Record<string, number[]>
+  drawdowns: Record<string, number[]>
+  performance: StrategyPerformance[]
+  rebalances: MlRebalanceRecord[]
+  monthlyReturns: { series: string; year: number; month: number; return: number }[]
+  warnings: string[]
+  methodology: string
+}
+
+// ---------------------------------------------------------------- strategy comparison
+
+export type StrategyKind = 'Mathematical' | 'MachineLearning' | 'Hybrid' | 'EqualWeight' | 'Benchmark'
+export type ComparisonUniverse = 'Intersection' | 'Union'
+
+export interface StrategyComparisonRequest {
+  name?: string | null
+  optimizationRunId: string
+  mlExperimentId: string
+  startDate?: string | null
+  endDate?: string | null
+  initialCapital: number
+  benchmarkSymbol: string
+  transactionCostBps: number
+  rebalance: RebalanceKind
+  universe: ComparisonUniverse
+  includeHybrid: boolean
+  riskFreeRate?: number | null
+}
+
+export interface ComparisonStrategy {
+  key: string
+  name: string
+  kind: StrategyKind
+  description: string
+  values: number[]
+  drawdowns: number[]
+  rollingSharpe: (number | null)[]
+  performance: StrategyPerformance
+  monthlyReturns: { series: string; year: number; month: number; return: number }[]
+  finalWeights: Record<string, number>
+  averageWeights: Record<string, number>
+  averageSectorExposure: Record<string, number>
+  rebalances: { signalDate: string; executionDate: string; turnover: number; transactionCosts: number; holdings: number; succeeded: boolean; message: string }[]
+}
+
+export interface ComparisonResult {
+  dates: string[]
+  strategies: ComparisonStrategy[]
+  overlaps: { strategyA: string; strategyB: string; commonHoldings: string[]; onlyA: string[]; onlyB: string[]; jaccardSimilarity: number; weightOverlap: number; averageWeightOverlap: number }[]
+  universe: string[]
+  universeNotes: string[]
+  fairness: { isFair: boolean; sharedConventions: string[]; issues: string[] }
+  rankingBySharpe: string[] | null
+  rollingSharpeWindow: number
+  methodology: string
+  warnings: string[]
+}
+
+export interface StrategyComparisonSummary {
+  id: string; name: string; status: JobStatus; progressPercent: number; progressMessage: string | null; createdAtUtc: string; completedAtUtc: string | null
+  evaluationStart: string; evaluationEnd: string; optimizationRunId: string | null; mlExperimentId: string | null; usesSimulatedData: boolean
+  isFair: boolean | null; error: string | null
+}
+
+export interface StrategyComparison {
+  summary: StrategyComparisonSummary
+  configuration: {
+    request: StrategyComparisonRequest
+    optimizationSettings: PortfolioSettings
+    optimizationObjective: string
+    optimizationRunCreatedAtUtc: string
+    mlConfiguration: MlExperimentRequest
+    mlHyperparameters: Record<string, number>
+    mlFeatures: string[]
+    mlValidationEnd: string | null
+    mlTestStart: string | null
+    mlFeatureSetVersion: string
+  }
+  benchmarkSymbol: string
+  priceSource: string
+  dataSnapshotHash: string | null
+  warnings: string[]
+  result: ComparisonResult | null
+  disclaimer: string
+}

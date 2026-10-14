@@ -1,3 +1,4 @@
+import { cloneElement, isValidElement, type ReactElement } from "react"
 import { Button as ButtonPrimitive } from "@base-ui/react/button"
 import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "cn"
@@ -45,13 +46,15 @@ function Button({
   size = "default",
   ...props
 }: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
-  return (
-    <ButtonPrimitive
-      data-slot="button"
-      className={cn(buttonVariants({ variant, size, className }))}
-      {...props}
-    />
-  )
+  const classes = cn(buttonVariants({ variant, size, className }))
+  // A button rendered as another element (e.g. render={<Link />}) keeps that element's semantics: a link stays a link
+  // instead of becoming role="button" (which Base UI adds for non-native buttons).
+  if (isValidElement(props.render)) {
+    const element = props.render as ReactElement<Record<string, unknown>>
+    const { render: _render, nativeButton: _native, focusableWhenDisabled: _focusable, ...rest } = props as Record<string, unknown>
+    return cloneElement(element, { ...rest, "data-slot": "button", className: cn(classes, element.props.className as string | undefined) })
+  }
+  return <ButtonPrimitive data-slot="button" className={classes} {...props} />
 }
 
 export { Button, buttonVariants }

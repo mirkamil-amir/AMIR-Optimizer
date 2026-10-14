@@ -1,42 +1,56 @@
 # Known limitations & future enhancements
 
-## Scope and security
-* Local, single-user application. **No authentication/authorization**; do not expose it publicly.
-* Paper trading only. No broker connectivity; no real orders are ever placed. Not investment advice.
+## Scope
+- Research and paper trading only. No broker connectivity; no real orders. Not investment advice.
+- **No result in this application shows that a strategy is profitable.** All real-data ML experiments run during
+  development (10 US large caps; 6 DAX stocks) had test-period ICs indistinguishable from zero (|t| < 1) and negative
+  out-of-sample R²; in the comparisons, equal weight had the best Sharpe ratio. See
+  [final-report.md](final-report.md) and [implementation-status.md](implementation-status.md).
 
 ## Data
-* Yahoo Finance is an unofficial endpoint (personal, non-commercial use; may break or throttle without notice).
-* Stooq was evaluated but is blocked by a JavaScript bot challenge and is not supported.
-* Alpha Vantage was verified with the `demo` key only; free tier lacks adjusted closes (dividends ignored) and has a
-  low daily request cap, so a full 11-symbol sync with two requests per symbol exceeds the free daily quota.
-* Single currency (USD). Assets in other currencies are rejected rather than converted.
-* No exchange holiday calendar: staleness counts business days (Mon–Fri).
-* The latest bar of a sync during market hours is intraday until the next sync.
-* Corporate actions are only reflected through the provider's adjusted close; raw-close positions in the paper
-  portfolio are not adjusted for splits after purchase (a split would distort valuation until handled manually).
-* Dividends are not credited to the paper portfolio's cash.
+- Yahoo Finance is an unofficial endpoint (personal, non-commercial use; may break or throttle without notice).
+  Stooq is blocked by a bot challenge and not supported. Alpha Vantage was verified with the configured free key
+  (US, Xetra, Paris, London quotes; 2026-10-14).
+- The universes (S&P 500, DAX 40, DAX 30 historical, CAC 40, FTSE 100, Nikkei 225) are snapshots of Wikipedia
+  constituent tables (CC BY-SA). There are **no point-in-time constituents** (the DAX 30 list is one fixed historical
+  composition), so every backtest, ML evaluation and comparison is subject to **survivorship bias**. ISINs are not
+  provided by the sources. Cross-market sectors are an approximate mapping onto GICS-style groups.
+- Alpha Vantage (configured free key): 25 requests/day, no Tokyo, no index levels – Yahoo remains the default.
+- No FX conversion: each analysis uses stocks of one currency; paper portfolios need the stocks' currency.
+- Quotes for all ~920 catalogue instruments are refreshed at sign-in; daily *history* is downloaded on demand (and
+  automatically before ML experiments/comparisons), so most stocks have a current price but no history until used.
+- Quotes are end-of-day or delayed, never real-time.
+- No exchange holiday calendar, dividends not credited to the paper portfolio, splits after
+  purchase not applied to paper holdings.
+- Adjusted closes reflect adjustments known at download time (data vintage), not as originally published.
 
-## Quant
-* Expected returns are historical means – noisy and backward-looking. No Black–Litterman, factor models or
-  robust optimization yet.
-* Max-holdings / minimum-position constraints use a greedy heuristic, not mixed-integer optimization.
-* Short selling and leverage are not supported.
-* Transaction costs are proportional with a minimum fee; no market-impact or bid/ask model. Costs are applied in
-  proposals and backtests but are not a penalty term in the optimizer objective (turnover can be capped instead).
-* Backtests use the current universe (survivorship bias), fractional units, fills at the next close, and cash at 0%.
-* Dense solver: suitable for tens to a few hundred assets.
+## Quant & ML
+- Expected returns for mean-variance are historical means. No Black–Litterman, factor models or robust optimization.
+- Max-holdings / minimum-position constraints use a greedy heuristic, not mixed-integer optimization. No shorting
+  or leverage. Proportional costs only (no market impact, no bid/ask model).
+- ML features are price/volume based only; there are no fundamentals, earnings, news or alternative data.
+- Test periods are short (20% of the history) and universes small, so metric uncertainty is large. The IC t-statistic
+  uses non-overlapping dates, but nothing corrects for **multiple testing** across experiments a user may run.
+- Hyperparameter grids are small and fixed per family; no nested cross-validation.
+- Tree explanations (occlusion, split gain) are approximations; correlated features share or mask importance.
+- Models are trained in-process and sequentially; large universes (hundreds of stocks × long histories) make
+  experiments slow. Dense covariance math suits tens to a few hundred assets.
 
 ## Engineering
-* Background jobs run in-process (one worker, sequential). A crash marks running jobs failed; queued jobs resume.
-* SQLite is the only configured provider. The code avoids SQLite-specific SQL, but PostgreSQL needs its own
-  provider registration (Npgsql) and a separate migrations assembly; this is not implemented yet.
-* Docker Compose files are provided but could not be tested on the development machine (Docker daemon not running).
-* No frontend unit tests yet (backend has unit + integration tests; the UI was verified manually in Chrome).
+- One in-process background worker: jobs run sequentially; a crash marks running jobs failed (queued ones resume).
+  Multiple API instances would each run a worker; a shared queue is not implemented.
+- Model artifacts are stored on a local volume, not object storage.
+- No e-mail confirmation, password reset by e-mail or multi-factor authentication.
+- The backup/restore procedure in [deployment](deployment.md) is documented but was not rehearsed end to end.
+- Playwright tests run against an already running stack and are not wired into a CI pipeline (none exists in this
+  repository).
+- macOS: when the repository lives in an iCloud-synced folder (`~/Desktop`, `~/Documents`), iCloud can offload
+  `node_modules` files, making Node tooling extremely slow or time out. Keep the repository outside synced folders.
 
 ## Future enhancements
-* Additional providers (official vendor APIs with commercial licences), FX conversion, holiday calendars.
-* Dividend and split processing for the paper portfolio.
-* Black–Litterman / shrinkage of expected returns, risk parity, CVaR optimization, MIQP for cardinality.
-* Scheduled automatic rebalancing proposals and alerts on drift.
-* Authentication (e.g. OpenID Connect) and per-user portfolios; PostgreSQL deployment profile.
-* Playwright end-to-end tests and component tests for the dashboard.
+- Point-in-time constituent data and delisted securities from a licensed vendor; fundamentals.
+- Nested/rolling cross-validation, multiple-testing adjustments, confidence intervals for strategy metrics
+  (block bootstrap).
+- Dividends and splits in the paper portfolio; FX conversion; holiday calendars.
+- Shared job queue and object storage for horizontal scaling; OpenID Connect and MFA.
+- CI pipeline running unit, integration (Testcontainers) and Playwright tests on every change.

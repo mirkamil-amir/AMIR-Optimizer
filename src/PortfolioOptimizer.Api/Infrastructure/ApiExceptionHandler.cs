@@ -20,9 +20,18 @@ public sealed class ApiExceptionHandler(IProblemDetailsService problemDetails, I
                 Detail = v.Errors.Count == 0 ? v.Message : null,
             },
             NotFoundException => new ProblemDetails { Status = StatusCodes.Status404NotFound, Title = "Not found", Detail = exception.Message },
+            AuthenticationFailedException => new ProblemDetails { Status = StatusCodes.Status401Unauthorized, Title = "Sign-in failed", Detail = exception.Message },
+            ForbiddenException => new ProblemDetails { Status = StatusCodes.Status403Forbidden, Title = "Forbidden", Detail = exception.Message },
             ConflictException => new ProblemDetails { Status = StatusCodes.Status409Conflict, Title = "Conflict", Detail = exception.Message },
             DomainException => new ProblemDetails { Status = StatusCodes.Status422UnprocessableEntity, Title = "Business rule violated", Detail = exception.Message },
             MarketDataProviderException => new ProblemDetails { Status = StatusCodes.Status502BadGateway, Title = "Market data provider error", Detail = exception.Message },
+            // A stored model failed its checksum/format check or its file is missing: never load or substitute it.
+            InvalidDataException or FileNotFoundException => new ProblemDetails
+            {
+                Status = StatusCodes.Status500InternalServerError,
+                Title = "Model artifact unavailable",
+                Detail = $"The stored model could not be loaded safely: {exception.Message}",
+            },
             OperationCanceledException when context.RequestAborted.IsCancellationRequested =>
                 new ProblemDetails { Status = 499, Title = "Client closed request" },
             _ => new ProblemDetails

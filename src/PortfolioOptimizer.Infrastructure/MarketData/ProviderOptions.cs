@@ -23,6 +23,52 @@ public sealed class AlphaVantageOptions
     public bool UseAdjustedEndpoint { get; set; }
     public int MinRequestIntervalMs { get; set; } = 1500;
     public int TimeoutSeconds { get; set; } = 30;
+    /// <summary>Requests allowed per UTC day (free tier: 25). The client stops before exceeding it.</summary>
+    public int DailyRequestLimit { get; set; } = 25;
+}
+
+/// <summary>
+/// Counts Alpha Vantage requests per UTC day (process-wide). Free keys allow 25 requests per day; once the quota is used,
+/// further requests fail fast with a clear message instead of being sent. (Requests made with the same key elsewhere are
+/// not visible here; the provider then answers with a throttling note, reported as a transient error.)
+/// </summary>
+public sealed class AlphaVantageQuota(Microsoft.Extensions.Options.IOptions<AlphaVantageOptions> options, TimeProvider clock)
+{
+    private readonly Lock _gate = new();
+    private DateOnly _day;
+    private int _used;
+
+    public int? Remaining
+    {
+        get
+        {
+            lock (_gate)
+            {
+                Roll();
+                return Math.Max(0, options.Value.DailyRequestLimit - _used);
+            }
+        }
+    }
+
+    /// <summary>Reserves one request; false when today's quota is used up.</summary>
+    public bool TryAcquire()
+    {
+        lock (_gate)
+        {
+            Roll();
+            if (_used >= options.Value.DailyRequestLimit) return false;
+            _used++;
+            return true;
+        }
+    }
+
+    private void Roll()
+    {
+        var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
+        if (today == _day) return;
+        _day = today;
+        _used = 0;
+    }
 }
 
 public sealed class MockProviderOptions

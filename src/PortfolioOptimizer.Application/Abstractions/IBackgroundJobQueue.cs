@@ -1,6 +1,6 @@
 namespace PortfolioOptimizer.Application.Abstractions;
 
-public enum BackgroundJobKind { MarketDataSync, Backtest }
+public enum BackgroundJobKind { MarketDataSync, Backtest, MlExperiment, StrategyComparison, QuoteRefresh }
 
 public sealed record BackgroundJob(BackgroundJobKind Kind, Guid Id);
 

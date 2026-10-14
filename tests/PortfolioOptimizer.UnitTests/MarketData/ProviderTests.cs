@@ -93,7 +93,7 @@ public class ProviderTests
     {
         var body = """{"Information":"Thank you for using Alpha Vantage! Our standard API rate limit is 25 requests per day. key SECRETKEY"}""";
         var provider = new AlphaVantageProvider(new HttpClient(new StubHandler(HttpStatusCode.OK, body)) { BaseAddress = new Uri("https://example.test") },
-            Options.Create(new AlphaVantageOptions { ApiKey = "SECRETKEY" }), Clock);
+            Options.Create(new AlphaVantageOptions { ApiKey = "SECRETKEY" }), new AlphaVantageQuota(Options.Create(new AlphaVantageOptions()), Clock), Clock);
         var ex = await Assert.ThrowsAsync<MarketDataProviderException>(() =>
             provider.GetHistoricalPricesAsync("IBM", new(2026, 9, 1), new(2026, 10, 1), CancellationToken.None));
         Assert.True(ex.IsTransient);
@@ -109,7 +109,7 @@ public class ProviderTests
           "2026-10-08":{"1. open":"225.0000","2. high":"228.0000","3. low":"224.5000","4. close":"227.0000","5. volume":"2900000"}}}
         """;
         var provider = new AlphaVantageProvider(new HttpClient(new StubHandler(HttpStatusCode.OK, body)) { BaseAddress = new Uri("https://example.test") },
-            Options.Create(new AlphaVantageOptions { ApiKey = "k" }), Clock);
+            Options.Create(new AlphaVantageOptions { ApiKey = "k" }), new AlphaVantageQuota(Options.Create(new AlphaVantageOptions()), Clock), Clock);
         var h = await provider.GetHistoricalPricesAsync("IBM", new(2026, 10, 1), new(2026, 10, 12), CancellationToken.None);
         Assert.Equal(2, h.Bars.Count);
         Assert.Equal(new DateOnly(2026, 10, 8), h.Bars[0].Date);
@@ -128,5 +128,117 @@ public class ProviderTests
         var common = a.Bars.First();
         Assert.Equal(common.Close, b.Bars.Single(x => x.Date == common.Date).Close);
         Assert.All(a.Bars, x => Assert.True(x.Close > 0));
+    }
+
+    // Shape of a real spark response (2026-10-14): two symbols, 5-minute bars, last bar may be null.
+    private const string SparkJson = """
+    {"AAPL":{"timestamp":[1792000000,1792000300,1792000600],"symbol":"AAPL","chartPreviousClose":341.27,"close":[342.0,342.59,null]},
+     "TSCO.L":{"timestamp":[1792000000,1792000300],"symbol":"TSCO.L","chartPreviousClose":517.0,"close":[525.0,526.4]}}
+    """;
+
+    [Fact]
+    public async Task Yahoo_SparkBatch_ParsesLastTrade_PreviousClose_AndConvertsPence()
+    {
+        var handler = new StubHandler(HttpStatusCode.OK, SparkJson);
+        var results = await Yahoo(handler).GetLatestQuotesAsync(["AAPL", "TSCO.L", "SAP.DE"], CancellationToken.None);
+        Assert.Contains("symbols=AAPL%2CTSCO.L%2CSAP.DE", handler.LastUri!.Query);
+
+        var aapl = Assert.Single(results, r => r.Symbol == "AAPL").Quote!;
+        Assert.Equal(342.59m, aapl.Price);                   // last non-null close
+        Assert.Equal(341.27m, aapl.PreviousClose);
+        Assert.Equal(DateTimeOffset.FromUnixTimeSeconds(1792000300).UtcDateTime, aapl.AsOfUtc);
+        Assert.Equal("USD", aapl.Currency);
+
+        var tesco = Assert.Single(results, r => r.Symbol == "TSCO.L").Quote!;
+        Assert.Equal(5.264m, tesco.Price);                   // 526.4 pence → 5.264 GBP
+        Assert.Equal(5.17m, tesco.PreviousClose);
+        Assert.Equal("GBP", tesco.Currency);
+
+        var sap = Assert.Single(results, r => r.Symbol == "SAP.DE");
+        Assert.Null(sap.Quote);                              // missing in the response → reported, never invented
+        Assert.Contains("no data", sap.Error);
+    }
+
+    [Fact]
+    public async Task Yahoo_History_InPence_IsStoredInPounds()
+    {
+        var json = ChartJson.Replace("\"currency\":\"USD\"", "\"currency\":\"GBp\"");
+        var h = await Yahoo(new StubHandler(HttpStatusCode.OK, json)).GetHistoricalPricesAsync("TSCO.L", new(2025, 1, 1), new(2025, 1, 10), CancellationToken.None);
+        Assert.Equal("GBP", h.Currency);
+        Assert.Equal(2.4385m, h.Bars[0].Close);              // 243.85 pence
+    }
+
+    [Fact]
+    public async Task Yahoo_RejectsBatchesLargerThanTheEndpointLimit()
+    {
+        var symbols = Enumerable.Range(0, 21).Select(i => $"S{i}").ToList();
+        await Assert.ThrowsAsync<ArgumentException>(() => Yahoo(new StubHandler(HttpStatusCode.OK, "{}")).GetLatestQuotesAsync(symbols, CancellationToken.None));
+    }
+
+    private static AlphaVantageProvider AlphaVantage(StubHandler handler, int dailyLimit = 25) =>
+        new(new HttpClient(handler) { BaseAddress = new Uri("https://example.test") }, Options.Create(new AlphaVantageOptions { ApiKey = "k", DailyRequestLimit = dailyLimit }),
+            new AlphaVantageQuota(Options.Create(new AlphaVantageOptions { DailyRequestLimit = dailyLimit }), Clock), Clock);
+
+    [Fact]
+    public async Task AlphaVantage_LondonQuote_UsesLonSuffix_AndConvertsPence()
+    {
+        var handler = new StubHandler(HttpStatusCode.OK, """
+        {"Global Quote":{"01. symbol":"TSCO.LON","05. price":"517.0000","07. latest trading day":"2026-10-13","08. previous close":"511.0000"}}
+        """);
+        var q = await AlphaVantage(handler).GetLatestQuoteAsync("TSCO.L", CancellationToken.None);
+        Assert.Contains("symbol=TSCO.LON", handler.LastUri!.Query);
+        Assert.Equal(5.17m, q!.Price);
+        Assert.Equal(5.11m, q.PreviousClose);
+        Assert.Equal("GBP", q.Currency);
+    }
+
+    [Fact]
+    public async Task AlphaVantage_DoesNotCoverTokyo_AndSendsNoRequest()
+    {
+        var handler = new StubHandler(HttpStatusCode.OK, "{}");
+        var provider = AlphaVantage(handler);
+        Assert.False(provider.Supports("7203.T"));
+        var results = await provider.GetLatestQuotesAsync(["7203.T"], CancellationToken.None);
+        Assert.True(Assert.Single(results).IsUnsupported);
+        Assert.Null(handler.LastUri);
+    }
+
+    [Fact]
+    public async Task AlphaVantage_StopsAtTheDailyQuota()
+    {
+        var handler = new StubHandler(HttpStatusCode.OK, """{"Global Quote":{"05. price":"230.78","07. latest trading day":"2026-10-12"}}""");
+        var provider = AlphaVantage(handler, dailyLimit: 2);
+        var results = await provider.GetLatestQuotesAsync(["IBM", "MSFT", "AAPL"], CancellationToken.None);
+        Assert.Equal(2, results.Count(r => r.Quote is not null));
+        var blocked = Assert.Single(results, r => r.Quote is null);
+        Assert.Contains("Daily Alpha Vantage request limit", blocked.Error);
+        Assert.True(blocked.IsTransient);
+        Assert.Equal(0, provider.RemainingDailyRequests);
+    }
+
+    private sealed class SequenceHandler(params (HttpStatusCode Status, string Body)[] responses) : HttpMessageHandler
+    {
+        private int _next;
+        public List<string> Requests { get; } = [];
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Requests.Add(request.RequestUri!.PathAndQuery);
+            var (status, body) = responses[Math.Min(_next++, responses.Length - 1)];
+            return Task.FromResult(new HttpResponseMessage(status) { Content = new StringContent(body) });
+        }
+    }
+
+    [Fact]
+    public async Task Yahoo_RejectedBatch_IsRetried_ThenFallsBackToSingleRequests()
+    {
+        // Two rejected batch attempts, then per-symbol chart requests succeed.
+        var handler = new SequenceHandler((HttpStatusCode.BadRequest, "{}"), (HttpStatusCode.BadRequest, "{}"), (HttpStatusCode.OK, ChartJson));
+        var provider = new YahooFinanceProvider(new HttpClient(handler) { BaseAddress = new Uri("https://example.test") },
+            Options.Create(new YahooFinanceOptions()), TimeProvider.System);
+        var results = await provider.GetLatestQuotesAsync(["AAPL"], CancellationToken.None);
+        Assert.Equal(340.97m, Assert.Single(results).Quote!.Price);
+        Assert.Equal(2, handler.Requests.Count(r => r.Contains("/spark")));
+        Assert.Contains(handler.Requests, r => r.Contains("/chart/AAPL"));
     }
 }

@@ -16,7 +16,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DataBadge, ErrorState, LoadingBlock, PageHeader } from '@/components/common'
 import { errorMessage } from '@/lib/api'
 import { usePortfolioContext } from '@/lib/portfolio-context'
-import { useAssets, useCreatePortfolio, useDeletePortfolio, useSettings, useUpdateSettings } from '@/lib/queries'
+import { useAuth } from '@/lib/auth'
+import { useAssets, useChangePassword, useCreatePortfolio, useDeletePortfolio, useSettings, useUpdateSettings } from '@/lib/queries'
 import type { AppSettings, Asset, PortfolioSummary } from '@/lib/types'
 import { dateTime, money } from '@/lib/format'
 
@@ -39,16 +40,75 @@ const asNum = { setValueAs: (v: unknown) => (v === '' || v === null || v === und
 export function SettingsPage() {
   return (
     <>
-      <PageHeader title="Settings" description="Data source, defaults and portfolio management. Local single-user application – no authentication." />
+      <PageHeader title="Settings" description="Your simulated portfolios and account. Data-provider settings are managed by administrators." />
       <div className="grid gap-6 lg:grid-cols-2">
-        <AppSettingsCard />
         <PortfoliosCard />
+        <AccountCard />
       </div>
     </>
   )
 }
 
-function AppSettingsCard() {
+const passwordSchema = z.object({
+  currentPassword: z.string().min(1, 'Required'),
+  newPassword: z.string()
+    .min(10, 'At least 10 characters')
+    .regex(/[a-z]/, 'Include a lower-case letter')
+    .regex(/[A-Z]/, 'Include an upper-case letter')
+    .regex(/[0-9]/, 'Include a digit'),
+  confirm: z.string(),
+}).refine((v) => v.newPassword === v.confirm, { path: ['confirm'], message: 'Passwords do not match' })
+
+function AccountCard() {
+  const { user } = useAuth()
+  const change = useChangePassword()
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<z.infer<typeof passwordSchema>>({
+    resolver: zodResolver(passwordSchema),
+    defaultValues: { currentPassword: '', newPassword: '', confirm: '' },
+  })
+  const onSubmit = handleSubmit(async (v) => {
+    try {
+      await change.mutateAsync({ currentPassword: v.currentPassword, newPassword: v.newPassword })
+      reset()
+      toast.success('Password changed', { description: 'Other sessions are signed out within a minute.' })
+    } catch (e) {
+      toast.error('Could not change the password', { description: errorMessage(e) })
+    }
+  })
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm">Account</CardTitle>
+        <CardDescription className="text-xs">
+          {user?.displayName} · {user?.email} · roles: {user?.roles.join(', ')}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={onSubmit} className="space-y-3" noValidate>
+          <div className="space-y-1.5">
+            <Label htmlFor="cur">Current password</Label>
+            <Input id="cur" type="password" autoComplete="current-password" aria-invalid={!!errors.currentPassword} {...register('currentPassword')} />
+            {errors.currentPassword && <p role="alert" className="text-xs text-destructive">{errors.currentPassword.message}</p>}
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="new">New password</Label>
+            <Input id="new" type="password" autoComplete="new-password" aria-invalid={!!errors.newPassword} {...register('newPassword')} />
+            {errors.newPassword && <p role="alert" className="text-xs text-destructive">{errors.newPassword.message}</p>}
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="confirm">Confirm new password</Label>
+            <Input id="confirm" type="password" autoComplete="new-password" aria-invalid={!!errors.confirm} {...register('confirm')} />
+            {errors.confirm && <p role="alert" className="text-xs text-destructive">{errors.confirm.message}</p>}
+          </div>
+          <Button type="submit" disabled={change.isPending}>Change password</Button>
+        </form>
+      </CardContent>
+    </Card>
+  )
+}
+
+/** Data provider and analytics defaults (administrators; the server rejects changes by other users). */
+export function AppSettingsCard() {
   const { data, isLoading, error } = useSettings()
   const assets = useAssets()
   if (isLoading || !assets.data) return <LoadingBlock />
