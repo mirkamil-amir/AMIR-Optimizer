@@ -223,24 +223,24 @@ public sealed class RealityCheckService(
         void Add(string kind, string topic, string text, string? basis = null) => f.Add(new RealityFindingDto(kind, topic, text, basis));
 
         Add("Fact", "Concentration",
-            $"{c.Holdings} positions; the largest is {c.LargestSymbol} at {c.LargestWeight:P1}, the top three hold {c.TopThreeWeight:P1}. " +
+            $"{c.Holdings} positions; the largest is {c.LargestSymbol} at {c.LargestWeight:0.0%}, the top three hold {c.TopThreeWeight:0.0%}. " +
             $"Effective number of holdings: {c.EffectiveHoldings:F1}.", "weights of the saved run");
         if (c.LargestWeight >= LargePosition)
             Add("Interpretation", "Concentration", $"{c.LargestSymbol} alone is at least a quarter of the portfolio; a large move in that single stock moves the whole portfolio.",
-                $"largest weight ≥ {LargePosition:P0}");
+                $"largest weight ≥ {LargePosition:0%}");
         if (c.EffectiveHoldings < ConcentratedEffectiveHoldings)
             Add("Interpretation", "Concentration", $"The weights behave like about {c.EffectiveHoldings:F1} equally weighted positions – concentrated, whatever the number of names.",
                 $"effective holdings < {ConcentratedEffectiveHoldings}");
         if (c.Sectors.FirstOrDefault() is { } top && top.Weight >= LargeSector)
-            Add("Interpretation", "Sectors", $"{top.Sector} makes up {top.Weight:P1}; sector-wide news would affect most of the portfolio.", $"largest sector ≥ {LargeSector:P0}");
+            Add("Interpretation", "Sectors", $"{top.Sector} makes up {top.Weight:0.0%}; sector-wide news would affect most of the portfolio.", $"largest sector ≥ {LargeSector:0%}");
 
-        Add("Estimate", "Risk", $"Estimated volatility {r.Volatility:P1} per year; diversification ratio {r.DiversificationRatio:F2} " +
+        Add("Estimate", "Risk", $"Estimated volatility {r.Volatility:0.0%} per year; diversification ratio {r.DiversificationRatio:F2} " +
             "(1 means no benefit from combining the stocks).", "covariance estimate of the run's window");
         var topRisk = Enumerable.Range(0, r.RiskShares.Length).MaxBy(i => r.RiskShares[i]);
         var weights = run.Weights.Select(w => w.Weight).ToArray();
         if (r.RiskShares[topRisk] >= DominantRiskShare)
-            Add("Interpretation", "Risk", $"{run.Weights[topRisk].Symbol} contributes {r.RiskShares[topRisk]:P0} of the estimated risk with {weights[topRisk]:P0} of the weight: " +
-                "risk is more concentrated than the weights suggest.", $"risk share ≥ {DominantRiskShare:P0}");
+            Add("Interpretation", "Risk", $"{run.Weights[topRisk].Symbol} contributes {r.RiskShares[topRisk]:0%} of the estimated risk with {weights[topRisk]:0%} of the weight: " +
+                "risk is more concentrated than the weights suggest.", $"risk share ≥ {DominantRiskShare:0%}");
         if (r.AverageCorrelation is { } ac)
         {
             Add("Fact", "Correlation", $"Average pairwise correlation of the holdings: {ac:F2}" +
@@ -258,30 +258,30 @@ public sealed class RealityCheckService(
                     $"stress correlation exceeds the average by ≥ {StressCorrelationRise}");
         }
 
-        Add("Fact", "History", $"Over the estimation window the weights would have returned {inSample.CumulativeReturn:P1} with a maximum drawdown of " +
-            $"{(inSample.MaxDrawdown.Value is { } dd ? dd.ToString("P1") : "n/a")}" +
-            (inSample.BenchmarkCumulativeReturn is { } bc ? $" (benchmark {inSample.BenchmarkSymbol}: {bc:P1})." : "."), "fixed weights on the window's returns");
+        Add("Fact", "History", $"Over the estimation window the weights would have returned {inSample.CumulativeReturn:0.0%} with a maximum drawdown of " +
+            $"{(inSample.MaxDrawdown.Value is { } dd ? dd.ToString("0.0%") : "n/a")}" +
+            (inSample.BenchmarkCumulativeReturn is { } bc ? $" (benchmark {inSample.BenchmarkSymbol}: {bc:0.0%})." : "."), "fixed weights on the window's returns");
         Add("Caution", "History", "These in-sample figures use the same data that chose the weights, so they flatter the strategy. They are not evidence of future performance.");
         if (oos is not null)
-            Add("Fact", "Out-of-sample", $"Since the window ended ({oos.Days} trading days) the weights returned {oos.CumulativeReturn:P1}" +
-                (oos.BenchmarkCumulativeReturn is { } ob ? $" vs {ob:P1} for {oos.BenchmarkSymbol}" : "") + ". One short period says little about skill.",
+            Add("Fact", "Out-of-sample", $"Since the window ended ({oos.Days} trading days) the weights returned {oos.CumulativeReturn:0.0%}" +
+                (oos.BenchmarkCumulativeReturn is { } ob ? $" vs {ob:0.0%} for {oos.BenchmarkSymbol}" : "") + ". One short period says little about skill.",
                 "prices stored after the window");
 
         var moving = scenarios.Where(s => s.Key is not ("resolved" or "equal") && s.Turnover is not null).ToList();
         if (moving.Count > 0)
         {
             var worst = moving.MaxBy(s => s.Turnover!.Value)!;
-            Add("Fact", "Sensitivity", $"Changing one assumption moved up to {worst.Turnover:P0} of the portfolio ({worst.Name}; largest change {worst.LargestChangeSymbol} " +
-                $"by {worst.LargestChange:P1}).", "one-way turnover against the saved weights");
+            Add("Fact", "Sensitivity", $"Changing one assumption moved up to {worst.Turnover:0%} of the portfolio ({worst.Name}; largest change {worst.LargestChangeSymbol} " +
+                $"by {worst.LargestChange:0.0%}).", "one-way turnover against the saved weights");
             if (worst.Turnover >= FragileTurnover)
                 Add("Interpretation", "Sensitivity", "The allocation is fragile: plausible changes to the inputs produce a substantially different portfolio. Treat the exact weights as one estimate among many.",
-                    $"scenario turnover ≥ {FragileTurnover:P0}");
+                    $"scenario turnover ≥ {FragileTurnover:0%}");
             else if (moving.All(s => s.Turnover <= StableTurnover))
                 Add("Interpretation", "Sensitivity", "The weights changed little across the tested assumptions (this does not cover every source of estimation error).",
-                    $"all scenario turnovers ≤ {StableTurnover:P0}");
+                    $"all scenario turnovers ≤ {StableTurnover:0%}");
         }
         if (costs.SwitchCost is { } sc)
-            Add("Estimate", "Costs", $"Switching to the most different scenario would cost about {sc:P2} of the portfolio at {costs.CostBps:G} bps ({costs.SwitchCostAtTripleBps:P2} at three times that rate).",
+            Add("Estimate", "Costs", $"Switching to the most different scenario would cost about {sc:0.00%} of the portfolio at {costs.CostBps:G} bps ({costs.SwitchCostAtTripleBps:0.00%} at three times that rate).",
                 "2 × turnover × cost rate");
 
         if (run.UsesSimulatedData) Add("Caution", "Data", "The run used SIMULATED prices from the mock provider; none of these numbers describe real markets.");

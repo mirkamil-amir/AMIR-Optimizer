@@ -29,7 +29,7 @@ const sections: { title: string; items: NavEntry[] }[] = [
       { to: '/', label: 'Overview', icon: LayoutDashboard, end: true },
       { to: '/watchlist', label: 'Watchlist', icon: Eye },
       { to: '/news', label: 'Financial news', icon: Newspaper },
-      { to: '/stocks', label: 'Stock selection', icon: Search },
+      { to: '/stocks', label: 'Stock selection', icon: Search, end: true },
       { to: '/optimize', label: 'Optimize', icon: Sigma },
       { to: '/machine-learning', label: 'Machine learning', icon: BrainCircuit },
       { to: '/strategy-comparison', label: 'Strategy comparison', icon: GitCompareArrows },

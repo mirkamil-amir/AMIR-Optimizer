@@ -2,6 +2,37 @@
 
 Short records of decisions that are not obvious from the code. Newest first. Format: context → decision → consequences.
 
+## D-19 Reality check on the run's own window, re-solving instead of resampling (2026-10-15)
+**Context:** users need to see how fragile an optimized allocation is. **Decision:** analyse the saved weights on the
+run's stored window and price source; measure sensitivity by re-solving the same problem with one assumption changed
+(covariance estimator, window halves, shrunk means, equal weight) and report turnover against the saved weights; label
+every statement fact/estimate/interpretation/caution with documented thresholds. **Alternatives:** resampled
+efficiency / bootstrap (more complete, slower, harder to explain – roadmap). **Consequences:** deterministic,
+reproducible, testable; covers four assumption changes, not all estimation error.
+
+## D-18 News linked to stocks only by provider tags (2026-10-15)
+**Context:** ticker collisions (e.g. SAP ADR vs SAP.DE) and company names inside unrelated headlines make text matching
+unreliable. **Decision:** link an article to a listing only when the provider tagged that exact canonical symbol.
+**Consequences:** no false matches in watchlist news; recall is lower (untagged articles, sparse non-US coverage).
+
+## D-17 News sources: Yahoo search + official central-bank RSS; images off by default (2026-10-15)
+**Context:** Alpha Vantage `NEWS_SENTIMENT` is premium for the configured key (verified); licensed feeds are not
+available. **Decision:** Yahoo Finance search (unofficial, same terms as Yahoo prices) for company news, official RSS of
+the Fed, ECB, BoE and BoJ for macro news, a simulated provider for tests; store metadata and short provider summaries
+only; show thumbnails only when `News:ShowImages` is enabled after rights are clarified. **Consequences:** real,
+attributable news for a personal/educational deployment; a commercial launch needs licensed news (launch-readiness.md).
+
+## D-16 On-demand news fetching with shared per-source state (2026-10-15)
+**Context:** no reliable scheduler per user; providers have unpublished limits. **Decision:** fetch when a page needs a
+source and the shared `NewsFetchStates` entry is older than 30 min (10 min after failures), single-flight per source,
+at most five watched companies per request. **Consequences:** bounded outbound traffic regardless of users; the first
+request after the window waits for the fetch (20 s timeout); no push notifications.
+
+## D-15 Watchlist keyed by catalogue listing (2026-10-15)
+**Context:** the same company trades on several venues. **Decision:** `WatchlistEntries (OwnerId, AssetId)` unique,
+shared prices/news never copied. **Consequences:** duplicates prevented by the database; a delisted or renamed listing
+keeps its row and shows "no price" until the catalogue is updated.
+
 ## D-14 Constituent lists from pinned Wikipedia revisions (2026-10-14)
 **Context:** S&P 500, DAX (current and historical 30), CAC 40, FTSE 100 and Nikkei 225 constituents were needed with
 sector and venue data; official index-provider files are licensed and not redistributable. **Decision:** build CSVs

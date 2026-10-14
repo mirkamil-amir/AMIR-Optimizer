@@ -98,7 +98,9 @@ function WatchRow({ item, range }: { item: WatchlistItem; range: HistoryRange })
           <div className="mt-1 hidden md:block"><QuoteProvenance quote={s.quote} /></div>
         </div>
 
-        <div className="text-right"><QuoteCell quote={s.quote} compact /></div>
+        {/* Phones show the price's kind, date and flags here because the provenance line above is hidden there. */}
+        <div className="text-right md:hidden"><QuoteCell quote={s.quote} /></div>
+        <div className="hidden text-right md:block"><QuoteCell quote={s.quote} compact /></div>
 
         <div className="col-span-2 flex items-center justify-between gap-3 md:col-span-1 md:flex-col md:items-end md:gap-0.5">
           <div className="flex items-center gap-1 text-sm">

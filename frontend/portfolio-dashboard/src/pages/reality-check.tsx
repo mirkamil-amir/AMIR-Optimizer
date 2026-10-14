@@ -218,7 +218,7 @@ function Sensitivity({ r }: { r: RealityCheck }) {
       </h2>
       <Card className="py-2">
         <CardContent className="overflow-x-auto px-2">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[36rem] text-sm">
             <caption className="sr-only">Sensitivity scenarios</caption>
             <thead className="text-xs text-muted-foreground">
               <tr className="border-b text-left">

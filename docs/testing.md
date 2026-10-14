@@ -57,6 +57,23 @@ hidden and purged.
   get Playwright specs with role-based locators.
 * Frontend fixtures: build typed objects; cast partial fixtures with `as unknown as T` only in tests.
 
+## Results (2026-10-15)
+
+| Suite | Result |
+|---|---|
+| Unit | 148 passed, 4 skipped (live smoke) – adds price-history ranges, news rules/parsers, event comparison, diversification math |
+| Live smoke (`PO_LIVE_SMOKE=1`, news only) | 2 passed: Yahoo news for AAPL (tagged, dated) and all four central-bank RSS feeds parsed |
+| ML | 40 passed |
+| Integration (Testcontainers PostgreSQL) | 69 passed – adds `WatchlistTests` (6), `NewsTests` (4), `NewsProviderFailureTests` (1), `RealityCheckTests` (3) |
+| Frontend unit (Vitest) | 54 passed |
+| End-to-end (`scripts/e2e.sh`) | 17 passed (adds journey D watchlist, journey E news, journey F reality check) |
+| Lint (oxlint) | 0 errors (warnings: existing `only-export-components` pattern) |
+| Builds | `dotnet build` 0 errors; `npm run build` OK; a clean checkout builds after the ignore-rule fix |
+
+**Container builds with Docker Desktop's CLI config.** If `~/.docker/config.json` contains `"credsStore": "desktop"`
+while Docker Desktop is not running, `podman compose up --build` hangs in `docker-credential-desktop list`. Run with an
+empty config: `mkdir -p /tmp/dcfg && echo '{"auths":{}}' > /tmp/dcfg/config.json && DOCKER_CONFIG=/tmp/dcfg ./scripts/e2e.sh`.
+
 ## Results (2026-10-14)
 
 | Suite | Result |

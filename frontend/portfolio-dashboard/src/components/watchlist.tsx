@@ -123,9 +123,9 @@ export function PriceHistoryCard({ symbol, range, onRangeChange }: { symbol: str
           {h.lastRetrievedAtUtc && <span>· retrieved {dateTime(h.lastRetrievedAtUtc)}</span>}
         </span>
       ) : undefined}
-      actions={<RangePicker value={range} onChange={onRangeChange} />}
       table={h && h.points.length > 0 ? timeSeriesTable(dates, series, (v) => money(v, h.currency)) : undefined}
     >
+      <div className="mb-3"><RangePicker value={range} onChange={onRangeChange} /></div>
       {history.error ? <ErrorState error={history.error} onRetry={() => history.refetch()} /> : !h ? <LoadingBlock height="h-56" /> : (
         <div className="space-y-3">
           {h.points.length > 1 ? (

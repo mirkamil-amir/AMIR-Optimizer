@@ -86,8 +86,8 @@ export function NewsPage() {
         ))}
       </div>
 
-      <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-6">
-        <div className="relative lg:col-span-2">
+      <div className="mb-4 grid grid-cols-2 items-end gap-2 lg:grid-cols-6">
+        <div className="relative col-span-2">
           <Search className="pointer-events-none absolute top-2.5 left-2.5 size-4 text-muted-foreground" aria-hidden />
           <Input value={searchInput} onChange={(e) => set({ q: e.target.value })} placeholder="Headline, ticker or company" aria-label="Search news" className="pl-8" />
         </div>
@@ -107,8 +107,12 @@ export function NewsPage() {
             {Object.entries(regionLabels).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Input type="date" value={from} onChange={(e) => set({ from: e.target.value })} aria-label="Published from" />
-        <Input type="date" value={to} onChange={(e) => set({ to: e.target.value })} aria-label="Published until" />
+        <label className="text-xs text-muted-foreground">Published from
+          <Input type="date" value={from} onChange={(e) => set({ from: e.target.value })} className="mt-0.5" />
+        </label>
+        <label className="text-xs text-muted-foreground">Published until
+          <Input type="date" value={to} onChange={(e) => set({ to: e.target.value })} className="mt-0.5" />
+        </label>
       </div>
       {(hasFilters || publisher) && (
         <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
