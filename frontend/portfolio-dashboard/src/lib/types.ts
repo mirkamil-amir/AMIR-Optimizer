@@ -927,3 +927,252 @@ export interface StrategyComparison {
   result: ComparisonResult | null
   disclaimer: string
 }
+
+// ---------------------------------------------------------------- watchlist & price history
+
+export interface PricePoint {
+  date: string
+  price: number
+}
+
+export type HistoryRange = '1D' | '1M' | '3M' | '6M' | '1Y' | '5Y'
+
+/** Stored daily prices for a chart range. `change` is null (with `limitation`) when the stored history does not cover the range. */
+export interface PriceHistory {
+  symbol: string
+  name: string | null
+  currency: string
+  exchange: string
+  range: HistoryRange
+  supported: boolean
+  /** "Adjusted close" (splits and dividends) or "Close" (raw). */
+  basis: string
+  points: PricePoint[]
+  baseDate: string | null
+  basePrice: number | null
+  endDate: string | null
+  endPrice: number | null
+  change: number | null
+  availableFrom: string | null
+  limitation: string | null
+  source: string
+  isSimulated: boolean
+  lastRetrievedAtUtc: string | null
+  supportedRanges: HistoryRange[]
+}
+
+export interface PeriodChange {
+  range: HistoryRange
+  change: number | null
+  baseDate: string | null
+  endDate: string | null
+  basis: string
+  limitation: string | null
+  sparkline: PricePoint[]
+}
+
+export interface WatchlistItem {
+  id: string
+  addedAtUtc: string
+  stock: StockListItem
+  period: PeriodChange
+}
+
+export interface Watchlist {
+  items: WatchlistItem[]
+  range: HistoryRange
+  maxEntries: number
+  note: string
+}
+
+export interface WatchlistAddResult {
+  item: WatchlistItem
+  historyQueued: boolean
+}
+
+// ---------------------------------------------------------------- financial news
+
+export type NewsCategory =
+  | 'General' | 'Earnings' | 'CorporateTransaction' | 'RegulatoryLegal' | 'CentralBank' | 'Macroeconomic'
+  | 'Geopolitical' | 'CommoditiesEnergy' | 'CurrenciesBonds' | 'MarketIndex'
+
+export type NewsScope = 'Company' | 'Market' | 'Macro'
+
+export interface NewsAsset {
+  symbol: string
+  name: string | null
+  matchMethod: string
+  onWatchlist: boolean
+}
+
+export interface NewsRelevance {
+  level: 'Low' | 'Medium' | 'High'
+  points: number
+  reasons: string[]
+  note: string
+}
+
+export interface NewsArticle {
+  id: string
+  headline: string
+  publisher: string
+  url: string
+  publishedAtUtc: string
+  retrievedAtUtc: string
+  summary: string | null
+  imageUrl: string | null
+  imageCredit: string | null
+  category: NewsCategory
+  categoryBasis: string
+  scope: NewsScope
+  region: string | null
+  isOfficialSource: boolean
+  isSimulated: boolean
+  provider: string
+  assets: NewsAsset[]
+  relevance: NewsRelevance
+  alsoReportedBy: string[]
+}
+
+export interface NewsSourceStatus {
+  key: string
+  provider: string
+  displayName: string
+  isConfigured: boolean
+  isOfficial: boolean
+  isSimulated: boolean
+  coverage: string
+  terms: string
+  lastAttemptUtc: string | null
+  lastSuccessUtc: string | null
+  lastArticleCount: number
+  lastError: string | null
+}
+
+export interface NewsFeed {
+  items: NewsArticle[]
+  page: number
+  pageSize: number
+  totalCount: number
+  sources: NewsSourceStatus[]
+  imagesEnabled: boolean
+  notes: string[]
+}
+
+export interface NewsFilters {
+  category?: NewsCategory
+  scope?: NewsScope
+  region?: string
+  symbol?: string
+  watchlist?: boolean
+  from?: string
+  to?: string
+  publisher?: string
+  search?: string
+  page?: number
+  pageSize?: number
+}
+
+// ---------------------------------------------------------------- portfolio reality check
+
+export interface RealityFinding {
+  kind: 'Fact' | 'Estimate' | 'Interpretation' | 'Caution'
+  topic: string
+  text: string
+  basis: string | null
+}
+
+export interface HistoricalCheck {
+  label: string
+  from: string
+  to: string
+  days: number
+  cumulativeReturn: number
+  annualizedVolatility: Metric
+  maxDrawdown: Metric
+  valueAtRisk95: Metric
+  expectedShortfall95: Metric
+  worstDay: number
+  worst20DayReturn: number | null
+  benchmarkSymbol: string | null
+  benchmarkCumulativeReturn: number | null
+  benchmarkMaxDrawdown: Metric | null
+  beta: Metric | null
+}
+
+export interface SensitivityScenario {
+  key: string
+  name: string
+  description: string
+  status: string
+  message: string | null
+  turnover: number | null
+  largestChange: number | null
+  largestChangeSymbol: string | null
+  holdings: number | null
+  expectedReturn: number | null
+  volatility: number | null
+  weights: { symbol: string; weight: number; savedWeight: number }[]
+}
+
+export interface RealityCheck {
+  runId: string
+  objective: string
+  runCreatedAtUtc: string
+  currency: string
+  windowStart: string
+  windowEnd: string
+  observations: number
+  priceSource: string
+  usesSimulatedData: boolean
+  dataChangedSinceRun: boolean
+  concentration: {
+    holdings: number; largestWeight: number; largestSymbol: string; topThreeWeight: number; hhi: number; effectiveHoldings: number
+    sectors: { sector: string; weight: number; holdings: number }[]
+  }
+  risk: {
+    volatility: number; diversificationRatio: number; effectiveRiskContributors: number | null; averageCorrelation: number | null
+    highestCorrelation: { a: string; b: string; correlation: number } | null
+    averageCorrelationOnStressDays: number | null; stressDays: number
+    contributions: { symbol: string; weight: number; riskShare: number; volatility: number }[]
+  }
+  inSample: HistoricalCheck
+  outOfSample: HistoricalCheck | null
+  outOfSampleUnavailableReason: string | null
+  scenarios: SensitivityScenario[]
+  costs: { costBps: number; buildCost: number; largestSwitchTurnover: number | null; switchCost: number | null; switchCostAtTripleBps: number | null; note: string }
+  findings: RealityFinding[]
+  nextSteps: string[]
+  limitations: string[]
+  methodology: string
+  disclaimer: string
+}
+
+export interface EventHorizon {
+  tradingDays: number
+  date: string | null
+  stockChange: number | null
+  benchmarkChange: number | null
+  difference: number | null
+  limitation: string | null
+}
+
+export interface EventComparison {
+  articleId: string
+  headline: string
+  symbol: string
+  currency: string
+  benchmarkSymbol: string | null
+  basis: string
+  source: string
+  isSimulated: boolean
+  publishedAtUtc: string
+  publishedLocal: string
+  timing: string
+  referenceDate: string | null
+  referencePrice: number | null
+  horizons: EventHorizon[]
+  overlappingArticles: NewsArticle[]
+  limitations: string[]
+  disclaimer: string
+}
