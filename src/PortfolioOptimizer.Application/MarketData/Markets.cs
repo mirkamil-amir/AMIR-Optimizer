@@ -63,6 +63,22 @@ public static class Markets
         catch (TimeZoneNotFoundException) { return TimeZoneInfo.Utc; }
     }
 
+    /// <summary>
+    /// Regular continuous-trading session in exchange-local time (no auctions, half days or holiday calendar). Tokyo closes
+    /// at 15:30 since the session extension of 5 Nov 2024; earlier dates closed at 15:00.
+    /// </summary>
+    public static (TimeOnly Open, TimeOnly Close) Session(MarketVenue venue, DateOnly date) => venue.Country switch
+    {
+        "US" => (new(9, 30), new(16, 0)),
+        "GB" => (new(8, 0), new(16, 30)),
+        "JP" => (new(9, 0), date < new DateOnly(2024, 11, 5) ? new(15, 0) : new(15, 30)),
+        _ => (new(9, 0), new(17, 30)), // Xetra, Euronext Paris/Amsterdam
+    };
+
+    /// <summary>UTC instant of a local exchange time on a date (daylight saving handled by the venue's time zone).</summary>
+    public static DateTime ToUtc(MarketVenue venue, DateOnly date, TimeOnly time) =>
+        TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(date.ToDateTime(time), DateTimeKind.Unspecified), TimeZone(venue));
+
     /// <summary>The exchange-local calendar date of an instant.</summary>
     public static DateOnly LocalDate(MarketVenue venue, DateTime utc) =>
         DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), TimeZone(venue)));

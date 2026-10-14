@@ -41,6 +41,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<MlPredictionSet> MlPredictionSets => Set<MlPredictionSet>();
     public DbSet<StrategyComparison> StrategyComparisons => Set<StrategyComparison>();
     public DbSet<WatchlistEntry> WatchlistEntries => Set<WatchlistEntry>();
+    public DbSet<NewsArticle> NewsArticles => Set<NewsArticle>();
+    public DbSet<NewsArticleAsset> NewsArticleAssets => Set<NewsArticleAsset>();
+    public DbSet<NewsFetchState> NewsFetchStates => Set<NewsFetchState>();
 
     /// <summary>ASP.NET Core data-protection keys (cookie and antiforgery encryption), shared across restarts and instances.</summary>
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
@@ -137,6 +140,44 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             e.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Cascade);
             // Catalogue assets referenced by a watchlist cannot be deleted silently.
             e.HasOne(x => x.Asset).WithMany().HasForeignKey(x => x.AssetId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        b.Entity<NewsArticle>(e =>
+        {
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.Provider).HasMaxLength(40);
+            e.Property(x => x.ProviderArticleId).HasMaxLength(200);
+            e.Property(x => x.Url).HasMaxLength(2000);
+            e.Property(x => x.Fingerprint).HasMaxLength(64);
+            e.Property(x => x.HeadlineKey).HasMaxLength(64);
+            e.Property(x => x.Headline).HasMaxLength(500);
+            e.Property(x => x.Publisher).HasMaxLength(200);
+            e.Property(x => x.Summary).HasMaxLength(400);
+            e.Property(x => x.ImageUrl).HasMaxLength(2000);
+            e.Property(x => x.Category).HasConversion<string>().HasMaxLength(30);
+            e.Property(x => x.CategoryBasis).HasMaxLength(200);
+            e.Property(x => x.Scope).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.Region).HasMaxLength(8);
+            e.HasIndex(x => x.Fingerprint).IsUnique();
+            e.HasIndex(x => x.HeadlineKey);
+            e.HasIndex(x => x.PublishedAtUtc);
+            e.HasMany(x => x.Assets).WithOne().HasForeignKey(x => x.ArticleId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<NewsArticleAsset>(e =>
+        {
+            e.HasKey(x => new { x.ArticleId, x.AssetId });
+            e.Property(x => x.MatchMethod).HasMaxLength(60);
+            e.HasIndex(x => x.AssetId);
+            e.HasOne(x => x.Asset).WithMany().HasForeignKey(x => x.AssetId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<NewsFetchState>(e =>
+        {
+            e.HasKey(x => x.Key);
+            e.Property(x => x.Key).HasMaxLength(120);
+            e.Property(x => x.Provider).HasMaxLength(40);
+            e.Property(x => x.LastError).HasMaxLength(300);
         });
 
         b.Entity<AuditEvent>(e =>

@@ -47,6 +47,11 @@ services:
       ReverseProxy__TrustForwardedHeaders: "true"
       MarketData__DefaultProvider: ${MARKET_DATA_PROVIDER:-Yahoo}
       MarketData__AlphaVantage__ApiKey: ${ALPHAVANTAGE_API_KEY:-}
+      # News sources (docs/financial-news.md). Images stay off until display rights are confirmed.
+      News__Yahoo__Enabled: ${NEWS_YAHOO_ENABLED:-true}
+      News__OfficialFeeds__Enabled: ${NEWS_OFFICIAL_FEEDS_ENABLED:-true}
+      News__Mock__Enabled: ${NEWS_MOCK_ENABLED:-false}
+      News__ShowImages: ${NEWS_SHOW_IMAGES:-false}
       Admin__Email: ${ADMIN_EMAIL:-}
       Admin__Password: ${ADMIN_PASSWORD:-}
       ModelArtifacts__RootPath: /app/artifacts
