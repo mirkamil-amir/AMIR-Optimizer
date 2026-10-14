@@ -1,25 +1,73 @@
+# Local stack: PostgreSQL + one-shot migration + API + web. Copy .env.example to .env and set the passwords first.
+#   podman compose up --build -d      (or: docker compose up --build -d)
+x-api-image: &api-build
+  context: .
+  dockerfile: src/PortfolioOptimizer.Api/Dockerfile
+
 services:
+  db:
+    image: docker.io/library/postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-portfolio}
+      # Owner of the database objects = migration identity.
+      POSTGRES_USER: ${POSTGRES_OWNER_USER:-portfolio_owner}
+      POSTGRES_PASSWORD: ${POSTGRES_OWNER_PASSWORD:?Set POSTGRES_OWNER_PASSWORD in .env}
+      # Least-privilege role used by the API (created by deploy/postgres/init/01-app-role.sh).
+      APP_DB_USER: ${APP_DB_USER:-portfolio_app}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?Set APP_DB_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./deploy/postgres/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"   # local tools / `dotnet run`; bound to loopback only
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Applies EF Core migrations with the owner identity, then exits. The API starts only after it succeeded.
+  migrate:
+    build: *api-build
+    command: ["migrate"]
+    environment:
+      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=${POSTGRES_DB:-portfolio};Username=${POSTGRES_OWNER_USER:-portfolio_owner};Password=${POSTGRES_OWNER_PASSWORD};Gss Encryption Mode=Disable
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
   api:
-    build:
-      context: .
-      dockerfile: src/PortfolioOptimizer.Api/Dockerfile
+    build: *api-build
     environment:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}   # Development enables Swagger UI
+      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=${POSTGRES_DB:-portfolio};Username=${APP_DB_USER:-portfolio_app};Password=${APP_DB_PASSWORD};Maximum Pool Size=50;Timeout=15;Gss Encryption Mode=Disable
+      Database__MigrateOnStartup: "false"
+      # nginx (web) forwards client IP/scheme; the API port below is for local Swagger use only.
+      ReverseProxy__TrustForwardedHeaders: "true"
       MarketData__DefaultProvider: ${MARKET_DATA_PROVIDER:-Yahoo}
       MarketData__AlphaVantage__ApiKey: ${ALPHAVANTAGE_API_KEY:-}
-      Cors__AllowedOrigins__0: http://localhost:8081
+      Admin__Email: ${ADMIN_EMAIL:-}
+      Admin__Password: ${ADMIN_PASSWORD:-}
+      ModelArtifacts__RootPath: /app/artifacts
+      Cors__AllowedOrigins__0: http://localhost:${WEB_PORT:-8081}
+      RateLimiting__AuthenticationPermitPerMinute: ${AUTH_RATE_LIMIT_PER_MINUTE:-10}
     ports:
-      - "5080:8080"
+      - "${API_PORT:-5080}:8080"
     volumes:
-      - portfolio-data:/app/data   # SQLite database persists across restarts
+      - model-artifacts:/app/artifacts   # trained ML model files (referenced from the database by path + SHA-256)
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
 
   web:
     build:
       context: frontend/portfolio-dashboard
     ports:
-      - "8081:80"
+      - "${WEB_PORT:-8081}:80"
     depends_on:
       - api
 
 volumes:
-  portfolio-data:
+  pgdata:
+  model-artifacts:

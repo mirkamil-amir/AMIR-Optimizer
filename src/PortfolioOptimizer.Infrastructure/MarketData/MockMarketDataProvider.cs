@@ -39,7 +39,7 @@ public sealed class MockMarketDataProvider(IOptions<MockProviderOptions> options
         }
         var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
         var n = PriceNormalizer.Normalize(raw, startDate, endDate, today);
-        return Task.FromResult(new ProviderHistory(symbol, "USD", n.Bars, raw.Count, n.Rejected, n.Duplicates,
+        return Task.FromResult(new ProviderHistory(symbol, Markets.ForSymbol(symbol).Currency, n.Bars, raw.Count, n.Rejected, n.Duplicates,
             ["Simulated data – not real market prices."]));
     }
 
@@ -49,8 +49,18 @@ public sealed class MockMarketDataProvider(IOptions<MockProviderOptions> options
         var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
         var idx = Array.FindLastIndex(dates, d => d <= today);
         return Task.FromResult<MarketQuote?>(idx < 0 ? null
-            : new MarketQuote(symbol, Math.Round((decimal)prices[idx], 4), "USD", dates[idx].ToDateTime(new TimeOnly(20, 0), DateTimeKind.Utc)));
+            : new MarketQuote(symbol, Math.Round((decimal)prices[idx], 4), Markets.ForSymbol(symbol).Currency,
+                dates[idx].ToDateTime(new TimeOnly(20, 0), DateTimeKind.Utc), idx > 0 ? Math.Round((decimal)prices[idx - 1], 4) : null));
     }
+
+    public bool Supports(string symbol) => true;
+
+    public int QuoteBatchSize => 200;
+
+    public int? RemainingDailyRequests => null;
+
+    public Task<IReadOnlyList<QuoteFetch>> GetLatestQuotesAsync(IReadOnlyList<string> symbols, CancellationToken cancellationToken) =>
+        QuoteFetching.OneByOneAsync(this, symbols, cancellationToken);
 
     private (DateOnly[] Dates, double[] Prices) Generate(string symbol)
     {
@@ -65,7 +75,7 @@ public sealed class MockMarketDataProvider(IOptions<MockProviderOptions> options
             var idioVol = 0.10 + ((h >> 16) % 2500) / 10_000.0;       // 10% – 35%
             var beta = 0.6 + ((h >> 32) % 900) / 1_000.0;             // 0.6 – 1.5
             const double marketVol = 0.14;
-            var isIndex = symbol is "SPY" or "QQQ" or "VTI" or "IVV";
+            var isIndex = symbol is "SPY" or "QQQ" or "VTI" or "IVV" || symbol.StartsWith('^');
             if (isIndex) { beta = 1.0; idioVol = 0.01; annualDrift = 0.08; }
 
             var dates = new List<DateOnly>();

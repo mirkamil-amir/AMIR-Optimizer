@@ -1,0 +1,264 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using PortfolioOptimizer.Application.Abstractions;
+using PortfolioOptimizer.Application.Common;
+using PortfolioOptimizer.Application.Dtos;
+using PortfolioOptimizer.Domain;
+
+namespace PortfolioOptimizer.Application.MarketData;
+
+/// <summary>Filters for the stock browser. All are optional and combine with AND.</summary>
+public sealed record StockQuery(
+    string? Country = null,
+    string? Index = null,
+    string? Sector = null,
+    string? Search = null,
+    bool? Tracked = null,
+    bool? WithPrices = null,
+    string? Sort = null,
+    int Page = 1,
+    int PageSize = 50,
+    IReadOnlyCollection<string>? Symbols = null);
+
+/// <summary>
+/// Read-only stock browser over the shared catalogue: markets → indices → sectors → stocks, search, metadata and the latest
+/// price with its provenance (delayed provider quote vs. session close vs. stored daily close, provider, timestamps,
+/// cached/stale flags). Prices come only from the active data source; a missing price is reported as missing, never as 0.
+/// </summary>
+public sealed class StockDiscoveryService(
+    IApplicationDbContext db,
+    PriceQueryService prices,
+    IMarketDataProviderRegistry providers,
+    UniverseService universes,
+    QuoteRefreshService quoteRefresh,
+    IOptions<QuoteRefreshOptions> quoteOptions,
+    TimeProvider clock)
+{
+    public const string UnclassifiedSector = "Unclassified";
+
+    /// <summary>A provider quote whose last trade is at most this old is shown as a (delayed) intraday quote.</summary>
+    private static readonly TimeSpan DelayedQuoteWindow = TimeSpan.FromMinutes(30);
+
+    public static readonly IReadOnlyList<string> SortKeys = ["symbol", "name", "sector", "change", "change-desc"];
+
+    public async Task<IReadOnlyList<MarketDto>> GetMarketsAsync(CancellationToken ct) =>
+        await universes.GetMarketsAsync((await prices.SettingsAsync(ct)).ActiveProvider, ct);
+
+    public async Task<IReadOnlyList<SectorDto>> GetSectorsAsync(string? country, string? index, CancellationToken ct)
+    {
+        var settings = await prices.SettingsAsync(ct);
+        var q = Filter(db.Assets.AsNoTracking().Where(a => a.AssetType != AssetType.Index), new StockQuery(country, index));
+        var rows = await q.Select(a => new
+        {
+            a.Sector,
+            HasData = db.HistoricalPrices.Any(p => p.AssetId == a.Id && p.Source == settings.ActiveProvider),
+        }).ToListAsync(ct);
+        return rows.GroupBy(a => a.Sector ?? UnclassifiedSector)
+            .Select(g => new SectorDto(g.Key, g.Count(), g.Count(a => a.HasData)))
+            .OrderBy(s => s.Name == UnclassifiedSector ? 1 : 0).ThenBy(s => s.Name)
+            .ToList();
+    }
+
+    public async Task<PagedResult<StockListItemDto>> SearchAsync(StockQuery query, CancellationToken ct)
+    {
+        if (query.Page < 1 || query.PageSize is < 1 or > 200) throw new ValidationException("Invalid paging parameters (page ≥ 1, 1 ≤ pageSize ≤ 200).");
+        var sort = (query.Sort ?? "symbol").ToLowerInvariant();
+        if (!SortKeys.Contains(sort)) throw new ValidationException("sort", $"Sort must be one of: {string.Join(", ", SortKeys)}.");
+        var settings = await prices.SettingsAsync(ct);
+        var source = settings.ActiveProvider;
+
+        var q = Filter(db.Assets.AsNoTracking(), query);
+        if (query.Symbols is not { Count: > 0 }) q = q.Where(a => a.AssetType != AssetType.Index);
+        if (query.WithPrices is { } w)
+            q = w ? q.Where(a => db.HistoricalPrices.Any(p => p.AssetId == a.Id && p.Source == source))
+                  : q.Where(a => !db.HistoricalPrices.Any(p => p.AssetId == a.Id && p.Source == source));
+
+        var total = await q.CountAsync(ct);
+        var exact = query.Search?.Trim().ToUpperInvariant() ?? "";
+        IQueryable<Asset> ordered = sort switch
+        {
+            "name" => q.OrderBy(a => a.Name).ThenBy(a => a.Symbol),
+            "sector" => q.OrderBy(a => a.Sector).ThenBy(a => a.Symbol),
+            // Daily change from the stored quote; instruments without a quote sort last.
+            "change" or "change-desc" => OrderByChange(q, source, sort == "change-desc"),
+            // Exact symbol matches first when searching, then alphabetical.
+            _ => q.OrderBy(a => a.Symbol == exact || a.Symbol.StartsWith(exact + ".") ? 0 : 1).ThenBy(a => a.Symbol),
+        };
+        var assets = await ordered.Skip((query.Page - 1) * query.PageSize).Take(query.PageSize).ToListAsync(ct);
+        var items = await BuildItemsAsync(assets, settings, ct);
+        return new PagedResult<StockListItemDto>(items, query.Page, query.PageSize, total);
+    }
+
+    public async Task<StockDetailDto> GetAsync(string symbol, CancellationToken ct)
+    {
+        var settings = await prices.SettingsAsync(ct);
+        var asset = await FindAsync(symbol, ct);
+        var item = (await BuildItemsAsync([asset], settings, ct))[0];
+        var hasAdjusted = item.Observations > 0 && !await db.HistoricalPrices.AnyAsync(
+            p => p.AssetId == asset.Id && p.Source == settings.ActiveProvider && p.AdjustedClose == null, ct);
+        var note = asset.Description is null
+            ? "No company description is available from the configured catalogue or data provider."
+            : $"Description source: {asset.MetadataSource ?? "unknown"}.";
+        return new StockDetailDto(item, asset.Description, asset.MetadataSource, asset.MetadataUpdatedAtUtc, hasAdjusted, settings.ActiveProvider, note,
+            asset.Isin, asset.Mic);
+    }
+
+    public async Task<StockQuoteDto> GetQuoteAsync(string symbol, CancellationToken ct)
+    {
+        var settings = await prices.SettingsAsync(ct);
+        var asset = await FindAsync(symbol, ct);
+        return (await QuotesAsync([asset], settings, ct))[asset.Id];
+    }
+
+    /// <summary>Refreshes quotes for the given symbols through the backend provider and returns the updated rows.</summary>
+    public async Task<QuoteRefreshResultDto> RefreshQuotesAsync(IReadOnlyCollection<string> symbols, bool force, CancellationToken ct)
+    {
+        var outcomes = await quoteRefresh.RefreshSymbolsAsync(symbols, force, ct);
+        var list = outcomes.Select(o => o.Symbol).ToList();
+        var settings = await prices.SettingsAsync(ct);
+        var assets = await db.Assets.AsNoTracking().Where(a => list.Contains(a.Symbol)).OrderBy(a => a.Symbol).ToListAsync(ct);
+        var items = await BuildItemsAsync(assets, settings, ct);
+        return new QuoteRefreshResultDto(outcomes.Select(o => new QuoteRefreshItemDto(o.Symbol, o.Outcome.ToString(), o.Message)).ToList(), items);
+    }
+
+    private IQueryable<Asset> Filter(IQueryable<Asset> q, StockQuery query)
+    {
+        if (query.Symbols is { Count: > 0 })
+        {
+            var list = query.Symbols.Select(Asset.NormalizeSymbol).Distinct().ToList();
+            q = q.Where(a => list.Contains(a.Symbol));
+        }
+        if (!string.IsNullOrWhiteSpace(query.Country))
+        {
+            var country = query.Country.Trim().ToUpperInvariant();
+            // A market contains its listings and the members of its indices (e.g. ArcelorMittal, Amsterdam-listed CAC 40 member).
+            var codes = db.MarketIndices.Where(i => i.Country == country).Select(i => i.Code);
+            q = q.Where(a => a.Country == country || a.Memberships.Any(m => codes.Contains(m.IndexCode)));
+        }
+        if (!string.IsNullOrWhiteSpace(query.Index))
+        {
+            var index = query.Index.Trim().ToUpperInvariant();
+            q = q.Where(a => a.Memberships.Any(m => m.IndexCode == index));
+        }
+        if (!string.IsNullOrWhiteSpace(query.Sector))
+            q = query.Sector == UnclassifiedSector ? q.Where(a => a.Sector == null) : q.Where(a => a.Sector == query.Sector);
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var term = query.Search.Trim().ToLowerInvariant();
+            q = q.Where(a => a.Symbol.ToLower().Contains(term) || (a.Name != null && a.Name.ToLower().Contains(term)) || (a.Isin != null && a.Isin.ToLower() == term));
+        }
+        if (query.Tracked is { } t) q = q.Where(a => a.IsEnabled == t);
+        return q;
+    }
+
+    private IQueryable<Asset> OrderByChange(IQueryable<Asset> q, string source, bool descending)
+    {
+        var withChange = q.Select(a => new
+        {
+            Asset = a,
+            Change = db.LatestQuotes.Where(x => x.AssetId == a.Id && x.Source == source && x.PreviousClose > 0)
+                .Select(x => (decimal?)(x.Price / x.PreviousClose!.Value - 1)).FirstOrDefault(),
+        });
+        var ordered = descending
+            ? withChange.OrderBy(x => x.Change == null).ThenByDescending(x => x.Change).ThenBy(x => x.Asset.Symbol)
+            : withChange.OrderBy(x => x.Change == null).ThenBy(x => x.Change).ThenBy(x => x.Asset.Symbol);
+        return ordered.Select(x => x.Asset);
+    }
+
+    private async Task<Asset> FindAsync(string symbol, CancellationToken ct)
+    {
+        var s = Asset.NormalizeSymbol(symbol);
+        return await db.Assets.AsNoTracking().SingleOrDefaultAsync(a => a.Symbol == s, ct) ?? throw new NotFoundException("Stock", s);
+    }
+
+    private async Task<List<StockListItemDto>> BuildItemsAsync(IReadOnlyList<Asset> assets, ApplicationSettings settings, CancellationToken ct)
+    {
+        var ids = assets.Select(a => a.Id).ToList();
+        var source = settings.ActiveProvider;
+        var coverage = await db.HistoricalPrices.AsNoTracking()
+            .Where(p => ids.Contains(p.AssetId) && p.Source == source)
+            .GroupBy(p => p.AssetId)
+            .Select(g => new { AssetId = g.Key, Count = g.Count(), First = g.Min(p => p.Date), Last = g.Max(p => p.Date) })
+            .ToDictionaryAsync(x => x.AssetId, ct);
+        var memberships = (await db.IndexMemberships.AsNoTracking().Where(m => ids.Contains(m.AssetId)).ToListAsync(ct))
+            .GroupBy(m => m.AssetId).ToDictionary(g => g.Key, g => (IReadOnlyList<string>)g.Select(m => m.IndexCode).OrderBy(c => c).ToList());
+        var quotes = await QuotesAsync(assets, settings, ct);
+        return assets.Select(a =>
+        {
+            coverage.TryGetValue(a.Id, out var c);
+            return new StockListItemDto(a.Id, a.Symbol, a.Name, a.Sector, a.Industry, a.Exchange, a.Country,
+                memberships.TryGetValue(a.Id, out var m) ? m : [], a.Currency, a.AssetType, a.IsEnabled,
+                c?.Count ?? 0, c?.First, c?.Last, quotes[a.Id]);
+        }).ToList();
+    }
+
+    /// <summary>
+    /// Latest price per asset from the active source: the newer of the stored provider quote and the last stored daily
+    /// close. A quote whose last trade is recent is a (delayed) intraday quote; an older one is the last session's price.
+    /// </summary>
+    private async Task<Dictionary<int, StockQuoteDto>> QuotesAsync(IReadOnlyList<Asset> assets, ApplicationSettings settings, CancellationToken ct)
+    {
+        var ids = assets.Select(a => a.Id).ToList();
+        var source = settings.ActiveProvider;
+        var providerName = providers.Providers.FirstOrDefault(p => p.Name == source)?.DisplayName ?? source;
+        var now = clock.GetUtcNow().UtcDateTime;
+        var today = DateOnly.FromDateTime(now);
+        var freshFor = TimeSpan.FromMinutes(quoteOptions.Value.FreshForMinutes);
+
+        // The last two bars of each asset lie within a few weeks of that asset's own last date (holidays included).
+        var lastDates = db.HistoricalPrices.Where(p => ids.Contains(p.AssetId) && p.Source == source)
+            .GroupBy(p => p.AssetId).Select(g => new { AssetId = g.Key, Last = g.Max(p => p.Date) });
+        var recent = await (from p in db.HistoricalPrices.AsNoTracking()
+                            join l in lastDates on p.AssetId equals l.AssetId
+                            where p.Source == source && p.Date >= l.Last.AddDays(-20)
+                            select new { p.AssetId, p.Date, p.Close, p.RetrievedAtUtc, p.IsSimulated })
+            .ToListAsync(ct);
+        var bars = recent.GroupBy(r => r.AssetId).ToDictionary(g => g.Key, g => g.OrderByDescending(r => r.Date).Take(2).ToList());
+        var stored = await db.LatestQuotes.AsNoTracking().Where(q => ids.Contains(q.AssetId) && q.Source == source).ToDictionaryAsync(q => q.AssetId, ct);
+
+        var result = new Dictionary<int, StockQuoteDto>();
+        foreach (var asset in assets)
+        {
+            var venue = Markets.ForSymbol(asset.Symbol);
+            bars.TryGetValue(asset.Id, out var b);
+            stored.TryGetValue(asset.Id, out var quote);
+            var last = b is { Count: > 0 } ? b[0] : null;
+            var prev = b is { Count: > 1 } ? b[1] : null;
+            var quoteDate = quote is null ? (DateOnly?)null : Markets.LocalDate(venue, quote.AsOfUtc);
+
+            if (quote is not null && (last is null || quoteDate >= last.Date))
+            {
+                var priceDate = quoteDate!.Value;
+                var intraday = now - quote.AsOfUtc <= DelayedQuoteWindow;
+                // Previous close: from the provider with the quote, else the last stored bar before the quote's session.
+                var reference = quote.PreviousClose ?? (last is not null && last.Date < priceDate ? last.Close : prev?.Close);
+                var referenceDate = quote.PreviousClose is not null ? null : last is not null && last.Date < priceDate ? last.Date : prev?.Date;
+                var change = reference is null ? (decimal?)null : quote.Price - reference;
+                var cached = now - quote.RetrievedAtUtc > freshFor;
+                var kindText = quote.IsSimulated ? "SIMULATED price" : intraday ? "Delayed quote" : "Last price of the session";
+                result[asset.Id] = new StockQuoteDto(asset.Symbol, quote.Price, asset.Currency, intraday ? QuoteKind.DelayedQuote : QuoteKind.LastClose,
+                    priceDate, quote.AsOfUtc, reference, referenceDate, change, Percent(change, reference), source, quote.RetrievedAtUtc, quote.IsSimulated,
+                    PriceQueryService.BusinessDaysBetween(priceDate, today) > settings.StalePriceDays, cached,
+                    $"{kindText} from {providerName}: last trade {quote.AsOfUtc:yyyy-MM-dd HH:mm} UTC ({venue.Exchange}), retrieved {quote.RetrievedAtUtc:yyyy-MM-dd HH:mm} UTC" +
+                    $"{(cached ? " (cached)" : "")}. Provider prices are delayed or end-of-day, never real-time.");
+            }
+            else if (last is not null)
+            {
+                var change = prev is null ? (decimal?)null : last.Close - prev.Close;
+                result[asset.Id] = new StockQuoteDto(asset.Symbol, last.Close, asset.Currency, QuoteKind.LastClose, last.Date, null,
+                    prev?.Close, prev?.Date, change, Percent(change, prev?.Close), source, last.RetrievedAtUtc, last.IsSimulated,
+                    PriceQueryService.BusinessDaysBetween(last.Date, today) > settings.StalePriceDays, true,
+                    $"{(last.IsSimulated ? "SIMULATED daily close" : "Last stored daily close")} of {last.Date:yyyy-MM-dd} from {providerName}, retrieved {last.RetrievedAtUtc:yyyy-MM-dd HH:mm} UTC.");
+            }
+            else
+            {
+                result[asset.Id] = new StockQuoteDto(asset.Symbol, null, asset.Currency, QuoteKind.None, null, null, null, null, null, null,
+                    source, null, false, false, false, $"No {providerName} price available yet. Use refresh to request one.");
+            }
+        }
+        return result;
+    }
+
+    private static double? Percent(decimal? change, decimal? basePrice) =>
+        change is { } c && basePrice is { } b && b > 0 ? (double)(c / b) : null;
+}

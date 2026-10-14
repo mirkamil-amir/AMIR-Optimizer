@@ -9,7 +9,7 @@ namespace PortfolioOptimizer.Infrastructure.MarketData;
 /// <summary>
 /// Yahoo Finance v8 chart endpoint (<c>/v8/finance/chart/{symbol}</c>). No API key, provides raw and split/dividend
 /// adjusted closes. The endpoint is unofficial and undocumented: it may change or throttle without notice, and Yahoo's
-/// terms restrict use to personal, non-commercial purposes. See docs/data-sources.md.
+/// terms restrict use to personal, non-commercial purposes. See docs/market-data.md.
 /// </summary>
 public sealed class YahooFinanceProvider(HttpClient http, IOptions<YahooFinanceOptions> options, TimeProvider clock) : IMarketDataProvider
 {
@@ -34,8 +34,10 @@ public sealed class YahooFinanceProvider(HttpClient http, IOptions<YahooFinanceO
         var result = ChartResult(doc, symbol);
 
         var meta = result.GetProperty("meta");
-        var currency = meta.TryGetProperty("currency", out var c) && c.ValueKind == JsonValueKind.String ? c.GetString()! : "";
-        if (string.IsNullOrEmpty(currency)) throw new MarketDataProviderException(Name, symbol, "Response has no currency.");
+        var providerCurrency = meta.TryGetProperty("currency", out var c) && c.ValueKind == JsonValueKind.String ? c.GetString()! : "";
+        if (string.IsNullOrEmpty(providerCurrency)) throw new MarketDataProviderException(Name, symbol, "Response has no currency.");
+        // London quotes are in pence (GBp): store prices in pounds so every price is in its ISO currency.
+        var (currency, divisor) = CurrencyUnits.Normalize(providerCurrency);
         var gmtOffset = meta.TryGetProperty("gmtoffset", out var g) && g.TryGetInt32(out var off) ? off : 0;
 
         var raw = new List<RawBar>();
@@ -58,8 +60,8 @@ public sealed class YahooFinanceProvider(HttpClient http, IOptions<YahooFinanceO
                 var local = DateTimeOffset.FromUnixTimeSeconds(t.GetInt64()).AddSeconds(gmtOffset);
                 raw.Add(new RawBar(
                     DateOnly.FromDateTime(local.UtcDateTime),
-                    Num(open, i), Num(high, i), Num(low, i), Num(close, i),
-                    adj is { } ad ? Num(ad, i) : null,
+                    Scale(Num(open, i), divisor), Scale(Num(high, i), divisor), Scale(Num(low, i), divisor), Scale(Num(close, i), divisor),
+                    adj is { } ad ? Scale(Num(ad, i), divisor) : null,
                     Num(volume, i) is { } v ? (long)v : null));
                 i++;
             }
@@ -67,7 +69,7 @@ public sealed class YahooFinanceProvider(HttpClient http, IOptions<YahooFinanceO
 
         var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
         var normalized = PriceNormalizer.Normalize(raw, startDate, endDate, today);
-        return new ProviderHistory(symbol, currency.ToUpperInvariant(), normalized.Bars, raw.Count, normalized.Rejected, normalized.Duplicates,
+        return new ProviderHistory(symbol, currency, normalized.Bars, raw.Count, normalized.Rejected, normalized.Duplicates,
             normalized.Warnings,
             CompanyName: Str(meta, "longName") ?? Str(meta, "shortName"),
             Exchange: Str(meta, "fullExchangeName") ?? Str(meta, "exchangeName"),
@@ -84,11 +86,91 @@ public sealed class YahooFinanceProvider(HttpClient http, IOptions<YahooFinanceO
         var time = meta.TryGetProperty("regularMarketTime", out var t) && t.TryGetInt64(out var sec)
             ? DateTimeOffset.FromUnixTimeSeconds(sec).UtcDateTime
             : clock.GetUtcNow().UtcDateTime;
-        return new MarketQuote(symbol, Math.Round((decimal)price, 4), Str(meta, "currency")?.ToUpperInvariant() ?? "", time);
+        var (currency, divisor) = CurrencyUnits.Normalize(Str(meta, "currency") ?? "");
+        var previous = meta.TryGetProperty("chartPreviousClose", out var pc) && pc.ValueKind == JsonValueKind.Number ? pc.GetDouble() : (double?)null;
+        return new MarketQuote(symbol, Math.Round((decimal)price / divisor, 4), currency, time, Div(previous, divisor) is { } prev ? Math.Round(prev, 4) : null);
     }
 
-    /// <summary>Yahoo uses '-' for share classes (BRK-B) where most sources use '.'.</summary>
-    public static string ToYahooSymbol(string symbol) => symbol.Replace('.', '-');
+    public bool Supports(string symbol) => true;
+
+    /// <summary>The spark endpoint accepts at most 20 symbols per request.</summary>
+    public int QuoteBatchSize => 20;
+
+    public int? RemainingDailyRequests => null;
+
+    /// <summary>
+    /// Batch quotes from the spark endpoint (5-minute bars of the latest session): last price, its bar time and the previous
+    /// close for up to 20 symbols in one request. Spark omits the currency, so the venue's currency is used; London
+    /// listings are quoted in pence there as in the chart endpoint.
+    /// </summary>
+    public async Task<IReadOnlyList<QuoteFetch>> GetLatestQuotesAsync(IReadOnlyList<string> symbols, CancellationToken cancellationToken)
+    {
+        if (symbols.Count == 0) return [];
+        if (symbols.Count > QuoteBatchSize) throw new ArgumentException($"At most {QuoteBatchSize} symbols per request.", nameof(symbols));
+        var bySymbol = symbols.ToDictionary(ToYahooSymbol, s => s, StringComparer.OrdinalIgnoreCase);
+        var url = $"/v8/finance/spark?symbols={Uri.EscapeDataString(string.Join(',', bySymbol.Keys))}&range=1d&interval=5m";
+        JsonDocument? doc = null;
+        for (var attempt = 0; attempt < 2 && doc is null; attempt++)
+        {
+            try
+            {
+                doc = await GetJsonAsync(url, string.Join(',', symbols), cancellationToken);
+            }
+            catch (MarketDataProviderException) when (attempt == 0)
+            {
+                // Yahoo occasionally rejects a batch (even with HTTP 400) under load; pause and try once more.
+                await Task.Delay(TimeSpan.FromSeconds(1), clock, cancellationToken);
+            }
+            catch (MarketDataProviderException)
+            {
+                // Still failing: fall back to one chart request per symbol so a bad batch never blanks 20 prices.
+                return await QuoteFetching.OneByOneAsync(this, symbols, cancellationToken);
+            }
+        }
+
+        using (doc!)
+        {
+            var results = new List<QuoteFetch>(symbols.Count);
+            foreach (var (yahooSymbol, symbol) in bySymbol)
+            {
+                if (!doc.RootElement.TryGetProperty(yahooSymbol, out var item) || item.ValueKind != JsonValueKind.Object)
+                {
+                    results.Add(QuoteFetch.Fail(symbol, "Yahoo returned no data for this symbol (unknown, delisted or not traded)."));
+                    continue;
+                }
+                var closes = Arr(item, "close");
+                var stamps = Arr(item, "timestamp");
+                double? last = null;
+                long? lastTime = null;
+                if (closes is { } cl && stamps is { } st)
+                {
+                    for (var i = Math.Min(cl.GetArrayLength(), st.GetArrayLength()) - 1; i >= 0; i--)
+                    {
+                        if (Num(cl, i) is { } v && double.IsFinite(v) && v > 0 && st[i].TryGetInt64(out var ts))
+                        {
+                            last = v;
+                            lastTime = ts;
+                            break;
+                        }
+                    }
+                }
+                if (last is null || lastTime is null)
+                {
+                    results.Add(QuoteFetch.Fail(symbol, "Yahoo returned no recent trade for this symbol."));
+                    continue;
+                }
+                var venue = Markets.ForSymbol(symbol);
+                var divisor = venue.Country == "GB" && !symbol.StartsWith('^') ? 100m : 1m;
+                var previous = item.TryGetProperty("chartPreviousClose", out var pc) && pc.ValueKind == JsonValueKind.Number ? pc.GetDouble() : (double?)null;
+                results.Add(QuoteFetch.Ok(symbol, new MarketQuote(symbol, Math.Round((decimal)last.Value / divisor, 4), venue.Currency,
+                    DateTimeOffset.FromUnixTimeSeconds(lastTime.Value).UtcDateTime, Div(previous, divisor) is { } prev ? Math.Round(prev, 4) : null)));
+            }
+            return results;
+        }
+    }
+
+    /// <summary>Canonical symbols use Yahoo conventions; only US share classes need translating (BRK.B → BRK-B).</summary>
+    public static string ToYahooSymbol(string symbol) => SymbolMapper.ForYahoo(symbol);
 
     private async Task<JsonDocument> GetJsonAsync(string url, string symbol, CancellationToken ct)
     {
@@ -139,6 +221,11 @@ public sealed class YahooFinanceProvider(HttpClient http, IOptions<YahooFinanceO
             return null;
         }
     }
+
+    private static double? Scale(double? value, decimal divisor) => value / (double)divisor;
+
+    private static decimal? Div(double? value, decimal divisor) =>
+        value is { } v && double.IsFinite(v) ? (decimal)v / divisor : null;
 
     private static JsonElement? Arr(JsonElement quote, string name) =>
         quote.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Array ? v : null;

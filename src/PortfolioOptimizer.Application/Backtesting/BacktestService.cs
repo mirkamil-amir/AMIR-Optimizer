@@ -18,6 +18,7 @@ public sealed class BacktestService(
     PriceQueryService prices,
     BacktestEngine engine,
     IBackgroundJobQueue queue,
+    ICurrentUser currentUser,
     TimeProvider clock,
     ILogger<BacktestService> logger)
 {
@@ -43,6 +44,7 @@ public sealed class BacktestService(
         var run = new BacktestRun
         {
             Id = Guid.NewGuid(),
+            OwnerId = currentUser.RequireUserId(),
             Name = string.IsNullOrWhiteSpace(request.Name)
                 ? $"{request.Objective} {request.RebalanceFrequency} {request.StartDate:yyyy}-{request.EndDate:yyyy}"
                 : request.Name.Trim(),
@@ -59,15 +61,18 @@ public sealed class BacktestService(
 
     public async Task<BacktestDto> GetAsync(Guid id, CancellationToken ct)
     {
-        var run = await db.Backtests.AsNoTracking().SingleOrDefaultAsync(b => b.Id == id, ct) ?? throw new NotFoundException("Backtest", id);
+        var owner = currentUser.RequireUserId();
+        var run = await db.Backtests.AsNoTracking().SingleOrDefaultAsync(b => b.Id == id && b.OwnerId == owner, ct) ?? throw new NotFoundException("Backtest", id);
         return ToDto(run);
     }
 
     public async Task<PagedResult<BacktestSummaryDto>> ListAsync(int page, int pageSize, CancellationToken ct)
     {
         if (page < 1 || pageSize is < 1 or > 100) throw new ValidationException("Invalid paging parameters (page ≥ 1, 1 ≤ pageSize ≤ 100).");
-        var total = await db.Backtests.CountAsync(ct);
-        var items = await db.Backtests.AsNoTracking().OrderByDescending(b => b.CreatedAtUtc).Skip((page - 1) * pageSize).Take(pageSize)
+        var owner = currentUser.RequireUserId();
+        var mine = db.Backtests.AsNoTracking().Where(b => b.OwnerId == owner);
+        var total = await mine.CountAsync(ct);
+        var items = await mine.OrderByDescending(b => b.CreatedAtUtc).Skip((page - 1) * pageSize).Take(pageSize)
             .Select(b => new BacktestSummaryDto(b.Id, b.Name, b.Status, b.CreatedAtUtc, b.CompletedAtUtc, b.PriceSource, b.UsesSimulatedData, b.Error))
             .ToListAsync(ct);
         return new PagedResult<BacktestSummaryDto>(items, page, pageSize, total);

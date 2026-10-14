@@ -1,10 +1,10 @@
 import { useMemo, useState, type ComponentProps, type ReactNode } from 'react'
-import { Link, useNavigate, useParams } from 'react-router'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { AlertTriangle, ArrowRight, FileText, Loader2, Play } from 'lucide-react'
+import { AlertTriangle, ArrowRight, Download, FileText, ListChecks, Loader2, Play, X } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -22,9 +22,13 @@ import {
 import { DataTable } from '@/components/data-table'
 import { DataBadge, EmptyState, ErrorState, InfoTip, LoadingBlock, MetricCard, PageHeader } from '@/components/common'
 import { TradeProposalView } from '@/components/proposal'
+import { StrategyInsights } from '@/components/strategy-insights'
+import { interpretOptimization } from '@/lib/interpretation'
+import { guideForObjective } from '@/lib/strategy-guide'
 import { errorMessage } from '@/lib/api'
 import { usePortfolioContext } from '@/lib/portfolio-context'
-import { useAssets, useCreateProposal, useHoldings, useMarketStatus, usePortfolio, useRun, useRunOptimization, useRuns } from '@/lib/queries'
+import { useAssets, useCreateProposal, useFetchPrices, useHoldings, useMarketStatus, usePortfolio, useRun, useRunOptimization, useRuns, useStocks } from '@/lib/queries'
+import { useSelection } from '@/lib/selection'
 import type { Allocation, Asset, ObjectiveKind, OptimizationRun, Portfolio, PortfolioSettings, TradeProposal } from '@/lib/types'
 import { date, dateTime, money, num, objectiveLabels, pct } from '@/lib/format'
 import { NoPortfolio } from './shared'
@@ -173,20 +177,39 @@ function ConfigFormInner({ portfolio: portfolioData, assets: assetList }: { port
   const holdings = useHoldings(portfolioId)
   const runMutation = useRunOptimization(portfolioId)
   const navigate = useNavigate()
+  const selection = useSelection()
+  const [searchParams] = useSearchParams()
+  const fromSelection = searchParams.get('from') === 'selection' && selection.count > 0
+  // Saving settings as the portfolio's defaults is opt-in: a run always stores its own inputs, the selection is not stored otherwise.
+  const [persistSettings, setPersistSettings] = useState(false)
+  const fetchPrices = useFetchPrices()
 
-  const form = useForm<FormValues>({ resolver: zodResolver(schema), mode: 'onBlur', defaultValues: toForm(portfolioData.settings) })
-  const { register, control, handleSubmit, watch, formState: { errors } } = form
+  const form = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    mode: 'onBlur',
+    defaultValues: { ...toForm(portfolioData.settings), ...(fromSelection ? { universe: selection.symbols } : {}) },
+  })
+  const { register, control, handleSubmit, watch, setValue, formState: { errors } } = form
 
   const objective = watch('objective')
-  const universe = watch('universe') ?? []
+  const watchedUniverse = watch('universe') ?? []
   const benchmark = watch('benchmarkSymbol')
   const coverage = useMemo(() => new Map((status.data?.coverage ?? []).map((c) => [c.symbol, c])), [status.data])
   const enabledAssets = (assets.data ?? []).filter((a) => a.isEnabled)
-  const sectors = [...new Set(enabledAssets.filter((a) => universe.includes(a.symbol) && a.sector).map((a) => a.sector!))].sort()
+  const assetBySymbol = useMemo(() => new Map((assets.data ?? []).map((a) => [a.symbol, a])), [assets.data])
+  // Options: tracked instruments plus anything already in the universe or in the current selection.
+  const universeOptions = [...new Set([...enabledAssets.map((a) => a.symbol), ...watchedUniverse, ...selection.symbols])]
+    .sort().map((s) => assetBySymbol.get(s)).filter((a): a is Asset => !!a)
+  const universeStocks = useStocks({ symbols: watchedUniverse, pageSize: 200 }, watchedUniverse.length > 0)
+  const insufficient = (universeStocks.data?.items ?? []).filter((s) => s.observations < 61).map((s) => s.symbol)
+  const sectors = [...new Set(watchedUniverse.map((s) => assetBySymbol.get(s)?.sector).filter((x): x is string => !!x))].sort()
 
   const onSubmit = handleSubmit(async (values) => {
     try {
-      const result = await runMutation.mutateAsync(fromForm(values, portfolio.data.settings.excludedSymbols.filter((s) => values.universe.includes(s))))
+      const result = await runMutation.mutateAsync({
+        settings: fromForm(values, portfolio.data.settings.excludedSymbols.filter((s) => values.universe.includes(s))),
+        persistSettings,
+      })
       if (result.status === 'Succeeded') toast.success('Optimization succeeded', { description: `Expected return ${pct(result.expectedReturn)} · volatility ${pct(result.volatility)}` })
       else toast.warning(`Optimization ${result.status.toLowerCase()}`, { description: result.message })
       navigate(`/optimize/${result.id}`)
@@ -209,14 +232,25 @@ function ConfigFormInner({ portfolio: portfolioData, assets: assetList }: { port
         <form onSubmit={onSubmit} className="space-y-5" noValidate>
           <fieldset className="space-y-2">
             <legend className="mb-1 flex w-full items-center justify-between text-sm font-medium">
-              Equity universe <span className="text-xs font-normal text-muted-foreground">{universe.length} selected</span>
+              Equity universe <span className="text-xs font-normal text-muted-foreground">{watchedUniverse.length} selected</span>
             </legend>
+            <div className="flex flex-wrap gap-1.5">
+              {selection.count > 0 && (
+                <Button type="button" size="xs" variant="outline" onClick={() => setValue('universe', selection.symbols, { shouldDirty: true, shouldValidate: true })}>
+                  <ListChecks /> Use stock selection ({selection.count})
+                </Button>
+              )}
+              <Button type="button" size="xs" variant="ghost" render={<Link to="/stocks" />}>Browse stocks</Button>
+              {watchedUniverse.length > 0 && (
+                <Button type="button" size="xs" variant="ghost" onClick={() => setValue('universe', [], { shouldDirty: true })}><X /> Clear</Button>
+              )}
+            </div>
             <Controller
               control={control}
               name="universe"
               render={({ field }) => (
                 <div className="grid max-h-56 grid-cols-2 gap-1 overflow-y-auto rounded-md border p-2">
-                  {enabledAssets.map((a) => {
+                  {universeOptions.map((a) => {
                     const c = coverage.get(a.symbol)
                     const checked = field.value?.includes(a.symbol) ?? false
                     return (
@@ -235,6 +269,29 @@ function ConfigFormInner({ portfolio: portfolioData, assets: assetList }: { port
               )}
             />
             {errors.universe && <FieldError msg={errors.universe.message} />}
+            {insufficient.length > 0 && (
+              <div className="space-y-1.5 rounded-md border border-warn/40 p-2 text-xs">
+                <p className="text-warn">{insufficient.join(', ')}: fewer than 61 stored prices – excluded from the optimization until prices are fetched.</p>
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="outline"
+                  disabled={fetchPrices.isPending}
+                  onClick={async () => {
+                    try {
+                      const job = await fetchPrices.mutateAsync(insufficient.slice(0, 50))
+                      if (job.assetsFailed === 0) toast.success('Price history downloaded', { description: `${job.assetsCompleted} stock(s). You can run the optimization now.` })
+                      else toast.warning(`Price history: ${job.assetsCompleted} downloaded, ${job.assetsFailed} failed`, { description: job.message ?? undefined })
+                      setTimeout(() => universeStocks.refetch(), 5000)
+                    } catch (e) {
+                      toast.error('Could not queue the download', { description: errorMessage(e) })
+                    }
+                  }}
+                >
+                  {fetchPrices.isPending ? <Loader2 className="animate-spin" /> : <Download />} Fetch prices
+                </Button>
+              </div>
+            )}
           </fieldset>
 
           <div className="grid grid-cols-2 gap-3">
@@ -321,7 +378,12 @@ function ConfigFormInner({ portfolio: portfolioData, assets: assetList }: { port
             )} />
             <Label htmlFor="fractional" className="font-normal">Allow fractional shares</Label>
           </div>
-          {benchmark && !universe.includes(benchmark) && coverage.get(benchmark)?.freshness === 'Missing' && (
+          <div className="flex items-center gap-2">
+            <Switch id="persist" checked={persistSettings} onCheckedChange={setPersistSettings} />
+            <Label htmlFor="persist" className="font-normal">Save these settings as the portfolio's defaults</Label>
+            <InfoTip>Every run stores its own inputs. Turn this on to also make this universe and these constraints the portfolio's saved configuration.</InfoTip>
+          </div>
+          {benchmark && !watchedUniverse.includes(benchmark) && coverage.get(benchmark)?.freshness === 'Missing' && (
             <p className="text-xs text-warn">The benchmark has no price data – synchronize it on the Market data page.</p>
           )}
 
@@ -436,6 +498,8 @@ function RunResults({ run }: { run: OptimizationRun }) {
           <MetricCard label="Holdings · cash" value={`${allocation.length} · ${pct(cashWeight, 1)}`} sub={`${date(run.periodStart)} – ${date(run.periodEnd)} · ${run.observations} days`} />
         </div>
       )}
+
+      <StrategyInsights insights={interpretOptimization(run)} guideId={guideForObjective(run.objective)} />
 
       <Tabs defaultValue={ok ? 'allocation' : 'methodology'}>
         <TabsList className="flex-wrap">

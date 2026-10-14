@@ -11,7 +11,7 @@ using PortfolioOptimizer.Domain;
 
 namespace PortfolioOptimizer.Infrastructure.Jobs;
 
-/// <summary>Periodically enqueues an incremental sync of all enabled assets from the active provider.</summary>
+/// <summary>Periodically enqueues an incremental sync of all tracked assets and a quote refresh cycle for the catalogue.</summary>
 public sealed class ScheduledMarketDataRefresh(
     IServiceScopeFactory scopes,
     IOptions<MarketDataOptions> options,
@@ -45,6 +45,16 @@ public sealed class ScheduledMarketDataRefresh(
 
     private async Task EnqueueAsync(CancellationToken ct)
     {
+        try
+        {
+            using var quoteScope = scopes.CreateScope();
+            await quoteScope.ServiceProvider.GetRequiredService<QuoteRefreshService>().RequestCycleAsync(QuoteRefreshService.TriggerScheduled, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Scheduled quote refresh could not be enqueued.");
+        }
+
         try
         {
             using var scope = scopes.CreateScope();

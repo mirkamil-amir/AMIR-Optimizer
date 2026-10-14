@@ -12,6 +12,7 @@ public sealed class SettingsService(
     IApplicationDbContext db,
     IMarketDataProviderRegistry providers,
     IOptions<MarketDataOptions> options,
+    IAuditLog audit,
     TimeProvider clock)
 {
     public async Task<SettingsDto> GetAsync(CancellationToken ct)
@@ -24,6 +25,7 @@ public sealed class SettingsService(
     {
         var provider = providers.Get(request.ActiveProvider); // throws ValidationException if unknown/unconfigured
         var s = await db.Settings.SingleAsync(x => x.Id == 1, ct);
+        var before = $"provider={s.ActiveProvider}, currency={s.DefaultCurrency}, rf={s.DefaultRiskFreeRate}, benchmark={s.DefaultBenchmark}, staleDays={s.StalePriceDays}";
         s.ActiveProvider = provider.Descriptor.Name;
         s.DefaultCurrency = request.DefaultCurrency.ToUpperInvariant();
         s.DefaultRiskFreeRate = request.DefaultRiskFreeRate;
@@ -31,6 +33,8 @@ public sealed class SettingsService(
         s.StalePriceDays = request.StalePriceDays;
         s.UpdatedAtUtc = clock.GetUtcNow().UtcDateTime;
         await db.SaveChangesAsync(ct);
+        await audit.RecordAsync(AuditActions.SettingsChanged, "Settings", "1",
+            $"{before} → provider={s.ActiveProvider}, currency={s.DefaultCurrency}, rf={s.DefaultRiskFreeRate}, benchmark={s.DefaultBenchmark}, staleDays={s.StalePriceDays}", ct: ct);
         return ToDto(s);
     }
 

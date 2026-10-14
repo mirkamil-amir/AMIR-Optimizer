@@ -7,12 +7,15 @@ using PortfolioOptimizer.Domain;
 
 namespace PortfolioOptimizer.Application.Portfolios;
 
-public sealed class PortfolioService(IApplicationDbContext db, PriceQueryService prices, TimeProvider clock)
+/// <summary>Portfolios are private: every query is restricted to the current user's portfolios (others → 404).</summary>
+public sealed class PortfolioService(IApplicationDbContext db, PriceQueryService prices, ICurrentUser currentUser, IAuditLog audit, TimeProvider clock)
 {
     public async Task<IReadOnlyList<PortfolioSummaryDto>> ListAsync(CancellationToken ct)
     {
+        var owner = currentUser.RequireUserId();
         var settings = await prices.SettingsAsync(ct);
-        var portfolios = await db.Portfolios.AsNoTracking().Include(p => p.Holdings).OrderBy(p => p.CreatedAtUtc).ToListAsync(ct);
+        var portfolios = await db.Portfolios.AsNoTracking().Include(p => p.Holdings).Where(p => p.OwnerId == owner)
+            .OrderBy(p => p.CreatedAtUtc).ToListAsync(ct);
         var assetIds = portfolios.SelectMany(p => p.Holdings).Select(h => h.AssetId).Distinct().ToList();
         var latest = await prices.GetLatestPricesAsync(assetIds, settings.ActiveProvider, settings.StalePriceDays, ct);
         return portfolios.Select(p =>
@@ -26,7 +29,11 @@ public sealed class PortfolioService(IApplicationDbContext db, PriceQueryService
 
     public async Task<PortfolioDto> GetAsync(Guid id, CancellationToken ct) => ToDto(await LoadAsync(id, ct));
 
-    public async Task<PortfolioDto> CreateAsync(CreatePortfolioRequest request, CancellationToken ct)
+    public Task<PortfolioDto> CreateAsync(CreatePortfolioRequest request, CancellationToken ct) =>
+        CreateForOwnerAsync(currentUser.RequireUserId(), request, ct);
+
+    /// <summary>Creates a portfolio for an explicit owner (used by seeding; HTTP requests use <see cref="CreateAsync"/>).</summary>
+    public async Task<PortfolioDto> CreateForOwnerAsync(Guid ownerId, CreatePortfolioRequest request, CancellationToken ct)
     {
         var appSettings = await prices.SettingsAsync(ct);
         if (!string.Equals(request.BaseCurrency, appSettings.DefaultCurrency, StringComparison.OrdinalIgnoreCase))
@@ -42,6 +49,7 @@ public sealed class PortfolioService(IApplicationDbContext db, PriceQueryService
         var portfolio = new Portfolio
         {
             Id = Guid.NewGuid(),
+            OwnerId = ownerId,
             Name = request.Name.Trim(),
             BaseCurrency = request.BaseCurrency.ToUpperInvariant(),
             InitialInvestment = request.InitialInvestment,
@@ -88,6 +96,7 @@ public sealed class PortfolioService(IApplicationDbContext db, PriceQueryService
         db.Portfolios.Remove(portfolio);
         await db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
+        await audit.RecordAsync(AuditActions.PortfolioDeleted, "Portfolio", id.ToString(), portfolio.Name, ct: ct);
     }
 
     public async Task<PagedResult<TransactionDto>> GetTransactionsAsync(Guid id, int page, int pageSize, string? symbol, CancellationToken ct)
@@ -127,16 +136,20 @@ public sealed class PortfolioService(IApplicationDbContext db, PriceQueryService
         return new PagedResult<OrderDto>(items.Select(o => o.ToDto()).ToList(), page, pageSize, total);
     }
 
+    /// <summary>Loads one of the current user's portfolios; a portfolio of another user is reported as not found.</summary>
     public async Task<Portfolio> LoadAsync(Guid id, CancellationToken ct, bool tracking = false)
     {
+        var owner = currentUser.RequireUserId();
         var q = db.Portfolios.Include(p => p.Holdings).AsQueryable();
         if (!tracking) q = q.AsNoTracking();
-        return await q.SingleOrDefaultAsync(p => p.Id == id, ct) ?? throw new NotFoundException("Portfolio", id);
+        return await q.SingleOrDefaultAsync(p => p.Id == id && p.OwnerId == owner, ct) ?? throw new NotFoundException("Portfolio", id);
     }
 
-    private async Task EnsureExistsAsync(Guid id, CancellationToken ct)
+    /// <summary>Throws <see cref="NotFoundException"/> unless the portfolio exists and belongs to the current user.</summary>
+    public async Task EnsureExistsAsync(Guid id, CancellationToken ct)
     {
-        if (!await db.Portfolios.AnyAsync(p => p.Id == id, ct)) throw new NotFoundException("Portfolio", id);
+        var owner = currentUser.RequireUserId();
+        if (!await db.Portfolios.AnyAsync(p => p.Id == id && p.OwnerId == owner, ct)) throw new NotFoundException("Portfolio", id);
     }
 
     private async Task<PortfolioSettings> DefaultSettingsAsync(ApplicationSettings app, CancellationToken ct)
@@ -153,8 +166,6 @@ public sealed class PortfolioService(IApplicationDbContext db, PriceQueryService
         var assets = await db.Assets.AsNoTracking().Where(a => symbols.Contains(a.Symbol)).ToListAsync(ct);
         var unknown = symbols.Except(assets.Select(a => a.Symbol)).ToList();
         if (unknown.Count > 0) errors["settings.universe"] = [$"Unknown asset(s): {string.Join(", ", unknown)}."];
-        var disabled = assets.Where(a => !a.IsEnabled && settings.Universe.Contains(a.Symbol)).Select(a => a.Symbol).ToList();
-        if (disabled.Count > 0) errors["settings.universe"] = [.. errors.GetValueOrDefault("settings.universe", []), $"Disabled asset(s): {string.Join(", ", disabled)}."];
         var otherCurrency = assets.Where(a => !string.Equals(a.Currency, currency, StringComparison.OrdinalIgnoreCase)).Select(a => $"{a.Symbol} ({a.Currency})").ToList();
         if (otherCurrency.Count > 0)
             errors["settings.universe"] = [.. errors.GetValueOrDefault("settings.universe", []), $"Assets not denominated in {currency} cannot be mixed without FX conversion: {string.Join(", ", otherCurrency)}."];

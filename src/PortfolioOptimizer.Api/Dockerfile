@@ -9,9 +9,10 @@ RUN dotnet publish src/PortfolioOptimizer.Api/PortfolioOptimizer.Api.csproj -c R
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 COPY --from=build /app/publish .
-RUN mkdir -p /app/data && chown -R app:app /app/data
+RUN mkdir -p /app/artifacts && chown -R app:app /app/artifacts
 USER app
-ENV ASPNETCORE_URLS=http://+:8080 \
-    ConnectionStrings__Default="Data Source=/app/data/portfolio.db"
+# The connection string is supplied at runtime (ConnectionStrings__DefaultConnection); nothing secret is baked in.
+# The base image listens on port 8080 (ASPNETCORE_HTTP_PORTS).
+ENV ModelArtifacts__RootPath=/app/artifacts
 EXPOSE 8080
 ENTRYPOINT ["dotnet", "PortfolioOptimizer.Api.dll"]

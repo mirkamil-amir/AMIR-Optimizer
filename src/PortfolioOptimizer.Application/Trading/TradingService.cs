@@ -14,12 +14,15 @@ public sealed class TradingService(
     IApplicationDbContext db,
     PortfolioService portfolios,
     PriceQueryService prices,
+    ICurrentUser currentUser,
+    IAuditLog audit,
     TimeProvider clock,
     ILogger<TradingService> logger)
 {
     public async Task<TradeProposalDto> CreateFromRunAsync(Guid runId, CancellationToken ct)
     {
-        var run = await db.OptimizationRuns.AsNoTracking().Include(r => r.Weights).SingleOrDefaultAsync(r => r.Id == runId, ct)
+        var owner = currentUser.RequireUserId();
+        var run = await db.OptimizationRuns.AsNoTracking().Include(r => r.Weights).SingleOrDefaultAsync(r => r.Id == runId && r.OwnerId == owner, ct)
                   ?? throw new NotFoundException("Optimization run", runId);
         if (run.Status != OptimizationRunStatus.Succeeded)
             throw new ConflictException($"Optimization run {runId} did not succeed ({run.Status}); it has no allocation to trade.");
@@ -57,7 +60,10 @@ public sealed class TradingService(
 
     public async Task<TradeProposalDto> GetProposalAsync(Guid proposalId, CancellationToken ct)
     {
-        var p = await db.TradeProposals.AsNoTracking().Include(x => x.Lines).SingleOrDefaultAsync(x => x.Id == proposalId, ct)
+        var owner = currentUser.RequireUserId();
+        var p = await db.TradeProposals.AsNoTracking().Include(x => x.Lines)
+                    .Where(x => x.Id == proposalId && db.Portfolios.Any(pf => pf.Id == x.PortfolioId && pf.OwnerId == owner))
+                    .SingleOrDefaultAsync(ct)
                 ?? throw new NotFoundException("Trade proposal", proposalId);
         return ToDto(p);
     }
@@ -65,6 +71,8 @@ public sealed class TradingService(
     /// <summary>Most recent proposal created from a run, or a new one if none exists.</summary>
     public async Task<TradeProposalDto> GetOrCreateForRunAsync(Guid runId, CancellationToken ct)
     {
+        var owner = currentUser.RequireUserId();
+        if (!await db.OptimizationRuns.AnyAsync(r => r.Id == runId && r.OwnerId == owner, ct)) throw new NotFoundException("Optimization run", runId);
         var existing = await db.TradeProposals.AsNoTracking().Include(x => x.Lines)
             .Where(p => p.OptimizationRunId == runId).OrderByDescending(p => p.CreatedAtUtc).FirstOrDefaultAsync(ct);
         return existing is not null ? ToDto(existing) : await CreateFromRunAsync(runId, ct);
@@ -73,6 +81,7 @@ public sealed class TradingService(
     public async Task<PagedResult<TradeProposalDto>> ListProposalsAsync(Guid portfolioId, int page, int pageSize, CancellationToken ct)
     {
         if (page < 1 || pageSize is < 1 or > 100) throw new ValidationException("Invalid paging parameters (page ≥ 1, 1 ≤ pageSize ≤ 100).");
+        await portfolios.EnsureExistsAsync(portfolioId, ct);
         var q = db.TradeProposals.AsNoTracking().Where(p => p.PortfolioId == portfolioId);
         var total = await q.CountAsync(ct);
         var items = await q.Include(p => p.Lines).OrderByDescending(p => p.CreatedAtUtc).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
@@ -89,6 +98,8 @@ public sealed class TradingService(
         if (string.IsNullOrWhiteSpace(idempotencyKey) || idempotencyKey.Length > 100)
             throw new ValidationException("Idempotency-Key", "An Idempotency-Key header (1-100 characters) is required.");
 
+        // Ownership first: replaying a stored result must not leak another user's execution.
+        var portfolio = await portfolios.LoadAsync(portfolioId, ct, tracking: true);
         var previous = await db.PaperTradeBatches.AsNoTracking().Include(b => b.Orders)
             .SingleOrDefaultAsync(b => b.PortfolioId == portfolioId && b.IdempotencyKey == idempotencyKey, ct);
         if (previous is not null)
@@ -104,7 +115,6 @@ public sealed class TradingService(
         if (proposal.Status != ProposalStatus.Pending)
             throw new ConflictException($"The proposal is {proposal.Status.ToString().ToLowerInvariant()} and can no longer be executed. Create a new proposal.");
 
-        var portfolio = await portfolios.LoadAsync(portfolioId, ct, tracking: true);
         if (portfolio.Version != proposal.PortfolioVersion)
             throw new ConflictException("Holdings or cash changed after this proposal was created. Create a new proposal before executing.");
 
@@ -199,13 +209,15 @@ public sealed class TradingService(
         {
             throw new ConflictException("The portfolio was modified concurrently. Reload and create a new proposal.");
         }
-        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("UNIQUE", StringComparison.OrdinalIgnoreCase) == true)
+        catch (DbUpdateException ex) when (db.IsUniqueConstraintViolation(ex))
         {
             throw new ConflictException("A request with this Idempotency-Key is already being processed.");
         }
 
         logger.LogInformation("Paper trades executed for portfolio {PortfolioId}: proposal {ProposalId}, {Orders} orders, fees {Fees}",
             portfolioId, proposal.Id, batch.Orders.Count, batch.TotalFees);
+        await audit.RecordAsync(AuditActions.PaperTradesExecuted, "Portfolio", portfolioId.ToString(),
+            $"Proposal {proposal.Id}: {batch.Orders.Count(o => o.Status != OrderStatus.Rejected)} filled, {batch.Orders.Count(o => o.Status == OrderStatus.Rejected)} rejected (simulated).", ct: ct);
         return ToDto(batch, replay: false);
     }
 

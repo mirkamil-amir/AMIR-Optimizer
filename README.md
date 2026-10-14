@@ -1,207 +1,189 @@
-# Portfolio Optimizer
+# AMIR Optimizer – Portfolio Research Platform
 
-A full-stack equity portfolio optimization and **paper-trading** application: download historical prices, estimate
-risk and return, solve constrained mean-variance problems, turn the result into a whole-share trade proposal,
-execute it in a simulated portfolio, and track holdings, P&L, risk and benchmark-relative performance. Includes a
-walk-forward backtester.
+An educational portfolio-research platform. Students browse ~900 stocks from five markets (S&P 500, DAX 40 and the
+historical DAX 30, CAC 40, FTSE 100, Nikkei 225) with automatically refreshed, clearly labelled prices, build a
+temporary selection, optimize it with **classical mean-variance optimization**, train and evaluate
+**machine-learning** ranking models with strictly chronological validation, compare both approaches against equal
+weight and a benchmark on **one shared walk-forward simulator**, and act on the results in a **simulated (paper)
+portfolio**. Every strategy has a 12-part explanation in the built-in **strategy guide**, and every result comes with
+an interpretation generated from its own numbers.
 
-> Local, single-user analytics tool. **No real orders are ever placed. Not investment advice.**
+> Research and paper trading only. **No real orders are ever placed. Nothing here is investment advice**, and no
+> result in this application demonstrates that a strategy is profitable. Backtests are hypothetical and subject to
+> survivorship bias (see [limitations](docs/limitations.md)).
 
 | Layer | Stack |
 |---|---|
-| Backend | .NET 10, ASP.NET Core Web API (controllers), EF Core 10 + SQLite, Swagger UI (Swashbuckle), `Microsoft.Extensions.Http.Resilience`, MathNet.Numerics |
-| Quant engine | Custom OSQP-style ADMM QP solver with active-set polishing, Ledoit–Wolf covariance, efficient frontier, backtester |
-| Frontend | React 19 + TypeScript, Vite 8, Tailwind CSS v4, shadcn/ui (Base UI), TanStack Query, React Hook Form + Zod, Recharts, React Router |
-| Tests | xUnit: 70 unit tests (math, solver, optimizer, backtest timing, accounting, providers) + 9 API integration tests |
+| Backend | .NET 10, ASP.NET Core Web API, EF Core 10 + **PostgreSQL 17** (Npgsql), ASP.NET Core Identity (cookie sessions), Swagger UI |
+| Quant engine | Custom ADMM QP solver, Ledoit–Wolf covariance, efficient frontier, shared portfolio simulator |
+| ML engine | Ridge and logistic regression (in-house, closed form / IRLS), random forest and gradient boosting (ML.NET FastForest / FastTree) |
+| Frontend | React 19 + TypeScript, Vite 8, Tailwind CSS v4, shadcn/ui on Base UI, TanStack Query, Recharts |
+| Market data | Yahoo Finance (default; quotes in batches of 20), Alpha Vantage (optional, free key), Mock (simulated, tests) |
+| Tests | xUnit: 104 unit + 40 ML + 55 integration (real PostgreSQL) · Vitest: 50 · Playwright: 15 on a disposable stack · opt-in live provider smoke tests |
 
-Documentation: [architecture](docs/architecture.md) · [methodology & assumptions](docs/methodology.md) ·
-[data sources](docs/data-sources.md) · [limitations & roadmap](docs/limitations.md)
+Documentation: [AGENTS.md](AGENTS.md) (start here when changing code) · [architecture](docs/architecture.md) ·
+[database](docs/database.md) · [market data](docs/market-data.md) · [quantitative strategies](docs/quantitative-strategies.md) ·
+[machine learning & strategy comparison](docs/machine-learning.md) · [security](docs/security.md) ·
+[testing](docs/testing.md) · [deployment, backup & restore](docs/deployment.md) ·
+[implementation status](docs/implementation-status.md) · [decisions](docs/decisions.md) ·
+[limitations](docs/limitations.md) · [audit (first upgrade)](docs/audit.md) · [report (first upgrade)](docs/final-report.md)
 
-## Quick start (local)
+## Quick start (containers)
 
-Prerequisites: **.NET 10 SDK** and **Node.js 20.19+ or 22+**.
-
-```bash
-# 1. Backend – http://localhost:5080 (Swagger UI at /swagger)
-cd src/PortfolioOptimizer.Api
-dotnet run
-```
-
-On first start the API applies EF Core migrations, creates `data/portfolio.db`, seeds an 11-asset universe
-(AAPL, MSFT, NVDA, AMZN, GOOGL, META, JPM, JNJ, XOM, PG, SPY) and a **Demo Portfolio** with 100,000 USD of simulated
-cash, and queues a 5-year price download from the active provider (Yahoo by default, no key needed).
+Prerequisites: Podman (with `podman compose`) or Docker Compose v2.
 
 ```bash
-# 2. Frontend – http://localhost:5173 (proxies /api to the backend)
-cd frontend/portfolio-dashboard
-npm install
-npm run dev
+cp .env.example .env          # then replace EVERY placeholder password in .env
+podman compose up --build -d  # or: docker compose up --build -d
 ```
 
-### Offline / no-network demo
-
-Use the deterministic simulated provider (clearly labelled **SIMULATED** throughout the UI):
-
-```bash
-MarketData__DefaultProvider=Mock dotnet run      # only affects a new database
-```
-
-or switch the provider at any time in **Settings** (each provider's data is stored separately and never mixed).
-
-### Docker Compose
-
-```bash
-cp .env.example .env        # optionally set ALPHAVANTAGE_API_KEY
-docker compose up --build
-```
-
-Dashboard: http://localhost:8081 · API/Swagger: http://localhost:5080/swagger · data persists in the
-`portfolio-data` volume. (The compose setup was written but not run on the development machine – see limitations.)
-
-## Configuration
-
-Settings come from `appsettings.json`, environment variables (`Section__Key`) or user-secrets.
-
-| Key | Default | Meaning |
-|---|---|---|
-| `ConnectionStrings__Default` | `Data Source=data/portfolio.db` | SQLite database file |
-| `MarketData__DefaultProvider` | `Yahoo` | Provider for a new database: `Yahoo`, `AlphaVantage`, `Mock` |
-| `MarketData__AlphaVantage__ApiKey` | – | **Secret.** Use an env var or `dotnet user-secrets set "MarketData:AlphaVantage:ApiKey" "<key>"` in `src/PortfolioOptimizer.Api`. Never commit it. |
-| `MarketData__AlphaVantage__UseAdjustedEndpoint` | `false` | Use the premium adjusted daily series |
-| `MarketData__ScheduledRefreshEnabled` / `…IntervalHours` | `true` / `12` | Periodic incremental sync |
-| `MarketData__Yahoo__MinRequestIntervalMs` | `500` | Politeness throttle |
-| `Seed__Assets`, `Seed__DemoPortfolio`, `Seed__SyncOnEmptyDatabase` | `true` | First-start seeding |
-| `Cors__AllowedOrigins__0` | `http://localhost:5173` | Allowed browser origins |
-| `RateLimiting__PermitPerMinute` / `…ExpensivePermitPerMinute` | `600` / `30` | Per-IP limits (optimization, sync, backtest are "expensive") |
-| `Swagger__Enabled` | `true` in Development | Expose Swagger UI |
-
-## Walkthrough (definition of done)
-
-1. **Overview** – portfolio value, cash, returns, ex-ante risk, recent runs/transactions, data freshness.
-2. **Market data** – coverage per asset (observations, date range, adjusted-close availability, freshness), sync
-   jobs with data-quality counts, add/disable assets, price chart (raw vs adjusted close).
-3. **Settings → Portfolios** – create a portfolio with any initial investment.
-4. **Optimize** – select universe, lookback, objective (min variance, max Sharpe, target return, max return for a
-   volatility limit, equal weight) and constraints (weight bounds, max holdings, min position, cash reserve,
-   turnover, sector caps, costs, fractional shares) → **Run optimization**.
-5. Inspect allocation, efficient frontier, correlation heatmap, risk contributions, comparison with equal weight and
-   the benchmark, in-sample curve, and the full inputs/diagnostics of the stored run. Infeasible settings produce an
-   explanation instead of weights.
-6. **Create trade proposal** – target vs. current weights, whole-share quantities, prices and dates, costs, cash after
-   trades, and why weights deviate.
-7. **Review & execute** → confirmation dialog → simulated fills; holdings and the immutable ledger update
-   (**Holdings**, **Trades & ledger**).
-8. **Analytics** – performance vs benchmark, drawdown, monthly returns, VaR/CVaR, beta, tracking error, risk
-   contribution, allocation history. (Realized history grows with each daily close after the first trade.)
-9. **Backtest** – monthly/quarterly re-optimization with costs vs buy-and-hold, equal weight and benchmark.
-10. **Swagger UI** at http://localhost:5080/swagger documents and exercises every endpoint.
-11. Restart the API – everything is persisted in SQLite.
-
-## API overview (`/api/v1`)
-
-| Area | Endpoints |
+| URL | What |
 |---|---|
-| Assets | `GET/POST /assets`, `PATCH /assets/{symbol}`, `GET /assets/{symbol}/prices?from&to&page&pageSize` |
-| Market data | `POST /market-data/sync` (202), `GET /market-data/jobs/{id}`, `GET /market-data/status` |
-| Settings | `GET/PUT /settings` |
-| Portfolios | `GET/POST /portfolios`, `GET/PUT/DELETE /portfolios/{id}` |
-| Optimization | `POST/GET /portfolios/{id}/optimization-runs`, `GET /optimization-runs/{runId}`, `…/allocation`, `GET …/trade-proposal`, `POST …/trade-proposals` |
-| Trading | `GET /portfolios/{id}/holdings`, `/transactions`, `/orders`, `/cash-ledger`, `/trade-proposals`, `POST /portfolios/{id}/rebalance-preview`, `POST /portfolios/{id}/paper-trades` (requires `Idempotency-Key` header and `confirm: true`), `GET /trade-proposals/{id}` |
-| Analytics | `GET /portfolios/{id}/performance?from&to`, `GET /portfolios/{id}/risk?lookbackDays&confidence` |
-| Backtests | `POST /backtests` (202), `GET /backtests`, `GET /backtests/{id}` |
-| Ops | `GET /health` (liveness), `GET /health/ready` (database) |
+| http://localhost:8081 | Dashboard (nginx serves the SPA and proxies `/api`) |
+| http://localhost:5080/swagger | Swagger UI (Development environment only) |
+| http://localhost:5080/health/ready | Readiness (database) |
 
-Errors use RFC 9457 Problem Details (`400` validation with field errors, `404`, `409` conflicts such as executing a
-non-pending proposal, `422` business-rule violations, `502` provider failures, `429` rate limit).
+Sign in with `ADMIN_EMAIL` / `ADMIN_PASSWORD` from `.env`. That administrator is created on first start only while
+no administrator exists; later changes to these variables are ignored.
 
-## Updating
+What starts: `db` (PostgreSQL, data in the `pgdata` volume) → `migrate` (applies EF Core migrations as the owner
+role, then exits) → `api` (connects as the least-privilege app role; trained models in the `model-artifacts` volume)
+→ `web`. First start seeds the 503-stock catalogue, the administrator, a demo portfolio, and queues a 5-year price
+download for the 11 default symbols from Yahoo.
 
-### After changing code (or pulling new commits)
+## Quick start (local development)
 
-**Containers (Podman or Docker)** – rebuild and restart; the database volume is kept and new EF Core migrations are
-applied automatically on API start:
+Prerequisites: .NET 10 SDK, Node.js 20.19+ or 22+, and a PostgreSQL 15+ server. The compose database works:
 
 ```bash
-podman compose up --build -d          # or: docker compose up --build -d
-podman compose logs -f api            # watch start-up / migrations / sync jobs (Ctrl+C to stop)
-curl -s localhost:5080/health/ready   # → Healthy
-```
+set -a; . ./.env; set +a
+podman compose up -d db
 
-Rebuild only one side: `podman compose up --build -d api` or `… web`.
+# API – http://localhost:5080 (applies migrations on start in Development)
+cd src/PortfolioOptimizer.Api
+ConnectionStrings__DefaultConnection="Host=localhost;Port=5432;Database=$POSTGRES_DB;Username=$POSTGRES_OWNER_USER;Password=$POSTGRES_OWNER_PASSWORD" \
+Admin__Email="$ADMIN_EMAIL" Admin__Password="$ADMIN_PASSWORD" dotnet run
 
-**Local development** – stop `dotnet run` / `npm run dev`, then:
-
-```bash
-dotnet build && dotnet test                         # repo root
-cd src/PortfolioOptimizer.Api && dotnet run          # migrations apply on start
+# Frontend – http://localhost:5173 (proxies /api to :5080)
 cd frontend/portfolio-dashboard && npm install && npm run dev
 ```
 
-### Changing the database schema
+Instead of environment variables you can keep the connection string in user-secrets
+(`dotnet user-secrets set "ConnectionStrings:DefaultConnection" "<…>"` in `src/PortfolioOptimizer.Api`).
+Local development uses the owner role so `Database:MigrateOnStartup` (true in Development) can create the schema.
 
-1. Edit the entity in `src/PortfolioOptimizer.Domain` and its mapping in `Infrastructure/Persistence/AppDbContext.cs`.
-2. Create a migration (from the repo root), **then build again** – the EF tool builds before writing the files:
-   ```bash
-   dotnet tool restore
-   dotnet ef migrations add <Name> -p src/PortfolioOptimizer.Infrastructure -s src/PortfolioOptimizer.Api -o Persistence/Migrations
-   dotnet build
-   ```
-3. Restart the API (or rebuild the `api` container). Migrations run automatically.
+Offline demo: start with `MarketData__DefaultProvider=Mock` on a new database, or switch the provider under
+**Admin settings**. Simulated data is flagged and shows a **SIMULATED** badge everywhere it is used.
 
-### Updating dependencies
+## Using the platform
 
-```bash
-dotnet list package --outdated                       # then: dotnet add <project> package <Name> -v <version>
-cd frontend/portfolio-dashboard && npm outdated && npm update
-npx shadcn@latest add <component>                    # add/refresh UI components (Base UI flavour)
-```
+1. **Sign in / apply.** New users apply on `/register`; their account stays *Pending* until an administrator
+   approves it under **Users**. Pending, rejected and suspended accounts can sign in but only see their status page.
+2. **Stock selection.** Navigate market → index → sector, search by company or ticker, sort. Every sign-in starts a
+   shared background price refresh for all markets; the page shows cached prices immediately and refreshes the visible
+   ones. Each price shows its currency, kind (*Delayed quote* / *Last close*, never "live"), when it applies, when it was
+   retrieved and whether it is cached, stale or SIMULATED; a refresh icon updates a single stock. Select stocks across
+   sectors – the selection lives **only in browser memory** (not saved, survives navigation, discarded on reload or
+   sign-out). Fetch price history for selected stocks from the selection tray. Analyses need stocks of one currency.
+3. **Optimize** (classical). The selection becomes the universe. Choose an objective and constraints, run, inspect
+   allocation, frontier, risk contributions and diagnostics, then create a trade proposal for the paper portfolio.
+4. **Machine learning.** Choose a model family, target (forward return, forward excess return, probability of
+   outperformance, forward volatility), horizon and portfolio-construction rules. The experiment runs in the
+   background: chronological train/validation/test split with purging, hyperparameter search on validation,
+   one evaluation on the untouched test period with naive baselines, explainability, current predictions, an ML
+   portfolio and a walk-forward backtest. Every model version is stored with a checksummed artifact.
+5. **Strategy comparison.** Pick an optimization run and an ML experiment. Both are re-run walk-forward with their
+   stored settings on identical dates, universe, capital, costs and rebalancing next to equal weight and the
+   benchmark (optionally a hybrid). Saved comparisons are immutable.
+6. **Paper portfolio.** Proposals never change holdings; executing requires an explicit confirmation. Holdings,
+   ledger, analytics and backtests work as before, but every portfolio, run and backtest now belongs to its owner.
+7. **Learn.** The strategy guide explains every optimization objective, every ML model, ML portfolio construction and
+   strategy comparison in 12 sections (theory, mathematics, worked example, caveats …); a glossary covers the terms.
+   Result pages show "What your result means", labelled as calculated facts, estimates, interpretations and cautions.
+8. **Administration.** The admin overview shows accounts, analysis activity and market-data health (provider status,
+   refresh cycles, coverage per index). Approve, reject, suspend and reactivate users, grant the administrator role,
+   review the audit trail, change settings, import a catalogue or replace an index's constituents (CSV).
 
-Run `dotnet test` and `npm run build` afterwards.
+The header shows the signed-in user's name at the top left; administrators are labelled **Admin Investor**.
 
-### Resetting data
+## Configuration
 
-| What | Command |
+Settings come from `appsettings*.json`, environment variables (`Section__Key`) or user-secrets. Secrets never belong
+in `appsettings*.json` or in git.
+
+| Key | Default | Meaning |
+|---|---|---|
+| `ConnectionStrings__DefaultConnection` | – (required) | PostgreSQL connection string. **Secret.** The API refuses to start without it. |
+| `Database__MigrateOnStartup` | `false` (`true` in Development) | Apply migrations on API start. In production run `PortfolioOptimizer.Api migrate` with the owner role instead. |
+| `Admin__Email`, `Admin__Password` | – | Bootstrap administrator, used only while no administrator exists. **Secret.** |
+| `Authentication__SessionHours` | `8` | Sliding cookie session lifetime |
+| `ModelArtifacts__RootPath` | `data/model-artifacts` (`/app/artifacts` in the image) | Directory for trained model files; back it up with the database |
+| `ReverseProxy__TrustForwardedHeaders` | `false` | Trust `X-Forwarded-*` (only behind your own proxy, as in compose) |
+| `MarketData__DefaultProvider` | `Yahoo` | Provider for a new database: `Yahoo`, `AlphaVantage`, `Mock` |
+| `MarketData__AlphaVantage__ApiKey` | – | **Secret.** Only for the Alpha Vantage provider |
+| `MarketData__ScheduledRefreshEnabled` / `…IntervalHours` | `true` / `12` | Periodic incremental price sync |
+| `Seed__Assets`, `Seed__DemoPortfolio`, `Seed__SyncOnEmptyDatabase` | `true` | First-start seeding (set `Seed__DemoPortfolio=false` before a SQLite import) |
+| `Cors__AllowedOrigins__0` | `http://localhost:5173` | Allowed browser origins |
+| `RateLimiting__PermitPerMinute` / `…ExpensivePermitPerMinute` / `…AuthenticationPermitPerMinute` | `600` / `30` / `10` | Global per IP / expensive jobs per user / sign-in, registration and password change per IP |
+| `Swagger__Enabled` | `true` in Development | Expose Swagger UI |
+| `MarketData__Quotes__FreshForMinutes` / `…CycleMinIntervalMinutes` | `15` / `15` | Quote cache window / minimum time between sign-in refresh cycles |
+| `MarketData__Quotes__RefreshOnSignIn` | `true` | Start a quote refresh cycle when an approved user signs in |
+| `MarketData__AlphaVantage__DailyRequestLimit` | `25` | Client-side daily quota for Alpha Vantage (free tier) |
+| `Universes__Directory` | – | Folder with `indices.csv` / `<CODE>.csv` overriding the bundled constituent files |
+| `RateLimiting__QuotePermitPerMinute` | `60` | On-demand quote refreshes per user |
+
+## API overview (`/api/v1`)
+
+Every endpoint except `auth/*` and `/health*` requires an approved account; `admin/*` and catalogue/settings writes
+require the Administrator role. State-changing requests need the antiforgery header `X-XSRF-TOKEN` (the value of the
+readable `XSRF-TOKEN` cookie; `GET /auth/antiforgery` issues one). Swagger UI sends it automatically.
+
+| Area | Endpoints |
 |---|---|
-| Container database (all portfolios, prices) | `podman compose down -v` then `podman compose up -d` |
-| Local database | stop the API, delete `src/PortfolioOptimizer.Api/data/` |
-| Re-download prices only | Market data page → *Sync all enabled* (or per-asset *Refresh*) |
+| Auth | `GET /auth/antiforgery`, `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, `POST /auth/change-password` |
+| Administration | `GET /admin/overview`, `GET /admin/users?includeTestAccounts`, `GET /admin/users/{id}`, `PUT /admin/users/{id}/status`, `PUT /admin/users/{id}/roles`, `GET /admin/audit-events`, `POST /admin/catalogue/import`, `POST /admin/catalogue/universes/{code}`, `POST/GET /admin/catalogue/quote-refresh` |
+| Stock selection | `GET /markets`, `GET /sectors?country&index`, `GET /stocks?country&index&sector&search&sort&withPrices&symbols&page`, `GET /stocks/{symbol}`, `…/quote`, `…/prices`, `POST /stocks/quotes/refresh`, `POST /stocks/{symbol}/quote/refresh`, `GET /market-data/quote-refresh/latest` |
+| Machine learning | `GET /ml/models`, `POST/GET /ml/experiments`, `GET/DELETE /ml/experiments/{id}`, `…/metrics`, `…/backtest`, `…/models`, `GET/POST …/predictions` |
+| Strategy comparison | `POST/GET /strategy-comparisons`, `GET/DELETE /strategy-comparisons/{id}` |
+| Market data & assets | `GET/POST /assets`, `PATCH /assets/{symbol}`, `POST /market-data/sync`, `GET /market-data/jobs/{id}`, `GET /market-data/status` |
+| Portfolios, optimization, trading, analytics, backtests | as before: `/portfolios/…`, `/optimization-runs/…`, `/trade-proposals/…`, `/backtests/…` (all owner-scoped) |
+| Settings | `GET /settings` (all users), `PUT /settings` (administrators) |
 
-### Stopping
-
-`podman compose down` (keeps data) · `podman compose down -v` (deletes data).
+Errors use RFC 9457 Problem Details (`400`, `401`, `403`, `404`, `409`, `422`, `429`, `502`).
 
 ## Testing
 
 ```bash
-dotnet test                                   # unit + integration tests (integration uses the mock provider, no network)
-cd frontend/portfolio-dashboard && npm run build   # type-check + production build
+./scripts/test.sh                       # all .NET tests; disposable PostgreSQL via Testcontainers
+cd frontend/portfolio-dashboard && npm test && npm run build && npm run lint
+./scripts/e2e.sh                        # Playwright on a disposable, isolated stack (Mock data), removed afterwards
+PO_LIVE_SMOKE=1 ALPHAVANTAGE_API_KEY=… dotnet test tests/PortfolioOptimizer.UnitTests --filter LiveProviderSmokeTests   # opt-in
 ```
 
-Unit tests verify results against closed-form solutions (two-asset and interior GMV, tangency portfolio), metric
-definitions on hand-computed series, infeasibility detection, constraint satisfaction, look-ahead-free backtest
-timing, weighted-average-cost accounting, whole-share/fee/cash arithmetic, data normalization and provider parsing.
+Automated tests never touch the application database and need no API key. Setup for IDEs (Testcontainers with
+Podman), what each suite covers and the latest results: [docs/testing.md](docs/testing.md).
 
-## Database & migrations
+## Operations
 
-Migrations live in `src/PortfolioOptimizer.Infrastructure/Persistence/Migrations` and are applied automatically on
-start. To add one:
-
-```bash
-dotnet tool restore
-dotnet ef migrations add <Name> -p src/PortfolioOptimizer.Infrastructure -s src/PortfolioOptimizer.Api -o Persistence/Migrations
-```
-
-Reset the local database by stopping the API and deleting `src/PortfolioOptimizer.Api/data/`.
+- **Update after code changes:** `podman compose up --build -d` – `migrate` applies new migrations before the API
+  starts. Locally: `dotnet build`, restart `dotnet run` (Development migrates on start).
+- **Add a migration:** `dotnet ef migrations add <Name> -p src/PortfolioOptimizer.Infrastructure -s src/PortfolioOptimizer.Api -o Persistence/Migrations`, then `dotnet build`.
+- **Backup & restore, SQLite import, production hardening:** see [deployment](docs/deployment.md).
+- **Reset everything (containers):** `podman compose down -v` deletes the database **and** the model artifacts.
 
 ## Troubleshooting
 
 | Symptom | Fix |
 |---|---|
-| Dashboard shows "The API is unreachable" | Start the backend on port 5080 (or set `VITE_API_PROXY_TARGET`). |
-| Sync job fails with HTTP 429 / "Rate limited" | Yahoo throttling – wait and click *Sync all enabled* again (downloads are incremental). Increase `MarketData__Yahoo__MinRequestIntervalMs`. |
-| Yahoo returns "not valid JSON" | The unofficial endpoint changed or served a bot check; switch to `Mock` or Alpha Vantage. |
-| Alpha Vantage greyed out | Set `MarketData__AlphaVantage__ApiKey` on the server and restart. |
-| Optimization "Infeasible" | Read the explanation – typically max weight × assets < 100 % − cash, sector caps, or a target above the achievable return. |
-| "No portfolio … beats the risk-free rate" | Max Sharpe is undefined; lower the risk-free rate or choose minimum variance. |
-| Performance charts empty | Realized history begins after the first execution and grows daily; use Backtest for history. |
-| `dotnet` reports a missing SDK | Install the .NET 10 SDK (`global.json` accepts any 10.0.x feature band). |
+| API exits: "Connection string 'DefaultConnection' is not configured" | Set the connection string (environment variable or user-secrets). |
+| API exits: "The database schema is out of date" | Run `podman compose run --rm migrate` (or enable `Database__MigrateOnStartup` locally). |
+| Sign-in fails with "Too Many Requests" | Sign-in rate limit (10/min per IP); wait a minute. Accounts lock for 15 min after 5 failed passwords. |
+| `400 Antiforgery token validation failed` from scripts | Fetch `GET /api/v1/auth/antiforgery` with the session cookie and send `X-XSRF-TOKEN`. |
+| Container API does not start, port 5080 busy | A local `dotnet run` is still listening: `lsof -nP -iTCP:5080 -sTCP:LISTEN`. |
+| "Model artifact unavailable" | The artifact file is missing (e.g. the `model-artifacts` volume was not restored). Re-run the experiment. |
+| ML experiment fails "not enough samples" | Select more stocks (≥ 5) with longer price history, or shorten the horizon. |
+| Yahoo sync fails (429 / not JSON) | Throttling or endpoint change; retry later or use Mock / Alpha Vantage. |
+| Node tooling is extremely slow on macOS | The repo is in an iCloud-synced folder and `node_modules` files were offloaded. Keep `node_modules` as a symlink to `node_modules.nosync` (docs/testing.md) or move the repo out of `~/Desktop`/`~/Documents`. |
+| A stock shows "No price available" | The provider has no recent trade (e.g. delisted members of the historical DAX 30) or does not cover the market (Alpha Vantage: Tokyo). Nothing is filled in. |
+| "The selection mixes currencies" | Analyses use one currency (no FX conversion); analyse each market separately. |
+| Playwright refuses to run | It only runs against a disposable E2E stack – use `./scripts/e2e.sh`. |
