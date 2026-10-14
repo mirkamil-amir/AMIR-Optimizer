@@ -40,6 +40,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<MlModelVersion> MlModelVersions => Set<MlModelVersion>();
     public DbSet<MlPredictionSet> MlPredictionSets => Set<MlPredictionSet>();
     public DbSet<StrategyComparison> StrategyComparisons => Set<StrategyComparison>();
+    public DbSet<WatchlistEntry> WatchlistEntries => Set<WatchlistEntry>();
 
     /// <summary>ASP.NET Core data-protection keys (cookie and antiforgery encryption), shared across restarts and instances.</summary>
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
@@ -126,6 +127,16 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             e.HasOne<OptimizationRun>().WithMany().HasForeignKey(x => x.OptimizationRunId).OnDelete(DeleteBehavior.SetNull);
             e.HasOne<MlExperiment>().WithMany().HasForeignKey(x => x.MlExperimentId).OnDelete(DeleteBehavior.SetNull);
             e.HasOne<MlModelVersion>().WithMany().HasForeignKey(x => x.MlModelVersionId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        b.Entity<WatchlistEntry>(e =>
+        {
+            e.Property(x => x.Id).ValueGeneratedNever();
+            // One entry per user and listing; the index also serves the owner-scoped list query.
+            e.HasIndex(x => new { x.OwnerId, x.AssetId }).IsUnique();
+            e.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Cascade);
+            // Catalogue assets referenced by a watchlist cannot be deleted silently.
+            e.HasOne(x => x.Asset).WithMany().HasForeignKey(x => x.AssetId).OnDelete(DeleteBehavior.Restrict);
         });
 
         b.Entity<AuditEvent>(e =>

@@ -1627,6 +1627,30 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                     b.ToTable("TradeProposalLine");
                 });
 
+            modelBuilder.Entity("PortfolioOptimizer.Domain.WatchlistEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("AddedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("AssetId")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssetId");
+
+                    b.HasIndex("OwnerId", "AssetId")
+                        .IsUnique();
+
+                    b.ToTable("WatchlistEntries");
+                });
+
             modelBuilder.Entity("PortfolioOptimizer.Infrastructure.Identity.ApplicationUser", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1997,6 +2021,23 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                         .HasForeignKey("ProposalId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("PortfolioOptimizer.Domain.WatchlistEntry", b =>
+                {
+                    b.HasOne("PortfolioOptimizer.Domain.Asset", "Asset")
+                        .WithMany()
+                        .HasForeignKey("AssetId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PortfolioOptimizer.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Asset");
                 });
 
             modelBuilder.Entity("PortfolioOptimizer.Domain.Asset", b =>

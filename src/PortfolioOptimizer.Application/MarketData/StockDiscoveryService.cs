@@ -121,6 +121,57 @@ public sealed class StockDiscoveryService(
         return new QuoteRefreshResultDto(outcomes.Select(o => new QuoteRefreshItemDto(o.Symbol, o.Outcome.ToString(), o.Message)).ToList(), items);
     }
 
+    /// <summary>List rows (metadata, coverage, latest quote) for known asset ids, in the given order.</summary>
+    public async Task<IReadOnlyList<StockListItemDto>> GetItemsAsync(IReadOnlyList<int> assetIds, CancellationToken ct)
+    {
+        if (assetIds.Count == 0) return [];
+        var settings = await prices.SettingsAsync(ct);
+        var assets = await db.Assets.AsNoTracking().Where(a => assetIds.Contains(a.Id)).ToDictionaryAsync(a => a.Id, ct);
+        return await BuildItemsAsync(assetIds.Where(assets.ContainsKey).Select(id => assets[id]).ToList(), settings, ct);
+    }
+
+    /// <summary>Stored daily prices of a stock for a chart range (1D, 1M, 3M, 6M, 1Y, 5Y) from the active source.</summary>
+    public async Task<PriceHistoryDto> GetHistoryAsync(string symbol, string range, CancellationToken ct)
+    {
+        if (!PriceHistory.Codes.TryGetValue(range ?? "", out var r))
+            throw new ValidationException("range", $"Range must be one of {string.Join(", ", PriceHistory.Codes.Keys)}.");
+        var settings = await prices.SettingsAsync(ct);
+        var asset = await FindAsync(symbol, ct);
+        var source = settings.ActiveProvider;
+        var bars = await LoadBarsAsync([asset.Id], source, r, ct);
+        bars.TryGetValue(asset.Id, out var own);
+        var slice = PriceHistory.Slice(own?.Bars ?? [], r);
+        return new PriceHistoryDto(asset.Symbol, asset.Name, asset.Currency, Markets.ForSymbol(asset.Symbol).Exchange, PriceHistory.Code(r), slice.Supported,
+            slice.UsesAdjustedClose ? "Adjusted close" : "Close", slice.Points.Select(p => new PricePointDto(p.Date, p.Price)).ToList(),
+            slice.BaseDate, slice.BasePrice, slice.EndDate, slice.EndPrice, slice.Change, slice.AvailableFrom, slice.Limitation, source,
+            own?.IsSimulated ?? false, own?.LastRetrievedAtUtc, SupportedRanges);
+    }
+
+    /// <summary>Ranges a client may request; 1D is accepted but always reported as unsupported (no intraday bars are stored).</summary>
+    public static readonly IReadOnlyList<string> SupportedRanges = ["1M", "3M", "6M", "1Y", "5Y"];
+
+    public sealed record StoredBars(List<HistoryBar> Bars, bool IsSimulated, DateTime? LastRetrievedAtUtc);
+
+    /// <summary>
+    /// Daily bars per asset, enough for <paramref name="range"/>: from a little before the range start relative to each
+    /// asset's own last bar (so the base observation on or before the start is included).
+    /// </summary>
+    public async Task<Dictionary<int, StoredBars>> LoadBarsAsync(IReadOnlyCollection<int> assetIds, string source, PriceRange range, CancellationToken ct)
+    {
+        if (range == PriceRange.OneDay || assetIds.Count == 0) return [];
+        var lastDates = await db.HistoricalPrices.AsNoTracking().Where(p => assetIds.Contains(p.AssetId) && p.Source == source)
+            .GroupBy(p => p.AssetId).Select(g => new { AssetId = g.Key, Last = g.Max(p => p.Date) }).ToListAsync(ct);
+        if (lastDates.Count == 0) return [];
+        // Ten extra days cover weekends and holiday runs before the range start.
+        var from = PriceHistory.StartFor(range, lastDates.Min(x => x.Last)).AddDays(-10);
+        var rows = await db.HistoricalPrices.AsNoTracking()
+            .Where(p => assetIds.Contains(p.AssetId) && p.Source == source && p.Date >= from)
+            .Select(p => new { p.AssetId, p.Date, p.Close, p.AdjustedClose, p.IsSimulated, p.RetrievedAtUtc })
+            .ToListAsync(ct);
+        return rows.GroupBy(x => x.AssetId).ToDictionary(g => g.Key, g => new StoredBars(
+            g.Select(x => new HistoryBar(x.Date, x.Close, x.AdjustedClose)).ToList(), g.Any(x => x.IsSimulated), g.Max(x => x.RetrievedAtUtc)));
+    }
+
     private IQueryable<Asset> Filter(IQueryable<Asset> q, StockQuery query)
     {
         if (query.Symbols is { Count: > 0 })

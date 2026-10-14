@@ -30,6 +30,7 @@ public interface IApplicationDbContext
     DbSet<MlModelVersion> MlModelVersions { get; }
     DbSet<MlPredictionSet> MlPredictionSets { get; }
     DbSet<StrategyComparison> StrategyComparisons { get; }
+    DbSet<WatchlistEntry> WatchlistEntries { get; }
 
     DatabaseFacade Database { get; }
 
