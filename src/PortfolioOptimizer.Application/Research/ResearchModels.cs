@@ -150,8 +150,11 @@ public sealed record RefinementProposalDto(
 
 public sealed record ProposeRefinementRequest
 {
-    [Required, StringLength(500, MinimumLength = 2)] public string Text { get; init; } = "";
+    /// <summary>The request in the user's words (required unless <see cref="Changes"/> is given).</summary>
+    [StringLength(500)] public string Text { get; init; } = "";
     public Guid? HypothesisId { get; init; }
+    /// <summary>Explicit changes (e.g. from a suggestion button); validated like interpreted ones.</summary>
+    [MaxLength(5)] public List<RefinementChange>? Changes { get; init; }
 }
 
 public sealed record SaveHypothesisRequest

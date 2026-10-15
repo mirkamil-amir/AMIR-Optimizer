@@ -25,14 +25,14 @@ Read this file before changing code; details are in `docs/` (linked below).
 | Path | What | Entry points |
 |---|---|---|
 | `src/PortfolioOptimizer.Api` | controllers, auth policies, antiforgery, rate limits, commands | `Program.cs` (`migrate`, `purge-test-data`), `Controllers/*`, `Security/*` |
-| `src/PortfolioOptimizer.Application` | use cases (owner-scoped), DTOs, validation | `MarketData/` (quotes, universes, discovery, `Markets.cs`, `PriceHistory.cs`), `Optimization/`, `Analytics/RealityCheckService.cs`, `Watchlists/`, `News/` (rules, service, `EventPriceComparison`), `MachineLearning/`, `Comparisons/`, `Dtos/` |
+| `src/PortfolioOptimizer.Application` | use cases (owner-scoped), DTOs, validation | `MarketData/` (quotes, universes, discovery, `Markets.cs`, `PriceHistory.cs`), `Optimization/`, `Analytics/RealityCheckService.cs`, `Watchlists/`, `News/` (rules, service, `EventPriceComparison`), `MachineLearning/`, `Comparisons/`, `Research/` (AI research workflow: orchestrator, tools, validators), `Dtos/` |
 | `src/PortfolioOptimizer.Domain` | entities, rules | `MarketData.cs`, `Portfolio.cs`, `Runs.cs`, `MachineLearning.cs`, `Watchlist.cs`, `News.cs`, `Users.cs` (roles, audit, `TestDataPolicy`) |
 | `src/PortfolioOptimizer.Optimization` | pure math: QP solver, mean-variance, `PortfolioSimulator`, diversification diagnostics | `Portfolio/MeanVarianceOptimizer.cs`, `Portfolio/DiversificationMath.cs`, `Backtesting/*` |
 | `src/PortfolioOptimizer.MachineLearning` | pure ML (no I/O, no optimizer use) | `Training/ExperimentEngine.cs`, `Features/FeatureCatalog.cs` |
 | `src/PortfolioOptimizer.Infrastructure` | EF Core/Npgsql, Identity, providers, jobs, seeding | `Persistence/AppDbContext.cs`, `MarketData/*Provider.cs`, `News/NewsProviders.cs`, `Jobs/BackgroundJobWorker.cs`, `Persistence/UniverseSeeder.cs`, `Seed/universes/*.csv` |
 | `frontend/portfolio-dashboard/src` | React app | `main.tsx` (routes), `pages/*`, `components/*`, `lib/` (api, auth, selection, queries, types, interpretation, strategy-guide, glossary, quote-status, news) |
 | `tests/*` | unit, ML, integration (real PostgreSQL) | `IntegrationTests/ApiFactory.cs` |
-| `frontend/.../e2e` | Playwright | `admin.setup.ts` (environment guard), `journeys.spec.ts`, `research.spec.ts` (watchlist, news) |
+| `frontend/.../e2e` | Playwright | `admin.setup.ts` (environment guard), `journeys.spec.ts`, `research.spec.ts` (watchlist, news), `research-agent.spec.ts` (AI research journey) |
 | `tools/` | `universe-builder` (constituent CSVs), `PortfolioOptimizer.DataMigration` (SQLite import) | |
 
 ## Run and test
@@ -69,6 +69,13 @@ Secrets live in `.env` (gitignored) – load with `set -a; . ./.env; set +a`; ne
   the stored numbers support, labelled fact/estimate/interpretation/caution.
 * **Test data:** tests never run against real databases. e2e only via `scripts/e2e.sh` (guard endpoint
   `/api/v1/system/test-environment`); test accounts use the `.test` domain.
+* **AI research assistant:** the language model never produces numbers, weights or decisions. Calculations come
+  from `OptimizationService.EvaluateAsync` / `RealityCheckService.AnalyzeAsync`; model output is only a proposal that
+  passes allow-lists, quote checks (`BriefInterpreter`), `RefinementRules.Check` or `NarrativeValidator`, with a
+  deterministic path when the model is off or fails. Tools enforce permissions in `ToolRunner` (owner re-check,
+  `Confirm` for user-data changes, budgets, timeouts, events) – never rely on prompts. User text, news and descriptions
+  are untrusted; news and descriptions are never sent to a model. Keys stay server-side. Details:
+  [agentic-architecture.md](docs/agentic-architecture.md), [threat-model.md](docs/threat-model.md).
 * Money `decimal`, math `double`; errors via `ValidationException`/`NotFoundException`/`ConflictException`/`ForbiddenException`.
 
 ## How to …
@@ -91,6 +98,10 @@ Secrets live in `.env` (gitignored) – load with `set -a; . ./.env; set +a`; ne
   (return provider tags as canonical symbols, skip incomplete items, throw `NewsProviderException` on bad responses),
   register it with `AddProviderClient`, unit-test parsing from synthetic payloads in the real response shape, and
   document terms/coverage in [financial-news.md](docs/financial-news.md).
+* **Add a research tool:** subclass `ResearchTool<TArgs,TResult>` in `Application/Research/Tools.cs` (name, purpose,
+  category, `Validate`, timeout), register it in `DependencyInjection`, call it only through `ToolRunner`, add an
+  evaluation case to `ResearchAgentTests` and [agent-evaluation.md](docs/agent-evaluation.md). A tool that writes user
+  data must be `ToolCategory.UserDataChange`.
 * **Add an endpoint:** controller → application service → DTO; mirror types in `lib/types.ts` and hooks in
   `lib/queries.ts`; integration test incl. authorization.
 
@@ -121,6 +132,7 @@ protection (Stooq); force-pushing or committing without being asked.
 [market data](docs/market-data.md) · [quantitative strategies](docs/quantitative-strategies.md) ·
 [machine learning](docs/machine-learning.md) · [security](docs/security.md) · [testing](docs/testing.md) ·
 [deployment](docs/deployment.md) · [implementation status](docs/implementation-status.md) ·
+[agentic architecture](docs/agentic-architecture.md) · [threat model](docs/threat-model.md) · [agent evaluation](docs/agent-evaluation.md) ·
 [decisions](docs/decisions.md) · [limitations](docs/limitations.md) · [watchlist](docs/watchlist.md) ·
 [financial news](docs/financial-news.md) · [portfolio reality check](docs/portfolio-reality-check.md) ·
 [roadmap](docs/roadmap.md) · [launch readiness](docs/launch-readiness.md)

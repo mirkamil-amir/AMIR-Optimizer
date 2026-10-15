@@ -1194,3 +1194,194 @@ export interface CompanyProfile {
   isSimulated: boolean
   message: string | null
 }
+
+// ---------------------------------------------------------------- AI research workflow
+
+export interface FieldOrigin {
+  source: 'user' | 'assumption'
+  reason: string
+}
+
+export type ResearchObjective = 'MinimumVariance' | 'MaximumSharpe' | 'EqualWeight'
+export type Level = 'low' | 'medium' | 'high'
+
+export interface ResearchBrief {
+  question: string
+  path: string
+  market: string | null
+  index: string | null
+  excludeSectors: string[]
+  excludeSymbols: string[]
+  riskPreference: Level
+  lossCapacity: Level | null
+  horizonYears: number | null
+  objective: ResearchObjective
+  maxWeight: number
+  candidateCount: number
+  lookbackDays: number
+  origins: Record<string, FieldOrigin>
+  missingInformation: string[]
+  dataRequirements: string[]
+  intendedOutput: string
+}
+
+export interface UpdateBriefRequest {
+  market?: string
+  index?: string
+  excludeSectors?: string[]
+  excludeSymbols?: string[]
+  riskPreference?: Level
+  lossCapacity?: Level
+  horizonYears?: number
+  objective?: ResearchObjective
+  maxWeight?: number
+  candidateCount?: number
+  lookbackDays?: number
+}
+
+export interface ResearchCandidate {
+  symbol: string
+  name: string | null
+  sector: string | null
+  currency: string
+  included: boolean
+  reason: string
+  observations: number
+  lastPriceDate: string | null
+  stalePrice: boolean
+  volatility1Y: number | null
+  return1Y: number | null
+  maxDrawdown1Y: number | null
+  isSimulated: boolean
+}
+
+export interface CandidateSet {
+  market: string
+  index: string | null
+  criterion: string
+  retrievedAtUtc: string
+  priceSource: string
+  candidates: ResearchCandidate[]
+  selectedSymbols: string[]
+  dataWarnings: string[]
+}
+
+export interface HypothesisConfig {
+  objective: ResearchObjective
+  maxWeight: number
+  universe: string[]
+  excludedSymbols: string[]
+  sectorLimits: Record<string, number>
+  covarianceMethod: 'Sample' | 'LedoitWolf'
+  lookbackDays: number
+  transactionCostBps: number
+}
+
+export interface ReviewFlag {
+  kind: 'Fact' | 'Estimate' | 'Interpretation' | 'Caution'
+  topic: string
+  text: string
+  basis: string | null
+}
+
+export interface RefinementChange {
+  operation: string
+  symbol: string | null
+  sector: string | null
+  number: number | null
+  text: string | null
+  description: string
+}
+
+export interface Suggestion {
+  text: string
+  changes: RefinementChange[]
+}
+
+export interface Interpretation {
+  /** "deterministic" (template over computed values) or "model" (accepted only after validation). */
+  source: 'deterministic' | 'model'
+  verified: boolean
+  model: string | null
+  note: string | null
+  sections: { key: string; title: string; paragraphs: string[] }[]
+}
+
+export interface Hypothesis {
+  id: string
+  label: string
+  origin: string
+  createdAtUtc: string
+  config: HypothesisConfig
+  configHash: string
+  result: OptimizationRun
+  review: RealityCheck | null
+  flags: ReviewFlag[]
+  suggestions: Suggestion[]
+  interpretation: Interpretation
+  savedRunId: string | null
+}
+
+export interface RefinementProposal {
+  id: string
+  request: string
+  /** change (needs confirmation), answer, or unclear. */
+  kind: string
+  baseHypothesisId: string
+  changes: RefinementChange[]
+  answer: string | null
+  interpretedBy: string
+  rejected: string[]
+}
+
+export interface ResearchEvent {
+  atUtc: string
+  kind: 'tool' | 'model' | 'user' | 'system'
+  name: string
+  status: 'ok' | 'error' | 'rejected' | 'skipped' | 'denied'
+  durationMs: number
+  summary: string
+}
+
+export interface ResearchSession {
+  id: string
+  title: string
+  state: 'AwaitingInput' | 'BriefReady' | 'UniverseReady' | 'Evaluated'
+  createdAtUtc: string
+  updatedAtUtc: string
+  brief: ResearchBrief
+  question: string | null
+  steps: { key: string; title: string; status: 'done' | 'current' | 'pending' | 'waiting' }[]
+  candidates: CandidateSet | null
+  hypotheses: Hypothesis[]
+  pendingRefinement: RefinementProposal | null
+  events: ResearchEvent[]
+  budget: { toolCalls: number; maxToolCalls: number; hypotheses: number; maxHypotheses: number; llmTokens: number; maxLlmTokens: number }
+  assistant: { provider: string; model: string | null; available: boolean; note: string }
+  disclaimer: string
+}
+
+export interface ResearchSessionSummary {
+  id: string
+  title: string
+  state: string
+  createdAtUtc: string
+  updatedAtUtc: string
+  hypotheses: number
+  hasSavedRun: boolean
+}
+
+export interface HypothesisComparison {
+  a: Hypothesis
+  b: Hypothesis
+  weights: { symbol: string; weightA: number; weightB: number }[]
+  configChanges: { field: string; a: string; b: string }[]
+  notes: string[]
+}
+
+export interface CompanyContext {
+  symbol: string
+  profile: CompanyProfile
+  recentNews: NewsArticle[]
+  note: string
+}

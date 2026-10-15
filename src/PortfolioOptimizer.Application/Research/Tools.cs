@@ -20,7 +20,7 @@ namespace PortfolioOptimizer.Application.Research;
 /// stocks without enough stored history or with a stale price, then fill the shortlist round-robin across sectors,
 /// ranking within each sector by the disclosed criterion. A research filter – not a judgement of quality.
 /// </summary>
-public sealed class SearchUniverseTool(StockDiscoveryService stocks, PriceQueryService prices, IApplicationDbContext db, TimeProvider clock)
+public sealed class SearchUniverseTool(StockDiscoveryService stocks, PriceQueryService prices, TimeProvider clock)
     : ResearchTool<ResearchBrief, CandidateSetDto>
 {
     public override string Name => "search_investable_universe";
@@ -105,7 +105,6 @@ public sealed class SearchUniverseTool(StockDiscoveryService stocks, PriceQueryS
         if (stale > 0) warnings.Add($"{stale} member(s) have stale prices and were excluded.");
         var missing = candidates.Count(c => !c.Included && c.Reason.StartsWith("Only "));
         if (missing > 0) warnings.Add($"{missing} member(s) lack enough stored history; the shortlist is drawn from the rest only.");
-        _ = db;
 
         var ordered = candidates.OrderByDescending(c => c.Included).ThenBy(c => c.Sector).ThenBy(c => c.Symbol).ToList();
         return new CandidateSetDto(brief.Market!, brief.Index, criterion, clock.GetUtcNow().UtcDateTime, settings.ActiveProvider, ordered,

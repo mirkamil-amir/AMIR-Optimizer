@@ -7,6 +7,7 @@ import type {
   Transaction, UserAccountStatus, UserSummary, MlCatalog, MlExperiment, MlExperimentRequest, MlExperimentSummary, MlBacktest,
   MlPredictionSet, StrategyComparison, StrategyComparisonRequest, StrategyComparisonSummary, Market, QuoteRefreshRun, QuoteRefreshResult,
   AdminOverview, HistoryRange, PriceHistory, Watchlist, WatchlistAddResult, NewsFeed, NewsFilters, EventComparison, RealityCheck, CompanyProfile,
+  ResearchSession, ResearchSessionSummary, UpdateBriefRequest, HypothesisComparison, CompanyContext, RefinementChange,
 } from './types'
 
 const V1 = '/api/v1'
@@ -636,6 +637,62 @@ export const useStockHistory = (symbol: string | undefined, range: HistoryRange)
     enabled: !!symbol,
     // Keep the old chart only while switching ranges of the same stock – never show one stock's prices under another's name.
     placeholderData: (previous, previousQuery) => (previousQuery?.queryKey[1] === (symbol ?? '') ? previous : undefined),
+  })
+
+// ---------------------------------------------------------------- AI research workflow
+
+export const useResearchSessions = () =>
+  useQuery({ queryKey: ['research'] as const, queryFn: () => api.get<ResearchSessionSummary[]>(`${V1}/research`) })
+
+export const useResearchSession = (id: string | undefined) =>
+  useQuery({ queryKey: ['research', id ?? ''] as const, queryFn: () => api.get<ResearchSession>(`${V1}/research/${id}`), enabled: !!id })
+
+/** All research actions return the updated session, which replaces the cached copy (no stale mixture of steps). */
+function useResearchAction<TArgs>(call: (args: TArgs) => Promise<ResearchSession>) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: call,
+    onSuccess: (session) => {
+      qc.setQueryData(['research', session.id], session)
+      qc.invalidateQueries({ queryKey: ['research'], exact: true })
+    },
+  })
+}
+
+export const useStartResearch = () =>
+  useResearchAction((body: { objective?: string; market?: string; riskPreference?: string; horizonYears?: number }) => api.post<ResearchSession>(`${V1}/research`, body))
+export const useUpdateBrief = (id: string) => useResearchAction((body: UpdateBriefRequest) => api.put<ResearchSession>(`${V1}/research/${id}/brief`, body))
+export const useSetUniverse = (id: string) => useResearchAction((symbols: string[]) => api.put<ResearchSession>(`${V1}/research/${id}/universe`, { symbols }))
+export const useEvaluateResearch = (id: string) => useResearchAction(() => api.post<ResearchSession>(`${V1}/research/${id}/evaluate`))
+export const useProposeRefinement = (id: string) =>
+  useResearchAction((body: { text?: string; hypothesisId?: string; changes?: RefinementChange[] }) => api.post<ResearchSession>(`${V1}/research/${id}/refinements`, body))
+export const useApplyRefinement = (id: string) =>
+  useResearchAction((proposalId: string) => api.post<ResearchSession>(`${V1}/research/${id}/refinements/${proposalId}/apply`))
+export const useDiscardRefinement = (id: string) => useResearchAction(() => api.delete<ResearchSession>(`${V1}/research/${id}/refinements`))
+export const useSaveHypothesis = (id: string) =>
+  useResearchAction((body: { hypothesisId: string; portfolioId?: string; confirm: boolean }) => api.post<ResearchSession>(`${V1}/research/${id}/save`, body))
+
+export function useDeleteResearch() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => api.delete<void>(`${V1}/research/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['research'] }),
+  })
+}
+
+export const useCompareHypotheses = (id: string, a: string | undefined, b: string | undefined) =>
+  useQuery({
+    queryKey: ['research-compare', id, a ?? '', b ?? ''] as const,
+    queryFn: () => api.get<HypothesisComparison>(`${V1}/research/${id}/compare?a=${a}&b=${b}`),
+    enabled: !!a && !!b && a !== b,
+  })
+
+export const useCompanyContext = (id: string, symbol: string | undefined) =>
+  useQuery({
+    queryKey: ['research-company', id, symbol ?? ''] as const,
+    queryFn: () => api.get<CompanyContext>(`${V1}/research/${id}/companies/${encodeURIComponent(symbol!)}`),
+    enabled: !!symbol,
+    staleTime: 10 * 60_000,
   })
 
 /** Company description (cached on the server; descriptions change rarely, so the browser keeps them for an hour). */

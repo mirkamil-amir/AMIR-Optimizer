@@ -2,6 +2,15 @@
 
 Prioritized follow-up work after the 2026-10-15 pass. Order reflects dependencies and risk, not effort.
 
+## 0. AI research assistant (next steps after the first vertical slice)
+* Live evaluation with a model key: run the evaluation suite with `Agent__Llm__Provider=Anthropic`, review accepted /
+  rejected narratives, tune the validator; measure cost per session.
+* A confirmed "download missing history" tool for the shortlist; backtest and strategy-comparison tools (read-only
+  calculation category) so hypotheses can be tested walk-forward; ML signals only via the existing purged evaluation.
+* Monitoring step: re-run saved hypotheses on new data and show drift (explicit, user-triggered first; scheduled later
+  with notifications).
+* German-language parsing; usability study of the brief and explanations.
+
 ## 1. Licensed, point-in-time data (blocks any commercial use and any credible backtest claim)
 * Licensed end-of-day prices with redistribution rights; point-in-time index constituents incl. delisted securities
   (removes survivorship bias from backtests, ML evaluation and the reality check).

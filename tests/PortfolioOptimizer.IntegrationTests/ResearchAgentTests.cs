@@ -208,6 +208,8 @@ public sealed class ResearchAgentTests : IAsyncLifetime
         Assert.NotEmpty(ctx.RecentNews);
         Assert.Contains("not evidence of cause", ctx.Note);
         Assert.DoesNotContain(_model.Requests, r => r.UserContent.Contains("SIMULATED:"));
+        // Only stocks screened in this session are available (a German listing is not part of a US session).
+        Assert.Equal(HttpStatusCode.NotFound, (await _user.GetAsync($"/api/v1/research/{s.Id}/companies/SAP.DE")).StatusCode);
     }
 
     [Fact]

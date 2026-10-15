@@ -191,7 +191,8 @@ public sealed class ResearchAgent(
         var baseConfig = new HypothesisConfig(brief.Objective, brief.MaxWeight, set.SelectedSymbols, [], new Dictionary<string, double>(),
             "LedoitWolf", brief.LookbackDays, 10);
         var hypotheses = Hypotheses(session);
-        var label = $"{InterpretationTemplate.ObjectiveNames[brief.Objective]} (from your brief)";
+        var objectiveName = InterpretationTemplate.ObjectiveNames[brief.Objective];
+        var label = $"{char.ToUpperInvariant(objectiveName[0])}{objectiveName[1..]} (from your brief)";
         await Guarded(session, async () =>
         {
             await AddHypothesisAsync(session, hypotheses, baseConfig, label, "initial", set, ct);
@@ -242,11 +243,22 @@ public sealed class ResearchAgent(
                     ?? throw new ConflictException("Calculate a portfolio hypothesis first.");
         var set = Candidates(session) ?? throw new ConflictException("Research the universe first.");
         var allowModel = session.LlmInputTokens + session.LlmOutputTokens < MaxLlmTokens;
-        var r = await refinementInterpreter.InterpretAsync(request.Text, baseH, set.Candidates, allowModel, ct);
+        RefinementInterpretation r;
+        if (request.Changes is { Count: > 0 } explicitChanges)
+        {
+            var symbols = set.Candidates.Select(c => c.Symbol).ToHashSet();
+            var checkedChanges = explicitChanges.Select(c => RefinementRules.Check(c, baseH.Config, symbols)).ToList();
+            var rejectedChanges = checkedChanges.Where(x => x.Change is null).Select(x => x.Rejection!).ToList();
+            var ok = checkedChanges.Where(x => x.Change is not null).Select(x => x.Change!).ToList();
+            r = new RefinementInterpretation(ok.Count > 0 ? "change" : "answer", ok, ok.Count > 0 ? null : string.Join(" ", rejectedChanges), "suggestion", rejectedChanges, 0, 0);
+        }
+        else if (request.Text.Trim().Length < 2) throw new ValidationException("text", "Describe the change or question.");
+        else r = await refinementInterpreter.InterpretAsync(request.Text, baseH, set.Candidates, allowModel, ct);
         Count(session, r.InputTokens, r.OutputTokens);
-        var proposal = new RefinementProposalDto(Guid.NewGuid(), Short(request.Text, 500), r.Kind, baseH.Id, r.Changes, r.Answer, r.InterpretedBy, r.Rejected);
+        var requestText = request.Text.Trim().Length > 0 ? request.Text : string.Join("; ", r.Changes.Select(c => c.Description));
+        var proposal = new RefinementProposalDto(Guid.NewGuid(), Short(requestText, 500), r.Kind, baseH.Id, r.Changes, r.Answer, r.InterpretedBy, r.Rejected);
         session.PendingRefinementJson = r.Changes.Count > 0 ? JsonSerializer.Serialize(proposal, Json) : null;
-        Event(session, "user", "refinement_request", "ok", Short(request.Text));
+        Event(session, "user", "refinement_request", "ok", Short(requestText));
         Event(session, r.InterpretedBy.StartsWith("rules") ? "system" : "model", "interpret_refinement", r.Changes.Count > 0 ? "ok" : "skipped",
             r.Changes.Count > 0 ? $"Proposed: {string.Join("; ", r.Changes.Select(c => c.Description))} – waiting for your confirmation." : $"Answered without changes ({r.Kind}).");
         foreach (var x in r.Rejected) Event(session, "model", "interpret_refinement", "rejected", x);
@@ -348,6 +360,12 @@ public sealed class ResearchAgent(
     public async Task<CompanyContextDto> CompanyContextAsync(Guid id, string symbol, CancellationToken ct)
     {
         var session = await LoadAsync(id, ct);
+        // Context is only available for stocks this session actually researched.
+        var set = JsonSerializer.Deserialize<CandidateSetDto>(session.CandidatesJson, Json);
+        var normalized = Asset.NormalizeSymbol(symbol);
+        if (set is null || !set.Candidates.Any(c => c.Symbol == normalized))
+            throw new NotFoundException("Stock in this research session", normalized);
+        symbol = normalized;
         CompanyContextDto? context = null;
         await Guarded(session, async () => context = await tools.RunAsync(companyContext, Context(session), symbol, ct), ct);
         await PersistAsync(session, ct);
