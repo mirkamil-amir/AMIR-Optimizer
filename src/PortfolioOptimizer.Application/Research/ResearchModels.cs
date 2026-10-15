@@ -100,7 +100,9 @@ public sealed record HypothesisConfig(
     IReadOnlyDictionary<string, double> SectorLimits,
     string CovarianceMethod,
     int LookbackDays,
-    double TransactionCostBps);
+    double TransactionCostBps,
+    /// <summary>Analysis currency (ISO); empty = the selection's own currency. Stocks in other currencies are converted.</summary>
+    string Currency = "");
 
 /// <summary>A deterministic review flag derived from computed metrics (never from model text).</summary>
 public sealed record ReviewFlagDto(string Kind, string Topic, string Text, string? Basis);

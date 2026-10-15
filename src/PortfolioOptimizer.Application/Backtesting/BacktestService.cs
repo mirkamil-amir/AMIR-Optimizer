@@ -16,6 +16,7 @@ namespace PortfolioOptimizer.Application.Backtesting;
 public sealed class BacktestService(
     IApplicationDbContext db,
     PriceQueryService prices,
+    Fx.FxService fx,
     BacktestEngine engine,
     IBackgroundJobQueue queue,
     ICurrentUser currentUser,
@@ -40,6 +41,8 @@ public sealed class BacktestService(
         if (request.MaxWeight * universe.Count < 1 - request.CashReserve - 1e-9)
             throw new ValidationException("maxWeight", $"With {universe.Count} assets, a maximum weight of {request.MaxWeight:P0} cannot reach full investment.");
 
+        var currency = await UniverseCurrency.ResolveAsync(db, universe, request.BenchmarkSymbol, request.Currency, ct);
+        var benchmark = string.IsNullOrWhiteSpace(request.BenchmarkSymbol) ? null : currency.Benchmark;
         var settings = await prices.SettingsAsync(ct);
         var run = new BacktestRun
         {
@@ -50,8 +53,9 @@ public sealed class BacktestService(
                 : request.Name.Trim(),
             Status = JobStatus.Queued,
             CreatedAtUtc = clock.GetUtcNow().UtcDateTime,
-            ConfigJson = JsonSerializer.Serialize(request with { Universe = universe }, Json),
+            ConfigJson = JsonSerializer.Serialize(request with { Universe = universe, BenchmarkSymbol = benchmark, Currency = currency.Currency }, Json),
             PriceSource = settings.ActiveProvider,
+            Currency = currency.Currency,
         };
         db.Backtests.Add(run);
         await db.SaveChangesAsync(ct);
@@ -92,7 +96,9 @@ public sealed class BacktestService(
             var config = JsonSerializer.Deserialize<CreateBacktestRequest>(run.ConfigJson, Json)!;
             // Load extra history before the start date for the first lookback window (≈1.5 calendar days per trading day).
             var loadFrom = config.StartDate.AddDays(-(int)Math.Ceiling(config.LookbackDays * 1.5) - 10);
-            var series = await prices.GetSeriesAsync(config.Universe, run.PriceSource, loadFrom, config.EndDate, ct);
+            var conversion = await fx.GetSeriesInCurrencyAsync(config.Universe, run.PriceSource, loadFrom, config.EndDate, run.Currency, ct);
+            var series = conversion.PriceSeries();
+            run.FxSource = conversion.FxSource;
             var missing = config.Universe.Where(s => !series.TryGetValue(s, out var x) || x.Points.Count == 0).ToList();
             if (missing.Count == config.Universe.Count)
                 throw new InvalidOperationException($"No {run.PriceSource} price data for the selected universe. Synchronize market data first.");
@@ -100,8 +106,9 @@ public sealed class BacktestService(
             PriceSeries? bench = null;
             if (!string.IsNullOrWhiteSpace(config.BenchmarkSymbol))
             {
-                var b = await prices.GetSeriesAsync([Asset.NormalizeSymbol(config.BenchmarkSymbol)], run.PriceSource, config.StartDate, config.EndDate, ct);
-                bench = b.Values.FirstOrDefault();
+                var b = await fx.GetSeriesInCurrencyAsync([Asset.NormalizeSymbol(config.BenchmarkSymbol)], run.PriceSource, config.StartDate, config.EndDate, run.Currency, ct);
+                bench = b.PriceSeries().Values.FirstOrDefault();
+                conversion = conversion with { Notes = [.. conversion.Notes, .. b.Excluded.Select(e => $"Benchmark {e.Key} not shown – {e.Value}")] };
             }
 
             var input = new BacktestInput(
@@ -132,7 +139,8 @@ public sealed class BacktestService(
 
             var result = await Task.Run(() => engine.Run(input, settings, ct), ct);
             var warnings = result.Warnings.ToList();
-            warnings.InsertRange(0, missing.Select(m => $"{m}: no price data; excluded from the backtest."));
+            warnings.InsertRange(0, missing.Select(m => conversion.Excluded.TryGetValue(m, out var why) ? $"{m}: excluded – {why}" : $"{m}: no price data; excluded from the backtest."));
+            warnings.InsertRange(0, conversion.Notes);
             warnings.AddRange(series.Values.Where(s => !s.UsesAdjustedClose && s.Points.Count > 0)
                 .Select(s => $"{s.Symbol}: adjusted closes unavailable; raw closes used (dividends ignored)."));
 

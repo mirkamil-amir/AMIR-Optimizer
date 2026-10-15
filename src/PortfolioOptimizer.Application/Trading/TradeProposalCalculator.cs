@@ -3,7 +3,17 @@ using PortfolioOptimizer.Domain;
 
 namespace PortfolioOptimizer.Application.Trading;
 
-public sealed record ProposalAsset(int AssetId, string Symbol, string? Name, decimal CurrentQuantity, LatestPrice? Price);
+/// <param name="Price">Latest price in the asset's own currency.</param>
+/// <param name="Currency">Trading currency (empty = the portfolio currency).</param>
+/// <param name="FxRate">Portfolio-currency units per unit of <paramref name="Currency"/>, dated at the price date (1 for the same currency).</param>
+/// <param name="FxProblem">Why no rate is available; such an asset is treated like one without a price.</param>
+public sealed record ProposalAsset(int AssetId, string Symbol, string? Name, decimal CurrentQuantity, LatestPrice? Price,
+    string Currency = "", decimal FxRate = 1, DateOnly? FxRateDate = null, string? FxProblem = null)
+{
+    public bool IsPriced => Price is not null && FxProblem is null;
+    /// <summary>Price in the portfolio currency.</summary>
+    public decimal BasePrice => Price!.Price * FxRate;
+}
 
 public sealed record ProposalParameters(
     decimal Cash,
@@ -26,7 +36,8 @@ public sealed record ProposalComputation(
 /// <summary>
 /// Converts target weights into executable (simulated) orders.
 /// <list type="number">
-/// <item>Portfolio value V = cash + Σ quantity × latest price (assets without a price are excluded and left unchanged).</item>
+/// <item>All values are in the portfolio currency: price × FX rate (native → portfolio currency, dated at the price date).</item>
+/// <item>Portfolio value V = cash + Σ quantity × latest price (assets without a price or exchange rate are excluded and left unchanged).</item>
 /// <item>Target quantity = floor(V × weight / price) (whole shares), or floor to 4 decimals when fractional shares are enabled.</item>
 /// <item>Sells are processed first; their proceeds net of fees fund the buys.</item>
 /// <item>Buys are processed in descending target value; a buy that would exceed available cash after fees is reduced to the
@@ -40,15 +51,16 @@ public static class TradeProposalCalculator
     public static ProposalComputation Compute(ProposalParameters p)
     {
         var notes = new List<string>();
-        var priced = p.Assets.Where(a => a.Price is not null).ToList();
-        var portfolioValue = p.Cash + priced.Sum(a => a.CurrentQuantity * a.Price!.Price);
+        var priced = p.Assets.Where(a => a.IsPriced).ToList();
+        var portfolioValue = p.Cash + priced.Sum(a => a.CurrentQuantity * a.BasePrice);
         if (portfolioValue <= 0) throw new Domain.DomainException("Portfolio value is zero; nothing to allocate.");
 
-        foreach (var a in p.Assets.Where(a => a.Price is null))
+        foreach (var a in p.Assets.Where(a => !a.IsPriced))
         {
+            var why = a.Price is null ? "no price available" : a.FxProblem;
             notes.Add(a.CurrentQuantity > 0
-                ? $"{a.Symbol}: no price available; the existing position is excluded from the valuation and left unchanged."
-                : $"{a.Symbol}: no price available; its target weight stays in cash.");
+                ? $"{a.Symbol}: {why}; the existing position is excluded from the valuation and left unchanged."
+                : $"{a.Symbol}: {why}; its target weight stays in cash.");
         }
         foreach (var a in priced.Where(a => a.Price!.IsStale))
             notes.Add($"{a.Symbol}: latest price is from {a.Price!.PriceDate:yyyy-MM-dd} and may be stale.");
@@ -65,20 +77,23 @@ public static class TradeProposalCalculator
                 Price = a.Price?.Price,
                 PriceDate = a.Price?.PriceDate,
                 PriceIsStale = a.Price?.IsStale ?? false,
+                Currency = a.Currency,
+                FxRate = a.IsPriced ? a.FxRate : null,
+                FxRateDate = a.IsPriced ? a.FxRateDate : null,
                 TargetWeight = w,
                 CurrentQuantity = a.CurrentQuantity,
             };
             lines.Add(line);
 
-            if (a.Price is null)
+            if (!a.IsPriced)
             {
                 line.Action = ProposalAction.NoPrice;
                 line.TargetQuantity = a.CurrentQuantity;
-                line.Note = "No price available.";
+                line.Note = a.Price is null ? "No price available." : $"No exchange rate: {a.FxProblem}.";
                 continue;
             }
 
-            var price = a.Price.Price;
+            var price = a.BasePrice;
             line.CurrentWeight = (double)(a.CurrentQuantity * price / portfolioValue);
             line.TargetValue = Math.Round(portfolioValue * (decimal)w, 2);
             line.TargetQuantity = RoundDown(portfolioValue * (decimal)w / price, p.AllowFractionalShares);
@@ -99,7 +114,7 @@ public static class TradeProposalCalculator
 
         foreach (var line in lines.Where(l => l.Action == ProposalAction.Sell))
         {
-            var value = line.OrderQuantity * line.Price!.Value;
+            var value = line.OrderQuantity * BasePrice(line);
             var fee = TransactionCostModel.Estimate(value, p.TransactionCostBps, p.MinimumFee);
             line.EstimatedTradeValue = value;
             line.EstimatedCost = fee;
@@ -109,7 +124,7 @@ public static class TradeProposalCalculator
 
         foreach (var line in lines.Where(l => l.Action == ProposalAction.Buy).OrderByDescending(l => l.TargetValue))
         {
-            var price = line.Price!.Value;
+            var price = BasePrice(line);
             var qty = line.OrderQuantity;
             var fee = TransactionCostModel.Estimate(qty * price, p.TransactionCostBps, p.MinimumFee);
             if (qty * price + fee > cash)
@@ -134,9 +149,9 @@ public static class TradeProposalCalculator
             costs += fee;
         }
 
-        foreach (var line in lines.Where(l => l.Price is not null))
+        foreach (var line in lines.Where(l => l.Price is not null && l.FxRate is not null))
         {
-            line.ResultingWeight = (double)(line.TargetQuantity * line.Price!.Value / portfolioValue);
+            line.ResultingWeight = (double)(line.TargetQuantity * BasePrice(line) / portfolioValue);
             if (line.Note is null && line.Action is ProposalAction.Buy or ProposalAction.Hold && line.TargetWeight > 0)
             {
                 var gap = line.ResultingWeight - line.TargetWeight;
@@ -156,6 +171,9 @@ public static class TradeProposalCalculator
 
         return new ProposalComputation(portfolioValue, p.Cash, cash, costs, targetCashWeight, lines, notes);
     }
+
+    /// <summary>Price of one unit in the portfolio currency.</summary>
+    public static decimal BasePrice(TradeProposalLine line) => line.Price!.Value * (line.FxRate ?? throw new InvalidOperationException($"{line.Symbol}: no exchange rate."));
 
     private static decimal MaxAffordable(decimal cash, decimal price, ProposalParameters p) =>
         MaxAffordable(cash, price, p.AllowFractionalShares, p.TransactionCostBps, p.MinimumFee);

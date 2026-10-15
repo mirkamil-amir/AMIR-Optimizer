@@ -29,9 +29,12 @@ public static class DependencyInjection
         services.AddSingleton(TimeProvider.System);
 
         services.AddScoped<PriceQueryService>();
+        services.AddScoped<Fx.FxService>();
+        services.AddSingleton<Fx.FxFetchThrottle>();
         services.AddScoped<MarketDataService>();
         services.AddScoped<SettingsService>();
         services.AddScoped<PortfolioService>();
+        services.AddScoped<PortfolioValuationService>();
         services.AddScoped<OptimizationService>();
         services.AddScoped<TradingService>();
         services.AddScoped<PortfolioAnalyticsService>();

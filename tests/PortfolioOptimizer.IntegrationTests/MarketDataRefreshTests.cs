@@ -170,12 +170,12 @@ public sealed class MarketDataRefreshTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Analyses_RequireOneCurrency_AndUseAMatchingBenchmark()
+    public async Task MixedCurrencyAnalyses_AreConverted_SingleMarketKeepsItsBenchmark()
     {
-        var mixed = new CreateMlExperimentRequest { Universe = ["AAPL", "MSFT", "NVDA", "SAP.DE", "SIE.DE"], BenchmarkSymbol = "SPY" };
-        var rejected = await _admin.PostJsonAsync("/api/v1/ml/experiments", mixed);
-        Assert.Equal(HttpStatusCode.BadRequest, rejected.StatusCode);
-        Assert.Contains("mixes currencies", await rejected.Content.ReadAsStringAsync());
+        // Mixing USD and EUR stocks is allowed: the experiment is computed in the requested currency (prices converted with dated FX).
+        var mixed = new CreateMlExperimentRequest { Universe = ["AAPL", "MSFT", "NVDA", "SAP.DE", "SIE.DE"], BenchmarkSymbol = "SPY", Currency = "EUR" };
+        var accepted = await (await _admin.PostJsonAsync("/api/v1/ml/experiments", mixed)).ReadAsync<MlExperimentDto>();
+        Assert.Equal("SPY", accepted.BenchmarkSymbol);                     // kept and converted, not replaced
 
         var dax = new CreateMlExperimentRequest { Universe = ["SAP.DE", "SIE.DE", "ALV.DE", "DTE.DE", "BAS.DE"], BenchmarkSymbol = "SPY" };
         var experiment = await (await _admin.PostJsonAsync("/api/v1/ml/experiments", dax)).ReadAsync<MlExperimentDto>();

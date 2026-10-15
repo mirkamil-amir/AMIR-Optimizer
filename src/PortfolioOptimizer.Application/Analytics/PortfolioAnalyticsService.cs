@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using PortfolioOptimizer.Application.Abstractions;
+using PortfolioOptimizer.Application.Fx;
 using PortfolioOptimizer.Application.Dtos;
 using PortfolioOptimizer.Application.MarketData;
 using PortfolioOptimizer.Application.Portfolios;
@@ -14,11 +15,14 @@ namespace PortfolioOptimizer.Application.Analytics;
 public sealed class PortfolioAnalyticsService(
     IApplicationDbContext db,
     PortfolioService portfolios,
+    PortfolioValuationService valuations,
     PriceQueryService prices,
+    FxService fx,
     AnalyticsConventions conventions)
 {
     public const string PerformanceMethodology =
-        "Daily portfolio value = cash + Σ quantity × raw close (the same price convention used for simulated fills). " +
+        "Daily portfolio value = cash + Σ quantity × raw close × FX rate of that day (local currency → account currency; the same price " +
+        "convention used for simulated fills). For another reporting currency the daily value and flows are converted with that day's rate. " +
         "Trades are dated at the close of the price used for execution. Returns are time-weighted (external cash flows removed). " +
         "Dividends are not credited to the paper portfolio. Benchmark returns use adjusted closes (total return).";
 
@@ -28,50 +32,65 @@ public sealed class PortfolioAnalyticsService(
 
     // ------------------------------------------------------------------ holdings
 
-    public async Task<HoldingsResponse> GetHoldingsAsync(Guid portfolioId, CancellationToken ct)
+    /// <param name="currency">Reporting currency (default: the portfolio's account currency). Reporting never changes holdings.</param>
+    public async Task<HoldingsResponse> GetHoldingsAsync(Guid portfolioId, CancellationToken ct, string? currency = null)
     {
         var portfolio = await portfolios.LoadAsync(portfolioId, ct);
         var app = await prices.SettingsAsync(ct);
         var source = app.ActiveProvider;
-        var warnings = new List<string>();
+        var account = portfolio.BaseCurrency;
 
         var holdings = portfolio.Holdings.Where(h => h.Quantity > 0 || h.RealizedPnl != 0).ToList();
         var ids = holdings.Select(h => h.AssetId).ToList();
-        var assets = await db.Assets.AsNoTracking().Where(a => ids.Contains(a.Id)).ToDictionaryAsync(a => a.Id, ct);
-        var latest = await prices.GetLatestPricesAsync(ids, source, app.StalePriceDays, ct);
-        var lastTwo = await LastTwoClosesAsync(ids, source, ct);
         var targets = await LatestTargetsAsync(portfolioId, ct);
+        var valuation = await valuations.ValueAsync(portfolio, currency, ct, ids);
+        var accountValuation = valuation.IsReportingConversion ? await valuations.ValueAsync(portfolio, null, ct, ids) : valuation;
+        var ccy = valuation.Currency;
+        var warnings = new List<string>(valuation.Warnings);
+        warnings.AddRange(valuation.Problems);
+
+        // Amounts booked in the account currency (cost basis, realized P&L, fees, contributions) at today's reporting rate.
+        decimal? accountRate = valuation.IsReportingConversion ? valuation.CashFx is { } cf ? (decimal)cf.Rate : null : 1m;
+        decimal? Rep(decimal accountAmount) => accountRate is { } r ? accountAmount * r : null;
+        if (valuation.IsReportingConversion)
+            warnings.Add(accountRate is null
+                ? $"No {account}→{ccy} rate: amounts booked in {account} (cost, realized P&L, fees) cannot be shown in {ccy}."
+                : $"Reporting view in {ccy}: positions are converted at the rate of their price date; cost basis, realized P&L, fees and contributions " +
+                  $"(booked in {account}) at today's {account}→{ccy} rate {accountRate:0.######}. Returns are measured in {account}. Nothing was exchanged.");
+
+        var assets = await db.Assets.AsNoTracking().Where(a => ids.Contains(a.Id)).ToDictionaryAsync(a => a.Id, ct);
+        var lastTwo = await LastTwoClosesAsync(ids, source, ct);
         var executions = await db.Executions.AsNoTracking().Where(e => e.PortfolioId == portfolioId).ToListAsync(ct);
+        var dailyFx = await DailyFxAsync(assets.Values.Select(a => a.Currency).Append(ccy), lastTwo.Values.Select(v => v.LastDate), valuation.UsesSimulatedData, ct);
 
-        var marketValue = 0m;
-        foreach (var h in holdings.Where(h => h.Quantity > 0))
-        {
-            if (latest.TryGetValue(h.AssetId, out var lp)) marketValue += h.Quantity * lp.Price;
-            else warnings.Add($"{h.Symbol}: no price available; excluded from market value.");
-        }
-        var totalValue = marketValue + portfolio.CashBalance;
-
-        var rows = holdings.OrderByDescending(h => latest.TryGetValue(h.AssetId, out var lp) ? h.Quantity * lp.Price : 0).Select(h =>
+        var marketValue = valuation.MarketValue;
+        var totalValue = valuation.TotalValue;
+        var rows = holdings.OrderByDescending(h => valuation.Positions.GetValueOrDefault(h.AssetId)?.Value ?? 0).Select(h =>
         {
             assets.TryGetValue(h.AssetId, out var a);
-            latest.TryGetValue(h.AssetId, out var lp);
-            decimal? mv = lp is null ? null : h.Quantity * lp.Price;
-            double? weight = mv is { } v && totalValue > 0 ? (double)(v / totalValue) : null;
+            var pos = valuation.Positions.GetValueOrDefault(h.AssetId);
+            var lp = pos?.Price;
+            var mv = h.Quantity > 0 ? pos?.Value : 0m;
+            double? weight = mv is { } v && totalValue is > 0 ? (double)(v / totalValue.Value) : null;
             var target = targets.TryGetValue(h.AssetId, out var t) ? t : (double?)null;
-            // Daily change only applies to shares held over the last close-to-close interval (not shares bought at the last close).
+            var costBasis = Rep(h.CostBasis);
+            // Daily change only applies to shares held over the last close-to-close interval (not shares bought at the last close),
+            // valued at each day's exchange rate (so it includes the currency move).
             decimal? daily = null;
-            if (lastTwo.TryGetValue(h.AssetId, out var two) && two.Prev is { } prev)
+            if (a is not null && lastTwo.TryGetValue(h.AssetId, out var two) && two.Prev is { } prev && two.PrevDate is { } prevDate
+                && dailyFx is not null && dailyFx.TryRate(a.Currency, ccy, two.LastDate, out var qLast, out _) && dailyFx.TryRate(a.Currency, ccy, prevDate, out var qPrev, out _))
             {
                 var boughtSince = executions.Where(e => e.AssetId == h.AssetId && e.PriceDate >= two.LastDate)
                     .Sum(e => e.Side == OrderSide.Buy ? e.Quantity : -e.Quantity);
-                daily = (h.Quantity - boughtSince) * (two.Last - prev);
+                daily = (h.Quantity - boughtSince) * (two.Last * (decimal)qLast!.Rate - prev * (decimal)qPrev!.Rate);
             }
             if (lp?.IsStale == true) warnings.Add($"{h.Symbol}: price from {lp.PriceDate:yyyy-MM-dd} is stale.");
-            return new HoldingDto(h.AssetId, h.Symbol, a?.Name, a?.Sector, h.Quantity, h.AverageCost, h.CostBasis,
+            return new HoldingDto(h.AssetId, h.Symbol, a?.Name, a?.Sector, h.Quantity, Rep(h.AverageCost) ?? 0, costBasis ?? 0,
                 lp?.Price, lp?.PriceDate, lp?.IsStale ?? false, mv, weight,
-                mv is { } m ? m - h.CostBasis : null,
-                mv is { } m2 && h.CostBasis > 0 ? (double)(m2 / h.CostBasis - 1) : null,
-                h.RealizedPnl, target, weight is { } w && target is { } tw ? w - tw : null, daily, h.UpdatedAtUtc);
+                mv is { } m && costBasis is { } cb ? m - cb : null,
+                mv is { } m2 && costBasis is > 0 ? (double)(m2 / costBasis.Value - 1) : null,
+                Rep(h.RealizedPnl) ?? 0, target, weight is { } w && target is { } tw ? w - tw : null, daily, h.UpdatedAtUtc,
+                a?.Currency ?? ccy, pos?.Fx is { } fq ? (decimal)fq.Rate : null, pos?.Fx?.ObservationDate, h.Quantity > 0 ? pos?.Problem : null);
         }).ToList();
 
         // Targets for assets not (or no longer) held.
@@ -79,7 +98,7 @@ public sealed class PortfolioAnalyticsService(
         {
             if (rows.Any(r => r.AssetId == assetId)) continue;
             var a = await db.Assets.AsNoTracking().SingleAsync(x => x.Id == assetId, ct);
-            rows.Add(new HoldingDto(assetId, a.Symbol, a.Name, a.Sector, 0, 0, 0, null, null, false, 0, 0, null, null, 0, w, -w, null, portfolio.UpdatedAtUtc));
+            rows.Add(new HoldingDto(assetId, a.Symbol, a.Name, a.Sector, 0, 0, 0, null, null, false, 0, 0, null, null, 0, w, -w, null, portfolio.UpdatedAtUtc, a.Currency));
         }
 
         var deposits = await db.CashLedger.AsNoTracking()
@@ -88,45 +107,66 @@ public sealed class PortfolioAnalyticsService(
         var netContrib = deposits.Sum();
         var dailyChange = rows.Any(r => r.DailyChange is not null) ? rows.Sum(r => r.DailyChange ?? 0) : (decimal?)null;
 
+        // Returns are measured in the account currency (where the money was contributed), benchmark converted into it.
         double? benchReturn = null;
         var firstTrade = executions.OrderBy(e => e.PriceDate).FirstOrDefault();
+        var bench = portfolio.Settings.BenchmarkSymbol;
         if (firstTrade is not null)
         {
-            var b = await prices.GetSeriesAsync([portfolio.Settings.BenchmarkSymbol], source, firstTrade.PriceDate, null, ct);
-            if (b.TryGetValue(portfolio.Settings.BenchmarkSymbol, out var bs) && bs.Points.Count >= 1 && bs.Points[0].Date == firstTrade.PriceDate)
-                benchReturn = bs.Points[^1].Price / bs.Points[0].Price - 1;
-            else warnings.Add($"Benchmark {portfolio.Settings.BenchmarkSymbol} has no price on the first trade date; relative return unavailable.");
+            var b = await fx.GetSeriesInCurrencyAsync([bench], source, firstTrade.PriceDate, null, account, ct);
+            if (b.Series.TryGetValue(bench, out var bs) && bs.Series.Points.Count >= 1 && bs.Series.Points[0].Date == firstTrade.PriceDate)
+                benchReturn = bs.Series.Points[^1].Price / bs.Series.Points[0].Price - 1;
+            else warnings.Add($"Benchmark {bench} has no price{(b.Excluded.TryGetValue(bench, out var why) ? $" in {account} ({why})" : "")} on the first trade date; relative return unavailable.");
         }
 
-        var totalReturn = netContrib > 0 ? (double)(totalValue / netContrib - 1) : 0;
+        double? totalReturn = accountValuation.TotalValue is { } accountTotal && netContrib > 0 ? (double)(accountTotal / netContrib - 1) : netContrib > 0 ? null : 0;
+        var exposure = totalValue is > 0
+            ? valuation.Positions.Values.Where(p => p.Quantity > 0 && p.Value is not null).GroupBy(p => p.Currency)
+                .Select(g => new CurrencyExposureDto(g.Key, (double)(g.Sum(p => p.Value!.Value) / totalValue.Value), g.Count()))
+                .Append(new CurrencyExposureDto($"{account} cash", (double)(valuation.Cash / totalValue.Value), 0))
+                .Where(e => e.Weight > 0).OrderByDescending(e => e.Weight).ToList()
+            : null;
         var summary = new PortfolioValuationDto(
-            marketValue, portfolio.CashBalance, totalValue,
-            totalValue > 0 ? (double)(marketValue / totalValue) : 0,
-            holdings.Sum(h => h.CostBasis),
+            marketValue, valuation.Cash, totalValue,
+            totalValue is > 0 && marketValue is { } mvAll ? (double)(mvAll / totalValue.Value) : 0,
+            Rep(holdings.Sum(h => h.CostBasis)) ?? 0,
             rows.Sum(r => r.UnrealizedPnl ?? 0),
-            holdings.Sum(h => h.RealizedPnl),
-            executions.Sum(e => e.Fees),
-            netContrib,
+            Rep(holdings.Sum(h => h.RealizedPnl)) ?? 0,
+            Rep(executions.Sum(e => e.Fees)) ?? 0,
+            Rep(netContrib) ?? 0,
             dailyChange,
-            dailyChange is { } dc && totalValue - dc > 0 ? (double)(dc / (totalValue - dc)) : null,
-            totalReturn,
+            dailyChange is { } dc && totalValue is { } tv && tv - dc > 0 ? (double)(dc / (tv - dc)) : null,
+            totalReturn ?? 0,
             benchReturn,
-            benchReturn is { } br ? totalReturn - br : null,
-            portfolio.Settings.BenchmarkSymbol,
-            latest.Count > 0 ? latest.Values.Max(l => l.PriceDate) : null,
+            benchReturn is { } br && totalReturn is { } tr ? tr - br : null,
+            bench,
+            valuation.Positions.Values.Where(p => p.Price is not null).Select(p => (DateOnly?)p.Price!.PriceDate).DefaultIfEmpty().Max(),
             source,
-            latest.Values.Any(l => l.IsSimulated),
-            warnings.Distinct().ToList());
+            valuation.UsesSimulatedData && valuation.Positions.Values.Any(p => p.Price?.IsSimulated == true),
+            warnings.Distinct().ToList(),
+            ccy, account, accountRate, valuation.FxSource, exposure, valuation.Problems);
         return new HoldingsResponse(summary, rows);
+    }
+
+    /// <summary>Rates for the last two price dates of the holdings (daily change in the valuation currency).</summary>
+    private async Task<FxTable?> DailyFxAsync(IEnumerable<string> currencies, IEnumerable<DateOnly> lastDates, bool simulated, CancellationToken ct)
+    {
+        var list = currencies.Distinct().ToList();
+        var dates = lastDates.ToList();
+        if (list.Count < 2 || dates.Count == 0) return null;
+        try { return await fx.GetTableAsync(list, dates.Min().AddDays(-10), dates.Max(), simulated, ct); }
+        catch (Common.ValidationException) { return null; }
     }
 
     // ------------------------------------------------------------------ performance
 
-    public async Task<PerformanceDto> GetPerformanceAsync(Guid portfolioId, DateOnly? from, DateOnly? to, CancellationToken ct)
+    public async Task<PerformanceDto> GetPerformanceAsync(Guid portfolioId, DateOnly? from, DateOnly? to, CancellationToken ct, string? currency = null)
     {
         var portfolio = await portfolios.LoadAsync(portfolioId, ct);
         var app = await prices.SettingsAsync(ct);
         var source = app.ActiveProvider;
+        var account = portfolio.BaseCurrency;
+        var ccy = currency is null ? account : Currencies.Normalize(currency);
         var benchmark = portfolio.Settings.BenchmarkSymbol;
         var warnings = new List<string>();
         var metrics = new PerformanceMetrics(conventions);
@@ -139,7 +179,7 @@ public sealed class PortfolioAnalyticsService(
         PerformanceDto Empty(string reason)
         {
             var na = new MetricDto(null, reason);
-            return new PerformanceDto(portfolioId, benchmark, null, null, [], na, na, na, na, na, na, na, [], PerformanceMethodology, source, false, [reason]);
+            return new PerformanceDto(portfolioId, benchmark, null, null, [], na, na, na, na, na, na, na, [], PerformanceMethodology, source, false, [reason], ccy);
         }
 
         if (executions.Count == 0) return Empty("No simulated trades yet; performance history starts with the first execution.");
@@ -147,7 +187,16 @@ public sealed class PortfolioAnalyticsService(
         var start = executions.Min(e => e.PriceDate);
         var assetIds = executions.Select(e => e.AssetId).Distinct().ToList();
         var closes = await prices.GetRawClosesAsync(assetIds, source, start, ct);
+        var assetCurrency = await db.Assets.AsNoTracking().Where(a => assetIds.Contains(a.Id)).ToDictionaryAsync(a => a.Id, a => a.Currency, ct);
+        var simulated = (await prices.GetLatestPricesAsync(assetIds, source, app.StalePriceDays, ct)).Values.Any(l => l.IsSimulated);
         var calendar = closes.Values.SelectMany(c => c.Keys).Where(d => d >= start).Distinct().OrderBy(d => d).ToList();
+        FxTable? rates = null;
+        var needed = assetCurrency.Values.Append(account).Append(ccy).Distinct().ToList();
+        if (needed.Count > 1 && calendar.Count > 0)
+        {
+            try { rates = await fx.GetTableAsync(needed, start, calendar[^1], simulated, ct); }
+            catch (Common.ValidationException ex) { return Empty(ex.Message); }
+        }
         if (from is { } f) calendar = calendar.Where(d => d >= f).ToList();
         if (to is { } t) calendar = calendar.Where(d => d <= t).ToList();
         if (calendar.Count == 0) return Empty("No price data in the selected range.");
@@ -168,13 +217,46 @@ public sealed class PortfolioAnalyticsService(
         foreach (var d in closes.Values.SelectMany(c => c.Keys).Where(d => d >= start && d < calendar[0]).Distinct().OrderBy(d => d))
             Apply(d);
 
+        // A day on which a held position or the reporting conversion has no rate within the carry-forward window is left out
+        // (its external flow moves to the next valued day) – it is never valued with a guessed rate.
+        var valued = new List<DateOnly>();
+        var skipped = 0;
+        var pendingFlow = 0m;
         foreach (var d in calendar)
         {
-            var flow = Apply(d);
-            var mv = qty.Where(kv => kv.Value != 0).Sum(kv => lastPx.TryGetValue(kv.Key, out var px) ? kv.Value * px : 0);
-            values.Add((double)(cash + mv));
-            flows.Add((double)flow);
+            var flow = Apply(d) + pendingFlow;
+            decimal? mv = 0;
+            foreach (var (id, q) in qty.Where(kv => kv.Value != 0))
+            {
+                if (!lastPx.TryGetValue(id, out var px)) continue;
+                var c = assetCurrency.GetValueOrDefault(id, account);
+                if (c == account) mv += q * px;
+                else if (rates is not null && rates.TryRate(c, account, d, out var fq, out _)) mv += q * px * (decimal)fq!.Rate;
+                else { mv = null; break; }
+            }
+            var toReporting = 1m;
+            if (ccy != account)
+            {
+                if (rates is not null && rates.TryRate(account, ccy, d, out var rq, out _)) toReporting = (decimal)rq!.Rate;
+                else mv = null;
+            }
+            if (mv is null)
+            {
+                skipped++;
+                pendingFlow = flow;
+                continue;
+            }
+            pendingFlow = 0;
+            valued.Add(d);
+            values.Add((double)((cash + mv.Value) * toReporting));
+            flows.Add((double)(flow * toReporting));
         }
+        if (skipped > 0)
+            warnings.Add($"{skipped} day(s) left out: no exchange rate within {FxTable.DefaultMaxCarryForwardDays} days for a held position or for {account}→{ccy}.");
+        calendar = valued;
+        if (calendar.Count == 0) return Empty("No day in the range could be valued: exchange rates are missing.");
+        if (assetCurrency.Values.Any(c => c != ccy))
+            warnings.Insert(0, $"Values in {ccy}: positions in other currencies are converted with the {rates?.Source} rate of each day, so returns include currency movements.");
 
         decimal Apply(DateOnly d)
         {
@@ -198,11 +280,11 @@ public sealed class PortfolioAnalyticsService(
         var wealth = ReturnCalculator.WealthIndex(returns);
         var drawdowns = PerformanceMetrics.DrawdownSeries(wealth);
 
-        var benchSeries = await prices.GetSeriesAsync([benchmark], source, calendar[0], calendar[^1], ct);
+        var benchConversion = await fx.GetSeriesInCurrencyAsync([benchmark], source, calendar[0], calendar[^1], ccy, ct);
         Dictionary<DateOnly, double>? bmap = null;
-        if (benchSeries.TryGetValue(benchmark, out var bs) && bs.Points.Count > 0 && bs.Points[0].Date == calendar[0])
-            bmap = bs.Points.ToDictionary(p => p.Date, p => p.Price);
-        else warnings.Add($"Benchmark {benchmark} has no price on {calendar[0]:yyyy-MM-dd}; benchmark comparison unavailable.");
+        if (benchConversion.Series.TryGetValue(benchmark, out var bc) && bc.Series.Points is { Count: > 0 } bp0 && bp0[0].Date == calendar[0])
+            bmap = bp0.ToDictionary(p => p.Date, p => p.Price);
+        else warnings.Add($"Benchmark {benchmark} has no {ccy} price on {calendar[0]:yyyy-MM-dd}; benchmark comparison unavailable.");
 
         var series = new List<PerformancePointDto>();
         double? lastBench = null;
@@ -222,7 +304,6 @@ public sealed class PortfolioAnalyticsService(
 
         var monthly = MonthlyReturns(calendar, wealth, series.Select(s => s.BenchmarkCumulativeReturn).ToList());
         var benchTotal = series[^1].BenchmarkCumulativeReturn;
-        var simulated = (await prices.GetLatestPricesAsync(assetIds, source, app.StalePriceDays, ct)).Values.Any(l => l.IsSimulated);
         return new PerformanceDto(
             portfolioId, benchmark, calendar[0], calendar[^1], series,
             MetricDto.From(metrics.CumulativeReturn(returns)),
@@ -232,7 +313,7 @@ public sealed class PortfolioAnalyticsService(
             MetricDto.From(metrics.SortinoRatio(returns, portfolio.Settings.RiskFreeRate)),
             MetricDto.From(PerformanceMetrics.MaxDrawdown(wealth)),
             benchTotal is { } bt ? new MetricDto(bt, null) : new MetricDto(null, "Benchmark data unavailable."),
-            monthly, PerformanceMethodology, source, simulated, warnings);
+            monthly, PerformanceMethodology, source, simulated, warnings, ccy);
     }
 
     // ------------------------------------------------------------------ risk
@@ -244,6 +325,7 @@ public sealed class PortfolioAnalyticsService(
 
         var holdings = await GetHoldingsAsync(portfolioId, ct);
         var portfolio = await portfolios.LoadAsync(portfolioId, ct);
+        var account = portfolio.BaseCurrency;
         var app = await prices.SettingsAsync(ct);
         var warnings = new List<string>();
         var na = (string r) => new MetricDto(null, r);
@@ -251,18 +333,23 @@ public sealed class PortfolioAnalyticsService(
         var positions = holdings.Holdings.Where(h => h.Quantity > 0 && h.Weight is > 0).ToList();
         if (positions.Count == 0)
         {
-            var reason = "The portfolio has no priced holdings.";
-            return new RiskDto(portfolioId, lookbackDays, null, null, 0, confidence, na(reason), na(reason), na(reason), na(reason), na(reason), na(reason), na(reason), na(reason), [], [], [], RiskMethodology, [reason]);
+            var reason = holdings.Summary.TotalValue is null
+                ? $"The holdings cannot be valued in {account}: {string.Join(" ", holdings.Summary.ValuationProblems ?? [])}"
+                : "The portfolio has no priced holdings.";
+            return new RiskDto(portfolioId, lookbackDays, null, null, 0, confidence, na(reason), na(reason), na(reason), na(reason), na(reason), na(reason), na(reason), na(reason), [], [], [], RiskMethodology, [reason], account);
         }
 
         var symbols = positions.Select(p => p.Symbol).ToList();
-        var series = await prices.GetSeriesAsync(symbols, app.ActiveProvider, null, null, ct, lookbackDays + 1);
+        var conversion = await fx.GetSeriesInCurrencyAsync(symbols, app.ActiveProvider, null, null, account, ct, lookbackDays + 1);
+        var series = conversion.PriceSeries();
+        warnings.AddRange(conversion.Notes);
+        foreach (var (s, why) in conversion.Excluded) warnings.Add($"{s}: excluded – {why}");
         var usable = symbols.Where(s => series.TryGetValue(s, out var x) && x.Points.Count >= 3).ToList();
         foreach (var s in symbols.Except(usable)) warnings.Add($"{s}: insufficient history; excluded from risk estimates.");
         if (usable.Count == 0)
         {
             var reason = "Insufficient price history for current holdings.";
-            return new RiskDto(portfolioId, lookbackDays, null, null, 0, confidence, na(reason), na(reason), na(reason), na(reason), na(reason), na(reason), na(reason), na(reason), [], [], [], RiskMethodology, [reason]);
+            return new RiskDto(portfolioId, lookbackDays, null, null, 0, confidence, na(reason), na(reason), na(reason), na(reason), na(reason), na(reason), na(reason), na(reason), [], [], [], RiskMethodology, [reason], account);
         }
 
         var matrix = ReturnMatrix.Build(usable.ToDictionary(s => s, s => series[s].Points), usable);
@@ -278,7 +365,7 @@ public sealed class PortfolioAnalyticsService(
 
         MetricValue beta, te, ir;
         var bench = portfolio.Settings.BenchmarkSymbol;
-        var bseries = await prices.GetSeriesAsync([bench], app.ActiveProvider, matrix.PriceDates.FirstOrDefault(), matrix.PriceDates.LastOrDefault(), ct);
+        var bseries = (await fx.GetSeriesInCurrencyAsync([bench], app.ActiveProvider, matrix.PriceDates.FirstOrDefault(), matrix.PriceDates.LastOrDefault(), account, ct)).PriceSeries();
         if (bseries.TryGetValue(bench, out var b) && matrix.PriceDates.All(d => b.Points.Any(p => p.Date == d)))
         {
             var bmap = b.Points.ToDictionary(p => p.Date, p => p.Price);
@@ -304,7 +391,8 @@ public sealed class PortfolioAnalyticsService(
             usable,
             est is null ? [] : Enumerable.Range(0, usable.Count).Select(i => Enumerable.Range(0, usable.Count).Select(j => est.Correlation[i, j]).ToArray()).ToArray(),
             RiskMethodology,
-            warnings);
+            warnings,
+            account);
     }
 
     // ------------------------------------------------------------------ helpers
@@ -317,14 +405,14 @@ public sealed class PortfolioAnalyticsService(
         return proposal?.Lines.Where(l => l.TargetWeight > 0).ToDictionary(l => l.AssetId, l => l.TargetWeight) ?? [];
     }
 
-    private async Task<Dictionary<int, (DateOnly LastDate, decimal Last, decimal? Prev)>> LastTwoClosesAsync(List<int> ids, string source, CancellationToken ct)
+    private async Task<Dictionary<int, (DateOnly LastDate, decimal Last, decimal? Prev, DateOnly? PrevDate)>> LastTwoClosesAsync(List<int> ids, string source, CancellationToken ct)
     {
-        var result = new Dictionary<int, (DateOnly, decimal, decimal?)>();
+        var result = new Dictionary<int, (DateOnly, decimal, decimal?, DateOnly?)>();
         foreach (var id in ids)
         {
             var two = await db.HistoricalPrices.AsNoTracking().Where(p => p.AssetId == id && p.Source == source)
                 .OrderByDescending(p => p.Date).Take(2).Select(p => new { p.Date, p.Close }).ToListAsync(ct);
-            if (two.Count > 0) result[id] = (two[0].Date, two[0].Close, two.Count > 1 ? two[1].Close : null);
+            if (two.Count > 0) result[id] = (two[0].Date, two[0].Close, two.Count > 1 ? two[1].Close : null, two.Count > 1 ? two[1].Date : null);
         }
         return result;
     }

@@ -5,53 +5,67 @@ using PortfolioOptimizer.Domain;
 
 namespace PortfolioOptimizer.Application.MarketData;
 
-/// <summary>The currency of an analysis universe and the benchmark that matches it.</summary>
-/// <param name="Note">Set when the requested benchmark was replaced because it is priced in another currency.</param>
-public sealed record UniverseCurrencyContext(string Currency, string Benchmark, string? Note);
+/// <summary>The currency an analysis is computed in, the trading currencies of its universe and the benchmark used.</summary>
+/// <param name="Currency">Analysis (base) currency: all prices and the benchmark are converted into it with dated FX rates.</param>
+/// <param name="Note">Explains a benchmark replacement or the choice of currency.</param>
+public sealed record UniverseCurrencyContext(string Currency, IReadOnlyList<string> NativeCurrencies, string Benchmark, string? Note)
+{
+    public bool NeedsConversion => NativeCurrencies.Any(c => c != Currency);
+}
 
 /// <summary>
-/// Analyses work on returns in each stock's own currency without FX conversion, so a universe must use one currency and
-/// the benchmark must be priced in that currency. Mixing (say) USD and EUR stocks would silently combine currency effects
-/// with stock returns; such requests are rejected with an explanation. A benchmark in another currency (the default SPY
-/// for a DAX universe) is replaced by the universe's index benchmark, and the replacement is reported.
+/// Resolves the analysis currency and benchmark of a universe. Stocks of different currencies are allowed: their prices
+/// are converted into the analysis currency (FxService) – nothing is rejected for mixing currencies any more.
+/// The analysis currency is the portfolio's base currency (or the explicitly requested one); without either, a
+/// single-currency universe is analysed in its own currency and a mixed one in the application default currency.
 /// </summary>
 public static class UniverseCurrency
 {
     public static async Task<UniverseCurrencyContext> ResolveAsync(IApplicationDbContext db, IReadOnlyCollection<string> universe, string? requestedBenchmark,
-        CancellationToken ct)
+        string? baseCurrency, CancellationToken ct)
     {
         var symbols = universe.Select(Asset.NormalizeSymbol).Distinct().ToList();
         var assets = await db.Assets.AsNoTracking().Where(a => symbols.Contains(a.Symbol))
             .Select(a => new { a.Symbol, a.Currency, Indices = a.Memberships.Select(m => m.IndexCode).ToList() })
             .ToListAsync(ct);
-        var byCurrency = assets.GroupBy(a => a.Currency).OrderByDescending(g => g.Count()).ToList();
-        if (byCurrency.Count == 0) throw new ValidationException("universe", "None of the selected symbols is in the catalogue.");
-        if (byCurrency.Count > 1)
+        if (assets.Count == 0) throw new ValidationException("universe", "None of the selected symbols is in the catalogue.");
+        var native = assets.Select(a => a.Currency).Distinct().Order().ToList();
+
+        string? note = null;
+        string currency;
+        if (baseCurrency is not null) currency = Currencies.Normalize(baseCurrency);
+        else if (native.Count == 1) currency = native[0];
+        else
         {
-            var groups = string.Join("; ", byCurrency.Select(g => $"{g.Key}: {string.Join(", ", g.Select(a => a.Symbol).Order().Take(6))}{(g.Count() > 6 ? ", …" : "")}"));
-            throw new ValidationException("universe",
-                $"The selection mixes currencies ({groups}). Returns are computed in each stock's own currency without FX conversion, " +
-                "so one analysis can only use stocks traded in one currency. Analyse each market separately.");
+            currency = (await db.Settings.AsNoTracking().Select(s => s.DefaultCurrency).FirstOrDefaultAsync(ct)) ?? "USD";
+            note = $"The selection trades in {string.Join(", ", native)}; it is analysed in {currency} (the default currency).";
         }
 
-        var currency = byCurrency[0].Key;
         var requested = string.IsNullOrWhiteSpace(requestedBenchmark) ? null : Asset.NormalizeSymbol(requestedBenchmark);
-        if (requested is not null)
-        {
-            var benchmarkCurrency = await db.Assets.AsNoTracking().Where(a => a.Symbol == requested).Select(a => a.Currency).SingleOrDefaultAsync(ct);
-            if (benchmarkCurrency == currency) return new UniverseCurrencyContext(currency, requested, null);
-        }
+        var requestedCurrency = requested is null ? null
+            : await db.Assets.AsNoTracking().Where(a => a.Symbol == requested).Select(a => a.Currency).SingleOrDefaultAsync(ct);
 
-        // The benchmark of the index most of the selection belongs to (ties: alphabetical index code), in the same currency.
+        // A single-market analysis in that market's currency keeps comparing against that market (as before multi-currency
+        // support): a foreign default benchmark such as SPY for a DAX selection is replaced by the index benchmark.
+        var singleMarket = native.Count == 1 && native[0] == currency;
+        if (requestedCurrency is not null && (!singleMarket || requestedCurrency == currency))
+            return new UniverseCurrencyContext(currency, native, requested!, note);
+
         var indexCode = assets.SelectMany(a => a.Indices).GroupBy(c => c).OrderByDescending(g => g.Count()).ThenBy(g => g.Key).Select(g => g.Key).FirstOrDefault();
         var fallback = indexCode is null ? null : await db.MarketIndices.AsNoTracking()
-            .Where(i => i.Code == indexCode && i.Currency == currency).Select(i => i.BenchmarkSymbol).SingleOrDefaultAsync(ct);
+            .Where(i => i.Code == indexCode && i.BenchmarkSymbol != null).Select(i => i.BenchmarkSymbol).SingleOrDefaultAsync(ct);
         fallback ??= await db.MarketIndices.AsNoTracking().Where(i => i.Currency == currency && !i.IsHistorical && i.BenchmarkSymbol != null)
             .OrderBy(i => i.Code).Select(i => i.BenchmarkSymbol).FirstOrDefaultAsync(ct);
+        fallback ??= requestedCurrency is not null ? requested : null;
         if (fallback is null)
-            throw new ValidationException("benchmarkSymbol", $"No benchmark priced in {currency} is configured; choose a benchmark in {currency}.");
-        return new UniverseCurrencyContext(currency, fallback, requested is null
-            ? null
-            : $"Benchmark {requested} is not priced in {currency}; {fallback} is used instead so that the comparison is in one currency.");
+            throw new ValidationException("benchmarkSymbol", requested is null
+                ? "No benchmark is configured for this selection; choose a benchmark."
+                : $"Benchmark {requested} is not in the catalogue; choose another benchmark.");
+        var replaced = requested is not null && fallback != requested
+            ? requestedCurrency is null
+                ? $"Benchmark {requested} is not in the catalogue; {fallback} is used instead."
+                : $"Benchmark {requested} is priced in {requestedCurrency}; the {currency} market benchmark {fallback} is used for this {currency} selection."
+            : null;
+        return new UniverseCurrencyContext(currency, native, fallback, string.Join(" ", new[] { note, replaced }.Where(n => n is not null)) is { Length: > 0 } n ? n : null);
     }
 }

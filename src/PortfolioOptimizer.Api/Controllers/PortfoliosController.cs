@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using PortfolioOptimizer.Application.Analytics;
@@ -56,9 +57,13 @@ public sealed class PortfoliosController(
         return NoContent();
     }
 
-    /// <summary>Current holdings with valuation, P&amp;L and target-weight drift, plus a portfolio summary.</summary>
+    /// <summary>
+    /// Current holdings with valuation, P&amp;L and target-weight drift, plus a portfolio summary, in the portfolio currency or in
+    /// <paramref name="currency"/> (a reporting conversion that changes nothing in the portfolio).
+    /// </summary>
     [HttpGet("{id:guid}/holdings")]
-    public Task<HoldingsResponse> Holdings(Guid id, CancellationToken ct) => analytics.GetHoldingsAsync(id, ct);
+    public Task<HoldingsResponse> Holdings(Guid id, [FromQuery, RegularExpression("^[A-Z]{3}$")] string? currency, CancellationToken ct) =>
+        analytics.GetHoldingsAsync(id, ct, currency);
 
     /// <summary>Simulated trade executions (immutable ledger), newest first.</summary>
     [HttpGet("{id:guid}/transactions")]
@@ -133,8 +138,9 @@ public sealed class PortfoliosController(
 
     /// <summary>Realized performance of the simulated portfolio vs. its benchmark.</summary>
     [HttpGet("{id:guid}/performance")]
-    public Task<PerformanceDto> Performance(Guid id, [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, CancellationToken ct) =>
-        analytics.GetPerformanceAsync(id, from, to, ct);
+    public Task<PerformanceDto> Performance(Guid id, [FromQuery] DateOnly? from, [FromQuery] DateOnly? to,
+        [FromQuery, RegularExpression("^[A-Z]{3}$")] string? currency, CancellationToken ct) =>
+        analytics.GetPerformanceAsync(id, from, to, ct, currency);
 
     /// <summary>Ex-ante risk of current holdings (historical simulation): volatility, VaR, CVaR, beta, risk contributions.</summary>
     /// <param name="id">Portfolio id.</param>

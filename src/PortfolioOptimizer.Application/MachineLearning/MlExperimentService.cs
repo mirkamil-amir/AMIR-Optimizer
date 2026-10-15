@@ -103,8 +103,8 @@ public sealed class MlExperimentService(
         if (badFeatures.Count > 0) errors["features"] = [$"Unknown feature(s): {string.Join(", ", badFeatures)}."];
         if (errors.Count > 0) throw new ValidationException(errors);
 
-        // One currency per experiment; the benchmark (excess-return targets, backtest) must be priced in it too.
-        var currency = await UniverseCurrency.ResolveAsync(db, universe, benchmark, ct);
+        // Features, targets and the benchmark are computed in one analysis currency (prices converted with dated FX rates).
+        var currency = await UniverseCurrency.ResolveAsync(db, universe, benchmark, request.Currency, ct);
         benchmark = currency.Benchmark;
 
         var active = await db.MlExperiments.CountAsync(e => e.OwnerId == owner && (e.Status == JobStatus.Queued || e.Status == JobStatus.Running), ct);
@@ -113,7 +113,7 @@ public sealed class MlExperimentService(
 
         var settings = await prices.SettingsAsync(ct);
         var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
-        var normalized = request with { Universe = universe, BenchmarkSymbol = benchmark };
+        var normalized = request with { Universe = universe, BenchmarkSymbol = benchmark, Currency = currency.Currency };
         var experiment = new MlExperiment
         {
             Id = Guid.NewGuid(),
@@ -131,6 +131,7 @@ public sealed class MlExperimentService(
             Symbols = universe,
             BenchmarkSymbol = benchmark,
             PriceSource = settings.ActiveProvider,
+            Currency = currency.Currency,
             HistoryStart = today.AddYears(-request.HistoryYears),
             HistoryEnd = today,
             ConfigJson = JsonSerializer.Serialize(normalized, MlJson.Options),
@@ -192,7 +193,7 @@ public sealed class MlExperimentService(
 
         var request = JsonSerializer.Deserialize<CreateMlExperimentRequest>(experiment.ConfigJson, MlJson.Options)!;
         var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
-        var data = await loader.LoadAsync(experiment.Symbols, experiment.BenchmarkSymbol, experiment.PriceSource, today.AddYears(-2), today, ct);
+        var data = await loader.LoadAsync(experiment.Symbols, experiment.BenchmarkSymbol, experiment.PriceSource, today.AddYears(-2), today, experiment.Currency, ct);
         var engine = new FeatureEngine(data.Panel, manifest.FeatureNames.Select(FeatureCatalog.Get).ToList());
         var dataset = PortfolioOptimizer.MachineLearning.Data.Dataset.Build(data.Panel, engine, manifest.Target, manifest.HorizonDays, sampleStep: 21);
         var snapshot = ExperimentEngine.PredictLatest(dataset, model, MlExperimentRunner.ToConfiguration(request), residualQuantiles: null);
@@ -264,7 +265,7 @@ public sealed class MlExperimentService(
             e.ResultJson is null ? null : JsonSerializer.Deserialize<MlResultDocument>(e.ResultJson, MlJson.Options),
             e.ModelVersions.OrderBy(v => v.Version).Select(ToDto).ToList(),
             latestSet is null ? null : await ToDtoAsync(latestSet, e, ct),
-            Disclaimer);
+            Disclaimer, e.Currency);
     }
 
     public async Task<MlBacktestDocument?> GetBacktestAsync(Guid id, CancellationToken ct)

@@ -8,23 +8,22 @@ using PortfolioOptimizer.Domain;
 namespace PortfolioOptimizer.Application.Portfolios;
 
 /// <summary>Portfolios are private: every query is restricted to the current user's portfolios (others → 404).</summary>
-public sealed class PortfolioService(IApplicationDbContext db, PriceQueryService prices, ICurrentUser currentUser, IAuditLog audit, TimeProvider clock)
+public sealed class PortfolioService(IApplicationDbContext db, PriceQueryService prices, Fx.FxService fx, PortfolioValuationService valuations,
+    ICurrentUser currentUser, IAuditLog audit, TimeProvider clock)
 {
     public async Task<IReadOnlyList<PortfolioSummaryDto>> ListAsync(CancellationToken ct)
     {
         var owner = currentUser.RequireUserId();
-        var settings = await prices.SettingsAsync(ct);
         var portfolios = await db.Portfolios.AsNoTracking().Include(p => p.Holdings).Where(p => p.OwnerId == owner)
             .OrderBy(p => p.CreatedAtUtc).ToListAsync(ct);
-        var assetIds = portfolios.SelectMany(p => p.Holdings).Select(h => h.AssetId).Distinct().ToList();
-        var latest = await prices.GetLatestPricesAsync(assetIds, settings.ActiveProvider, settings.StalePriceDays, ct);
-        return portfolios.Select(p =>
+        var result = new List<PortfolioSummaryDto>();
+        foreach (var p in portfolios)
         {
-            var mv = p.Holdings.Where(h => h.Quantity > 0)
-                .Sum(h => latest.TryGetValue(h.AssetId, out var lp) ? h.Quantity * lp.Price : 0m);
-            return new PortfolioSummaryDto(p.Id, p.Name, p.BaseCurrency, p.InitialInvestment, p.CashBalance, mv, mv + p.CashBalance,
-                p.Holdings.Count(h => h.Quantity > 0), p.CreatedAtUtc, p.UpdatedAtUtc);
-        }).ToList();
+            var v = await valuations.ValueAsync(p, null, ct);
+            result.Add(new PortfolioSummaryDto(p.Id, p.Name, p.BaseCurrency, p.InitialInvestment, p.CashBalance, v.MarketValue, v.TotalValue,
+                p.Holdings.Count(h => h.Quantity > 0), p.CreatedAtUtc, p.UpdatedAtUtc, v.Problems));
+        }
+        return result;
     }
 
     public async Task<PortfolioDto> GetAsync(Guid id, CancellationToken ct) => ToDto(await LoadAsync(id, ct));
@@ -36,11 +35,10 @@ public sealed class PortfolioService(IApplicationDbContext db, PriceQueryService
     public async Task<PortfolioDto> CreateForOwnerAsync(Guid ownerId, CreatePortfolioRequest request, CancellationToken ct)
     {
         var appSettings = await prices.SettingsAsync(ct);
-        if (!string.Equals(request.BaseCurrency, appSettings.DefaultCurrency, StringComparison.OrdinalIgnoreCase))
-        {
-            throw new ValidationException("baseCurrency",
-                $"Only {appSettings.DefaultCurrency} portfolios are supported: currency conversion is not implemented and all assets are priced in their own currency.");
-        }
+        // Any currency with exchange rates can be the portfolio (account) currency; it holds the simulated cash and is fixed.
+        var baseCurrency = request.BaseCurrency.ToUpperInvariant();
+        if (!(await fx.SupportedCurrenciesAsync(ct)).Contains(baseCurrency))
+            throw new ValidationException("baseCurrency", $"{baseCurrency} is not supported: no exchange rates are published for it.");
 
         var settings = request.Settings?.ToDomain() ?? await DefaultSettingsAsync(appSettings, ct);
         await ValidateUniverseAsync(settings, request.BaseCurrency, ct);
@@ -166,9 +164,11 @@ public sealed class PortfolioService(IApplicationDbContext db, PriceQueryService
         var assets = await db.Assets.AsNoTracking().Where(a => symbols.Contains(a.Symbol)).ToListAsync(ct);
         var unknown = symbols.Except(assets.Select(a => a.Symbol)).ToList();
         if (unknown.Count > 0) errors["settings.universe"] = [$"Unknown asset(s): {string.Join(", ", unknown)}."];
-        var otherCurrency = assets.Where(a => !string.Equals(a.Currency, currency, StringComparison.OrdinalIgnoreCase)).Select(a => $"{a.Symbol} ({a.Currency})").ToList();
-        if (otherCurrency.Count > 0)
-            errors["settings.universe"] = [.. errors.GetValueOrDefault("settings.universe", []), $"Assets not denominated in {currency} cannot be mixed without FX conversion: {string.Join(", ", otherCurrency)}."];
+        // Stocks in other currencies are allowed (converted into the portfolio currency); only currencies without rates are not.
+        var supported = await fx.SupportedCurrenciesAsync(ct);
+        var unconvertible = assets.Where(a => a.Currency != currency && !supported.Contains(a.Currency)).Select(a => $"{a.Symbol} ({a.Currency})").ToList();
+        if (unconvertible.Count > 0)
+            errors["settings.universe"] = [.. errors.GetValueOrDefault("settings.universe", []), $"No exchange rates exist to convert these assets into {currency}: {string.Join(", ", unconvertible)}."];
         if (settings.Universe.Count == 0) errors["settings.universe"] = ["The universe must contain at least one asset."];
         if (errors.Count > 0) throw new ValidationException(errors);
     }

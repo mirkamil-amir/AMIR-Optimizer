@@ -25,6 +25,8 @@ public sealed record CreateMlExperimentRequest : IValidatableObject
 
     /// <example>SPY</example>
     [Required, StringLength(15)] public string BenchmarkSymbol { get; init; } = "SPY";
+    /// <summary>Analysis currency (ISO 4217); stocks in other currencies are converted with dated FX rates. Default: the selection's own currency, or the application default when it mixes currencies.</summary>
+    [RegularExpression("^[A-Z]{3}$")] public string? Currency { get; init; }
 
     // ---- model
     public ModelFamily ModelFamily { get; init; } = ModelFamily.RidgeRegression;
@@ -191,7 +193,9 @@ public sealed record MlExperimentDto(
     MlResultDocument? Results,
     IReadOnlyList<MlModelVersionDto> ModelVersions,
     MlPredictionSetDto? LatestPredictions,
-    string Disclaimer);
+    string Disclaimer,
+    /// <summary>Currency of all prices, features and results (stocks converted with dated FX rates).</summary>
+    string Currency = "USD");
 
 public sealed record NamedOption(string Value, string Label, string Description);
 

@@ -20,6 +20,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<Asset> Assets => Set<Asset>();
     public DbSet<HistoricalPrice> HistoricalPrices => Set<HistoricalPrice>();
     public DbSet<LatestQuote> LatestQuotes => Set<LatestQuote>();
+    public DbSet<FxRate> FxRates => Set<FxRate>();
     public DbSet<MarketIndex> MarketIndices => Set<MarketIndex>();
     public DbSet<IndexMembership> IndexMemberships => Set<IndexMembership>();
     public DbSet<QuoteRefreshRun> QuoteRefreshRuns => Set<QuoteRefreshRun>();
@@ -296,6 +297,34 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             e.HasOne(x => x.Asset).WithMany().HasForeignKey(x => x.AssetId).OnDelete(DeleteBehavior.Cascade);
         });
 
+        b.Entity<FxRate>(e =>
+        {
+            e.HasKey(x => new { x.Source, x.Currency, x.Date });
+            e.Property(x => x.Source).HasMaxLength(40);
+            e.Property(x => x.Currency).HasMaxLength(3).IsFixedLength();
+            e.Property(x => x.UnitsPerEur).HasPrecision(20, 8);
+            e.ToTable(t =>
+            {
+                t.HasCheckConstraint("CK_FxRates_Positive", "\"UnitsPerEur\" > 0");
+                t.HasCheckConstraint("CK_FxRates_NotEur", "\"Currency\" <> 'EUR'");
+            });
+        });
+
+        // Currency columns added with multi-currency support: ISO 4217 codes; FX source names.
+        b.Entity<OptimizationRun>(e => { e.Property(x => x.Currency).HasMaxLength(3); e.Property(x => x.FxSource).HasMaxLength(40); });
+        b.Entity<BacktestRun>(e => { e.Property(x => x.Currency).HasMaxLength(3); e.Property(x => x.FxSource).HasMaxLength(40); });
+        b.Entity<StrategyComparison>(e => { e.Property(x => x.Currency).HasMaxLength(3); e.Property(x => x.FxSource).HasMaxLength(40); });
+        b.Entity<MlExperiment>(e => { e.Property(x => x.Currency).HasMaxLength(3); e.Property(x => x.FxSource).HasMaxLength(40); });
+        b.Entity<TradeProposalLine>(e => { e.Property(x => x.Currency).HasMaxLength(3); e.Property(x => x.FxRate).HasPrecision(20, 10); });
+        b.Entity<SimulatedOrder>(e => { e.Property(x => x.Currency).HasMaxLength(3); e.Property(x => x.FxRate).HasPrecision(20, 10); });
+        b.Entity<TradeExecution>(e =>
+        {
+            e.Property(x => x.Currency).HasMaxLength(3);
+            e.Property(x => x.FxSource).HasMaxLength(40);
+            e.Property(x => x.FxRate).HasPrecision(20, 10);
+            e.ToTable(t => t.HasCheckConstraint("CK_TradeExecutions_FxRate", "\"FxRate\" > 0"));
+        });
+
         b.Entity<LatestQuote>(e =>
         {
             e.HasKey(x => new { x.AssetId, x.Source });
@@ -435,6 +464,27 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
 
     public bool IsUniqueConstraintViolation(DbUpdateException exception) =>
         exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
+
+    public async Task UpsertFxRatesAsync(IReadOnlyCollection<FxRate> rates, CancellationToken ct)
+    {
+        // INSERT … ON CONFLICT outside the change tracker: concurrent requests storing the same observations never
+        // leave failed entities behind that would break the caller's later SaveChanges.
+        foreach (var chunk in rates.Chunk(500))
+        {
+            var values = new List<string>();
+            var args = new List<object>();
+            foreach (var r in chunk)
+            {
+                var i = args.Count;
+                values.Add($"({{{i}}}, {{{i + 1}}}, {{{i + 2}}}, {{{i + 3}}}, {{{i + 4}}}, {{{i + 5}}})");
+                args.AddRange([r.Source, r.Currency, r.Date, r.UnitsPerEur, r.IsSimulated, r.RetrievedAtUtc]);
+            }
+            var sql = "INSERT INTO \"FxRates\" (\"Source\", \"Currency\", \"Date\", \"UnitsPerEur\", \"IsSimulated\", \"RetrievedAtUtc\") VALUES " +
+                      string.Join(", ", values) +
+                      " ON CONFLICT (\"Source\", \"Currency\", \"Date\") DO UPDATE SET \"UnitsPerEur\" = EXCLUDED.\"UnitsPerEur\", \"RetrievedAtUtc\" = EXCLUDED.\"RetrievedAtUtc\"";
+            await Database.ExecuteSqlRawAsync(sql, args, ct);
+        }
+    }
 
     /// <summary>All timestamps are UTC (PostgreSQL <c>timestamptz</c>); values are normalized on write and tagged as UTC on read.</summary>
     private sealed class UtcDateTimeConverter() : ValueConverter<DateTime, DateTime>(

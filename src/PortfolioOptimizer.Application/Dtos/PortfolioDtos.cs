@@ -74,11 +74,13 @@ public sealed record PortfolioSummaryDto(
     string BaseCurrency,
     decimal InitialInvestment,
     decimal CashBalance,
-    decimal MarketValue,
-    decimal TotalValue,
+    /// <summary>Null when a held position cannot be converted into the base currency (see <paramref name="ValuationProblems"/>).</summary>
+    decimal? MarketValue,
+    decimal? TotalValue,
     int Holdings,
     DateTime CreatedAtUtc,
-    DateTime UpdatedAtUtc);
+    DateTime UpdatedAtUtc,
+    IReadOnlyList<string>? ValuationProblems = null);
 
 public sealed record PortfolioDto(
     Guid Id,
@@ -110,12 +112,24 @@ public sealed record HoldingDto(
     double? TargetWeight,
     double? WeightDeviation,
     decimal? DailyChange,
-    DateTime UpdatedAtUtc);
+    DateTime UpdatedAtUtc,
+    /// <summary>Trading currency of the stock; <see cref="LatestPrice"/> is in it. Money amounts are in the valuation currency.</summary>
+    string Currency = "USD",
+    /// <summary>Valuation-currency units per unit of <see cref="Currency"/> at the price date (null for the same currency).</summary>
+    decimal? FxRate = null,
+    DateOnly? FxRateDate = null,
+    /// <summary>Why the position cannot be valued (missing price or exchange rate).</summary>
+    string? ValuationProblem = null);
 
+/// <summary>
+/// Valuation in <paramref name="Currency"/>. Market value and total are null when a position cannot be converted. Cost basis,
+/// realized P&amp;L, fees and contributions are booked in the account currency and, for another reporting currency, shown at
+/// today's account→reporting rate (<paramref name="AccountToReportingRate"/>). Returns are measured in the account currency.
+/// </summary>
 public sealed record PortfolioValuationDto(
-    decimal MarketValue,
+    decimal? MarketValue,
     decimal CashBalance,
-    decimal TotalValue,
+    decimal? TotalValue,
     double InvestedFraction,
     decimal TotalCostBasis,
     decimal UnrealizedPnl,
@@ -131,7 +145,13 @@ public sealed record PortfolioValuationDto(
     DateOnly? ValuationDate,
     string PriceSource,
     bool UsesSimulatedData,
-    IReadOnlyList<string> Warnings);
+    IReadOnlyList<string> Warnings,
+    string Currency = "USD",
+    string AccountCurrency = "USD",
+    decimal? AccountToReportingRate = null,
+    string? FxSource = null,
+    IReadOnlyList<CurrencyExposureDto>? CurrencyExposure = null,
+    IReadOnlyList<string>? ValuationProblems = null);
 
 public sealed record HoldingsResponse(PortfolioValuationDto Summary, IReadOnlyList<HoldingDto> Holdings);
 
@@ -147,7 +167,13 @@ public sealed record TransactionDto(
     decimal Fees,
     decimal NetCashFlow,
     decimal? RealizedPnl,
-    DateTime ExecutedAtUtc);
+    DateTime ExecutedAtUtc,
+    /// <summary>Currency of <see cref="Price"/>; gross amount, fees, cash flow and P&amp;L are in the portfolio currency.</summary>
+    string Currency = "USD",
+    /// <summary>Portfolio-currency units per unit of <see cref="Currency"/> of the simulated exchange (1 for the same currency).</summary>
+    decimal FxRate = 1,
+    DateOnly? FxRateDate = null,
+    string? FxSource = null);
 
 public sealed record CashEntryDto(Guid Id, CashEntryType Type, decimal Amount, decimal BalanceAfter, DateTime TimestampUtc, string Description);
 
@@ -162,4 +188,6 @@ public sealed record OrderDto(
     OrderStatus Status,
     decimal? ExecutionPrice,
     DateTime CreatedAtUtc,
-    string? Message);
+    string? Message,
+    string Currency = "USD",
+    decimal? FxRate = null);

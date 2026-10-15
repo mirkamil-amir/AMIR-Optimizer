@@ -16,6 +16,7 @@ using PortfolioOptimizer.Infrastructure.ModelArtifacts;
 using PortfolioOptimizer.Infrastructure.Jobs;
 using PortfolioOptimizer.Infrastructure.MarketData;
 using PortfolioOptimizer.Infrastructure.News;
+using PortfolioOptimizer.Infrastructure.Fx;
 using PortfolioOptimizer.Infrastructure.Llm;
 using PortfolioOptimizer.Application.News;
 using PortfolioOptimizer.Infrastructure.Persistence;
@@ -69,6 +70,14 @@ public static class DependencyInjection
         services.AddTransient<IMarketDataProvider>(sp => sp.GetRequiredService<YahooFinanceProvider>());
         services.AddTransient<IMarketDataProvider>(sp => sp.GetRequiredService<AlphaVantageProvider>());
         services.AddScoped<IMarketDataProviderRegistry, MarketDataProviderRegistry>();
+
+        // Exchange rates: ECB reference rates for real prices, simulated rates for simulated prices (see docs/currency.md).
+        services.Configure<EcbFxOptions>(configuration.GetSection(EcbFxOptions.Section));
+        AddProviderClient<EcbFxProvider, EcbFxOptions>(services, (o, c) => c.Timeout = Timeout.InfiniteTimeSpan,
+            o => o.MinRequestIntervalMs, o => o.TimeoutSeconds);
+        services.AddTransient<IFxRateProvider>(sp => sp.GetRequiredService<EcbFxProvider>());
+        services.AddSingleton<MockFxProvider>();
+        services.AddSingleton<IFxRateProvider>(sp => sp.GetRequiredService<MockFxProvider>());
 
         // Language model for the research assistant (optional; deterministic rules are used when none is configured).
         services.Configure<LanguageModelOptions>(configuration.GetSection(LanguageModelOptions.Section));

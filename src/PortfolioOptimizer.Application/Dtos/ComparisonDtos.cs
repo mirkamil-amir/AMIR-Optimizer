@@ -120,4 +120,6 @@ public sealed record StrategyComparisonDto(
     string? DataSnapshotHash,
     IReadOnlyList<string> Warnings,
     StrategyComparisonResultDto? Result,
-    string Disclaimer);
+    string Disclaimer,
+    /// <summary>Currency of both strategies, the benchmark and all results.</summary>
+    string Currency = "USD");

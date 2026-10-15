@@ -188,8 +188,11 @@ public sealed class ResearchAgent(
         var brief = Brief(session);
         var set = Candidates(session) ?? throw new ConflictException("Research the universe first.");
         if (set.SelectedSymbols.Count < 2) throw new ConflictException("Choose at least two stocks for the universe.");
+        // Analysed in the currency of the user's (first) portfolio, so a saved run matches the hypothesis; otherwise in the market's own currency.
+        var portfolioCurrency = await db.Portfolios.AsNoTracking().Where(p => p.OwnerId == session.OwnerId).OrderBy(p => p.CreatedAtUtc)
+            .Select(p => p.BaseCurrency).FirstOrDefaultAsync(ct);
         var baseConfig = new HypothesisConfig(brief.Objective, brief.MaxWeight, set.SelectedSymbols, [], new Dictionary<string, double>(),
-            "LedoitWolf", brief.LookbackDays, 10);
+            "LedoitWolf", brief.LookbackDays, 10, portfolioCurrency ?? "");
         var hypotheses = Hypotheses(session);
         var objectiveName = InterpretationTemplate.ObjectiveNames[brief.Objective];
         var label = $"{char.ToUpperInvariant(objectiveName[0])}{objectiveName[1..]} (from your brief)";
@@ -428,7 +431,7 @@ public sealed class ResearchAgent(
         var canonical = JsonSerializer.Serialize(new
         {
             c.Objective, c.MaxWeight, Universe = c.Universe.OrderBy(x => x, StringComparer.Ordinal), Excluded = c.ExcludedSymbols.OrderBy(x => x, StringComparer.Ordinal),
-            Sectors = c.SectorLimits.OrderBy(kv => kv.Key, StringComparer.Ordinal), c.CovarianceMethod, c.LookbackDays, c.TransactionCostBps,
+            Sectors = c.SectorLimits.OrderBy(kv => kv.Key, StringComparer.Ordinal), c.CovarianceMethod, c.LookbackDays, c.TransactionCostBps, c.Currency,
         });
         return Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(canonical)))[..16];
     }

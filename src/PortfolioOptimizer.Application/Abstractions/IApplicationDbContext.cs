@@ -10,6 +10,7 @@ public interface IApplicationDbContext
     DbSet<Asset> Assets { get; }
     DbSet<HistoricalPrice> HistoricalPrices { get; }
     DbSet<LatestQuote> LatestQuotes { get; }
+    DbSet<FxRate> FxRates { get; }
     DbSet<MarketIndex> MarketIndices { get; }
     DbSet<IndexMembership> IndexMemberships { get; }
     DbSet<QuoteRefreshRun> QuoteRefreshRuns { get; }
@@ -44,4 +45,7 @@ public interface IApplicationDbContext
 
     /// <summary>True when the save failed because a unique index/constraint was violated (provider-specific error code).</summary>
     bool IsUniqueConstraintViolation(DbUpdateException exception);
+
+    /// <summary>Inserts or updates FX observations (keyed by source, currency, date) without using the change tracker.</summary>
+    Task UpsertFxRatesAsync(IReadOnlyCollection<FxRate> rates, CancellationToken ct);
 }

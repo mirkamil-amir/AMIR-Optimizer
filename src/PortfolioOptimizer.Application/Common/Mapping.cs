@@ -97,10 +97,12 @@ public static class Mapping
         new(a.Id, a.Symbol, a.Name, a.Exchange, a.Currency, a.AssetType, a.Sector, a.IsEnabled);
 
     public static TransactionDto ToDto(this TradeExecution e) =>
-        new(e.Id, e.OrderId, e.Symbol, e.Side, e.Quantity, e.Price, e.PriceDate, e.GrossAmount, e.Fees, e.NetCashFlow, e.RealizedPnl, e.ExecutedAtUtc);
+        new(e.Id, e.OrderId, e.Symbol, e.Side, e.Quantity, e.Price, e.PriceDate, e.GrossAmount, e.Fees, e.NetCashFlow, e.RealizedPnl, e.ExecutedAtUtc,
+            e.Currency, e.FxRate, e.FxRateDate, e.FxSource);
 
     public static OrderDto ToDto(this SimulatedOrder o) =>
-        new(o.Id, o.BatchId, o.ProposalId, o.Symbol, o.Side, o.RequestedQuantity, o.FilledQuantity, o.Status, o.ExecutionPrice, o.CreatedAtUtc, o.Message);
+        new(o.Id, o.BatchId, o.ProposalId, o.Symbol, o.Side, o.RequestedQuantity, o.FilledQuantity, o.Status, o.ExecutionPrice, o.CreatedAtUtc, o.Message,
+            o.Currency, o.FxRate);
 
     public static SyncJobDto ToDto(this MarketDataSyncJob j) => new(
         j.Id, j.Status, j.Source,

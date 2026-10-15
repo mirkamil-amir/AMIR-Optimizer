@@ -176,7 +176,7 @@ public sealed class EvaluateHypothesisTool(OptimizationService optimizations, Pr
             BenchmarkSymbol = app.DefaultBenchmark,
             TransactionCostBps = c.TransactionCostBps,
         };
-        var (run, _) = await optimizations.EvaluateAsync(null, context.UserId, settings, 20, ct);
+        var (run, _) = await optimizations.EvaluateAsync(null, context.UserId, settings, 20, ct, string.IsNullOrEmpty(c.Currency) ? null : c.Currency);
         return run;
     }
 
@@ -267,14 +267,14 @@ public sealed class SaveHypothesisTool(OptimizationService optimizations, Portfo
     public override async Task<SaveRunResult> ExecuteAsync(ToolContext context, SaveRunArgs args, CancellationToken ct)
     {
         var universe = args.Config.Universe.ToList();
-        var currency = await db.Assets.AsNoTracking().Where(a => universe.Contains(a.Symbol)).Select(a => a.Currency).FirstAsync(ct);
         Portfolio portfolio;
         if (args.PortfolioId is { } pid) portfolio = await portfolios.LoadAsync(pid, ct); // owner-scoped: another user's id is 404
         else
         {
+            // Prefer a portfolio in the hypothesis currency; any portfolio works (the run is computed in its base currency).
             var mine = await portfolios.ListAsync(ct);
-            var match = mine.FirstOrDefault(p => string.Equals(p.BaseCurrency, currency, StringComparison.OrdinalIgnoreCase))
-                        ?? throw new ConflictException($"You have no portfolio in {currency}. Create one under Settings, then save again.");
+            var match = mine.FirstOrDefault(p => p.BaseCurrency == args.Config.Currency) ?? mine.FirstOrDefault()
+                        ?? throw new ConflictException("You have no portfolio yet. Create one under Settings, then save again.");
             portfolio = await portfolios.LoadAsync(match.Id, ct);
         }
         var app = await prices.SettingsAsync(ct);
