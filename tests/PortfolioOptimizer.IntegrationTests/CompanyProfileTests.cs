@@ -84,6 +84,29 @@ public sealed class CompanyProfileTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task CachedTextFromAnotherSource_IsNotServed_ByTheConfiguredSource()
+    {
+        // A description cached by a different source (e.g. an earlier simulated run) for the same article.
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<PortfolioOptimizer.Infrastructure.Persistence.AppDbContext>();
+            var msft = db.Assets.Single(a => a.Symbol == "MSFT");
+            db.CompanyProfiles.Add(new PortfolioOptimizer.Domain.CompanyProfile
+            {
+                AssetId = msft.Id, Reference = msft.ReferenceArticle!, Status = PortfolioOptimizer.Domain.CompanyProfileStatus.Available,
+                Description = "Old text from another source.", SourceName = "Another source", AttemptedAtUtc = DateTime.UtcNow, RetrievedAtUtc = DateTime.UtcNow,
+            });
+            await db.SaveChangesAsync();
+        }
+        var mock = _factory.Services.GetRequiredService<MockProfileProvider>();
+        var before = mock.Calls;
+        var p = await Profile("MSFT");
+        Assert.Equal(before + 1, mock.Calls);
+        Assert.DoesNotContain("Old text", p.Description);
+        Assert.Equal("Simulated profile (tests only)", p.SourceName);
+    }
+
+    [Fact]
     public async Task Profile_RequiresSignIn_AndNeverLeaksConfiguration()
     {
         using var anonymous = _factory.CreateSession();

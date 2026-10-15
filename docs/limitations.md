@@ -24,6 +24,11 @@
   purchase not applied to paper holdings.
 - Adjusted closes reflect adjustments known at download time (data vintage), not as originally published.
 
+## Company descriptions
+- From Wikipedia (CC BY-SA 4.0, attributed): encyclopedia text, not an issuer profile; it can lag corporate changes
+  and is refreshed at most every 30 days. 28 Nikkei 225 members and Insulet (PODD) have no linked article and show
+  "currently unavailable". The stock-detail panel navigates within the current page of the stock list (50 rows).
+
 ## News
 - Company news comes from Yahoo's unofficial search (personal, non-commercial use) and is linked to stocks only via
   Yahoo's own ticker tags: non-US coverage is sparse and untagged articles are missing. No summaries from that source.

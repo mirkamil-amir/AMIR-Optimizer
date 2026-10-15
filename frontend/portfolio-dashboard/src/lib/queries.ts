@@ -6,7 +6,7 @@ import type {
   PortfolioSettings, PortfolioSummary, PriceBar, Risk, RunStatus, Sector, StockDetail, StockListItem, SyncJob, TradeProposal,
   Transaction, UserAccountStatus, UserSummary, MlCatalog, MlExperiment, MlExperimentRequest, MlExperimentSummary, MlBacktest,
   MlPredictionSet, StrategyComparison, StrategyComparisonRequest, StrategyComparisonSummary, Market, QuoteRefreshRun, QuoteRefreshResult,
-  AdminOverview, HistoryRange, PriceHistory, Watchlist, WatchlistAddResult, NewsFeed, NewsFilters, EventComparison, RealityCheck,
+  AdminOverview, HistoryRange, PriceHistory, Watchlist, WatchlistAddResult, NewsFeed, NewsFilters, EventComparison, RealityCheck, CompanyProfile,
 } from './types'
 
 const V1 = '/api/v1'
@@ -326,7 +326,11 @@ export const useStocks = (q: StockQuery, enabled = true) => {
 }
 
 export const useStock = (symbol?: string) =>
-  useQuery({ queryKey: keys.stock(symbol ?? ''), queryFn: () => api.get<StockDetail>(`${V1}/stocks/${symbol}`), enabled: !!symbol })
+  useQuery({
+    queryKey: keys.stock(symbol ?? ''),
+    queryFn: ({ signal }) => api.get<StockDetail>(`${V1}/stocks/${encodeURIComponent(symbol!)}`, signal),
+    enabled: !!symbol,
+  })
 
 /**
  * Downloads price history for selected symbols (approved users: up to 50 named symbols) and waits for the background job,
@@ -628,7 +632,17 @@ export const useRealityCheck = (runId: string | undefined) =>
 export const useStockHistory = (symbol: string | undefined, range: HistoryRange) =>
   useQuery({
     queryKey: ['stock-history', symbol ?? '', range] as const,
-    queryFn: () => api.get<PriceHistory>(`${V1}/stocks/${encodeURIComponent(symbol!)}/history?range=${range}`),
+    queryFn: ({ signal }) => api.get<PriceHistory>(`${V1}/stocks/${encodeURIComponent(symbol!)}/history?range=${range}`, signal),
     enabled: !!symbol,
-    placeholderData: keepPreviousData,
+    // Keep the old chart only while switching ranges of the same stock – never show one stock's prices under another's name.
+    placeholderData: (previous, previousQuery) => (previousQuery?.queryKey[1] === (symbol ?? '') ? previous : undefined),
+  })
+
+/** Company description (cached on the server; descriptions change rarely, so the browser keeps them for an hour). */
+export const useCompanyProfile = (symbol: string | undefined) =>
+  useQuery({
+    queryKey: ['company-profile', symbol ?? ''] as const,
+    queryFn: ({ signal }) => api.get<CompanyProfile>(`${V1}/stocks/${encodeURIComponent(symbol!)}/profile`, signal),
+    enabled: !!symbol,
+    staleTime: 60 * 60_000,
   })

@@ -53,7 +53,7 @@ public sealed class CompanyProfileService(
             return Empty(asset, "NoReference", "Company description is currently unavailable: the catalogue source has no article for this listing.");
         var provider = providers.FirstOrDefault(p => p.IsConfigured);
         var cached = await db.CompanyProfiles.AsNoTracking().SingleOrDefaultAsync(p => p.AssetId == asset.Id, ct);
-        if (cached is not null && cached.Reference == asset.ReferenceArticle && (provider is null || !IsDue(cached)))
+        if (cached is not null && cached.Reference == asset.ReferenceArticle && (provider is null || (!IsDue(cached) && SameSource(cached, provider))))
             return ToDto(asset, cached, provider);
         if (provider is null)
             return cached is { Status: CompanyProfileStatus.Available }
@@ -65,21 +65,23 @@ public sealed class CompanyProfileService(
         try
         {
             var entry = await db.CompanyProfiles.SingleOrDefaultAsync(p => p.AssetId == asset.Id, ct);
-            if (entry is not null && entry.Reference == asset.ReferenceArticle && !IsDue(entry)) return ToDto(asset, entry, provider);
+            if (entry is not null && entry.Reference == asset.ReferenceArticle && !IsDue(entry) && SameSource(entry, provider)) return ToDto(asset, entry, provider);
             if (entry is null)
             {
                 entry = new CompanyProfile { AssetId = asset.Id, Reference = asset.ReferenceArticle, Status = CompanyProfileStatus.Error };
                 db.CompanyProfiles.Add(entry);
             }
-            else if (entry.Reference != asset.ReferenceArticle)
+            else if (entry.Reference != asset.ReferenceArticle || !SameSource(entry, provider))
             {
-                // The catalogue now points at another article: the old text must not be shown for it.
+                // Another article or another source (e.g. simulated → Wikipedia): the old text must not be shown for it.
                 entry.Reference = asset.ReferenceArticle;
                 entry.Status = CompanyProfileStatus.Error;
                 entry.Description = entry.SourceUrl = entry.Language = null;
                 entry.RetrievedAtUtc = null;
             }
             entry.AttemptedAtUtc = clock.GetUtcNow().UtcDateTime;
+            entry.SourceName = provider.SourceName;
+            entry.Licence = provider.Licence;
             try
             {
                 using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -119,6 +121,9 @@ public sealed class CompanyProfileService(
             gate.Release();
         }
     }
+
+    /// <summary>A cached entry from another source (e.g. the simulated test provider) is never served by the configured one.</summary>
+    private static bool SameSource(CompanyProfile p, ICompanyProfileProvider provider) => p.SourceName is null || p.SourceName == provider.SourceName;
 
     private bool IsDue(CompanyProfile p)
     {

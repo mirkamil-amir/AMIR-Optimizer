@@ -1,5 +1,28 @@
 # Implementation status
 
+## 2026-10-15 (2): stock-detail panel and company descriptions
+
+* **Panel too small – root cause:** the stock browser opened a right-hand `Sheet` limited to `sm:max-w-xl` (576 px) with a
+  fixed 220 px chart. Replaced by `components/stock-detail-dialog.tsx`: a centered dialog of `min(68vw, 1280px)` ×
+  `min(88vh, 960px)` from 1024 px, 94 % × 92 % on tablets, full screen on phones; one scroll area; chart height follows the
+  viewport (240–520 px). Measured in Chromium: 1440×900 → 979×792 (68.0 % × 88.0 %); 1920×1080 → 1280×950 (66.7 % × 88.0 %);
+  768×1024 → 722×942; 390×844 → full screen.
+* **Navigation:** labelled Previous / Next / Close buttons, "n of N in the current list", ←/→ keys, Escape and outside
+  click close; order = the list as displayed (server-side filters, sort, current page); no wraparound (buttons disabled at
+  the ends and for a stock that left the list); the selection and filters are untouched. The panel body is keyed by
+  symbol and every query checks the symbol of its data, so a slow response for the previous stock cannot appear.
+* **Description empty – root cause:** `Asset.Description` was never written by any import or provider (code
+  inspection: no code path assigns it; the seed CSVs have no description column), so the panel only ever showed
+  "No company description…". Fixed with catalogue article
+  references + Wikipedia summaries + a profile cache (see [market-data.md](market-data.md#company-descriptions)).
+* **Bugs found by the new tests and fixed:** a first failed profile fetch was reported as "Available" (enum default);
+  cached simulated text would have been served by the real provider after switching sources.
+* **Verified:** unit (Wikipedia parsing, references, CSV import, Max range), integration (`CompanyProfileTests`: cache,
+  not found, error + retry window, no reference, source switch, auth), Vitest (`stock-detail-dialog.test.tsx`: open, size
+  classes, Previous/Next/boundaries, Close/Escape, filtered list, fallback, independent failures, stale response), e2e
+  (`stock-detail.spec.ts` on the disposable stack), opt-in live smoke (real Wikipedia for AAPL, SAP, Toyota via de→en), and
+  a browser check of real descriptions (local API with Wikipedia enabled on the disposable e2e database).
+
 ## Pass of 2026-10-15: watchlist, financial news, reality check
 
 ### Baseline (before changes, branch `worktree-master-challenge` from `main` 4b4d563)

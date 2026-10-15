@@ -2,6 +2,14 @@
 
 Short records of decisions that are not obvious from the code. Newest first. Format: context → decision → consequences.
 
+## D-20 Company descriptions from the catalogue's Wikipedia links (2026-10-15)
+**Context:** the stock panel's description was always empty because nothing ever wrote one; Alpha Vantage `OVERVIEW` is
+premium for the configured key and Yahoo profiles sit behind an anti-scraping crumb. **Decision:** record the company
+article linked in the pinned constituent tables (`wiki` column) and fetch its lead section from the Wikimedia REST API
+(CC BY-SA, attributed), cached per listing for 30 days. **Alternatives:** name search on Wikipedia/Wikidata (false
+matches, e.g. "Apple"), licensed fundamentals vendors (not available). **Consequences:** reliable identity, no API key,
+works for all five markets; encyclopedia text rather than issuer-written profiles; ~29 listings have no article.
+
 ## D-19 Reality check on the run's own window, re-solving instead of resampling (2026-10-15)
 **Context:** users need to see how fragile an optimized allocation is. **Decision:** analyse the saved weights on the
 run's stored window and price source; measure sensitivity by re-solving the same problem with one assumption changed

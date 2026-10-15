@@ -9,7 +9,8 @@ import { useAddToWatchlist, useRemoveFromWatchlist, useStockHistory, useWatchlis
 import type { HistoryRange, PricePoint } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
-const historyRanges: HistoryRange[] = ['1D', '1M', '3M', '6M', '1Y', '5Y']
+const historyRanges: HistoryRange[] = ['1D', '1M', '3M', '6M', '1Y', '5Y', 'MAX']
+const rangeLabels: Partial<Record<HistoryRange, string>> = { MAX: 'Max' }
 
 /** Segmented range picker. 1D is offered so its unavailability is explained rather than silently hidden. */
 export function RangePicker({ value, onChange, ranges = historyRanges, label = 'Time range' }: {
@@ -30,7 +31,7 @@ export function RangePicker({ value, onChange, ranges = historyRanges, label = '
           className={cn('rounded px-2.5 py-1 text-xs font-medium tabular text-muted-foreground transition-colors hover:text-foreground',
             value === r && 'bg-muted text-foreground')}
         >
-          {r}
+          {rangeLabels[r] ?? r}
         </button>
       ))}
     </div>
@@ -107,13 +108,21 @@ export function WatchToggle({ symbol, size = 'sm' }: { symbol: string; size?: 's
 }
 
 /** Price chart for a range, with basis, currency, source, the period change and honest gaps. */
-export function PriceHistoryCard({ symbol, range, onRangeChange }: { symbol: string; range: HistoryRange; onRangeChange: (r: HistoryRange) => void }) {
+export function PriceHistoryCard({ symbol, range, onRangeChange, height = 240, className }: {
+  symbol: string
+  range: HistoryRange
+  onRangeChange: (r: HistoryRange) => void
+  height?: number
+  className?: string
+}) {
   const history = useStockHistory(symbol, range)
-  const h = history.data
+  // Defensive: data of another stock is never rendered under this stock's name.
+  const h = history.data?.symbol === symbol ? history.data : undefined
   const dates = h?.points.map((p) => p.date) ?? []
   const series = h ? [{ name: `${h.basis} (${h.currency})`, values: h.points.map((p) => p.price) }] : []
   return (
     <ChartCard
+      className={className}
       title="Price history"
       hint="Daily closes stored from the configured provider. Adjusted closes include splits and dividends (total return); raw closes are the traded prices. Missing days are not filled in."
       description={h ? (
@@ -126,18 +135,18 @@ export function PriceHistoryCard({ symbol, range, onRangeChange }: { symbol: str
       table={h && h.points.length > 0 ? timeSeriesTable(dates, series, (v) => money(v, h.currency)) : undefined}
     >
       <div className="mb-3"><RangePicker value={range} onChange={onRangeChange} /></div>
-      {history.error ? <ErrorState error={history.error} onRetry={() => history.refetch()} /> : !h ? <LoadingBlock height="h-56" /> : (
+      {history.error ? <ErrorState error={history.error} onRetry={() => history.refetch()} /> : !h ? <div aria-busy="true" aria-label={`Loading price history of ${symbol}`}><LoadingBlock height="h-56" /></div> : (
         <div className="space-y-3">
           {h.points.length > 1 ? (
             <>
               <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm">
-                <span className="text-muted-foreground">Change {range}:</span>
+                <span className="text-muted-foreground">Change {rangeLabels[range] ?? range}:</span>
                 <ChangeText value={h.change} className="font-semibold" />
                 <span className="text-xs text-muted-foreground">
                   {money(h.basePrice, h.currency)} on {date(h.baseDate)} → {money(h.endPrice, h.currency)} on {date(h.endDate)}
                 </span>
               </div>
-              <TimeSeriesChart dates={dates} series={series} format={(v) => money(v, h.currency, { compact: true })} height={240} />
+              <TimeSeriesChart dates={dates} series={series} format={(v) => money(v, h.currency, { compact: true })} height={height} />
             </>
           ) : (
             <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
