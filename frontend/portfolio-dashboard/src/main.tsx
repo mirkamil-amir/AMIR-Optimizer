@@ -21,6 +21,10 @@ const BacktestPage = lazy(() => import('@/pages/backtest').then((m) => ({ defaul
 const MarketDataPage = lazy(() => import('@/pages/market-data').then((m) => ({ default: m.MarketDataPage })))
 const SettingsPage = lazy(() => import('@/pages/settings').then((m) => ({ default: m.SettingsPage })))
 const StocksPage = lazy(() => import('@/pages/stocks').then((m) => ({ default: m.StocksPage })))
+const StockPage = lazy(() => import('@/pages/stock').then((m) => ({ default: m.StockPage })))
+const WatchlistPage = lazy(() => import('@/pages/watchlist').then((m) => ({ default: m.WatchlistPage })))
+const NewsPage = lazy(() => import('@/pages/news').then((m) => ({ default: m.NewsPage })))
+const RealityCheckPage = lazy(() => import('@/pages/reality-check').then((m) => ({ default: m.RealityCheckPage })))
 const HistoryPage = lazy(() => import('@/pages/history').then((m) => ({ default: m.HistoryPage })))
 const MachineLearningPage = lazy(() => import('@/pages/machine-learning').then((m) => ({ default: m.MachineLearningPage })))
 const StrategyComparisonPage = lazy(() => import('@/pages/strategy-comparison').then((m) => ({ default: m.StrategyComparisonPage })))
@@ -58,10 +62,14 @@ const router = createBrowserRouter([
         children: [
           { path: '/', element: <OverviewPage /> },
           { path: '/stocks', element: <StocksPage /> },
+          { path: '/stocks/:symbol', element: <StockPage /> },
+          { path: '/watchlist', element: <WatchlistPage /> },
+          { path: '/news', element: <NewsPage /> },
           { path: '/holdings', element: <HoldingsPage /> },
           { path: '/optimize', element: <OptimizePage /> },
           { path: '/optimize/:runId', element: <OptimizePage /> },
           { path: '/history', element: <HistoryPage /> },
+          { path: '/reality-check/:runId', element: <RealityCheckPage /> },
           { path: '/machine-learning', element: <MachineLearningPage /> },
           { path: '/machine-learning/:experimentId', element: <MachineLearningPage /> },
           { path: '/strategy-comparison', element: <StrategyComparisonPage /> },

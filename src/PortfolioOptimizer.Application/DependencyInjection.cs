@@ -9,6 +9,8 @@ using PortfolioOptimizer.Application.Portfolios;
 using PortfolioOptimizer.Application.Settings;
 using PortfolioOptimizer.Application.Comparisons;
 using PortfolioOptimizer.Application.Trading;
+using PortfolioOptimizer.Application.Watchlists;
+using PortfolioOptimizer.Application.News;
 using PortfolioOptimizer.Optimization;
 using PortfolioOptimizer.Optimization.Backtesting;
 using PortfolioOptimizer.Optimization.Portfolio;
@@ -33,6 +35,7 @@ public static class DependencyInjection
         services.AddScoped<OptimizationService>();
         services.AddScoped<TradingService>();
         services.AddScoped<PortfolioAnalyticsService>();
+        services.AddScoped<RealityCheckService>();
         services.AddScoped<BacktestService>();
         services.AddScoped<AuditQueryService>();
         services.AddScoped<CatalogueService>();
@@ -45,6 +48,8 @@ public static class DependencyInjection
         services.AddSingleton<StrategyComparisonEngine>();
         services.AddScoped<StrategyComparisonService>();
         services.AddScoped<StrategyComparisonRunner>();
+        services.AddScoped<WatchlistService>();
+        services.AddScoped<NewsService>();
         return services;
     }
 }

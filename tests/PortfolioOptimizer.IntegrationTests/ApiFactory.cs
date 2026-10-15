@@ -25,10 +25,14 @@ public sealed class ApiFactory(string connectionString) : WebApplicationFactory<
     /// <summary>Whether signing in starts the background quote refresh cycle (off by default for deterministic tests).</summary>
     public bool RefreshOnSignIn { get; init; }
 
+    /// <summary>Extra service registrations applied after the application's (e.g. a failing provider).</summary>
+    public Action<Microsoft.Extensions.DependencyInjection.IServiceCollection>? TestServices { get; init; }
+
     public static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { Converters = { new JsonStringEnumConverter() } };
 
-    public static async Task<ApiFactory> CreateAsync(bool refreshOnSignIn = false) =>
-        new(await PostgresTestServer.CreateDatabaseAsync()) { RefreshOnSignIn = refreshOnSignIn };
+    public static async Task<ApiFactory> CreateAsync(bool refreshOnSignIn = false,
+        Action<Microsoft.Extensions.DependencyInjection.IServiceCollection>? testServices = null) =>
+        new(await PostgresTestServer.CreateDatabaseAsync()) { RefreshOnSignIn = refreshOnSignIn, TestServices = testServices };
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -42,11 +46,16 @@ public sealed class ApiFactory(string connectionString) : WebApplicationFactory<
         // Tests that need the sign-in refresh cycle enable it explicitly (keeps other tests deterministic).
         builder.UseSetting("MarketData:Quotes:RefreshOnSignIn", RefreshOnSignIn ? "true" : "false");
         builder.UseSetting("MarketData:Yahoo:Enabled", "false");
+        // News: deterministic simulated articles only (no network).
+        builder.UseSetting("News:Yahoo:Enabled", "false");
+        builder.UseSetting("News:OfficialFeeds:Enabled", "false");
+        builder.UseSetting("News:Mock:Enabled", "true");
         builder.UseSetting("Seed:Assets", "true");
         builder.UseSetting("Seed:DemoPortfolio", "false");
         builder.UseSetting("Seed:SyncOnEmptyDatabase", "false");
         builder.UseSetting("RateLimiting:ExpensivePermitPerMinute", "1000");
         builder.UseSetting("RateLimiting:AuthenticationPermitPerMinute", "1000");
+        if (TestServices is not null) builder.ConfigureServices(TestServices);
         builder.UseSetting("ModelArtifacts:RootPath", Path.Combine(Path.GetTempPath(), $"po-it-artifacts-{Guid.NewGuid():N}"));
     }
 

@@ -15,6 +15,8 @@ using PortfolioOptimizer.Infrastructure.Identity;
 using PortfolioOptimizer.Infrastructure.ModelArtifacts;
 using PortfolioOptimizer.Infrastructure.Jobs;
 using PortfolioOptimizer.Infrastructure.MarketData;
+using PortfolioOptimizer.Infrastructure.News;
+using PortfolioOptimizer.Application.News;
 using PortfolioOptimizer.Infrastructure.Persistence;
 
 namespace PortfolioOptimizer.Infrastructure;
@@ -66,6 +68,28 @@ public static class DependencyInjection
         services.AddTransient<IMarketDataProvider>(sp => sp.GetRequiredService<YahooFinanceProvider>());
         services.AddTransient<IMarketDataProvider>(sp => sp.GetRequiredService<AlphaVantageProvider>());
         services.AddScoped<IMarketDataProviderRegistry, MarketDataProviderRegistry>();
+
+        // News: Yahoo company news (unofficial), official central-bank RSS feeds, and a simulated provider for tests only.
+        services.Configure<NewsOptions>(configuration.GetSection(NewsOptions.Section));
+        services.Configure<YahooNewsOptions>(configuration.GetSection(YahooNewsOptions.Section));
+        services.Configure<OfficialFeedOptions>(configuration.GetSection(OfficialFeedOptions.Section));
+        services.Configure<MockNewsOptions>(configuration.GetSection(MockNewsOptions.Section));
+        AddProviderClient<YahooNewsProvider, YahooNewsOptions>(services, (o, c) =>
+        {
+            c.BaseAddress = new Uri(o.BaseUrl);
+            c.Timeout = Timeout.InfiniteTimeSpan;
+            c.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (compatible; PortfolioOptimizer/1.0; personal research)");
+        }, o => o.MinRequestIntervalMs, o => o.TimeoutSeconds);
+        AddProviderClient<OfficialFeedProvider, OfficialFeedOptions>(services, (o, c) =>
+        {
+            c.Timeout = Timeout.InfiniteTimeSpan;
+            c.DefaultRequestHeaders.UserAgent.ParseAdd("PortfolioOptimizer/1.0 (educational research; RSS reader)");
+        }, o => o.MinRequestIntervalMs, o => o.TimeoutSeconds);
+        services.AddSingleton<MockNewsProvider>();
+        services.AddTransient<ICompanyNewsProvider>(sp => sp.GetRequiredService<YahooNewsProvider>());
+        services.AddTransient<INewsFeedProvider>(sp => sp.GetRequiredService<OfficialFeedProvider>());
+        services.AddTransient<ICompanyNewsProvider>(sp => sp.GetRequiredService<MockNewsProvider>());
+        services.AddTransient<INewsFeedProvider>(sp => sp.GetRequiredService<MockNewsProvider>());
 
         services.AddSingleton<IBackgroundJobQueue, ChannelBackgroundJobQueue>();
         services.AddHostedService<BackgroundJobWorker>();

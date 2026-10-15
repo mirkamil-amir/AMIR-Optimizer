@@ -1,7 +1,7 @@
 import { Suspense, useState } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router'
 import {
-  Activity, BarChart3, BookOpen, BrainCircuit, GraduationCap, Briefcase, Database, FlaskConical, Gauge, GitCompareArrows, History, LayoutDashboard, ListChecks, LogOut, Menu,
+  Activity, BarChart3, Eye, Newspaper, BookOpen, BrainCircuit, GraduationCap, Briefcase, Database, FlaskConical, Gauge, GitCompareArrows, History, LayoutDashboard, ListChecks, LogOut, Menu,
   ScrollText, Search, Settings, ShieldCheck, Sigma, UserRound, Users,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -27,7 +27,9 @@ const sections: { title: string; items: NavEntry[] }[] = [
     title: 'Research',
     items: [
       { to: '/', label: 'Overview', icon: LayoutDashboard, end: true },
-      { to: '/stocks', label: 'Stock selection', icon: Search },
+      { to: '/watchlist', label: 'Watchlist', icon: Eye },
+      { to: '/news', label: 'Financial news', icon: Newspaper },
+      { to: '/stocks', label: 'Stock selection', icon: Search, end: true },
       { to: '/optimize', label: 'Optimize', icon: Sigma },
       { to: '/machine-learning', label: 'Machine learning', icon: BrainCircuit },
       { to: '/strategy-comparison', label: 'Strategy comparison', icon: GitCompareArrows },

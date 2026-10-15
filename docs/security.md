@@ -38,8 +38,8 @@ data. It places no real orders and stores no payment or brokerage credentials.
 | Administrator | `admin/*` (users, audit, overview, catalogue and constituent imports, manual quote refresh), `PUT /settings`, `POST/PATCH /assets` |
 | Anonymous (test marker) | `GET /api/v1/system/test-environment` – returns only whether the environment is `E2E` |
 
-**Owner scoping.** Portfolios, optimization runs, backtests, ML experiments and strategy comparisons carry an
-`OwnerId`. Every query filters by the current user, and another user's id returns 404 (not 403), so ids do not leak.
+**Owner scoping.** Portfolios, optimization runs (incl. their reality check), backtests, ML experiments, strategy comparisons
+and watchlist entries carry an `OwnerId`. Every query filters by the current user, and another user's id returns 404 (not 403), so ids do not leak.
 Integration tests cover cross-user access for each area. The frontend route guards are only a usability layer.
 
 ## Request protection

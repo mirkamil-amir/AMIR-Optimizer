@@ -6,7 +6,7 @@ import type {
   PortfolioSettings, PortfolioSummary, PriceBar, Risk, RunStatus, Sector, StockDetail, StockListItem, SyncJob, TradeProposal,
   Transaction, UserAccountStatus, UserSummary, MlCatalog, MlExperiment, MlExperimentRequest, MlExperimentSummary, MlBacktest,
   MlPredictionSet, StrategyComparison, StrategyComparisonRequest, StrategyComparisonSummary, Market, QuoteRefreshRun, QuoteRefreshResult,
-  AdminOverview,
+  AdminOverview, HistoryRange, PriceHistory, Watchlist, WatchlistAddResult, NewsFeed, NewsFilters, EventComparison, RealityCheck,
 } from './types'
 
 const V1 = '/api/v1'
@@ -551,3 +551,84 @@ export function useDeleteComparison() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['comparisons'] }),
   })
 }
+
+// ---------------------------------------------------------------- watchlist & price history
+
+export const useWatchlist = (range: HistoryRange = '1M') =>
+  useQuery({
+    queryKey: ['watchlist', range] as const,
+    queryFn: () => api.get<Watchlist>(`${V1}/watchlist?range=${range}`),
+    placeholderData: keepPreviousData,
+  })
+
+export function useAddToWatchlist() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (symbol: string) => api.post<WatchlistAddResult>(`${V1}/watchlist`, { symbol }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['watchlist'] }),
+  })
+}
+
+export function useRemoveFromWatchlist() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (symbol: string) => api.delete<void>(`${V1}/watchlist/${encodeURIComponent(symbol)}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['watchlist'] }),
+  })
+}
+
+/** Refreshes all watched stocks' quotes (the server reuses quotes inside its cache window). */
+export function useRefreshWatchlist() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => api.post<QuoteRefreshResult>(`${V1}/watchlist/quotes/refresh`),
+    onSuccess: (result) => {
+      mergeRefreshedStocks(qc, result)
+      qc.invalidateQueries({ queryKey: ['watchlist'] })
+    },
+  })
+}
+
+/** Query string for the news feed (pure; empty filters are omitted). */
+export function newsParams(f: NewsFilters): string {
+  const p = new URLSearchParams()
+  for (const [k, v] of Object.entries(f)) {
+    if (v === undefined || v === null || v === '' || v === false) continue
+    p.set(k, String(v))
+  }
+  return p.toString()
+}
+
+export const useNews = (filters: NewsFilters, enabled = true) => {
+  const params = newsParams(filters)
+  return useQuery({
+    queryKey: ['news', params] as const,
+    queryFn: ({ signal }) => api.get<NewsFeed>(`${V1}/news?${params}`, signal),
+    placeholderData: keepPreviousData,
+    staleTime: 5 * 60_000,
+    enabled,
+  })
+}
+
+export const useEventComparison = (articleId: string | undefined, symbol: string | undefined) =>
+  useQuery({
+    queryKey: ['news-event', articleId ?? '', symbol ?? ''] as const,
+    queryFn: () => api.get<EventComparison>(`${V1}/news/${articleId}/price-movement?symbol=${encodeURIComponent(symbol!)}`),
+    enabled: !!articleId && !!symbol,
+  })
+
+export const useRealityCheck = (runId: string | undefined) =>
+  useQuery({
+    queryKey: ['reality-check', runId ?? ''] as const,
+    queryFn: () => api.get<RealityCheck>(`${V1}/optimization-runs/${runId}/reality-check`),
+    enabled: !!runId,
+    staleTime: 5 * 60_000,
+  })
+
+export const useStockHistory = (symbol: string | undefined, range: HistoryRange) =>
+  useQuery({
+    queryKey: ['stock-history', symbol ?? '', range] as const,
+    queryFn: () => api.get<PriceHistory>(`${V1}/stocks/${encodeURIComponent(symbol!)}/history?range=${range}`),
+    enabled: !!symbol,
+    placeholderData: keepPreviousData,
+  })

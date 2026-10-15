@@ -24,7 +24,18 @@
   purchase not applied to paper holdings.
 - Adjusted closes reflect adjustments known at download time (data vintage), not as originally published.
 
+## News
+- Company news comes from Yahoo's unofficial search (personal, non-commercial use) and is linked to stocks only via
+  Yahoo's own ticker tags: non-US coverage is sparse and untagged articles are missing. No summaries from that source.
+- Official feeds cover the Fed, ECB, Bank of England and Bank of Japan only; no exchange/issuer disclosure feeds,
+  statistics offices or licensed newswires. Alpha Vantage news is premium for the configured key.
+- Categories are keyword rules (unevaluated); the relevance indicator is unvalidated and never a price prediction.
+- Images are off by default (rights unverified). No notifications.
+- Event comparisons use daily closes, regular session hours and no holiday calendar; they cannot show causation.
+
 ## Quant & ML
+- The Portfolio Reality Check tests four assumption changes; it is not a full resampling/bootstrap analysis, and its
+  out-of-sample section appears only once ≥ 20 trading days exist after the run's window.
 - Expected returns for mean-variance are historical means. No Black–Litterman, factor models or robust optimization.
 - Max-holdings / minimum-position constraints use a greedy heuristic, not mixed-integer optimization. No shorting
   or leverage. Proportional costs only (no market impact, no bid/ask model).

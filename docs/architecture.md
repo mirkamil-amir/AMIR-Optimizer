@@ -13,6 +13,7 @@
              │ Application: use-case services (owner-scoped), DTOs, validation                                     │
              │ MarketData · QuoteRefresh · Universes · StockDiscovery · Portfolios · Optimization · Trading · …     │
              │ MachineLearning (MlExperimentService, runner) · Comparisons (engine, service, runner) · Admin       │
+             │ Watchlists · News (rules, service, event comparison) · Analytics (RealityCheckService)              │
              └───────┬───────────────────────┬──────────────────────────────┬───────────────────────────────────┘
                      │                       │                              │
    ┌─────────────────▼─────────┐ ┌───────────▼──────────────────────┐ ┌─────▼──────────────────────────────────┐
@@ -26,6 +27,7 @@
    │ Infrastructure: EF Core + Npgsql (PostgreSQL) · migrations · DatabaseInitializer · Identity stores         │
    │ AuditLog · AdminBootstrapper · data-protection keys in DB · LocalModelArtifactStore                       │
    │ market-data providers (Yahoo, Alpha Vantage, Mock) + resilience · job queue/worker · scheduled refresh     │
+   │ news providers (Yahoo news search, official central-bank RSS, Mock) + the same resilience pipeline          │
    └──────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -101,12 +103,13 @@ limits, least-privilege database role, audit trail.
 
 ## Frontend structure
 
-* `pages/` – one route each (`stocks`, `optimize`, `machine-learning`, `strategy-comparison`, `learn`, `admin`,
-  `admin-overview`, …); `components/` – shared UI (`universe-nav`, `stock-selection`, `strategy-insights`, charts,
+* `pages/` – one route each (`stocks`, `stock` (security page), `watchlist`, `news`, `optimize`, `reality-check`,
+  `machine-learning`, `strategy-comparison`, `learn`, `admin`, `admin-overview`, …); `components/` – shared UI (`universe-nav`, `stock-selection`, `strategy-insights`, charts,
   tables, shadcn/Base UI primitives).
 * `lib/` – pure, unit-tested logic: `api.ts` (fetch + antiforgery), `auth.tsx`, `selection.tsx` (memory only),
   `queries.ts` (TanStack Query hooks), `identity.ts` (header labels), `quote-status.ts`, `interpretation.ts`
-  (result explanations), `strategy-guide.ts` + `worked-examples.ts` (12-part strategy explanations), `glossary.ts`.
+  (result explanations), `strategy-guide.ts` + `worked-examples.ts` (12-part strategy explanations), `glossary.ts`,
+  `news.ts` (news labels and link safety).
 * Business logic stays out of React components; components render what `lib/` computes.
 
 See also [decisions.md](decisions.md).

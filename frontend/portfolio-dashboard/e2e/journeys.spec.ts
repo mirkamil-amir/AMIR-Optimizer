@@ -54,6 +54,16 @@ test('optimizing a selection explains the actual result', async ({ page }) => {
   await expect(page.getByText(/The portfolio holds \d+ of \d+ eligible stocks/)).toBeVisible()
   await expect(page.getByText(/Minimum variance only looks at risk/)).toBeVisible()
   await expect(page.getByText(/SIMULATED prices/).first()).toBeVisible()
+
+  // Journey F: the reality check challenges the saved result with labelled findings and sensitivity scenarios.
+  await page.getByRole('link', { name: 'Portfolio reality check' }).click()
+  await expect(page.getByRole('heading', { name: 'What the analysis shows' })).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByText('Caution').first()).toBeVisible()
+  await expect(page.getByText(/use the same data that chose the weights/)).toBeVisible()
+  await expect(page.getByRole('table', { name: 'Sensitivity scenarios' })).toContainText('Equal weight (reference)')
+  await expect(page.getByText(/not a recommendation to buy or sell/)).toBeVisible()
+  await page.getByRole('link', { name: 'Optimization result' }).click()
+
   await page.getByRole('link', { name: /How this strategy works/ }).click()
   await expect(page).toHaveURL(/\/learn\//)
 })

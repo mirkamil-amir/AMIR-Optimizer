@@ -2,7 +2,10 @@
 
 An educational portfolio-research platform. Students browse ~900 stocks from five markets (S&P 500, DAX 40 and the
 historical DAX 30, CAC 40, FTSE 100, Nikkei 225) with automatically refreshed, clearly labelled prices, build a
-temporary selection, optimize it with **classical mean-variance optimization**, train and evaluate
+temporary selection, follow stocks on a personal **watchlist** with price history and company news, read
+**financial news** from attributed sources (with an event and price-movement comparison that makes no causal claims),
+optimize a selection with **classical mean-variance optimization** and challenge the result with the **Portfolio
+Reality Check** (concentration, risk shares, stress correlation, sensitivity, costs), train and evaluate
 **machine-learning** ranking models with strictly chronological validation, compare both approaches against equal
 weight and a benchmark on **one shared walk-forward simulator**, and act on the results in a **simulated (paper)
 portfolio**. Every strategy has a 12-part explanation in the built-in **strategy guide**, and every result comes with
@@ -19,14 +22,16 @@ an interpretation generated from its own numbers.
 | ML engine | Ridge and logistic regression (in-house, closed form / IRLS), random forest and gradient boosting (ML.NET FastForest / FastTree) |
 | Frontend | React 19 + TypeScript, Vite 8, Tailwind CSS v4, shadcn/ui on Base UI, TanStack Query, Recharts |
 | Market data | Yahoo Finance (default; quotes in batches of 20), Alpha Vantage (optional, free key), Mock (simulated, tests) |
-| Tests | xUnit: 104 unit + 40 ML + 55 integration (real PostgreSQL) · Vitest: 50 · Playwright: 15 on a disposable stack · opt-in live provider smoke tests |
+| Tests | xUnit: 148 unit + 40 ML + 69 integration (real PostgreSQL) · Vitest: 54 · Playwright: 17 on a disposable stack · opt-in live provider smoke tests |
 
 Documentation: [AGENTS.md](AGENTS.md) (start here when changing code) · [architecture](docs/architecture.md) ·
 [database](docs/database.md) · [market data](docs/market-data.md) · [quantitative strategies](docs/quantitative-strategies.md) ·
 [machine learning & strategy comparison](docs/machine-learning.md) · [security](docs/security.md) ·
 [testing](docs/testing.md) · [deployment, backup & restore](docs/deployment.md) ·
 [implementation status](docs/implementation-status.md) · [decisions](docs/decisions.md) ·
-[limitations](docs/limitations.md) · [audit (first upgrade)](docs/audit.md) · [report (first upgrade)](docs/final-report.md)
+[limitations](docs/limitations.md) · [watchlist](docs/watchlist.md) · [financial news](docs/financial-news.md) ·
+[portfolio reality check](docs/portfolio-reality-check.md) · [roadmap](docs/roadmap.md) ·
+[launch readiness & regulatory questions](docs/launch-readiness.md) · [audit (first upgrade)](docs/audit.md) · [report (first upgrade)](docs/final-report.md)
 
 ## Quick start (containers)
 

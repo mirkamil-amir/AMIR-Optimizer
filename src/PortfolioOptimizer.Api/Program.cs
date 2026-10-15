@@ -142,7 +142,7 @@ if (purgeTestData)
     Console.WriteLine($"Environment: {report.Environment} · database: {report.Database} · {(report.Applied ? "APPLIED" : "dry run (add --apply to delete)")}");
     Console.WriteLine($"Test accounts ({report.Accounts.Count}): {(report.Accounts.Count == 0 ? "none" : string.Join(", ", report.Accounts))}");
     Console.WriteLine($"Owned: {report.Portfolios} portfolio(s), {report.OptimizationRuns} optimization run(s), {report.Backtests} backtest(s), " +
-                      $"{report.MlExperiments} ML experiment(s), {report.StrategyComparisons} comparison(s); audit events: {report.AuditEvents}");
+                      $"{report.MlExperiments} ML experiment(s), {report.StrategyComparisons} comparison(s), {report.WatchlistEntries} watchlist entr(ies); audit events: {report.AuditEvents}");
     return 0;
 }
 

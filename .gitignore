@@ -6,7 +6,7 @@ obj/
 *.db
 *.db-shm
 *.db-wal
-data/
+/src/PortfolioOptimizer.Api/data/
 .env
 node_modules/
 dist/

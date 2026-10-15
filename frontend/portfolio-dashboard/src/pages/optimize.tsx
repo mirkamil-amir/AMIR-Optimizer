@@ -4,7 +4,7 @@ import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { AlertTriangle, ArrowRight, Download, FileText, ListChecks, Loader2, Play, X } from 'lucide-react'
+import { AlertTriangle, ArrowRight, Download, FileText, ListChecks, Loader2, Play, ShieldCheck, X } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -477,6 +477,11 @@ function RunResults({ run }: { run: OptimizationRun }) {
         <Badge variant={ok ? 'secondary' : 'destructive'}>{run.status}</Badge>
         {run.usesSimulatedData ? <DataBadge kind="simulated" /> : <DataBadge kind="estimate" label={`${run.priceSource} · historical estimate`} />}
         <span className="text-xs text-muted-foreground">{dateTime(run.createdAtUtc)}</span>
+        {ok && (
+          <Button size="sm" variant="outline" className="ml-auto" render={<Link to={`/reality-check/${run.id}`} />}>
+            <ShieldCheck /> Portfolio reality check
+          </Button>
+        )}
       </div>
 
       {!ok && (

@@ -18,7 +18,8 @@ public sealed record TestDataPurgeReport(
     int Backtests,
     int MlExperiments,
     int StrategyComparisons,
-    int AuditEvents)
+    int AuditEvents,
+    int WatchlistEntries = 0)
 {
     public bool IsEmpty => Accounts.Count == 0 && AuditEvents == 0;
 }
@@ -64,7 +65,8 @@ public sealed class TestDataPurger(AppDbContext db, IModelArtifactStore artifact
             await db.Backtests.CountAsync(b => ids.Contains(b.OwnerId), ct),
             experimentIds.Count,
             await db.StrategyComparisons.CountAsync(c => ids.Contains(c.OwnerId), ct),
-            await auditQuery.CountAsync(ct));
+            await auditQuery.CountAsync(ct),
+            await db.WatchlistEntries.CountAsync(w => ids.Contains(w.OwnerId), ct));
         if (!apply || report.IsEmpty) return report;
 
         await using (var tx = await db.Database.BeginTransactionAsync(ct))
@@ -77,6 +79,7 @@ public sealed class TestDataPurger(AppDbContext db, IModelArtifactStore artifact
             await db.PaperTradeBatches.Where(b => portfolioIds.Contains(b.PortfolioId)).ExecuteDeleteAsync(ct);
             await db.TradeProposals.Where(p => portfolioIds.Contains(p.PortfolioId)).ExecuteDeleteAsync(ct);
             await db.OptimizationRuns.Where(r => ids.Contains(r.OwnerId)).ExecuteDeleteAsync(ct);
+            await db.WatchlistEntries.Where(w => ids.Contains(w.OwnerId)).ExecuteDeleteAsync(ct);
             await db.Portfolios.Where(p => portfolioIds.Contains(p.Id)).ExecuteDeleteAsync(ct);
             await auditQuery.ExecuteDeleteAsync(ct);
             await db.Users.Where(u => ids.Contains(u.Id)).ExecuteDeleteAsync(ct); // roles, claims, logins, tokens cascade
@@ -85,7 +88,7 @@ public sealed class TestDataPurger(AppDbContext db, IModelArtifactStore artifact
         foreach (var id in experimentIds) await artifacts.DeleteExperimentAsync(id, ct);
 
         var summary = $"Removed {report.Accounts.Count} test account(s), {report.Portfolios} portfolio(s), {report.OptimizationRuns} optimization run(s), " +
-                      $"{report.Backtests} backtest(s), {report.MlExperiments} ML experiment(s), {report.StrategyComparisons} comparison(s), " +
+                      $"{report.Backtests} backtest(s), {report.MlExperiments} ML experiment(s), {report.StrategyComparisons} comparison(s), {report.WatchlistEntries} watchlist entr(ies), " +
                       $"{report.AuditEvents} audit event(s) from database '{database}' ({environment.EnvironmentName}).";
         logger.LogWarning("Test data purge: {Summary}", summary);
         await audit.RecordForAsync(null, "system:purge-test-data", AuditActions.TestDataPurged, "Database", database, summary, ct: ct);

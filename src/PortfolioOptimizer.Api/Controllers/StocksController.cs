@@ -84,6 +84,16 @@ public sealed class StocksController(StockDiscoveryService stocks, MarketDataSer
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public Task<StockQuoteDto> Quote(string symbol, CancellationToken ct) => stocks.GetQuoteAsync(symbol, ct);
 
+    /// <summary>
+    /// Chart data for a range (1M, 3M, 6M, 1Y, 5Y; 1D is reported as unsupported because no intraday bars are stored) with
+    /// the period change, its basis (adjusted or raw close), currency, source and the earliest stored date.
+    /// </summary>
+    [HttpGet("stocks/{symbol}/history")]
+    [ProducesResponseType<PriceHistoryDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public Task<PriceHistoryDto> History(string symbol, CancellationToken ct, [FromQuery] string range = "1Y") =>
+        stocks.GetHistoryAsync(symbol, range, ct);
+
     /// <summary>Stored daily prices (raw and adjusted close) from the active source, ascending by date.</summary>
     [HttpGet("stocks/{symbol}/prices")]
     [ProducesResponseType<PagedResult<PriceBarDto>>(StatusCodes.Status200OK)]

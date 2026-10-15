@@ -5,19 +5,34 @@ portfolios (mean-variance), train ML ranking models, compare strategies fairly a
 PostgreSQL + React/Vite. **No real orders, not investment advice, never claim profitability or real-time prices.**
 Read this file before changing code; details are in `docs/` (linked below).
 
+## Working rules
+
+1. Inspect the repository and its working-tree status before modifying it; verify behaviour in code, not in older docs.
+2. The development database holds the user's real data: never delete or rewrite it without a dry run, backup and audit.
+3. Never claim a test, browser check, provider call or deployment that did not happen; report failures and skips as such.
+4. Keep financial calculations pure and independently tested (`Optimization`, `MachineLearning`, static helpers in `Application`).
+5. No look-ahead, leakage or in-sample numbers presented as performance; label in-sample vs out-of-sample.
+6. Timestamps, currency, source and data quality are part of every price, chart and article shown.
+7. Respect data and news licensing: metadata + links + provider teasers only; images only when enabled.
+8. Never expose credentials or personal data (logs, responses, commits, screenshots).
+9. Enforce authorization on the server; frontend guards are cosmetic.
+10. Update the docs that describe changed behaviour in the same change.
+11. Run the relevant suites after every change (`/ship-change`).
+12. Record unresolved risks and limitations honestly (docs/implementation-status.md, docs/limitations.md).
+
 ## Repository map
 
 | Path | What | Entry points |
 |---|---|---|
 | `src/PortfolioOptimizer.Api` | controllers, auth policies, antiforgery, rate limits, commands | `Program.cs` (`migrate`, `purge-test-data`), `Controllers/*`, `Security/*` |
-| `src/PortfolioOptimizer.Application` | use cases (owner-scoped), DTOs, validation | `MarketData/` (quotes, universes, discovery, `Markets.cs`), `Optimization/`, `MachineLearning/`, `Comparisons/`, `Dtos/` |
-| `src/PortfolioOptimizer.Domain` | entities, rules | `MarketData.cs`, `Portfolio.cs`, `Runs.cs`, `MachineLearning.cs`, `Users.cs` (roles, audit, `TestDataPolicy`) |
-| `src/PortfolioOptimizer.Optimization` | pure math: QP solver, mean-variance, `PortfolioSimulator` | `Portfolio/MeanVarianceOptimizer.cs`, `Backtesting/*` |
+| `src/PortfolioOptimizer.Application` | use cases (owner-scoped), DTOs, validation | `MarketData/` (quotes, universes, discovery, `Markets.cs`, `PriceHistory.cs`), `Optimization/`, `Analytics/RealityCheckService.cs`, `Watchlists/`, `News/` (rules, service, `EventPriceComparison`), `MachineLearning/`, `Comparisons/`, `Dtos/` |
+| `src/PortfolioOptimizer.Domain` | entities, rules | `MarketData.cs`, `Portfolio.cs`, `Runs.cs`, `MachineLearning.cs`, `Watchlist.cs`, `News.cs`, `Users.cs` (roles, audit, `TestDataPolicy`) |
+| `src/PortfolioOptimizer.Optimization` | pure math: QP solver, mean-variance, `PortfolioSimulator`, diversification diagnostics | `Portfolio/MeanVarianceOptimizer.cs`, `Portfolio/DiversificationMath.cs`, `Backtesting/*` |
 | `src/PortfolioOptimizer.MachineLearning` | pure ML (no I/O, no optimizer use) | `Training/ExperimentEngine.cs`, `Features/FeatureCatalog.cs` |
-| `src/PortfolioOptimizer.Infrastructure` | EF Core/Npgsql, Identity, providers, jobs, seeding | `Persistence/AppDbContext.cs`, `MarketData/*Provider.cs`, `Jobs/BackgroundJobWorker.cs`, `Persistence/UniverseSeeder.cs`, `Seed/universes/*.csv` |
-| `frontend/portfolio-dashboard/src` | React app | `main.tsx` (routes), `pages/*`, `components/*`, `lib/` (api, auth, selection, queries, types, interpretation, strategy-guide, glossary, quote-status) |
+| `src/PortfolioOptimizer.Infrastructure` | EF Core/Npgsql, Identity, providers, jobs, seeding | `Persistence/AppDbContext.cs`, `MarketData/*Provider.cs`, `News/NewsProviders.cs`, `Jobs/BackgroundJobWorker.cs`, `Persistence/UniverseSeeder.cs`, `Seed/universes/*.csv` |
+| `frontend/portfolio-dashboard/src` | React app | `main.tsx` (routes), `pages/*`, `components/*`, `lib/` (api, auth, selection, queries, types, interpretation, strategy-guide, glossary, quote-status, news) |
 | `tests/*` | unit, ML, integration (real PostgreSQL) | `IntegrationTests/ApiFactory.cs` |
-| `frontend/.../e2e` | Playwright | `admin.setup.ts` (environment guard), `journeys.spec.ts` |
+| `frontend/.../e2e` | Playwright | `admin.setup.ts` (environment guard), `journeys.spec.ts`, `research.spec.ts` (watchlist, news) |
 | `tools/` | `universe-builder` (constituent CSVs), `PortfolioOptimizer.DataMigration` (SQLite import) | |
 
 ## Run and test
@@ -35,13 +50,19 @@ Secrets live in `.env` (gitignored) – load with `set -a; . ./.env; set +a`; ne
 * **Auth:** every endpoint requires an approved account unless explicitly anonymous; admin endpoints use the
   `Administrator` policy; status is checked per request. Unsafe methods need `X-XSRF-TOKEN`. Never rely on frontend
   guards for security.
-* **Ownership:** `Portfolio`, `OptimizationRun`, `BacktestRun`, `MlExperiment`, `StrategyComparison` are filtered by
+* **Ownership:** `Portfolio`, `OptimizationRun`, `BacktestRun`, `MlExperiment`, `StrategyComparison`, `WatchlistEntry` are filtered by
   `OwnerId` in every query; another user's id → 404. Add a cross-user test for every new owned entity.
 * **Temporary vs persisted:** the stock selection is browser memory only (`lib/selection.tsx`) – never persist it.
   Runs store their own inputs. Quotes/prices/catalogue are shared.
 * **Prices:** never fabricate or zero-fill; label kind (Delayed quote / Last close), as-of time, retrieval time,
   cached/stale/SIMULATED. Never say "live". Store prices in ISO major units (`CurrencyUnits`). Never mix sources.
 * **Analyses:** one currency per universe (`UniverseCurrency`); weights are validated; infeasible → explanation.
+  Reality-check findings are labelled Fact/Estimate/Interpretation/Caution with documented thresholds and never
+  tell users to buy or sell.
+* **News:** never fabricate or rewrite articles; store metadata and the provider's short summary only; link an
+  article to a stock only via the provider's own ticker tag; record fetch failures instead of substituting content;
+  images only with `News:ShowImages`; relevance is rule-based and never a price prediction; event comparisons say
+  they are not evidence of causation. The mock news provider is for tests/e2e only.
 * **ML:** features ≤ t, labels t+1…t+h, chronological purged splits, training-only preprocessing, one test
   evaluation; ML must not use the mean-variance optimizer; new feature formulas → new `FeatureCatalog.Version`.
 * **Education content:** explanations must match the code. Interpretations (`lib/interpretation.ts`) only state what
@@ -64,6 +85,10 @@ Secrets live in `.env` (gitignored) – load with `set -a; . ./.env; set +a`; ne
   (optimizer + tests + label + guide entry + interpretation branch).
 * **Add an ML model:** implement `IModelTrainer` in `MachineLearning/Models`, register it in `ModelRegistry`, add a
   default grid, determinism and artifact round-trip tests, a guide entry and `guideForModel` mapping.
+* **Add a news provider:** implement `ICompanyNewsProvider` and/or `INewsFeedProvider` in `Infrastructure/News`
+  (return provider tags as canonical symbols, skip incomplete items, throw `NewsProviderException` on bad responses),
+  register it with `AddProviderClient`, unit-test parsing from synthetic payloads in the real response shape, and
+  document terms/coverage in [financial-news.md](docs/financial-news.md).
 * **Add an endpoint:** controller → application service → DTO; mirror types in `lib/types.ts` and hooks in
   `lib/queries.ts`; integration test incl. authorization.
 
@@ -83,6 +108,10 @@ protection (Stooq); force-pushing or committing without being asked.
 * Yahoo spark: ≤ 20 symbols; occasional HTTP 400 handled by retry/fallback. Alpha Vantage free: 25 requests/day.
 * zsh does not word-split `$var` in scripts.
 * Container commands default to Production: `purge-test-data` refuses there unless `--allow-production`.
+* `docker-compose` (used by `podman compose`) hangs on `--build` when `~/.docker/config.json` has `"credsStore": "desktop"`
+  and Docker Desktop is not running (the credential helper blocks). Run with `DOCKER_CONFIG=<dir with {"auths":{}}>`.
+* Ignore-file patterns are matched case-insensitively on macOS: an unanchored `data/` once hid
+  `MachineLearning/Data/*.cs` from version control. Anchor such patterns.
 
 ## Documentation
 
@@ -90,4 +119,6 @@ protection (Stooq); force-pushing or committing without being asked.
 [market data](docs/market-data.md) · [quantitative strategies](docs/quantitative-strategies.md) ·
 [machine learning](docs/machine-learning.md) · [security](docs/security.md) · [testing](docs/testing.md) ·
 [deployment](docs/deployment.md) · [implementation status](docs/implementation-status.md) ·
-[decisions](docs/decisions.md) · [limitations](docs/limitations.md)
+[decisions](docs/decisions.md) · [limitations](docs/limitations.md) · [watchlist](docs/watchlist.md) ·
+[financial news](docs/financial-news.md) · [portfolio reality check](docs/portfolio-reality-check.md) ·
+[roadmap](docs/roadmap.md) · [launch readiness](docs/launch-readiness.md)

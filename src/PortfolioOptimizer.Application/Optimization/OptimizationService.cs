@@ -294,7 +294,8 @@ public sealed class OptimizationService(
 
     private static IReadOnlyList<double> Wealth(double[] returns) => ReturnCalculator.WealthIndex(returns).Select(v => v - 1).ToArray();
 
-    private static string Hash(Dictionary<string, PriceSeries> series, IReadOnlyList<string> symbols, IReadOnlyList<DateOnly> dates)
+    /// <summary>Fingerprint of the exact price observations used (lets later readers detect re-downloaded or revised data).</summary>
+    public static string Hash(Dictionary<string, PriceSeries> series, IReadOnlyList<string> symbols, IReadOnlyList<DateOnly> dates)
     {
         var sb = new StringBuilder();
         var dateSet = dates.ToHashSet();

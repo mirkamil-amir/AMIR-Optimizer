@@ -1,5 +1,54 @@
 # Implementation status
 
+## Pass of 2026-10-15: watchlist, financial news, reality check
+
+### Baseline (before changes, branch `worktree-master-challenge` from `main` 4b4d563)
+
+* **Broken:** a clean checkout did not build (25 errors). `.gitignore` contained `data/`, which macOS matches
+  case-insensitively, so `src/PortfolioOptimizer.MachineLearning/Data/{Dataset,MarketPanel}.cs` were never committed.
+  The same latent risk existed in `.dockerignore` (`**/data`). Fixed first (both rules anchored to the API's runtime folder).
+* **Working (re-verified):** after that fix 104 unit, 40 ML, 55 integration, 50 Vitest tests passed; lint 0 errors; build OK.
+* **Missing:** watchlist, financial news, per-stock price history ranges, event/price comparison, a user-facing
+  robustness analysis of optimization results, a security page per stock.
+* **Not verifiable here:** licensed data, deployment beyond the local stack, real users.
+* **Environment issue found:** `podman compose --build` hung because Docker Desktop's credential helper
+  (`credsStore: desktop`) blocks when Docker Desktop is not running; worked around with an empty `DOCKER_CONFIG`
+  (documented in testing.md and AGENTS.md; the user's global config was not changed).
+
+### Implemented and verified
+
+| Area | What | Evidence |
+|---|---|---|
+| Watchlist | owner-scoped entries (unique per listing), add/remove/list, bulk + single refresh, period change, sparkline, history download on add | `WatchlistTests` (6), `PriceHistoryTests` (7), e2e journey D incl. persistence across sign-in |
+| Price history | `/stocks/{symbol}/history` 1M–5Y, adjusted/raw basis never mixed, gaps reported, 1D honestly unsupported | unit + integration tests; screenshots desktop/mobile |
+| Stock page | `/stocks/:symbol`: price + provenance, chart, company news, watch/select actions | e2e journey D |
+| Financial news | Yahoo company news (provider tags only), Fed/ECB/BoE/BoJ RSS, shared storage, URL dedup + syndication merge, keyword categories with basis, relevance points with reasons, filters (view, category, market, dates, publisher, search, watchlist, symbol), source status, images off by default | `NewsRulesTests`, `NewsTests`, `NewsProviderFailureTests`, live smoke (real Yahoo + 4 feeds parsed on 2026-10-15), e2e journey E |
+| Event comparison | reference close before publication in exchange time, +1/+5/+20 trading days vs benchmark on identical dates, overlapping-news caveat, no causal claim | `EventPriceComparisonTests` (hand-built NY series), `NewsTests` |
+| Reality check | concentration, risk shares, diversification ratio, stress correlation, in/out-of-sample, sensitivity re-solves, costs, labelled findings, next steps, limitations | `DiversificationMathTests` (closed forms), `RealityCheckTests` (volatility equals the run's to 1e-6, ownership), e2e journey F |
+| Docs | watchlist, financial-news, portfolio-reality-check, roadmap, launch-readiness (incl. regulatory questions), decisions D-15…D-19, AGENTS working rules | this docs set |
+
+### Journeys exercised (e2e stack, simulated data)
+
+A registration/approval/sign-in, B stock selection and refresh, C optimization with interpretation, D watchlist
+(add → history ranges incl. 1D message → company news → event comparison → sign-out/in → remove), E news (views,
+official source, attribution, link target, watchlist empty state, source disclosure), F reality check, H admin overview
+and "Admin Investor" label. Additional screenshot review at 1440 px and 390 px found and fixed: cramped price-history
+header on phones, unlabeled date filters, "Stock selection" highlighted on stock pages, missing quote provenance on phone
+watchlist rows, squeezed sensitivity table, "35.4 %" vs "35.4%" formatting.
+
+### Data safety
+
+No command in this pass wrote to the development database: all tests used per-class Testcontainers databases or the
+disposable e2e stack. The two new migrations only add tables and indexes; they apply on the next `migrate`.
+
+### Known gaps
+
+Unofficial company-news source (personal use), sparse non-US news, no licensed disclosure feeds, unevaluated keyword
+classifier, no notifications, no holiday calendars, reality-check sensitivity limited to four assumption changes,
+out-of-sample section empty until 20 trading days after a run. See limitations.md and roadmap.md.
+
+## Pass of 2026-10-14
+
 Audit, fixes and remaining work of the 2026-10-14 "audit, repair, enhancement and QA" pass. The earlier platform
 upgrade (PostgreSQL, authentication, ML, comparisons) is described in [audit.md](audit.md) (baseline before that
 upgrade) and [final-report.md](final-report.md).

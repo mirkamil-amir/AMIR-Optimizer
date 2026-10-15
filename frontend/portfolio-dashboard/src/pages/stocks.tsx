@@ -1,4 +1,5 @@
 import { useDeferredValue, useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle, CheckCircle2, CheckSquare, Download, Loader2, Minus, Plus, RefreshCw, Search } from 'lucide-react'
 import { toast } from 'sonner'
@@ -9,6 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { WatchToggle } from '@/components/watchlist'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Switch } from '@/components/ui/switch'
 import { ChartCard, TimeSeriesChart, timeSeriesTable } from '@/components/charts'
@@ -319,6 +321,8 @@ function StockDetailSheet({ symbol, onClose, markets }: { symbol: string | null;
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <RefreshQuoteButton symbol={s.symbol} size="sm" />
+                  <WatchToggle symbol={s.symbol} />
+                  <Button size="sm" variant="ghost" render={<Link to={`/stocks/${encodeURIComponent(s.symbol)}`} />}>Full page</Button>
                   {s.observations === 0 && (
                     <Button variant="outline" size="sm" onClick={fetchNow} disabled={fetchPrices.isPending}>
                       {fetchPrices.isPending ? <Loader2 className="animate-spin" /> : <Download />} Fetch history

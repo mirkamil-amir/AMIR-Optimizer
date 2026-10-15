@@ -140,3 +140,7 @@ trades need a portfolio in the stocks' currency.
   calendar (staleness counts weekdays).
 * Constituent lists are snapshots: no point-in-time membership → survivorship bias in every backtest.
 * Alpha Vantage free tier: 25 requests/day, no Tokyo, no index levels, no adjusted closes.
+
+## Price history ranges and news
+
+Chart ranges and period changes are described in [watchlist.md](watchlist.md); news providers, their terms and the event comparison in [financial-news.md](financial-news.md). Neither adds a new price source: both read the stored prices of the active provider.

@@ -16,23 +16,26 @@ PostgreSQL 17 via EF Core 10 + Npgsql. Context: `src/PortfolioOptimizer.Infrastr
 | Settings | `Settings` | single row: active provider, defaults, staleness threshold |
 | Paper trading | `Portfolios`, `Holdings`, `CashLedger`, `Executions`, `TradeProposals` (+ lines), `PaperTradeBatches`, `Orders` | `Portfolio.Version` is the concurrency token |
 | Analyses | `OptimizationRuns` (+ weights), `Backtests`, `MlExperiments`, `MlModelVersions`, `MlPredictionSets`, `StrategyComparisons` | inputs and results stored as `jsonb`; immutable after completion |
+| Watchlist | `WatchlistEntries` | (owner, asset) unique; cascade-deleted with the user; asset FK restrict. See [watchlist.md](watchlist.md) |
+| News | `NewsArticles`, `NewsArticleAssets`, `NewsFetchStates` | shared; `Fingerprint` (canonical-URL SHA-256) unique, `HeadlineKey` indexed for syndication; links (article, asset) with match method; fetch state per source/query. Retention `News:RetentionDays` (120). See [financial-news.md](financial-news.md) |
 
 Money and quantities are `numeric` (`decimal`); keys of user-facing records are application-generated GUIDs.
 
 ## Ownership and isolation
 
 * User-owned: `Portfolios` (and everything under them), `OptimizationRuns`, `Backtests`, `MlExperiments`,
-  `StrategyComparisons` – each has `OwnerId` (FK to `AspNetUsers`, restrict). Every service query filters by the
+  `StrategyComparisons`, `WatchlistEntries` – each has `OwnerId` (FK to `AspNetUsers`, restrict). Every service query filters by the
   current user; another user's id returns 404. Administrators see counts and run metadata on the admin overview,
   never other users' results.
-* Shared: catalogue, universes, prices, quotes, settings, data jobs.
+* Shared: catalogue, universes, prices, quotes, settings, data jobs, news articles and their fetch state (never copied per user).
 * **Not persisted:** the stock selection (browser memory only) and anything a page merely displays. A run stores its
   universe as part of its inputs when it is submitted.
 
 ## Migrations
 
 `src/PortfolioOptimizer.Infrastructure/Persistence/Migrations`: `InitialPostgres`, `StockCatalogueMetadata`,
-`MachineLearningExperiments`, `StrategyComparisons`, `MarketUniversesAndQuoteRefresh`, `UniverseContentHash`.
+`MachineLearningExperiments`, `StrategyComparisons`, `MarketUniversesAndQuoteRefresh`, `UniverseContentHash`, `Watchlist`,
+`FinancialNews` (the last two only add tables and indexes; no existing column changes).
 
 ```bash
 set -a; . ./.env; set +a
