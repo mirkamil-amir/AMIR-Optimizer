@@ -40,6 +40,7 @@ public static class DependencyInjection
         services.AddScoped<AuditQueryService>();
         services.AddScoped<CatalogueService>();
         services.AddScoped<StockDiscoveryService>();
+        services.AddScoped<CompanyProfileService>();
         services.AddScoped<QuoteRefreshService>();
         services.AddScoped<UniverseService>();
         services.AddScoped<MlDataLoader>();

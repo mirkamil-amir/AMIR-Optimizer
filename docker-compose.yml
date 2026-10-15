@@ -52,6 +52,9 @@ services:
       News__OfficialFeeds__Enabled: ${NEWS_OFFICIAL_FEEDS_ENABLED:-true}
       News__Mock__Enabled: ${NEWS_MOCK_ENABLED:-false}
       News__ShowImages: ${NEWS_SHOW_IMAGES:-false}
+      # Company descriptions (docs/market-data.md#company-descriptions).
+      MarketData__Profiles__Wikipedia__Enabled: ${PROFILES_WIKIPEDIA_ENABLED:-true}
+      MarketData__Profiles__Mock__Enabled: ${PROFILES_MOCK_ENABLED:-false}
       Admin__Email: ${ADMIN_EMAIL:-}
       Admin__Password: ${ADMIN_PASSWORD:-}
       ModelArtifacts__RootPath: /app/artifacts

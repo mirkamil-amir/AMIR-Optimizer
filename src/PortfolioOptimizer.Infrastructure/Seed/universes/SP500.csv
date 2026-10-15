@@ -1,504 +1,504 @@
-symbol,name,country,exchange,mic,currency,sector,industry,isin
-A,Agilent Technologies,US,NYSE,XNYS,USD,Health Care,Life Sciences Tools & Services,
-AAPL,Apple Inc.,US,NASDAQ,XNAS,USD,Information Technology,"Technology Hardware, Storage & Peripherals",
-ABBV,AbbVie,US,NYSE,XNYS,USD,Health Care,Biotechnology,
-ABNB,Airbnb,US,NASDAQ,XNAS,USD,Consumer Discretionary,"Hotels, Resorts & Cruise Lines",
-ABT,Abbott Laboratories,US,NYSE,XNYS,USD,Health Care,Health Care Equipment,
-ACGL,Arch Capital Group,US,NASDAQ,XNAS,USD,Financials,Property & Casualty Insurance,
-ACN,Accenture,US,NYSE,XNYS,USD,Information Technology,IT Consulting & Other Services,
-ADBE,Adobe Inc.,US,NASDAQ,XNAS,USD,Information Technology,Application Software,
-ADI,Analog Devices,US,NASDAQ,XNAS,USD,Information Technology,Semiconductors,
-ADM,Archer Daniels Midland,US,NYSE,XNYS,USD,Consumer Staples,Agricultural Products & Services,
-ADP,Automatic Data Processing,US,NASDAQ,XNAS,USD,Industrials,Human Resource & Employment Services,
-ADSK,Autodesk,US,NASDAQ,XNAS,USD,Information Technology,Application Software,
-AEE,Ameren,US,NYSE,XNYS,USD,Utilities,Multi-Utilities,
-AEP,American Electric Power,US,NASDAQ,XNAS,USD,Utilities,Electric Utilities,
-AES,AES Corporation,US,NYSE,XNYS,USD,Utilities,Independent Power Producers & Energy Traders,
-AFL,Aflac,US,NYSE,XNYS,USD,Financials,Life & Health Insurance,
-AIG,American International Group,US,NYSE,XNYS,USD,Financials,Multi-line Insurance,
-AIZ,Assurant,US,NYSE,XNYS,USD,Financials,Multi-line Insurance,
-AJG,Arthur J. Gallagher & Co.,US,NYSE,XNYS,USD,Financials,Insurance Brokers,
-AKAM,Akamai Technologies,US,NASDAQ,XNAS,USD,Information Technology,Internet Services & Infrastructure,
-ALB,Albemarle Corporation,US,NYSE,XNYS,USD,Materials,Specialty Chemicals,
-ALGN,Align Technology,US,NASDAQ,XNAS,USD,Health Care,Health Care Supplies,
-ALL,Allstate,US,NYSE,XNYS,USD,Financials,Property & Casualty Insurance,
-ALLE,Allegion,US,NYSE,XNYS,USD,Industrials,Building Products,
-AMAT,Applied Materials,US,NASDAQ,XNAS,USD,Information Technology,Semiconductor Materials & Equipment,
-AMCR,Amcor,US,NYSE,XNYS,USD,Materials,Paper & Plastic Packaging Products & Materials,
-AMD,Advanced Micro Devices,US,NASDAQ,XNAS,USD,Information Technology,Semiconductors,
-AME,Ametek,US,NYSE,XNYS,USD,Industrials,Electrical Components & Equipment,
-AMGN,Amgen,US,NASDAQ,XNAS,USD,Health Care,Biotechnology,
-AMP,Ameriprise Financial,US,NYSE,XNYS,USD,Financials,Asset Management & Custody Banks,
-AMT,American Tower,US,NYSE,XNYS,USD,Real Estate,Telecom Tower REITs,
-AMZN,Amazon,US,NASDAQ,XNAS,USD,Consumer Discretionary,Broadline Retail,
-ANET,Arista Networks,US,NYSE,XNYS,USD,Information Technology,Communications Equipment,
-AON,Aon plc,US,NYSE,XNYS,USD,Financials,Insurance Brokers,
-AOS,A. O. Smith,US,NYSE,XNYS,USD,Industrials,Building Products,
-APA,APA Corporation,US,NASDAQ,XNAS,USD,Energy,Oil & Gas Exploration & Production,
-APD,Air Products,US,NYSE,XNYS,USD,Materials,Industrial Gases,
-APH,Amphenol,US,NYSE,XNYS,USD,Information Technology,Electronic Components,
-APO,Apollo Global Management,US,NYSE,XNYS,USD,Financials,Asset Management & Custody Banks,
-APP,AppLovin,US,NASDAQ,XNAS,USD,Communication Services,Advertising,
-APTV,Aptiv,US,NYSE,XNYS,USD,Consumer Discretionary,Automotive Parts & Equipment,
-ARE,Alexandria Real Estate Equities,US,NYSE,XNYS,USD,Real Estate,Office REITs,
-ARES,Ares Management,US,NYSE,XNYS,USD,Financials,Asset Management & Custody Banks,
-ATO,Atmos Energy,US,NYSE,XNYS,USD,Utilities,Gas Utilities,
-AVGO,Broadcom,US,NASDAQ,XNAS,USD,Information Technology,Semiconductors,
-AVY,Avery Dennison,US,NYSE,XNYS,USD,Materials,Paper & Plastic Packaging Products & Materials,
-AWK,American Water Works,US,NYSE,XNYS,USD,Utilities,Water Utilities,
-AXON,Axon Enterprise,US,NASDAQ,XNAS,USD,Industrials,Aerospace & Defense,
-AXP,American Express,US,NYSE,XNYS,USD,Financials,Consumer Finance,
-AZO,AutoZone,US,NYSE,XNYS,USD,Consumer Discretionary,Automotive Retail,
-BA,Boeing,US,NYSE,XNYS,USD,Industrials,Aerospace & Defense,
-BAC,Bank of America,US,NYSE,XNYS,USD,Financials,Diversified Banks,
-BALL,Ball Corporation,US,NYSE,XNYS,USD,Materials,"Metal, Glass & Plastic Containers",
-BAX,Baxter International,US,NYSE,XNYS,USD,Health Care,Health Care Equipment,
-BBY,Best Buy,US,NYSE,XNYS,USD,Consumer Discretionary,Computer & Electronics Retail,
-BDX,Becton Dickinson,US,NYSE,XNYS,USD,Health Care,Health Care Equipment,
-BE,Bloom Energy,US,NYSE,XNYS,USD,Industrials,Electrical Components & Equipment,
-BEN,Franklin Resources,US,NYSE,XNYS,USD,Financials,Asset Management & Custody Banks,
-BF-B,Brown–Forman,US,NYSE,XNYS,USD,Consumer Staples,Distillers & Vintners,
-BG,Bunge Global,US,NYSE,XNYS,USD,Consumer Staples,Agricultural Products & Services,
-BIIB,Biogen,US,NASDAQ,XNAS,USD,Health Care,Biotechnology,
-BKNG,Booking Holdings,US,NASDAQ,XNAS,USD,Consumer Discretionary,"Hotels, Resorts & Cruise Lines",
-BKR,Baker Hughes,US,NASDAQ,XNAS,USD,Energy,Oil & Gas Equipment & Services,
-BLK,BlackRock,US,NYSE,XNYS,USD,Financials,Asset Management & Custody Banks,
-BMY,Bristol Myers Squibb,US,NYSE,XNYS,USD,Health Care,Pharmaceuticals,
-BNY,BNY Mellon,US,NYSE,XNYS,USD,Financials,Asset Management & Custody Banks,
-BR,Broadridge Financial Solutions,US,NYSE,XNYS,USD,Industrials,Data Processing & Outsourced Services,
-BRK-B,Berkshire Hathaway,US,NYSE,XNYS,USD,Financials,Multi-Sector Holdings,
-BRO,Brown & Brown,US,NYSE,XNYS,USD,Financials,Insurance Brokers,
-BSX,Boston Scientific,US,NYSE,XNYS,USD,Health Care,Health Care Equipment,
-BX,Blackstone Inc.,US,NYSE,XNYS,USD,Financials,Asset Management & Custody Banks,
-BXP,"BXP, Inc.",US,NYSE,XNYS,USD,Real Estate,Office REITs,
-C,Citigroup,US,NYSE,XNYS,USD,Financials,Diversified Banks,
-CAH,Cardinal Health,US,NYSE,XNYS,USD,Health Care,Health Care Distributors,
-CARR,Carrier Global,US,NYSE,XNYS,USD,Industrials,Building Products,
-CASY,Casey's,US,NASDAQ,XNAS,USD,Consumer Staples,Food Retail,
-CAT,Caterpillar Inc.,US,NYSE,XNYS,USD,Industrials,Construction Machinery & Heavy Transportation Equipment,
-CB,Chubb Limited,US,NYSE,XNYS,USD,Financials,Property & Casualty Insurance,
-CBOE,Cboe Global Markets,US,Cboe,BATS,USD,Financials,Financial Exchanges & Data,
-CBRE,CBRE Group,US,NYSE,XNYS,USD,Real Estate,Real Estate Services,
-CCI,Crown Castle,US,NYSE,XNYS,USD,Real Estate,Telecom Tower REITs,
-CCL,Carnival Corporation,US,NYSE,XNYS,USD,Consumer Discretionary,"Hotels, Resorts & Cruise Lines",
-CDNS,Cadence Design Systems,US,NASDAQ,XNAS,USD,Information Technology,Application Software,
-CDW,CDW Corporation,US,NASDAQ,XNAS,USD,Information Technology,Technology Distributors,
-CEG,Constellation Energy,US,NASDAQ,XNAS,USD,Utilities,Electric Utilities,
-CF,CF Industries,US,NYSE,XNYS,USD,Materials,Fertilizers & Agricultural Chemicals,
-CFG,Citizens Financial Group,US,NYSE,XNYS,USD,Financials,Regional Banks,
-CHD,Church & Dwight,US,NYSE,XNYS,USD,Consumer Staples,Household Products,
-CHRW,C.H. Robinson,US,NASDAQ,XNAS,USD,Industrials,Air Freight & Logistics,
-CHTR,Charter Communications,US,NASDAQ,XNAS,USD,Communication Services,Cable & Satellite,
-CI,Cigna,US,NYSE,XNYS,USD,Health Care,Health Care Services,
-CIEN,Ciena,US,NYSE,XNYS,USD,Information Technology,Communications Equipment,
-CINF,Cincinnati Financial,US,NASDAQ,XNAS,USD,Financials,Property & Casualty Insurance,
-CL,Colgate-Palmolive,US,NYSE,XNYS,USD,Consumer Staples,Household Products,
-CLX,Clorox,US,NYSE,XNYS,USD,Consumer Staples,Household Products,
-CMCSA,Comcast,US,NASDAQ,XNAS,USD,Communication Services,Cable & Satellite,
-CME,CME Group,US,NASDAQ,XNAS,USD,Financials,Financial Exchanges & Data,
-CMG,Chipotle Mexican Grill,US,NYSE,XNYS,USD,Consumer Discretionary,Restaurants,
-CMI,Cummins,US,NYSE,XNYS,USD,Industrials,Construction Machinery & Heavy Transportation Equipment,
-CMS,CMS Energy,US,NYSE,XNYS,USD,Utilities,Multi-Utilities,
-CNC,Centene Corporation,US,NYSE,XNYS,USD,Health Care,Managed Health Care,
-CNP,CenterPoint Energy,US,NYSE,XNYS,USD,Utilities,Multi-Utilities,
-COF,Capital One,US,NYSE,XNYS,USD,Financials,Consumer Finance,
-COHR,Coherent Corp.,US,NYSE,XNYS,USD,Information Technology,Electronic Components,
-COIN,Coinbase,US,NASDAQ,XNAS,USD,Financials,Financial Exchanges & Data,
-COO,Cooper Companies (The),US,NASDAQ,XNAS,USD,Health Care,Health Care Supplies,
-COP,ConocoPhillips,US,NYSE,XNYS,USD,Energy,Oil & Gas Exploration & Production,
-COR,Cencora,US,NYSE,XNYS,USD,Health Care,Health Care Distributors,
-COST,Costco,US,NASDAQ,XNAS,USD,Consumer Staples,Consumer Staples Merchandise Retail,
-CPAY,Corpay,US,NYSE,XNYS,USD,Financials,Transaction & Payment Processing Services,
-CPRT,Copart,US,NASDAQ,XNAS,USD,Industrials,Diversified Support Services,
-CPT,Camden Property Trust,US,NYSE,XNYS,USD,Real Estate,Multi-Family Residential REITs,
-CRH,CRH plc,US,NYSE,XNYS,USD,Materials,Construction Materials,
-CRL,Charles River Laboratories,US,NYSE,XNYS,USD,Health Care,Life Sciences Tools & Services,
-CRM,Salesforce,US,NYSE,XNYS,USD,Information Technology,Application Software,
-CRWD,CrowdStrike,US,NASDAQ,XNAS,USD,Information Technology,Systems Software,
-CSCO,Cisco,US,NASDAQ,XNAS,USD,Information Technology,Communications Equipment,
-CSGP,CoStar Group,US,NASDAQ,XNAS,USD,Real Estate,Real Estate Services,
-CSX,CSX Corporation,US,NASDAQ,XNAS,USD,Industrials,Rail Transportation,
-CTAS,Cintas,US,NASDAQ,XNAS,USD,Industrials,Diversified Support Services,
-CTSH,Cognizant,US,NASDAQ,XNAS,USD,Information Technology,IT Consulting & Other Services,
-CVNA,Carvana,US,NYSE,XNYS,USD,Consumer Discretionary,Automotive Retail,
-CVS,CVS Health,US,NYSE,XNYS,USD,Health Care,Health Care Services,
-CVX,Chevron Corporation,US,NYSE,XNYS,USD,Energy,Integrated Oil & Gas,
-D,Dominion Energy,US,NYSE,XNYS,USD,Utilities,Multi-Utilities,
-DAL,Delta Air Lines,US,NYSE,XNYS,USD,Industrials,Passenger Airlines,
-DASH,DoorDash,US,NASDAQ,XNAS,USD,Consumer Discretionary,Specialized Consumer Services,
-DD,DuPont,US,NYSE,XNYS,USD,Industrials,Industrial Conglomerates,
-DDOG,Datadog,US,NASDAQ,XNAS,USD,Information Technology,Application Software,
-DE,Deere & Company,US,NYSE,XNYS,USD,Industrials,Agricultural & Farm Machinery,
-DECK,Deckers Brands,US,NYSE,XNYS,USD,Consumer Discretionary,Footwear,
-DELL,Dell Technologies,US,NYSE,XNYS,USD,Information Technology,"Technology Hardware, Storage & Peripherals",
-DG,Dollar General,US,NYSE,XNYS,USD,Consumer Staples,Consumer Staples Merchandise Retail,
-DGX,Quest Diagnostics,US,NYSE,XNYS,USD,Health Care,Health Care Services,
-DHI,D. R. Horton,US,NYSE,XNYS,USD,Consumer Discretionary,Homebuilding,
-DHR,Danaher Corporation,US,NYSE,XNYS,USD,Health Care,Life Sciences Tools & Services,
-DIS,Walt Disney Company (The),US,NYSE,XNYS,USD,Communication Services,Movies & Entertainment,
-DLR,Digital Realty,US,NYSE,XNYS,USD,Real Estate,Data Center REITs,
-DLTR,Dollar Tree,US,NASDAQ,XNAS,USD,Consumer Staples,Consumer Staples Merchandise Retail,
-DOC,Healthpeak Properties,US,NYSE,XNYS,USD,Real Estate,Health Care REITs,
-DOV,Dover Corporation,US,NYSE,XNYS,USD,Industrials,Industrial Machinery & Supplies & Components,
-DOW,Dow Inc.,US,NYSE,XNYS,USD,Materials,Commodity Chemicals,
-DPZ,Domino's,US,NYSE,XNYS,USD,Consumer Discretionary,Restaurants,
-DRI,Darden Restaurants,US,NYSE,XNYS,USD,Consumer Discretionary,Restaurants,
-DTE,DTE Energy,US,NYSE,XNYS,USD,Utilities,Multi-Utilities,
-DUK,Duke Energy,US,NYSE,XNYS,USD,Utilities,Electric Utilities,
-DVA,DaVita,US,NYSE,XNYS,USD,Health Care,Health Care Services,
-DVN,Devon Energy,US,NYSE,XNYS,USD,Energy,Oil & Gas Exploration & Production,
-DXCM,Dexcom,US,NASDAQ,XNAS,USD,Health Care,Health Care Equipment,
-EBAY,eBay Inc.,US,NASDAQ,XNAS,USD,Consumer Discretionary,Broadline Retail,
-ECHO,EchoStar,US,NASDAQ,XNAS,USD,Communication Services,Wireless Telecommunication Services,
-ECL,Ecolab,US,NYSE,XNYS,USD,Materials,Specialty Chemicals,
-ED,Consolidated Edison,US,NYSE,XNYS,USD,Utilities,Multi-Utilities,
-EFX,Equifax,US,NYSE,XNYS,USD,Industrials,Research & Consulting Services,
-EG,Everest Group,US,NYSE,XNYS,USD,Financials,Reinsurance,
-EIX,Edison International,US,NYSE,XNYS,USD,Utilities,Electric Utilities,
-EL,Estée Lauder Companies (The),US,NYSE,XNYS,USD,Consumer Staples,Personal Care Products,
-ELV,Elevance Health,US,NYSE,XNYS,USD,Health Care,Managed Health Care,
-EME,Emcor,US,NYSE,XNYS,USD,Industrials,Construction & Engineering,
-EMR,Emerson Electric,US,NYSE,XNYS,USD,Industrials,Electrical Components & Equipment,
-EOG,EOG Resources,US,NYSE,XNYS,USD,Energy,Oil & Gas Exploration & Production,
-EQIX,Equinix,US,NASDAQ,XNAS,USD,Real Estate,Data Center REITs,
-EQT,EQT Corporation,US,NYSE,XNYS,USD,Energy,Oil & Gas Exploration & Production,
-ERIE,Erie Indemnity,US,NASDAQ,XNAS,USD,Financials,Insurance Brokers,
-ES,Eversource Energy,US,NYSE,XNYS,USD,Utilities,Electric Utilities,
-ESS,Essex Property Trust,US,NYSE,XNYS,USD,Real Estate,Multi-Family Residential REITs,
-ETN,Eaton Corporation,US,NYSE,XNYS,USD,Industrials,Electrical Components & Equipment,
-ETR,Entergy,US,NYSE,XNYS,USD,Utilities,Electric Utilities,
-EVRG,Evergy,US,NYSE,XNYS,USD,Utilities,Electric Utilities,
-EW,Edwards Lifesciences,US,NYSE,XNYS,USD,Health Care,Health Care Equipment,
-EXC,Exelon,US,NASDAQ,XNAS,USD,Utilities,Electric Utilities,
-EXE,Expand Energy,US,NASDAQ,XNAS,USD,Energy,Oil & Gas Exploration & Production,
-EXPD,Expeditors International,US,NASDAQ,XNAS,USD,Industrials,Air Freight & Logistics,
-EXPE,Expedia Group,US,NASDAQ,XNAS,USD,Consumer Discretionary,"Hotels, Resorts & Cruise Lines",
-EXR,Extra Space Storage,US,NYSE,XNYS,USD,Real Estate,Self-Storage REITs,
-F,Ford Motor Company,US,NYSE,XNYS,USD,Consumer Discretionary,Automobile Manufacturers,
-FANG,Diamondback Energy,US,NASDAQ,XNAS,USD,Energy,Oil & Gas Exploration & Production,
-FAST,Fastenal,US,NASDAQ,XNAS,USD,Industrials,Trading Companies & Distributors,
-FCX,Freeport-McMoRan,US,NYSE,XNYS,USD,Materials,Copper,
-FDS,FactSet,US,NYSE,XNYS,USD,Financials,Financial Exchanges & Data,
-FDX,FedEx,US,NYSE,XNYS,USD,Industrials,Air Freight & Logistics,
-FDXF,FedEx Freight,US,NYSE,XNYS,USD,Industrials,Cargo Ground Transportation,
-FE,FirstEnergy,US,NYSE,XNYS,USD,Utilities,Electric Utilities,
-FERG,Ferguson Enterprises,US,NYSE,XNYS,USD,Industrials,Trading Companies & Distributors,
-FFIV,"F5, Inc.",US,NASDAQ,XNAS,USD,Information Technology,Communications Equipment,
-FICO,Fair Isaac,US,NYSE,XNYS,USD,Information Technology,Application Software,
-FIS,Fidelity National Information Services,US,NYSE,XNYS,USD,Financials,Transaction & Payment Processing Services,
-FISV,Fiserv,US,NASDAQ,XNAS,USD,Financials,Transaction & Payment Processing Services,
-FITB,Fifth Third Bancorp,US,NYSE,XNYS,USD,Financials,Regional Banks,
-FIX,Comfort Systems USA,US,NYSE,XNYS,USD,Industrials,Construction & Engineering,
-FLEX,Flex Ltd.,US,NASDAQ,XNAS,USD,Information Technology,Electronic Manufacturing Services,
-FOX,Fox Corporation (Class B),US,NASDAQ,XNAS,USD,Communication Services,Broadcasting,
-FOXA,Fox Corporation (Class A),US,NASDAQ,XNAS,USD,Communication Services,Broadcasting,
-FRT,Federal Realty Investment Trust,US,NYSE,XNYS,USD,Real Estate,Retail REITs,
-FSLR,First Solar,US,NASDAQ,XNAS,USD,Information Technology,Semiconductors,
-FTNT,Fortinet,US,NASDAQ,XNAS,USD,Information Technology,Systems Software,
-FTV,Fortive,US,NYSE,XNYS,USD,Industrials,Industrial Machinery & Supplies & Components,
-GD,General Dynamics,US,NYSE,XNYS,USD,Industrials,Aerospace & Defense,
-GDDY,GoDaddy,US,NYSE,XNYS,USD,Information Technology,Internet Services & Infrastructure,
-GE,GE Aerospace,US,NYSE,XNYS,USD,Industrials,Aerospace & Defense,
-GEHC,GE HealthCare,US,NASDAQ,XNAS,USD,Health Care,Health Care Equipment,
-GEN,Gen Digital,US,NASDAQ,XNAS,USD,Information Technology,Systems Software,
-GEV,GE Vernova,US,NYSE,XNYS,USD,Industrials,Heavy Electrical Equipment,
-GILD,Gilead Sciences,US,NASDAQ,XNAS,USD,Health Care,Biotechnology,
-GIS,General Mills,US,NYSE,XNYS,USD,Consumer Staples,Packaged Foods & Meats,
-GL,Globe Life,US,NYSE,XNYS,USD,Financials,Life & Health Insurance,
-GLW,Corning Inc.,US,NYSE,XNYS,USD,Information Technology,Electronic Components,
-GM,General Motors,US,NYSE,XNYS,USD,Consumer Discretionary,Automobile Manufacturers,
-GNRC,Generac,US,NYSE,XNYS,USD,Industrials,Heavy Electrical Equipment,
-GOOG,Alphabet Inc. (Class C),US,NASDAQ,XNAS,USD,Communication Services,Interactive Media & Services,
-GOOGL,Alphabet Inc. (Class A),US,NASDAQ,XNAS,USD,Communication Services,Interactive Media & Services,
-GPC,Genuine Parts Company,US,NYSE,XNYS,USD,Consumer Discretionary,Distributors,
-GPN,Global Payments,US,NYSE,XNYS,USD,Financials,Transaction & Payment Processing Services,
-GRMN,Garmin,US,NYSE,XNYS,USD,Consumer Discretionary,Consumer Electronics,
-GS,Goldman Sachs,US,NYSE,XNYS,USD,Financials,Investment Banking & Brokerage,
-GWW,W. W. Grainger,US,NYSE,XNYS,USD,Industrials,Industrial Machinery & Supplies & Components,
-HAL,Halliburton,US,NYSE,XNYS,USD,Energy,Oil & Gas Equipment & Services,
-HAS,Hasbro,US,NASDAQ,XNAS,USD,Consumer Discretionary,Leisure Products,
-HBAN,Huntington Bancshares,US,NASDAQ,XNAS,USD,Financials,Regional Banks,
-HCA,HCA Healthcare,US,NYSE,XNYS,USD,Health Care,Health Care Facilities,
-HD,Home Depot (The),US,NYSE,XNYS,USD,Consumer Discretionary,Home Improvement Retail,
-HIG,Hartford (The),US,NYSE,XNYS,USD,Financials,Property & Casualty Insurance,
-HII,Huntington Ingalls Industries,US,NYSE,XNYS,USD,Industrials,Aerospace & Defense,
-HLT,Hilton Worldwide,US,NYSE,XNYS,USD,Consumer Discretionary,"Hotels, Resorts & Cruise Lines",
-HON,Honeywell Technologies,US,NASDAQ,XNAS,USD,Industrials,Industrial Conglomerates,
-HONA,Honeywell Aerospace,US,NASDAQ,XNAS,USD,Industrials,Aerospace & Defense,
-HOOD,Robinhood Markets,US,NASDAQ,XNAS,USD,Financials,Investment Banking & Brokerage,
-HPE,Hewlett Packard Enterprise,US,NYSE,XNYS,USD,Information Technology,"Technology Hardware, Storage & Peripherals",
-HPQ,HP Inc.,US,NYSE,XNYS,USD,Information Technology,"Technology Hardware, Storage & Peripherals",
-HRL,Hormel Foods,US,NYSE,XNYS,USD,Consumer Staples,Packaged Foods & Meats,
-HSIC,Henry Schein,US,NASDAQ,XNAS,USD,Health Care,Health Care Distributors,
-HST,Host Hotels & Resorts,US,NASDAQ,XNAS,USD,Real Estate,Hotel & Resort REITs,
-HSY,Hershey Company (The),US,NYSE,XNYS,USD,Consumer Staples,Packaged Foods & Meats,
-HUBB,Hubbell Incorporated,US,NYSE,XNYS,USD,Industrials,Industrial Machinery & Supplies & Components,
-HUM,Humana,US,NYSE,XNYS,USD,Health Care,Managed Health Care,
-HWM,Howmet Aerospace,US,NYSE,XNYS,USD,Industrials,Aerospace & Defense,
-IBKR,Interactive Brokers,US,NASDAQ,XNAS,USD,Financials,Investment Banking & Brokerage,
-IBM,IBM,US,NYSE,XNYS,USD,Information Technology,IT Consulting & Other Services,
-ICE,Intercontinental Exchange,US,NYSE,XNYS,USD,Financials,Financial Exchanges & Data,
-IDXX,Idexx Laboratories,US,NASDAQ,XNAS,USD,Health Care,Health Care Equipment,
-IEX,IDEX Corporation,US,NYSE,XNYS,USD,Industrials,Industrial Machinery & Supplies & Components,
-IFF,International Flavors & Fragrances,US,NYSE,XNYS,USD,Materials,Specialty Chemicals,
-ILMN,"Illumina, Inc.",US,NASDAQ,XNAS,USD,Health Care,Life Sciences Tools & Services,
-INCY,Incyte,US,NASDAQ,XNAS,USD,Health Care,Biotechnology,
-INTC,Intel,US,NASDAQ,XNAS,USD,Information Technology,Semiconductors,
-INTU,Intuit,US,NASDAQ,XNAS,USD,Information Technology,Application Software,
-INVH,Invitation Homes,US,NYSE,XNYS,USD,Real Estate,Single-Family Residential REITs,
-IP,International Paper,US,NYSE,XNYS,USD,Materials,Paper & Plastic Packaging Products & Materials,
-IQV,IQVIA,US,NYSE,XNYS,USD,Health Care,Life Sciences Tools & Services,
-IR,Ingersoll Rand,US,NYSE,XNYS,USD,Industrials,Industrial Machinery & Supplies & Components,
-IRM,Iron Mountain,US,NYSE,XNYS,USD,Real Estate,Other Specialized REITs,
-ISRG,Intuitive Surgical,US,NASDAQ,XNAS,USD,Health Care,Health Care Equipment,
-IT,Gartner,US,NYSE,XNYS,USD,Information Technology,IT Consulting & Other Services,
-ITW,Illinois Tool Works,US,NYSE,XNYS,USD,Industrials,Industrial Machinery & Supplies & Components,
-IVZ,Invesco,US,NYSE,XNYS,USD,Financials,Asset Management & Custody Banks,
-J,Jacobs Solutions,US,NYSE,XNYS,USD,Industrials,Construction & Engineering,
-JBHT,J.B. Hunt,US,NASDAQ,XNAS,USD,Industrials,Cargo Ground Transportation,
-JBL,Jabil,US,NYSE,XNYS,USD,Information Technology,Electronic Manufacturing Services,
-JCI,Johnson Controls,US,NYSE,XNYS,USD,Industrials,Building Products,
-JKHY,Jack Henry & Associates,US,NASDAQ,XNAS,USD,Financials,Transaction & Payment Processing Services,
-JNJ,Johnson & Johnson,US,NYSE,XNYS,USD,Health Care,Pharmaceuticals,
-JPM,JPMorgan Chase,US,NYSE,XNYS,USD,Financials,Diversified Banks,
-KDP,Keurig Dr Pepper,US,NASDAQ,XNAS,USD,Consumer Staples,Soft Drinks & Non-alcoholic Beverages,
-KEY,KeyCorp,US,NYSE,XNYS,USD,Financials,Regional Banks,
-KEYS,Keysight Technologies,US,NYSE,XNYS,USD,Information Technology,Electronic Equipment & Instruments,
-KHC,Kraft Heinz,US,NYSE,XNYS,USD,Consumer Staples,Packaged Foods & Meats,
-KIM,Kimco Realty,US,NYSE,XNYS,USD,Real Estate,Retail REITs,
-KKR,KKR & Co.,US,NYSE,XNYS,USD,Financials,Asset Management & Custody Banks,
-KLAC,KLA Corporation,US,NASDAQ,XNAS,USD,Information Technology,Semiconductor Materials & Equipment,
-KMB,Kimberly-Clark,US,NASDAQ,XNAS,USD,Consumer Staples,Household Products,
-KMI,Kinder Morgan,US,NYSE,XNYS,USD,Energy,Oil & Gas Storage & Transportation,
-KO,Coca-Cola Company (The),US,NYSE,XNYS,USD,Consumer Staples,Soft Drinks & Non-alcoholic Beverages,
-KR,Kroger,US,NYSE,XNYS,USD,Consumer Staples,Food Retail,
-KVUE,Kenvue,US,NYSE,XNYS,USD,Consumer Staples,Personal Care Products,
-L,Loews Corporation,US,NYSE,XNYS,USD,Financials,Multi-line Insurance,
-LDOS,Leidos,US,NYSE,XNYS,USD,Industrials,Diversified Support Services,
-LEN,Lennar,US,NYSE,XNYS,USD,Consumer Discretionary,Homebuilding,
-LH,Labcorp,US,NYSE,XNYS,USD,Health Care,Health Care Services,
-LHX,L3Harris,US,NYSE,XNYS,USD,Industrials,Aerospace & Defense,
-LII,Lennox International,US,NYSE,XNYS,USD,Industrials,Building Products,
-LIN,Linde plc,US,NASDAQ,XNAS,USD,Materials,Industrial Gases,
-LITE,Lumentum,US,NASDAQ,XNAS,USD,Information Technology,Communications Equipment,
-LLY,Lilly (Eli),US,NYSE,XNYS,USD,Health Care,Pharmaceuticals,
-LMT,Lockheed Martin,US,NYSE,XNYS,USD,Industrials,Aerospace & Defense,
-LNT,Alliant Energy,US,NASDAQ,XNAS,USD,Utilities,Electric Utilities,
-LOW,Lowe's,US,NYSE,XNYS,USD,Consumer Discretionary,Home Improvement Retail,
-LRCX,Lam Research,US,NASDAQ,XNAS,USD,Information Technology,Semiconductor Materials & Equipment,
-LULU,Lululemon Athletica,US,NASDAQ,XNAS,USD,Consumer Discretionary,"Apparel, Accessories & Luxury Goods",
-LUV,Southwest Airlines,US,NYSE,XNYS,USD,Industrials,Passenger Airlines,
-LVS,Las Vegas Sands,US,NYSE,XNYS,USD,Consumer Discretionary,Casinos & Gaming,
-LYB,LyondellBasell,US,NYSE,XNYS,USD,Materials,Specialty Chemicals,
-LYV,Live Nation Entertainment,US,NYSE,XNYS,USD,Communication Services,Movies & Entertainment,
-MA,Mastercard,US,NYSE,XNYS,USD,Financials,Transaction & Payment Processing Services,
-MAA,Mid-America Apartment Communities,US,NYSE,XNYS,USD,Real Estate,Multi-Family Residential REITs,
-MAR,Marriott International,US,NASDAQ,XNAS,USD,Consumer Discretionary,"Hotels, Resorts & Cruise Lines",
-MAS,Masco,US,NYSE,XNYS,USD,Industrials,Building Products,
-MCD,McDonald's,US,NYSE,XNYS,USD,Consumer Discretionary,Restaurants,
-MCHP,Microchip Technology,US,NASDAQ,XNAS,USD,Information Technology,Semiconductors,
-MCK,McKesson Corporation,US,NYSE,XNYS,USD,Health Care,Health Care Distributors,
-MCO,Moody's Corporation,US,NYSE,XNYS,USD,Financials,Financial Exchanges & Data,
-MDLZ,Mondelez International,US,NASDAQ,XNAS,USD,Consumer Staples,Packaged Foods & Meats,
-MDT,Medtronic,US,NYSE,XNYS,USD,Health Care,Health Care Equipment,
-MET,MetLife,US,NYSE,XNYS,USD,Financials,Life & Health Insurance,
-META,Meta Platforms,US,NASDAQ,XNAS,USD,Communication Services,Interactive Media & Services,
-MGM,MGM Resorts,US,NYSE,XNYS,USD,Consumer Discretionary,Casinos & Gaming,
-MKC,McCormick & Company,US,NYSE,XNYS,USD,Consumer Staples,Packaged Foods & Meats,
-MLM,Martin Marietta Materials,US,NYSE,XNYS,USD,Materials,Construction Materials,
-MMM,3M,US,NYSE,XNYS,USD,Industrials,Industrial Conglomerates,
-MNST,Monster Beverage,US,NASDAQ,XNAS,USD,Consumer Staples,Soft Drinks & Non-alcoholic Beverages,
-MO,Altria,US,NYSE,XNYS,USD,Consumer Staples,Tobacco,
-MOS,Mosaic Company (The),US,NYSE,XNYS,USD,Materials,Fertilizers & Agricultural Chemicals,
-MPC,Marathon Petroleum,US,NYSE,XNYS,USD,Energy,Oil & Gas Refining & Marketing,
-MPWR,Monolithic Power Systems,US,NASDAQ,XNAS,USD,Information Technology,Semiconductors,
-MRK,Merck & Co.,US,NYSE,XNYS,USD,Health Care,Pharmaceuticals,
-MRNA,Moderna,US,NASDAQ,XNAS,USD,Health Care,Biotechnology,
-MRSH,Marsh McLennan,US,NYSE,XNYS,USD,Financials,Insurance Brokers,
-MRVL,Marvell Technology,US,NASDAQ,XNAS,USD,Information Technology,Semiconductors,
-MS,Morgan Stanley,US,NYSE,XNYS,USD,Financials,Investment Banking & Brokerage,
-MSCI,MSCI,US,NYSE,XNYS,USD,Financials,Financial Exchanges & Data,
-MSFT,Microsoft,US,NASDAQ,XNAS,USD,Information Technology,Systems Software,
-MSI,Motorola Solutions,US,NYSE,XNYS,USD,Information Technology,Communications Equipment,
-MTB,M&T Bank,US,NYSE,XNYS,USD,Financials,Regional Banks,
-MTD,Mettler Toledo,US,NYSE,XNYS,USD,Health Care,Life Sciences Tools & Services,
-MU,Micron Technology,US,NASDAQ,XNAS,USD,Information Technology,Semiconductors,
-NCLH,Norwegian Cruise Line Holdings,US,NYSE,XNYS,USD,Consumer Discretionary,"Hotels, Resorts & Cruise Lines",
-NDAQ,"Nasdaq, Inc.",US,NASDAQ,XNAS,USD,Financials,Financial Exchanges & Data,
-NDSN,Nordson Corporation,US,NASDAQ,XNAS,USD,Industrials,Industrial Machinery & Supplies & Components,
-NEE,NextEra Energy,US,NYSE,XNYS,USD,Utilities,Multi-Utilities,
-NEM,Newmont,US,NYSE,XNYS,USD,Materials,Gold,
-NFLX,Netflix,US,NASDAQ,XNAS,USD,Communication Services,Movies & Entertainment,
-NI,NiSource,US,NYSE,XNYS,USD,Utilities,Multi-Utilities,
-NKE,"Nike, Inc.",US,NYSE,XNYS,USD,Consumer Discretionary,"Apparel, Accessories & Luxury Goods",
-NOC,Northrop Grumman,US,NYSE,XNYS,USD,Industrials,Aerospace & Defense,
-NOW,ServiceNow,US,NYSE,XNYS,USD,Information Technology,Systems Software,
-NRG,NRG Energy,US,NYSE,XNYS,USD,Utilities,Independent Power Producers & Energy Traders,
-NSC,Norfolk Southern,US,NYSE,XNYS,USD,Industrials,Rail Transportation,
-NTAP,NetApp,US,NASDAQ,XNAS,USD,Information Technology,"Technology Hardware, Storage & Peripherals",
-NTRS,Northern Trust,US,NASDAQ,XNAS,USD,Financials,Asset Management & Custody Banks,
-NUE,Nucor,US,NYSE,XNYS,USD,Materials,Steel,
-NVDA,Nvidia,US,NASDAQ,XNAS,USD,Information Technology,Semiconductors,
-NVR,"NVR, Inc.",US,NYSE,XNYS,USD,Consumer Discretionary,Homebuilding,
-NWS,News Corp (Class B),US,NASDAQ,XNAS,USD,Communication Services,Publishing,
-NWSA,News Corp (Class A),US,NASDAQ,XNAS,USD,Communication Services,Publishing,
-NXPI,NXP Semiconductors,US,NASDAQ,XNAS,USD,Information Technology,Semiconductors,
-O,Realty Income,US,NYSE,XNYS,USD,Real Estate,Retail REITs,
-ODFL,Old Dominion,US,NASDAQ,XNAS,USD,Industrials,Cargo Ground Transportation,
-OKE,Oneok,US,NYSE,XNYS,USD,Energy,Oil & Gas Storage & Transportation,
-OMC,Omnicom Group,US,NYSE,XNYS,USD,Communication Services,Advertising,
-ON,ON Semiconductor,US,NASDAQ,XNAS,USD,Information Technology,Semiconductors,
-ORCL,Oracle Corporation,US,NYSE,XNYS,USD,Information Technology,Application Software,
-ORLY,O'Reilly Automotive,US,NASDAQ,XNAS,USD,Consumer Discretionary,Automotive Retail,
-OTIS,Otis Worldwide,US,NYSE,XNYS,USD,Industrials,Industrial Machinery & Supplies & Components,
-OXY,Occidental Petroleum,US,NYSE,XNYS,USD,Energy,Oil & Gas Exploration & Production,
-P,Everpure,US,NYSE,XNYS,USD,Information Technology,"Technology Hardware, Storage & Peripherals",
-PANW,Palo Alto Networks,US,NASDAQ,XNAS,USD,Information Technology,Systems Software,
-PAYX,Paychex,US,NASDAQ,XNAS,USD,Industrials,Human Resource & Employment Services,
-PCAR,Paccar,US,NASDAQ,XNAS,USD,Industrials,Construction Machinery & Heavy Transportation Equipment,
-PCG,PG&E Corporation,US,NYSE,XNYS,USD,Utilities,Multi-Utilities,
-PEG,Public Service Enterprise Group,US,NYSE,XNYS,USD,Utilities,Electric Utilities,
-PEP,PepsiCo,US,NASDAQ,XNAS,USD,Consumer Staples,Soft Drinks & Non-alcoholic Beverages,
-PFE,Pfizer,US,NYSE,XNYS,USD,Health Care,Pharmaceuticals,
-PFG,Principal Financial Group,US,NASDAQ,XNAS,USD,Financials,Life & Health Insurance,
-PG,Procter & Gamble,US,NYSE,XNYS,USD,Consumer Staples,Personal Care Products,
-PGR,Progressive Corporation,US,NYSE,XNYS,USD,Financials,Property & Casualty Insurance,
-PH,Parker Hannifin,US,NYSE,XNYS,USD,Industrials,Industrial Machinery & Supplies & Components,
-PHM,PulteGroup,US,NYSE,XNYS,USD,Consumer Discretionary,Homebuilding,
-PKG,Packaging Corporation of America,US,NYSE,XNYS,USD,Materials,Paper & Plastic Packaging Products & Materials,
-PLD,Prologis,US,NYSE,XNYS,USD,Real Estate,Industrial REITs,
-PLTR,Palantir Technologies,US,NASDAQ,XNAS,USD,Information Technology,Application Software,
-PM,Philip Morris International,US,NYSE,XNYS,USD,Consumer Staples,Tobacco,
-PNC,PNC Financial Services,US,NYSE,XNYS,USD,Financials,Diversified Banks,
-PNR,Pentair,US,NYSE,XNYS,USD,Industrials,Industrial Machinery & Supplies & Components,
-PNW,Pinnacle West Capital,US,NYSE,XNYS,USD,Utilities,Multi-Utilities,
-PODD,Insulet Corporation,US,NASDAQ,XNAS,USD,Health Care,Health Care Equipment,
-PPG,PPG Industries,US,NYSE,XNYS,USD,Materials,Specialty Chemicals,
-PPL,PPL Corporation,US,NYSE,XNYS,USD,Utilities,Electric Utilities,
-PRU,Prudential Financial,US,NYSE,XNYS,USD,Financials,Life & Health Insurance,
-PSA,Public Storage,US,NYSE,XNYS,USD,Real Estate,Self-Storage REITs,
-PSX,Phillips 66,US,NYSE,XNYS,USD,Energy,Oil & Gas Refining & Marketing,
-PTC,PTC Inc.,US,NASDAQ,XNAS,USD,Information Technology,Application Software,
-PWR,Quanta Services,US,NYSE,XNYS,USD,Industrials,Construction & Engineering,
-PYPL,PayPal,US,NASDAQ,XNAS,USD,Financials,Transaction & Payment Processing Services,
-Q,Qnity Electronics,US,NYSE,XNYS,USD,Information Technology,Semiconductor Materials & Equipment,
-QCOM,Qualcomm,US,NASDAQ,XNAS,USD,Information Technology,Semiconductors,
-RCL,Royal Caribbean Group,US,NYSE,XNYS,USD,Consumer Discretionary,"Hotels, Resorts & Cruise Lines",
-RDDT,Reddit,US,NYSE,XNYS,USD,Communication Services,Interactive Media & Services,
-REG,Regency Centers,US,NASDAQ,XNAS,USD,Real Estate,Retail REITs,
-REGN,Regeneron Pharmaceuticals,US,NASDAQ,XNAS,USD,Health Care,Biotechnology,
-RF,Regions Financial Corporation,US,NYSE,XNYS,USD,Financials,Regional Banks,
-RJF,Raymond James Financial,US,NYSE,XNYS,USD,Financials,Investment Banking & Brokerage,
-RL,Ralph Lauren Corporation,US,NYSE,XNYS,USD,Consumer Discretionary,"Apparel, Accessories & Luxury Goods",
-RMD,ResMed|,US,NYSE,XNYS,USD,Health Care,Health Care Equipment,
-ROK,Rockwell Automation,US,NYSE,XNYS,USD,Industrials,Electrical Components & Equipment,
-ROL,"Rollins, Inc.",US,NYSE,XNYS,USD,Industrials,Environmental & Facilities Services,
-ROP,Roper Technologies,US,NASDAQ,XNAS,USD,Information Technology,Electronic Equipment & Instruments,
-ROST,Ross Stores,US,NASDAQ,XNAS,USD,Consumer Discretionary,Apparel Retail,
-RSG,Republic Services,US,NYSE,XNYS,USD,Industrials,Environmental & Facilities Services,
-RTX,RTX Corporation,US,NYSE,XNYS,USD,Industrials,Aerospace & Defense,
-RVTY,Revvity,US,NYSE,XNYS,USD,Health Care,Health Care Equipment,
-SBAC,SBA Communications,US,NASDAQ,XNAS,USD,Real Estate,Telecom Tower REITs,
-SBUX,Starbucks,US,NASDAQ,XNAS,USD,Consumer Discretionary,Restaurants,
-SCHW,Charles Schwab Corporation,US,NYSE,XNYS,USD,Financials,Investment Banking & Brokerage,
-SHW,Sherwin-Williams,US,NYSE,XNYS,USD,Materials,Specialty Chemicals,
-SJM,J.M. Smucker Company (The),US,NYSE,XNYS,USD,Consumer Staples,Packaged Foods & Meats,
-SKYD,Skydance Corporation,US,NYSE,XNYS,USD,Communication Services,Movies & Entertainment,
-SLB,Schlumberger,US,NYSE,XNYS,USD,Energy,Oil & Gas Equipment & Services,
-SMCI,Supermicro,US,NASDAQ,XNAS,USD,Information Technology,"Technology Hardware, Storage & Peripherals",
-SNA,Snap-on,US,NYSE,XNYS,USD,Industrials,Industrial Machinery & Supplies & Components,
-SNDK,Sandisk,US,NASDAQ,XNAS,USD,Information Technology,"Technology Hardware, Storage & Peripherals",
-SNPS,Synopsys,US,NASDAQ,XNAS,USD,Information Technology,Application Software,
-SO,Southern Company,US,NYSE,XNYS,USD,Utilities,Electric Utilities,
-SOLV,Solventum,US,NYSE,XNYS,USD,Health Care,Health Care Technology,
-SPG,Simon Property Group,US,NYSE,XNYS,USD,Real Estate,Retail REITs,
-SPGI,S&P Global,US,NYSE,XNYS,USD,Financials,Financial Exchanges & Data,
-SRE,Sempra,US,NYSE,XNYS,USD,Utilities,Multi-Utilities,
-STE,Steris,US,NYSE,XNYS,USD,Health Care,Health Care Equipment,
-STLD,Steel Dynamics,US,NASDAQ,XNAS,USD,Materials,Steel,
-STT,State Street Corporation,US,NYSE,XNYS,USD,Financials,Asset Management & Custody Banks,
-STX,Seagate Technology,US,NASDAQ,XNAS,USD,Information Technology,"Technology Hardware, Storage & Peripherals",
-STZ,Constellation Brands,US,NYSE,XNYS,USD,Consumer Staples,Distillers & Vintners,
-SW,Smurfit Westrock,US,NYSE,XNYS,USD,Materials,Paper & Plastic Packaging Products & Materials,
-SWK,Stanley Black & Decker,US,NYSE,XNYS,USD,Industrials,Industrial Machinery & Supplies & Components,
-SWKS,Skyworks Solutions,US,NASDAQ,XNAS,USD,Information Technology,Semiconductors,
-SYF,Synchrony Financial,US,NYSE,XNYS,USD,Financials,Consumer Finance,
-SYK,Stryker Corporation,US,NYSE,XNYS,USD,Health Care,Health Care Equipment,
-SYY,Sysco,US,NYSE,XNYS,USD,Consumer Staples,Food Distributors,
-T,AT&T,US,NYSE,XNYS,USD,Communication Services,Integrated Telecommunication Services,
-TDG,TransDigm Group,US,NYSE,XNYS,USD,Industrials,Aerospace & Defense,
-TDY,Teledyne Technologies,US,NYSE,XNYS,USD,Information Technology,Electronic Equipment & Instruments,
-TECH,Bio-Techne,US,NASDAQ,XNAS,USD,Health Care,Life Sciences Tools & Services,
-TEL,TE Connectivity,US,NYSE,XNYS,USD,Information Technology,Electronic Manufacturing Services,
-TER,Teradyne,US,NASDAQ,XNAS,USD,Information Technology,Semiconductor Materials & Equipment,
-TFC,Truist Financial,US,NYSE,XNYS,USD,Financials,Diversified Banks,
-TGT,Target Corporation,US,NYSE,XNYS,USD,Consumer Staples,Consumer Staples Merchandise Retail,
-TJX,TJX Companies,US,NYSE,XNYS,USD,Consumer Discretionary,Apparel Retail,
-TKO,TKO Group Holdings,US,NYSE,XNYS,USD,Communication Services,Movies & Entertainment,
-TMO,Thermo Fisher Scientific,US,NYSE,XNYS,USD,Health Care,Life Sciences Tools & Services,
-TMUS,T-Mobile US,US,NASDAQ,XNAS,USD,Communication Services,Wireless Telecommunication Services,
-TPL,Texas Pacific Land Corporation,US,NYSE,XNYS,USD,Energy,Oil & Gas Exploration & Production,
-TPR,"Tapestry, Inc.",US,NYSE,XNYS,USD,Consumer Discretionary,"Apparel, Accessories & Luxury Goods",
-TRGP,Targa Resources,US,NYSE,XNYS,USD,Energy,Oil & Gas Storage & Transportation,
-TRMB,Trimble Inc.,US,NASDAQ,XNAS,USD,Information Technology,Application Software,
-TROW,T. Rowe Price,US,NASDAQ,XNAS,USD,Financials,Asset Management & Custody Banks,
-TRV,Travelers Companies (The),US,NYSE,XNYS,USD,Financials,Property & Casualty Insurance,
-TSCO,Tractor Supply,US,NASDAQ,XNAS,USD,Consumer Discretionary,Other Specialty Retail,
-TSLA,"Tesla, Inc.",US,NASDAQ,XNAS,USD,Consumer Discretionary,Automobile Manufacturers,
-TSN,Tyson Foods,US,NYSE,XNYS,USD,Consumer Staples,Packaged Foods & Meats,
-TT,Trane Technologies,US,NYSE,XNYS,USD,Industrials,Building Products,
-TTWO,Take-Two Interactive,US,NASDAQ,XNAS,USD,Communication Services,Interactive Home Entertainment,
-TWLO,Twilio,US,NYSE,XNYS,USD,Information Technology,Systems Software,
-TXN,Texas Instruments,US,NASDAQ,XNAS,USD,Information Technology,Semiconductors,
-TXT,Textron,US,NYSE,XNYS,USD,Industrials,Aerospace & Defense,
-TYL,Tyler Technologies,US,NYSE,XNYS,USD,Information Technology,Application Software,
-UAL,United Airlines Holdings,US,NASDAQ,XNAS,USD,Industrials,Passenger Airlines,
-UBER,Uber,US,NYSE,XNYS,USD,Industrials,Passenger Ground Transportation,
-UDR,"UDR, Inc.",US,NYSE,XNYS,USD,Real Estate,Multi-Family Residential REITs,
-UHS,Universal Health Services,US,NYSE,XNYS,USD,Health Care,Health Care Facilities,
-ULTA,Ulta Beauty,US,NASDAQ,XNAS,USD,Consumer Discretionary,Other Specialty Retail,
-UNH,UnitedHealth Group,US,NYSE,XNYS,USD,Health Care,Managed Health Care,
-UNP,Union Pacific Corporation,US,NYSE,XNYS,USD,Industrials,Rail Transportation,
-UPS,United Parcel Service,US,NYSE,XNYS,USD,Industrials,Air Freight & Logistics,
-URI,United Rentals,US,NYSE,XNYS,USD,Industrials,Trading Companies & Distributors,
-USB,U.S. Bancorp,US,NYSE,XNYS,USD,Financials,Diversified Banks,
-V,Visa Inc.,US,NYSE,XNYS,USD,Financials,Transaction & Payment Processing Services,
-VEEV,Veeva Systems,US,NYSE,XNYS,USD,Health Care,Health Care Technology,
-VICI,Vici Properties,US,NYSE,XNYS,USD,Real Estate,Hotel & Resort REITs,
-VLO,Valero Energy,US,NYSE,XNYS,USD,Energy,Oil & Gas Refining & Marketing,
-VLTO,Veralto,US,NYSE,XNYS,USD,Industrials,Environmental & Facilities Services,
-VMC,Vulcan Materials Company,US,NYSE,XNYS,USD,Materials,Construction Materials,
-VMRK,Vivmark Residential,US,NYSE,XNYS,USD,Real Estate,Multi-Family Residential REITs,
-VRSK,Verisk Analytics,US,NASDAQ,XNAS,USD,Industrials,Research & Consulting Services,
-VRSN,Verisign,US,NASDAQ,XNAS,USD,Information Technology,Internet Services & Infrastructure,
-VRT,Vertiv,US,NYSE,XNYS,USD,Industrials,Electrical Components & Equipment,
-VRTX,Vertex Pharmaceuticals,US,NASDAQ,XNAS,USD,Health Care,Biotechnology,
-VST,Vistra Corp.,US,NYSE,XNYS,USD,Utilities,Electric Utilities,
-VTR,Ventas,US,NYSE,XNYS,USD,Real Estate,Health Care REITs,
-VTRS,Viatris,US,NASDAQ,XNAS,USD,Health Care,Pharmaceuticals,
-VYLR,Vylor,US,NYSE,XNYS,USD,Consumer Staples,Agricultural Products & Services,
-VZ,Verizon,US,NYSE,XNYS,USD,Communication Services,Integrated Telecommunication Services,
-WAB,Wabtec,US,NYSE,XNYS,USD,Industrials,Construction Machinery & Heavy Transportation Equipment,
-WAT,Waters Corporation,US,NYSE,XNYS,USD,Health Care,Life Sciences Tools & Services,
-WDAY,"Workday, Inc.",US,NASDAQ,XNAS,USD,Information Technology,Application Software,
-WDC,Western Digital,US,NASDAQ,XNAS,USD,Information Technology,"Technology Hardware, Storage & Peripherals",
-WEC,WEC Energy Group,US,NYSE,XNYS,USD,Utilities,Electric Utilities,
-WELL,Welltower,US,NYSE,XNYS,USD,Real Estate,Health Care REITs,
-WFC,Wells Fargo,US,NYSE,XNYS,USD,Financials,Diversified Banks,
-WM,Waste Management,US,NYSE,XNYS,USD,Industrials,Environmental & Facilities Services,
-WMB,Williams Companies,US,NYSE,XNYS,USD,Energy,Oil & Gas Storage & Transportation,
-WMT,Walmart,US,NASDAQ,XNAS,USD,Consumer Staples,Consumer Staples Merchandise Retail,
-WRB,W. R. Berkley Corporation,US,NYSE,XNYS,USD,Financials,Property & Casualty Insurance,
-WSM,"Williams-Sonoma, Inc.",US,NYSE,XNYS,USD,Consumer Discretionary,Homefurnishing Retail,
-WST,West Pharmaceutical Services,US,NYSE,XNYS,USD,Health Care,Health Care Supplies,
-WTW,Willis Towers Watson,US,NASDAQ,XNAS,USD,Financials,Insurance Brokers,
-WY,Weyerhaeuser,US,NYSE,XNYS,USD,Real Estate,Timber REITs,
-WYNN,Wynn Resorts,US,NASDAQ,XNAS,USD,Consumer Discretionary,Casinos & Gaming,
-XEL,Xcel Energy,US,NASDAQ,XNAS,USD,Utilities,Multi-Utilities,
-XOM,ExxonMobil,US,NYSE,XNYS,USD,Energy,Integrated Oil & Gas,
-XYL,Xylem Inc.,US,NYSE,XNYS,USD,Industrials,Industrial Machinery & Supplies & Components,
-XYZ,"Block, Inc.",US,NYSE,XNYS,USD,Financials,Transaction & Payment Processing Services,
-YUM,Yum! Brands,US,NYSE,XNYS,USD,Consumer Discretionary,Restaurants,
-ZBH,Zimmer Biomet,US,NYSE,XNYS,USD,Health Care,Health Care Equipment,
-ZBRA,Zebra Technologies,US,NASDAQ,XNAS,USD,Information Technology,Electronic Equipment & Instruments,
-ZTS,Zoetis,US,NYSE,XNYS,USD,Health Care,Pharmaceuticals,
+symbol,name,country,exchange,mic,currency,sector,industry,isin,wiki
+A,Agilent Technologies,US,NYSE,XNYS,USD,Health Care,Life Sciences Tools & Services,,en:Agilent Technologies
+AAPL,Apple Inc.,US,NASDAQ,XNAS,USD,Information Technology,"Technology Hardware, Storage & Peripherals",,en:Apple Inc.
+ABBV,AbbVie,US,NYSE,XNYS,USD,Health Care,Biotechnology,,en:AbbVie
+ABNB,Airbnb,US,NASDAQ,XNAS,USD,Consumer Discretionary,"Hotels, Resorts & Cruise Lines",,en:Airbnb
+ABT,Abbott Laboratories,US,NYSE,XNYS,USD,Health Care,Health Care Equipment,,en:Abbott Laboratories
+ACGL,Arch Capital Group,US,NASDAQ,XNAS,USD,Financials,Property & Casualty Insurance,,en:Arch Capital Group
+ACN,Accenture,US,NYSE,XNYS,USD,Information Technology,IT Consulting & Other Services,,en:Accenture
+ADBE,Adobe Inc.,US,NASDAQ,XNAS,USD,Information Technology,Application Software,,en:Adobe Inc.
+ADI,Analog Devices,US,NASDAQ,XNAS,USD,Information Technology,Semiconductors,,en:Analog Devices
+ADM,Archer Daniels Midland,US,NYSE,XNYS,USD,Consumer Staples,Agricultural Products & Services,,en:Archer Daniels Midland
+ADP,Automatic Data Processing,US,NASDAQ,XNAS,USD,Industrials,Human Resource & Employment Services,,en:ADP (company)
+ADSK,Autodesk,US,NASDAQ,XNAS,USD,Information Technology,Application Software,,en:Autodesk
+AEE,Ameren,US,NYSE,XNYS,USD,Utilities,Multi-Utilities,,en:Ameren
+AEP,American Electric Power,US,NASDAQ,XNAS,USD,Utilities,Electric Utilities,,en:American Electric Power
+AES,AES Corporation,US,NYSE,XNYS,USD,Utilities,Independent Power Producers & Energy Traders,,en:AES Corporation
+AFL,Aflac,US,NYSE,XNYS,USD,Financials,Life & Health Insurance,,en:Aflac
+AIG,American International Group,US,NYSE,XNYS,USD,Financials,Multi-line Insurance,,en:American International Group
+AIZ,Assurant,US,NYSE,XNYS,USD,Financials,Multi-line Insurance,,en:Assurant
+AJG,Arthur J. Gallagher & Co.,US,NYSE,XNYS,USD,Financials,Insurance Brokers,,en:Arthur J. Gallagher & Co.
+AKAM,Akamai Technologies,US,NASDAQ,XNAS,USD,Information Technology,Internet Services & Infrastructure,,en:Akamai Technologies
+ALB,Albemarle Corporation,US,NYSE,XNYS,USD,Materials,Specialty Chemicals,,en:Albemarle Corporation
+ALGN,Align Technology,US,NASDAQ,XNAS,USD,Health Care,Health Care Supplies,,en:Align Technology
+ALL,Allstate,US,NYSE,XNYS,USD,Financials,Property & Casualty Insurance,,en:Allstate
+ALLE,Allegion,US,NYSE,XNYS,USD,Industrials,Building Products,,en:Allegion
+AMAT,Applied Materials,US,NASDAQ,XNAS,USD,Information Technology,Semiconductor Materials & Equipment,,en:Applied Materials
+AMCR,Amcor,US,NYSE,XNYS,USD,Materials,Paper & Plastic Packaging Products & Materials,,en:Amcor
+AMD,Advanced Micro Devices,US,NASDAQ,XNAS,USD,Information Technology,Semiconductors,,en:AMD
+AME,Ametek,US,NYSE,XNYS,USD,Industrials,Electrical Components & Equipment,,en:Ametek
+AMGN,Amgen,US,NASDAQ,XNAS,USD,Health Care,Biotechnology,,en:Amgen
+AMP,Ameriprise Financial,US,NYSE,XNYS,USD,Financials,Asset Management & Custody Banks,,en:Ameriprise Financial
+AMT,American Tower,US,NYSE,XNYS,USD,Real Estate,Telecom Tower REITs,,en:American Tower
+AMZN,Amazon,US,NASDAQ,XNAS,USD,Consumer Discretionary,Broadline Retail,,en:Amazon (company)
+ANET,Arista Networks,US,NYSE,XNYS,USD,Information Technology,Communications Equipment,,en:Arista Networks
+AON,Aon plc,US,NYSE,XNYS,USD,Financials,Insurance Brokers,,en:Aon (company)
+AOS,A. O. Smith,US,NYSE,XNYS,USD,Industrials,Building Products,,en:A. O. Smith
+APA,APA Corporation,US,NASDAQ,XNAS,USD,Energy,Oil & Gas Exploration & Production,,en:APA Corporation
+APD,Air Products,US,NYSE,XNYS,USD,Materials,Industrial Gases,,en:Air Products
+APH,Amphenol,US,NYSE,XNYS,USD,Information Technology,Electronic Components,,en:Amphenol
+APO,Apollo Global Management,US,NYSE,XNYS,USD,Financials,Asset Management & Custody Banks,,en:Apollo Global Management
+APP,AppLovin,US,NASDAQ,XNAS,USD,Communication Services,Advertising,,en:AppLovin
+APTV,Aptiv,US,NYSE,XNYS,USD,Consumer Discretionary,Automotive Parts & Equipment,,en:Aptiv
+ARE,Alexandria Real Estate Equities,US,NYSE,XNYS,USD,Real Estate,Office REITs,,en:Alexandria Real Estate Equities
+ARES,Ares Management,US,NYSE,XNYS,USD,Financials,Asset Management & Custody Banks,,en:Ares Management
+ATO,Atmos Energy,US,NYSE,XNYS,USD,Utilities,Gas Utilities,,en:Atmos Energy
+AVGO,Broadcom,US,NASDAQ,XNAS,USD,Information Technology,Semiconductors,,en:Broadcom
+AVY,Avery Dennison,US,NYSE,XNYS,USD,Materials,Paper & Plastic Packaging Products & Materials,,en:Avery Dennison
+AWK,American Water Works,US,NYSE,XNYS,USD,Utilities,Water Utilities,,en:American Water Works
+AXON,Axon Enterprise,US,NASDAQ,XNAS,USD,Industrials,Aerospace & Defense,,en:Axon Enterprise
+AXP,American Express,US,NYSE,XNYS,USD,Financials,Consumer Finance,,en:American Express
+AZO,AutoZone,US,NYSE,XNYS,USD,Consumer Discretionary,Automotive Retail,,en:AutoZone
+BA,Boeing,US,NYSE,XNYS,USD,Industrials,Aerospace & Defense,,en:Boeing
+BAC,Bank of America,US,NYSE,XNYS,USD,Financials,Diversified Banks,,en:Bank of America
+BALL,Ball Corporation,US,NYSE,XNYS,USD,Materials,"Metal, Glass & Plastic Containers",,en:Ball Corporation
+BAX,Baxter International,US,NYSE,XNYS,USD,Health Care,Health Care Equipment,,en:Baxter International
+BBY,Best Buy,US,NYSE,XNYS,USD,Consumer Discretionary,Computer & Electronics Retail,,en:Best Buy
+BDX,Becton Dickinson,US,NYSE,XNYS,USD,Health Care,Health Care Equipment,,en:BD (company)
+BE,Bloom Energy,US,NYSE,XNYS,USD,Industrials,Electrical Components & Equipment,,en:Bloom Energy
+BEN,Franklin Resources,US,NYSE,XNYS,USD,Financials,Asset Management & Custody Banks,,en:Franklin Templeton Investments
+BF-B,Brown–Forman,US,NYSE,XNYS,USD,Consumer Staples,Distillers & Vintners,,en:Brown–Forman
+BG,Bunge Global,US,NYSE,XNYS,USD,Consumer Staples,Agricultural Products & Services,,en:Bunge Global
+BIIB,Biogen,US,NASDAQ,XNAS,USD,Health Care,Biotechnology,,en:Biogen
+BKNG,Booking Holdings,US,NASDAQ,XNAS,USD,Consumer Discretionary,"Hotels, Resorts & Cruise Lines",,en:Booking Holdings
+BKR,Baker Hughes,US,NASDAQ,XNAS,USD,Energy,Oil & Gas Equipment & Services,,en:Baker Hughes
+BLK,BlackRock,US,NYSE,XNYS,USD,Financials,Asset Management & Custody Banks,,en:BlackRock
+BMY,Bristol Myers Squibb,US,NYSE,XNYS,USD,Health Care,Pharmaceuticals,,en:Bristol Myers Squibb
+BNY,BNY Mellon,US,NYSE,XNYS,USD,Financials,Asset Management & Custody Banks,,en:BNY
+BR,Broadridge Financial Solutions,US,NYSE,XNYS,USD,Industrials,Data Processing & Outsourced Services,,en:Broadridge Financial Solutions
+BRK-B,Berkshire Hathaway,US,NYSE,XNYS,USD,Financials,Multi-Sector Holdings,,en:Berkshire Hathaway
+BRO,Brown & Brown,US,NYSE,XNYS,USD,Financials,Insurance Brokers,,en:Brown & Brown
+BSX,Boston Scientific,US,NYSE,XNYS,USD,Health Care,Health Care Equipment,,en:Boston Scientific
+BX,Blackstone Inc.,US,NYSE,XNYS,USD,Financials,Asset Management & Custody Banks,,en:Blackstone Inc.
+BXP,"BXP, Inc.",US,NYSE,XNYS,USD,Real Estate,Office REITs,,"en:BXP, Inc."
+C,Citigroup,US,NYSE,XNYS,USD,Financials,Diversified Banks,,en:Citigroup
+CAH,Cardinal Health,US,NYSE,XNYS,USD,Health Care,Health Care Distributors,,en:Cardinal Health
+CARR,Carrier Global,US,NYSE,XNYS,USD,Industrials,Building Products,,en:Carrier Global
+CASY,Casey's,US,NASDAQ,XNAS,USD,Consumer Staples,Food Retail,,en:Casey's
+CAT,Caterpillar Inc.,US,NYSE,XNYS,USD,Industrials,Construction Machinery & Heavy Transportation Equipment,,en:Caterpillar Inc.
+CB,Chubb Limited,US,NYSE,XNYS,USD,Financials,Property & Casualty Insurance,,en:Chubb Limited
+CBOE,Cboe Global Markets,US,Cboe,BATS,USD,Financials,Financial Exchanges & Data,,en:Cboe Global Markets
+CBRE,CBRE Group,US,NYSE,XNYS,USD,Real Estate,Real Estate Services,,en:CBRE Group
+CCI,Crown Castle,US,NYSE,XNYS,USD,Real Estate,Telecom Tower REITs,,en:Crown Castle
+CCL,Carnival Corporation,US,NYSE,XNYS,USD,Consumer Discretionary,"Hotels, Resorts & Cruise Lines",,en:Carnival Corporation
+CDNS,Cadence Design Systems,US,NASDAQ,XNAS,USD,Information Technology,Application Software,,en:Cadence Design Systems
+CDW,CDW Corporation,US,NASDAQ,XNAS,USD,Information Technology,Technology Distributors,,en:CDW
+CEG,Constellation Energy,US,NASDAQ,XNAS,USD,Utilities,Electric Utilities,,en:Constellation Energy
+CF,CF Industries,US,NYSE,XNYS,USD,Materials,Fertilizers & Agricultural Chemicals,,en:CF Industries
+CFG,Citizens Financial Group,US,NYSE,XNYS,USD,Financials,Regional Banks,,en:Citizens Financial Group
+CHD,Church & Dwight,US,NYSE,XNYS,USD,Consumer Staples,Household Products,,en:Church & Dwight
+CHRW,C.H. Robinson,US,NASDAQ,XNAS,USD,Industrials,Air Freight & Logistics,,en:C.H. Robinson
+CHTR,Charter Communications,US,NASDAQ,XNAS,USD,Communication Services,Cable & Satellite,,en:Charter Communications
+CI,Cigna,US,NYSE,XNYS,USD,Health Care,Health Care Services,,en:Cigna
+CIEN,Ciena,US,NYSE,XNYS,USD,Information Technology,Communications Equipment,,en:Ciena
+CINF,Cincinnati Financial,US,NASDAQ,XNAS,USD,Financials,Property & Casualty Insurance,,en:Cincinnati Financial
+CL,Colgate-Palmolive,US,NYSE,XNYS,USD,Consumer Staples,Household Products,,en:Colgate-Palmolive
+CLX,Clorox,US,NYSE,XNYS,USD,Consumer Staples,Household Products,,en:Clorox
+CMCSA,Comcast,US,NASDAQ,XNAS,USD,Communication Services,Cable & Satellite,,en:Comcast
+CME,CME Group,US,NASDAQ,XNAS,USD,Financials,Financial Exchanges & Data,,en:CME Group
+CMG,Chipotle Mexican Grill,US,NYSE,XNYS,USD,Consumer Discretionary,Restaurants,,en:Chipotle Mexican Grill
+CMI,Cummins,US,NYSE,XNYS,USD,Industrials,Construction Machinery & Heavy Transportation Equipment,,en:Cummins
+CMS,CMS Energy,US,NYSE,XNYS,USD,Utilities,Multi-Utilities,,en:CMS Energy
+CNC,Centene Corporation,US,NYSE,XNYS,USD,Health Care,Managed Health Care,,en:Centene Corporation
+CNP,CenterPoint Energy,US,NYSE,XNYS,USD,Utilities,Multi-Utilities,,en:CenterPoint Energy
+COF,Capital One,US,NYSE,XNYS,USD,Financials,Consumer Finance,,en:Capital One
+COHR,Coherent Corp.,US,NYSE,XNYS,USD,Information Technology,Electronic Components,,en:Coherent Corp.
+COIN,Coinbase,US,NASDAQ,XNAS,USD,Financials,Financial Exchanges & Data,,en:Coinbase
+COO,Cooper Companies (The),US,NASDAQ,XNAS,USD,Health Care,Health Care Supplies,,en:The Cooper Companies
+COP,ConocoPhillips,US,NYSE,XNYS,USD,Energy,Oil & Gas Exploration & Production,,en:ConocoPhillips
+COR,Cencora,US,NYSE,XNYS,USD,Health Care,Health Care Distributors,,en:Cencora
+COST,Costco,US,NASDAQ,XNAS,USD,Consumer Staples,Consumer Staples Merchandise Retail,,en:Costco
+CPAY,Corpay,US,NYSE,XNYS,USD,Financials,Transaction & Payment Processing Services,,en:Corpay
+CPRT,Copart,US,NASDAQ,XNAS,USD,Industrials,Diversified Support Services,,en:Copart
+CPT,Camden Property Trust,US,NYSE,XNYS,USD,Real Estate,Multi-Family Residential REITs,,en:Camden Property Trust
+CRH,CRH plc,US,NYSE,XNYS,USD,Materials,Construction Materials,,en:CRH plc
+CRL,Charles River Laboratories,US,NYSE,XNYS,USD,Health Care,Life Sciences Tools & Services,,en:Charles River Laboratories
+CRM,Salesforce,US,NYSE,XNYS,USD,Information Technology,Application Software,,en:Salesforce
+CRWD,CrowdStrike,US,NASDAQ,XNAS,USD,Information Technology,Systems Software,,en:CrowdStrike
+CSCO,Cisco,US,NASDAQ,XNAS,USD,Information Technology,Communications Equipment,,en:Cisco
+CSGP,CoStar Group,US,NASDAQ,XNAS,USD,Real Estate,Real Estate Services,,en:CoStar Group
+CSX,CSX Corporation,US,NASDAQ,XNAS,USD,Industrials,Rail Transportation,,en:CSX Corporation
+CTAS,Cintas,US,NASDAQ,XNAS,USD,Industrials,Diversified Support Services,,en:Cintas
+CTSH,Cognizant,US,NASDAQ,XNAS,USD,Information Technology,IT Consulting & Other Services,,en:Cognizant
+CVNA,Carvana,US,NYSE,XNYS,USD,Consumer Discretionary,Automotive Retail,,en:Carvana
+CVS,CVS Health,US,NYSE,XNYS,USD,Health Care,Health Care Services,,en:CVS Health
+CVX,Chevron Corporation,US,NYSE,XNYS,USD,Energy,Integrated Oil & Gas,,en:Chevron Corporation
+D,Dominion Energy,US,NYSE,XNYS,USD,Utilities,Multi-Utilities,,en:Dominion Energy
+DAL,Delta Air Lines,US,NYSE,XNYS,USD,Industrials,Passenger Airlines,,en:Delta Air Lines
+DASH,DoorDash,US,NASDAQ,XNAS,USD,Consumer Discretionary,Specialized Consumer Services,,en:DoorDash
+DD,DuPont,US,NYSE,XNYS,USD,Industrials,Industrial Conglomerates,,en:DuPont
+DDOG,Datadog,US,NASDAQ,XNAS,USD,Information Technology,Application Software,,en:Datadog
+DE,Deere & Company,US,NYSE,XNYS,USD,Industrials,Agricultural & Farm Machinery,,en:John Deere
+DECK,Deckers Brands,US,NYSE,XNYS,USD,Consumer Discretionary,Footwear,,en:Deckers Brands
+DELL,Dell Technologies,US,NYSE,XNYS,USD,Information Technology,"Technology Hardware, Storage & Peripherals",,en:Dell Technologies
+DG,Dollar General,US,NYSE,XNYS,USD,Consumer Staples,Consumer Staples Merchandise Retail,,en:Dollar General
+DGX,Quest Diagnostics,US,NYSE,XNYS,USD,Health Care,Health Care Services,,en:Quest Diagnostics
+DHI,D. R. Horton,US,NYSE,XNYS,USD,Consumer Discretionary,Homebuilding,,en:D. R. Horton
+DHR,Danaher Corporation,US,NYSE,XNYS,USD,Health Care,Life Sciences Tools & Services,,en:Danaher Corporation
+DIS,Walt Disney Company (The),US,NYSE,XNYS,USD,Communication Services,Movies & Entertainment,,en:The Walt Disney Company
+DLR,Digital Realty,US,NYSE,XNYS,USD,Real Estate,Data Center REITs,,en:Digital Realty
+DLTR,Dollar Tree,US,NASDAQ,XNAS,USD,Consumer Staples,Consumer Staples Merchandise Retail,,en:Dollar Tree
+DOC,Healthpeak Properties,US,NYSE,XNYS,USD,Real Estate,Health Care REITs,,en:Healthpeak Properties
+DOV,Dover Corporation,US,NYSE,XNYS,USD,Industrials,Industrial Machinery & Supplies & Components,,en:Dover Corporation
+DOW,Dow Inc.,US,NYSE,XNYS,USD,Materials,Commodity Chemicals,,en:Dow Chemical Company
+DPZ,Domino's,US,NYSE,XNYS,USD,Consumer Discretionary,Restaurants,,en:Domino's
+DRI,Darden Restaurants,US,NYSE,XNYS,USD,Consumer Discretionary,Restaurants,,en:Darden Restaurants
+DTE,DTE Energy,US,NYSE,XNYS,USD,Utilities,Multi-Utilities,,en:DTE Energy
+DUK,Duke Energy,US,NYSE,XNYS,USD,Utilities,Electric Utilities,,en:Duke Energy
+DVA,DaVita,US,NYSE,XNYS,USD,Health Care,Health Care Services,,en:DaVita
+DVN,Devon Energy,US,NYSE,XNYS,USD,Energy,Oil & Gas Exploration & Production,,en:Devon Energy
+DXCM,Dexcom,US,NASDAQ,XNAS,USD,Health Care,Health Care Equipment,,en:Dexcom
+EBAY,eBay Inc.,US,NASDAQ,XNAS,USD,Consumer Discretionary,Broadline Retail,,en:EBay
+ECHO,EchoStar,US,NASDAQ,XNAS,USD,Communication Services,Wireless Telecommunication Services,,en:EchoStar
+ECL,Ecolab,US,NYSE,XNYS,USD,Materials,Specialty Chemicals,,en:Ecolab
+ED,Consolidated Edison,US,NYSE,XNYS,USD,Utilities,Multi-Utilities,,en:Consolidated Edison
+EFX,Equifax,US,NYSE,XNYS,USD,Industrials,Research & Consulting Services,,en:Equifax
+EG,Everest Group,US,NYSE,XNYS,USD,Financials,Reinsurance,,en:Everest Group
+EIX,Edison International,US,NYSE,XNYS,USD,Utilities,Electric Utilities,,en:Edison International
+EL,Estée Lauder Companies (The),US,NYSE,XNYS,USD,Consumer Staples,Personal Care Products,,en:The Estée Lauder Companies
+ELV,Elevance Health,US,NYSE,XNYS,USD,Health Care,Managed Health Care,,en:Elevance Health
+EME,Emcor,US,NYSE,XNYS,USD,Industrials,Construction & Engineering,,en:Emcor
+EMR,Emerson Electric,US,NYSE,XNYS,USD,Industrials,Electrical Components & Equipment,,en:Emerson Electric
+EOG,EOG Resources,US,NYSE,XNYS,USD,Energy,Oil & Gas Exploration & Production,,en:EOG Resources
+EQIX,Equinix,US,NASDAQ,XNAS,USD,Real Estate,Data Center REITs,,en:Equinix
+EQT,EQT Corporation,US,NYSE,XNYS,USD,Energy,Oil & Gas Exploration & Production,,en:EQT Corporation
+ERIE,Erie Indemnity,US,NASDAQ,XNAS,USD,Financials,Insurance Brokers,,en:Erie Insurance Group
+ES,Eversource Energy,US,NYSE,XNYS,USD,Utilities,Electric Utilities,,en:Eversource Energy
+ESS,Essex Property Trust,US,NYSE,XNYS,USD,Real Estate,Multi-Family Residential REITs,,en:Essex Property Trust
+ETN,Eaton Corporation,US,NYSE,XNYS,USD,Industrials,Electrical Components & Equipment,,en:Eaton Corporation
+ETR,Entergy,US,NYSE,XNYS,USD,Utilities,Electric Utilities,,en:Entergy
+EVRG,Evergy,US,NYSE,XNYS,USD,Utilities,Electric Utilities,,en:Evergy
+EW,Edwards Lifesciences,US,NYSE,XNYS,USD,Health Care,Health Care Equipment,,en:Edwards Lifesciences
+EXC,Exelon,US,NASDAQ,XNAS,USD,Utilities,Electric Utilities,,en:Exelon
+EXE,Expand Energy,US,NASDAQ,XNAS,USD,Energy,Oil & Gas Exploration & Production,,en:Expand Energy
+EXPD,Expeditors International,US,NASDAQ,XNAS,USD,Industrials,Air Freight & Logistics,,en:Expeditors International
+EXPE,Expedia Group,US,NASDAQ,XNAS,USD,Consumer Discretionary,"Hotels, Resorts & Cruise Lines",,en:Expedia Group
+EXR,Extra Space Storage,US,NYSE,XNYS,USD,Real Estate,Self-Storage REITs,,en:Extra Space Storage
+F,Ford Motor Company,US,NYSE,XNYS,USD,Consumer Discretionary,Automobile Manufacturers,,en:Ford Motor Company
+FANG,Diamondback Energy,US,NASDAQ,XNAS,USD,Energy,Oil & Gas Exploration & Production,,en:Diamondback Energy
+FAST,Fastenal,US,NASDAQ,XNAS,USD,Industrials,Trading Companies & Distributors,,en:Fastenal
+FCX,Freeport-McMoRan,US,NYSE,XNYS,USD,Materials,Copper,,en:Freeport-McMoRan
+FDS,FactSet,US,NYSE,XNYS,USD,Financials,Financial Exchanges & Data,,en:FactSet
+FDX,FedEx,US,NYSE,XNYS,USD,Industrials,Air Freight & Logistics,,en:FedEx
+FDXF,FedEx Freight,US,NYSE,XNYS,USD,Industrials,Cargo Ground Transportation,,en:FedEx Freight
+FE,FirstEnergy,US,NYSE,XNYS,USD,Utilities,Electric Utilities,,en:FirstEnergy
+FERG,Ferguson Enterprises,US,NYSE,XNYS,USD,Industrials,Trading Companies & Distributors,,en:Ferguson Enterprises
+FFIV,"F5, Inc.",US,NASDAQ,XNAS,USD,Information Technology,Communications Equipment,,"en:F5, Inc."
+FICO,Fair Isaac,US,NYSE,XNYS,USD,Information Technology,Application Software,,en:FICO
+FIS,Fidelity National Information Services,US,NYSE,XNYS,USD,Financials,Transaction & Payment Processing Services,,en:FIS (company)
+FISV,Fiserv,US,NASDAQ,XNAS,USD,Financials,Transaction & Payment Processing Services,,en:Fiserv
+FITB,Fifth Third Bancorp,US,NYSE,XNYS,USD,Financials,Regional Banks,,en:Fifth Third Bancorp
+FIX,Comfort Systems USA,US,NYSE,XNYS,USD,Industrials,Construction & Engineering,,en:Comfort Systems USA
+FLEX,Flex Ltd.,US,NASDAQ,XNAS,USD,Information Technology,Electronic Manufacturing Services,,en:Flex Ltd.
+FOX,Fox Corporation (Class B),US,NASDAQ,XNAS,USD,Communication Services,Broadcasting,,en:Fox Corporation
+FOXA,Fox Corporation (Class A),US,NASDAQ,XNAS,USD,Communication Services,Broadcasting,,en:Fox Corporation
+FRT,Federal Realty Investment Trust,US,NYSE,XNYS,USD,Real Estate,Retail REITs,,en:Federal Realty Investment Trust
+FSLR,First Solar,US,NASDAQ,XNAS,USD,Information Technology,Semiconductors,,en:First Solar
+FTNT,Fortinet,US,NASDAQ,XNAS,USD,Information Technology,Systems Software,,en:Fortinet
+FTV,Fortive,US,NYSE,XNYS,USD,Industrials,Industrial Machinery & Supplies & Components,,en:Fortive
+GD,General Dynamics,US,NYSE,XNYS,USD,Industrials,Aerospace & Defense,,en:General Dynamics
+GDDY,GoDaddy,US,NYSE,XNYS,USD,Information Technology,Internet Services & Infrastructure,,en:GoDaddy
+GE,GE Aerospace,US,NYSE,XNYS,USD,Industrials,Aerospace & Defense,,en:GE Aerospace
+GEHC,GE HealthCare,US,NASDAQ,XNAS,USD,Health Care,Health Care Equipment,,en:GE HealthCare
+GEN,Gen Digital,US,NASDAQ,XNAS,USD,Information Technology,Systems Software,,en:Gen Digital
+GEV,GE Vernova,US,NYSE,XNYS,USD,Industrials,Heavy Electrical Equipment,,en:GE Vernova
+GILD,Gilead Sciences,US,NASDAQ,XNAS,USD,Health Care,Biotechnology,,en:Gilead Sciences
+GIS,General Mills,US,NYSE,XNYS,USD,Consumer Staples,Packaged Foods & Meats,,en:General Mills
+GL,Globe Life,US,NYSE,XNYS,USD,Financials,Life & Health Insurance,,en:Globe Life
+GLW,Corning Inc.,US,NYSE,XNYS,USD,Information Technology,Electronic Components,,en:Corning Inc.
+GM,General Motors,US,NYSE,XNYS,USD,Consumer Discretionary,Automobile Manufacturers,,en:General Motors
+GNRC,Generac,US,NYSE,XNYS,USD,Industrials,Heavy Electrical Equipment,,en:Generac
+GOOG,Alphabet Inc. (Class C),US,NASDAQ,XNAS,USD,Communication Services,Interactive Media & Services,,en:Alphabet Inc.
+GOOGL,Alphabet Inc. (Class A),US,NASDAQ,XNAS,USD,Communication Services,Interactive Media & Services,,en:Alphabet Inc.
+GPC,Genuine Parts Company,US,NYSE,XNYS,USD,Consumer Discretionary,Distributors,,en:Genuine Parts Company
+GPN,Global Payments,US,NYSE,XNYS,USD,Financials,Transaction & Payment Processing Services,,en:Global Payments
+GRMN,Garmin,US,NYSE,XNYS,USD,Consumer Discretionary,Consumer Electronics,,en:Garmin
+GS,Goldman Sachs,US,NYSE,XNYS,USD,Financials,Investment Banking & Brokerage,,en:Goldman Sachs
+GWW,W. W. Grainger,US,NYSE,XNYS,USD,Industrials,Industrial Machinery & Supplies & Components,,en:W. W. Grainger
+HAL,Halliburton,US,NYSE,XNYS,USD,Energy,Oil & Gas Equipment & Services,,en:Halliburton
+HAS,Hasbro,US,NASDAQ,XNAS,USD,Consumer Discretionary,Leisure Products,,en:Hasbro
+HBAN,Huntington Bancshares,US,NASDAQ,XNAS,USD,Financials,Regional Banks,,en:Huntington Bancshares
+HCA,HCA Healthcare,US,NYSE,XNYS,USD,Health Care,Health Care Facilities,,en:HCA Healthcare
+HD,Home Depot (The),US,NYSE,XNYS,USD,Consumer Discretionary,Home Improvement Retail,,en:Home Depot
+HIG,Hartford (The),US,NYSE,XNYS,USD,Financials,Property & Casualty Insurance,,en:The Hartford
+HII,Huntington Ingalls Industries,US,NYSE,XNYS,USD,Industrials,Aerospace & Defense,,en:Huntington Ingalls Industries
+HLT,Hilton Worldwide,US,NYSE,XNYS,USD,Consumer Discretionary,"Hotels, Resorts & Cruise Lines",,en:Hilton Worldwide
+HON,Honeywell Technologies,US,NASDAQ,XNAS,USD,Industrials,Industrial Conglomerates,,en:Honeywell
+HONA,Honeywell Aerospace,US,NASDAQ,XNAS,USD,Industrials,Aerospace & Defense,,en:Honeywell Aerospace
+HOOD,Robinhood Markets,US,NASDAQ,XNAS,USD,Financials,Investment Banking & Brokerage,,en:Robinhood Markets
+HPE,Hewlett Packard Enterprise,US,NYSE,XNYS,USD,Information Technology,"Technology Hardware, Storage & Peripherals",,en:Hewlett Packard Enterprise
+HPQ,HP Inc.,US,NYSE,XNYS,USD,Information Technology,"Technology Hardware, Storage & Peripherals",,en:HP Inc.
+HRL,Hormel Foods,US,NYSE,XNYS,USD,Consumer Staples,Packaged Foods & Meats,,en:Hormel Foods
+HSIC,Henry Schein,US,NASDAQ,XNAS,USD,Health Care,Health Care Distributors,,en:Henry Schein
+HST,Host Hotels & Resorts,US,NASDAQ,XNAS,USD,Real Estate,Hotel & Resort REITs,,en:Host Hotels & Resorts
+HSY,Hershey Company (The),US,NYSE,XNYS,USD,Consumer Staples,Packaged Foods & Meats,,en:The Hershey Company
+HUBB,Hubbell Incorporated,US,NYSE,XNYS,USD,Industrials,Industrial Machinery & Supplies & Components,,en:Hubbell Incorporated
+HUM,Humana,US,NYSE,XNYS,USD,Health Care,Managed Health Care,,en:Humana
+HWM,Howmet Aerospace,US,NYSE,XNYS,USD,Industrials,Aerospace & Defense,,en:Howmet Aerospace
+IBKR,Interactive Brokers,US,NASDAQ,XNAS,USD,Financials,Investment Banking & Brokerage,,en:Interactive Brokers
+IBM,IBM,US,NYSE,XNYS,USD,Information Technology,IT Consulting & Other Services,,en:IBM
+ICE,Intercontinental Exchange,US,NYSE,XNYS,USD,Financials,Financial Exchanges & Data,,en:Intercontinental Exchange
+IDXX,Idexx Laboratories,US,NASDAQ,XNAS,USD,Health Care,Health Care Equipment,,en:Idexx Laboratories
+IEX,IDEX Corporation,US,NYSE,XNYS,USD,Industrials,Industrial Machinery & Supplies & Components,,en:IDEX Corporation
+IFF,International Flavors & Fragrances,US,NYSE,XNYS,USD,Materials,Specialty Chemicals,,en:International Flavors & Fragrances
+ILMN,"Illumina, Inc.",US,NASDAQ,XNAS,USD,Health Care,Life Sciences Tools & Services,,"en:Illumina, Inc."
+INCY,Incyte,US,NASDAQ,XNAS,USD,Health Care,Biotechnology,,en:Incyte
+INTC,Intel,US,NASDAQ,XNAS,USD,Information Technology,Semiconductors,,en:Intel
+INTU,Intuit,US,NASDAQ,XNAS,USD,Information Technology,Application Software,,en:Intuit
+INVH,Invitation Homes,US,NYSE,XNYS,USD,Real Estate,Single-Family Residential REITs,,en:Invitation Homes
+IP,International Paper,US,NYSE,XNYS,USD,Materials,Paper & Plastic Packaging Products & Materials,,en:International Paper
+IQV,IQVIA,US,NYSE,XNYS,USD,Health Care,Life Sciences Tools & Services,,en:IQVIA
+IR,Ingersoll Rand,US,NYSE,XNYS,USD,Industrials,Industrial Machinery & Supplies & Components,,en:Ingersoll Rand
+IRM,Iron Mountain,US,NYSE,XNYS,USD,Real Estate,Other Specialized REITs,,en:Iron Mountain (company)
+ISRG,Intuitive Surgical,US,NASDAQ,XNAS,USD,Health Care,Health Care Equipment,,en:Intuitive Surgical
+IT,Gartner,US,NYSE,XNYS,USD,Information Technology,IT Consulting & Other Services,,en:Gartner
+ITW,Illinois Tool Works,US,NYSE,XNYS,USD,Industrials,Industrial Machinery & Supplies & Components,,en:Illinois Tool Works
+IVZ,Invesco,US,NYSE,XNYS,USD,Financials,Asset Management & Custody Banks,,en:Invesco
+J,Jacobs Solutions,US,NYSE,XNYS,USD,Industrials,Construction & Engineering,,en:Jacobs Solutions
+JBHT,J.B. Hunt,US,NASDAQ,XNAS,USD,Industrials,Cargo Ground Transportation,,en:J.B. Hunt
+JBL,Jabil,US,NYSE,XNYS,USD,Information Technology,Electronic Manufacturing Services,,en:Jabil
+JCI,Johnson Controls,US,NYSE,XNYS,USD,Industrials,Building Products,,en:Johnson Controls
+JKHY,Jack Henry & Associates,US,NASDAQ,XNAS,USD,Financials,Transaction & Payment Processing Services,,en:Jack Henry & Associates
+JNJ,Johnson & Johnson,US,NYSE,XNYS,USD,Health Care,Pharmaceuticals,,en:Johnson & Johnson
+JPM,JPMorgan Chase,US,NYSE,XNYS,USD,Financials,Diversified Banks,,en:JPMorgan Chase
+KDP,Keurig Dr Pepper,US,NASDAQ,XNAS,USD,Consumer Staples,Soft Drinks & Non-alcoholic Beverages,,en:Keurig Dr Pepper
+KEY,KeyCorp,US,NYSE,XNYS,USD,Financials,Regional Banks,,en:KeyCorp
+KEYS,Keysight Technologies,US,NYSE,XNYS,USD,Information Technology,Electronic Equipment & Instruments,,en:Keysight Technologies
+KHC,Kraft Heinz,US,NYSE,XNYS,USD,Consumer Staples,Packaged Foods & Meats,,en:Kraft Heinz
+KIM,Kimco Realty,US,NYSE,XNYS,USD,Real Estate,Retail REITs,,en:Kimco Realty
+KKR,KKR & Co.,US,NYSE,XNYS,USD,Financials,Asset Management & Custody Banks,,en:Kohlberg Kravis Roberts
+KLAC,KLA Corporation,US,NASDAQ,XNAS,USD,Information Technology,Semiconductor Materials & Equipment,,en:KLA Corporation
+KMB,Kimberly-Clark,US,NASDAQ,XNAS,USD,Consumer Staples,Household Products,,en:Kimberly-Clark
+KMI,Kinder Morgan,US,NYSE,XNYS,USD,Energy,Oil & Gas Storage & Transportation,,en:Kinder Morgan
+KO,Coca-Cola Company (The),US,NYSE,XNYS,USD,Consumer Staples,Soft Drinks & Non-alcoholic Beverages,,en:The Coca-Cola Company
+KR,Kroger,US,NYSE,XNYS,USD,Consumer Staples,Food Retail,,en:Kroger
+KVUE,Kenvue,US,NYSE,XNYS,USD,Consumer Staples,Personal Care Products,,en:Kenvue
+L,Loews Corporation,US,NYSE,XNYS,USD,Financials,Multi-line Insurance,,en:Loews Corporation
+LDOS,Leidos,US,NYSE,XNYS,USD,Industrials,Diversified Support Services,,en:Leidos
+LEN,Lennar,US,NYSE,XNYS,USD,Consumer Discretionary,Homebuilding,,en:Lennar
+LH,Labcorp,US,NYSE,XNYS,USD,Health Care,Health Care Services,,en:Labcorp
+LHX,L3Harris,US,NYSE,XNYS,USD,Industrials,Aerospace & Defense,,en:L3Harris
+LII,Lennox International,US,NYSE,XNYS,USD,Industrials,Building Products,,en:Lennox International
+LIN,Linde plc,US,NASDAQ,XNAS,USD,Materials,Industrial Gases,,en:Linde plc
+LITE,Lumentum,US,NASDAQ,XNAS,USD,Information Technology,Communications Equipment,,en:Lumentum
+LLY,Lilly (Eli),US,NYSE,XNYS,USD,Health Care,Pharmaceuticals,,en:Eli Lilly and Company
+LMT,Lockheed Martin,US,NYSE,XNYS,USD,Industrials,Aerospace & Defense,,en:Lockheed Martin
+LNT,Alliant Energy,US,NASDAQ,XNAS,USD,Utilities,Electric Utilities,,en:Alliant Energy
+LOW,Lowe's,US,NYSE,XNYS,USD,Consumer Discretionary,Home Improvement Retail,,en:Lowe's
+LRCX,Lam Research,US,NASDAQ,XNAS,USD,Information Technology,Semiconductor Materials & Equipment,,en:Lam Research
+LULU,Lululemon Athletica,US,NASDAQ,XNAS,USD,Consumer Discretionary,"Apparel, Accessories & Luxury Goods",,en:Lululemon
+LUV,Southwest Airlines,US,NYSE,XNYS,USD,Industrials,Passenger Airlines,,en:Southwest Airlines
+LVS,Las Vegas Sands,US,NYSE,XNYS,USD,Consumer Discretionary,Casinos & Gaming,,en:Las Vegas Sands
+LYB,LyondellBasell,US,NYSE,XNYS,USD,Materials,Specialty Chemicals,,en:LyondellBasell
+LYV,Live Nation Entertainment,US,NYSE,XNYS,USD,Communication Services,Movies & Entertainment,,en:Live Nation Entertainment
+MA,Mastercard,US,NYSE,XNYS,USD,Financials,Transaction & Payment Processing Services,,en:Mastercard
+MAA,Mid-America Apartment Communities,US,NYSE,XNYS,USD,Real Estate,Multi-Family Residential REITs,,en:Mid-America Apartment Communities
+MAR,Marriott International,US,NASDAQ,XNAS,USD,Consumer Discretionary,"Hotels, Resorts & Cruise Lines",,en:Marriott International
+MAS,Masco,US,NYSE,XNYS,USD,Industrials,Building Products,,en:Masco
+MCD,McDonald's,US,NYSE,XNYS,USD,Consumer Discretionary,Restaurants,,en:McDonald's
+MCHP,Microchip Technology,US,NASDAQ,XNAS,USD,Information Technology,Semiconductors,,en:Microchip Technology
+MCK,McKesson Corporation,US,NYSE,XNYS,USD,Health Care,Health Care Distributors,,en:McKesson Corporation
+MCO,Moody's Corporation,US,NYSE,XNYS,USD,Financials,Financial Exchanges & Data,,en:Moody's Corporation
+MDLZ,Mondelez International,US,NASDAQ,XNAS,USD,Consumer Staples,Packaged Foods & Meats,,en:Mondelez International
+MDT,Medtronic,US,NYSE,XNYS,USD,Health Care,Health Care Equipment,,en:Medtronic
+MET,MetLife,US,NYSE,XNYS,USD,Financials,Life & Health Insurance,,en:MetLife
+META,Meta Platforms,US,NASDAQ,XNAS,USD,Communication Services,Interactive Media & Services,,en:Meta Platforms
+MGM,MGM Resorts,US,NYSE,XNYS,USD,Consumer Discretionary,Casinos & Gaming,,en:MGM Resorts
+MKC,McCormick & Company,US,NYSE,XNYS,USD,Consumer Staples,Packaged Foods & Meats,,en:McCormick & Company
+MLM,Martin Marietta Materials,US,NYSE,XNYS,USD,Materials,Construction Materials,,en:Martin Marietta Materials
+MMM,3M,US,NYSE,XNYS,USD,Industrials,Industrial Conglomerates,,en:3M
+MNST,Monster Beverage,US,NASDAQ,XNAS,USD,Consumer Staples,Soft Drinks & Non-alcoholic Beverages,,en:Monster Beverage
+MO,Altria,US,NYSE,XNYS,USD,Consumer Staples,Tobacco,,en:Altria
+MOS,Mosaic Company (The),US,NYSE,XNYS,USD,Materials,Fertilizers & Agricultural Chemicals,,en:The Mosaic Company
+MPC,Marathon Petroleum,US,NYSE,XNYS,USD,Energy,Oil & Gas Refining & Marketing,,en:Marathon Petroleum
+MPWR,Monolithic Power Systems,US,NASDAQ,XNAS,USD,Information Technology,Semiconductors,,en:Monolithic Power Systems
+MRK,Merck & Co.,US,NYSE,XNYS,USD,Health Care,Pharmaceuticals,,en:Merck & Co.
+MRNA,Moderna,US,NASDAQ,XNAS,USD,Health Care,Biotechnology,,en:Moderna
+MRSH,Marsh McLennan,US,NYSE,XNYS,USD,Financials,Insurance Brokers,,en:Marsh McLennan
+MRVL,Marvell Technology,US,NASDAQ,XNAS,USD,Information Technology,Semiconductors,,en:Marvell Technology
+MS,Morgan Stanley,US,NYSE,XNYS,USD,Financials,Investment Banking & Brokerage,,en:Morgan Stanley
+MSCI,MSCI,US,NYSE,XNYS,USD,Financials,Financial Exchanges & Data,,en:MSCI
+MSFT,Microsoft,US,NASDAQ,XNAS,USD,Information Technology,Systems Software,,en:Microsoft
+MSI,Motorola Solutions,US,NYSE,XNYS,USD,Information Technology,Communications Equipment,,en:Motorola Solutions
+MTB,M&T Bank,US,NYSE,XNYS,USD,Financials,Regional Banks,,en:M&T Bank
+MTD,Mettler Toledo,US,NYSE,XNYS,USD,Health Care,Life Sciences Tools & Services,,en:Mettler Toledo
+MU,Micron Technology,US,NASDAQ,XNAS,USD,Information Technology,Semiconductors,,en:Micron Technology
+NCLH,Norwegian Cruise Line Holdings,US,NYSE,XNYS,USD,Consumer Discretionary,"Hotels, Resorts & Cruise Lines",,en:Norwegian Cruise Line Holdings
+NDAQ,"Nasdaq, Inc.",US,NASDAQ,XNAS,USD,Financials,Financial Exchanges & Data,,"en:Nasdaq, Inc."
+NDSN,Nordson Corporation,US,NASDAQ,XNAS,USD,Industrials,Industrial Machinery & Supplies & Components,,en:Nordson Corporation
+NEE,NextEra Energy,US,NYSE,XNYS,USD,Utilities,Multi-Utilities,,en:NextEra Energy
+NEM,Newmont,US,NYSE,XNYS,USD,Materials,Gold,,en:Newmont
+NFLX,Netflix,US,NASDAQ,XNAS,USD,Communication Services,Movies & Entertainment,,"en:Netflix, Inc."
+NI,NiSource,US,NYSE,XNYS,USD,Utilities,Multi-Utilities,,en:NiSource
+NKE,"Nike, Inc.",US,NYSE,XNYS,USD,Consumer Discretionary,"Apparel, Accessories & Luxury Goods",,"en:Nike, Inc."
+NOC,Northrop Grumman,US,NYSE,XNYS,USD,Industrials,Aerospace & Defense,,en:Northrop Grumman
+NOW,ServiceNow,US,NYSE,XNYS,USD,Information Technology,Systems Software,,en:ServiceNow
+NRG,NRG Energy,US,NYSE,XNYS,USD,Utilities,Independent Power Producers & Energy Traders,,en:NRG Energy
+NSC,Norfolk Southern,US,NYSE,XNYS,USD,Industrials,Rail Transportation,,en:Norfolk Southern Railway
+NTAP,NetApp,US,NASDAQ,XNAS,USD,Information Technology,"Technology Hardware, Storage & Peripherals",,en:NetApp
+NTRS,Northern Trust,US,NASDAQ,XNAS,USD,Financials,Asset Management & Custody Banks,,en:Northern Trust
+NUE,Nucor,US,NYSE,XNYS,USD,Materials,Steel,,en:Nucor
+NVDA,Nvidia,US,NASDAQ,XNAS,USD,Information Technology,Semiconductors,,en:Nvidia
+NVR,"NVR, Inc.",US,NYSE,XNYS,USD,Consumer Discretionary,Homebuilding,,"en:NVR, Inc."
+NWS,News Corp (Class B),US,NASDAQ,XNAS,USD,Communication Services,Publishing,,en:News Corp
+NWSA,News Corp (Class A),US,NASDAQ,XNAS,USD,Communication Services,Publishing,,en:News Corp
+NXPI,NXP Semiconductors,US,NASDAQ,XNAS,USD,Information Technology,Semiconductors,,en:NXP Semiconductors
+O,Realty Income,US,NYSE,XNYS,USD,Real Estate,Retail REITs,,en:Realty Income
+ODFL,Old Dominion,US,NASDAQ,XNAS,USD,Industrials,Cargo Ground Transportation,,en:Old Dominion Freight Line
+OKE,Oneok,US,NYSE,XNYS,USD,Energy,Oil & Gas Storage & Transportation,,en:Oneok
+OMC,Omnicom Group,US,NYSE,XNYS,USD,Communication Services,Advertising,,en:Omnicom Group
+ON,ON Semiconductor,US,NASDAQ,XNAS,USD,Information Technology,Semiconductors,,en:Onsemi
+ORCL,Oracle Corporation,US,NYSE,XNYS,USD,Information Technology,Application Software,,en:Oracle Corporation
+ORLY,O'Reilly Automotive,US,NASDAQ,XNAS,USD,Consumer Discretionary,Automotive Retail,,en:O'Reilly Auto Parts
+OTIS,Otis Worldwide,US,NYSE,XNYS,USD,Industrials,Industrial Machinery & Supplies & Components,,en:Otis Worldwide
+OXY,Occidental Petroleum,US,NYSE,XNYS,USD,Energy,Oil & Gas Exploration & Production,,en:Occidental Petroleum
+P,Everpure,US,NYSE,XNYS,USD,Information Technology,"Technology Hardware, Storage & Peripherals",,en:Everpure
+PANW,Palo Alto Networks,US,NASDAQ,XNAS,USD,Information Technology,Systems Software,,en:Palo Alto Networks
+PAYX,Paychex,US,NASDAQ,XNAS,USD,Industrials,Human Resource & Employment Services,,en:Paychex
+PCAR,Paccar,US,NASDAQ,XNAS,USD,Industrials,Construction Machinery & Heavy Transportation Equipment,,en:Paccar
+PCG,PG&E Corporation,US,NYSE,XNYS,USD,Utilities,Multi-Utilities,,en:PG&E
+PEG,Public Service Enterprise Group,US,NYSE,XNYS,USD,Utilities,Electric Utilities,,en:Public Service Enterprise Group
+PEP,PepsiCo,US,NASDAQ,XNAS,USD,Consumer Staples,Soft Drinks & Non-alcoholic Beverages,,en:PepsiCo
+PFE,Pfizer,US,NYSE,XNYS,USD,Health Care,Pharmaceuticals,,en:Pfizer
+PFG,Principal Financial Group,US,NASDAQ,XNAS,USD,Financials,Life & Health Insurance,,en:Principal Financial Group
+PG,Procter & Gamble,US,NYSE,XNYS,USD,Consumer Staples,Personal Care Products,,en:Procter & Gamble
+PGR,Progressive Corporation,US,NYSE,XNYS,USD,Financials,Property & Casualty Insurance,,en:Progressive Corporation
+PH,Parker Hannifin,US,NYSE,XNYS,USD,Industrials,Industrial Machinery & Supplies & Components,,en:Parker Hannifin
+PHM,PulteGroup,US,NYSE,XNYS,USD,Consumer Discretionary,Homebuilding,,en:PulteGroup
+PKG,Packaging Corporation of America,US,NYSE,XNYS,USD,Materials,Paper & Plastic Packaging Products & Materials,,en:Packaging Corporation of America
+PLD,Prologis,US,NYSE,XNYS,USD,Real Estate,Industrial REITs,,en:Prologis
+PLTR,Palantir Technologies,US,NASDAQ,XNAS,USD,Information Technology,Application Software,,en:Palantir Technologies
+PM,Philip Morris International,US,NYSE,XNYS,USD,Consumer Staples,Tobacco,,en:Philip Morris International
+PNC,PNC Financial Services,US,NYSE,XNYS,USD,Financials,Diversified Banks,,en:PNC Financial Services
+PNR,Pentair,US,NYSE,XNYS,USD,Industrials,Industrial Machinery & Supplies & Components,,en:Pentair
+PNW,Pinnacle West Capital,US,NYSE,XNYS,USD,Utilities,Multi-Utilities,,en:Pinnacle West Capital
+PODD,Insulet Corporation,US,NASDAQ,XNAS,USD,Health Care,Health Care Equipment,,
+PPG,PPG Industries,US,NYSE,XNYS,USD,Materials,Specialty Chemicals,,en:PPG Industries
+PPL,PPL Corporation,US,NYSE,XNYS,USD,Utilities,Electric Utilities,,en:PPL Corporation
+PRU,Prudential Financial,US,NYSE,XNYS,USD,Financials,Life & Health Insurance,,en:Prudential Financial
+PSA,Public Storage,US,NYSE,XNYS,USD,Real Estate,Self-Storage REITs,,en:Public Storage
+PSX,Phillips 66,US,NYSE,XNYS,USD,Energy,Oil & Gas Refining & Marketing,,en:Phillips 66
+PTC,PTC Inc.,US,NASDAQ,XNAS,USD,Information Technology,Application Software,,en:PTC (software company)
+PWR,Quanta Services,US,NYSE,XNYS,USD,Industrials,Construction & Engineering,,en:Quanta Services
+PYPL,PayPal,US,NASDAQ,XNAS,USD,Financials,Transaction & Payment Processing Services,,en:PayPal
+Q,Qnity Electronics,US,NYSE,XNYS,USD,Information Technology,Semiconductor Materials & Equipment,,en:Qnity Electronics
+QCOM,Qualcomm,US,NASDAQ,XNAS,USD,Information Technology,Semiconductors,,en:Qualcomm
+RCL,Royal Caribbean Group,US,NYSE,XNYS,USD,Consumer Discretionary,"Hotels, Resorts & Cruise Lines",,en:Royal Caribbean Group
+RDDT,Reddit,US,NYSE,XNYS,USD,Communication Services,Interactive Media & Services,,en:Reddit
+REG,Regency Centers,US,NASDAQ,XNAS,USD,Real Estate,Retail REITs,,en:Regency Centers
+REGN,Regeneron Pharmaceuticals,US,NASDAQ,XNAS,USD,Health Care,Biotechnology,,en:Regeneron Pharmaceuticals
+RF,Regions Financial Corporation,US,NYSE,XNYS,USD,Financials,Regional Banks,,en:Regions Financial Corporation
+RJF,Raymond James Financial,US,NYSE,XNYS,USD,Financials,Investment Banking & Brokerage,,en:Raymond James Financial
+RL,Ralph Lauren Corporation,US,NYSE,XNYS,USD,Consumer Discretionary,"Apparel, Accessories & Luxury Goods",,en:Ralph Lauren Corporation
+RMD,ResMed|,US,NYSE,XNYS,USD,Health Care,Health Care Equipment,,en:ResMed
+ROK,Rockwell Automation,US,NYSE,XNYS,USD,Industrials,Electrical Components & Equipment,,en:Rockwell Automation
+ROL,"Rollins, Inc.",US,NYSE,XNYS,USD,Industrials,Environmental & Facilities Services,,"en:Rollins, Inc."
+ROP,Roper Technologies,US,NASDAQ,XNAS,USD,Information Technology,Electronic Equipment & Instruments,,en:Roper Technologies
+ROST,Ross Stores,US,NASDAQ,XNAS,USD,Consumer Discretionary,Apparel Retail,,en:Ross Stores
+RSG,Republic Services,US,NYSE,XNYS,USD,Industrials,Environmental & Facilities Services,,en:Republic Services
+RTX,RTX Corporation,US,NYSE,XNYS,USD,Industrials,Aerospace & Defense,,en:RTX Corporation
+RVTY,Revvity,US,NYSE,XNYS,USD,Health Care,Health Care Equipment,,en:Revvity
+SBAC,SBA Communications,US,NASDAQ,XNAS,USD,Real Estate,Telecom Tower REITs,,en:SBA Communications
+SBUX,Starbucks,US,NASDAQ,XNAS,USD,Consumer Discretionary,Restaurants,,en:Starbucks
+SCHW,Charles Schwab Corporation,US,NYSE,XNYS,USD,Financials,Investment Banking & Brokerage,,en:Charles Schwab Corporation
+SHW,Sherwin-Williams,US,NYSE,XNYS,USD,Materials,Specialty Chemicals,,en:Sherwin-Williams
+SJM,J.M. Smucker Company (The),US,NYSE,XNYS,USD,Consumer Staples,Packaged Foods & Meats,,en:The J.M. Smucker Company
+SKYD,Skydance Corporation,US,NYSE,XNYS,USD,Communication Services,Movies & Entertainment,,en:Skydance Corporation
+SLB,Schlumberger,US,NYSE,XNYS,USD,Energy,Oil & Gas Equipment & Services,,en:Schlumberger
+SMCI,Supermicro,US,NASDAQ,XNAS,USD,Information Technology,"Technology Hardware, Storage & Peripherals",,en:Supermicro
+SNA,Snap-on,US,NYSE,XNYS,USD,Industrials,Industrial Machinery & Supplies & Components,,en:Snap-on
+SNDK,Sandisk,US,NASDAQ,XNAS,USD,Information Technology,"Technology Hardware, Storage & Peripherals",,en:Sandisk
+SNPS,Synopsys,US,NASDAQ,XNAS,USD,Information Technology,Application Software,,en:Synopsys
+SO,Southern Company,US,NYSE,XNYS,USD,Utilities,Electric Utilities,,en:Southern Company
+SOLV,Solventum,US,NYSE,XNYS,USD,Health Care,Health Care Technology,,en:Solventum
+SPG,Simon Property Group,US,NYSE,XNYS,USD,Real Estate,Retail REITs,,en:Simon Property Group
+SPGI,S&P Global,US,NYSE,XNYS,USD,Financials,Financial Exchanges & Data,,en:S&P Global
+SRE,Sempra,US,NYSE,XNYS,USD,Utilities,Multi-Utilities,,en:Sempra
+STE,Steris,US,NYSE,XNYS,USD,Health Care,Health Care Equipment,,en:Steris
+STLD,Steel Dynamics,US,NASDAQ,XNAS,USD,Materials,Steel,,en:Steel Dynamics
+STT,State Street Corporation,US,NYSE,XNYS,USD,Financials,Asset Management & Custody Banks,,en:State Street Corporation
+STX,Seagate Technology,US,NASDAQ,XNAS,USD,Information Technology,"Technology Hardware, Storage & Peripherals",,en:Seagate Technology
+STZ,Constellation Brands,US,NYSE,XNYS,USD,Consumer Staples,Distillers & Vintners,,en:Constellation Brands
+SW,Smurfit Westrock,US,NYSE,XNYS,USD,Materials,Paper & Plastic Packaging Products & Materials,,en:Smurfit Westrock
+SWK,Stanley Black & Decker,US,NYSE,XNYS,USD,Industrials,Industrial Machinery & Supplies & Components,,en:Stanley Black & Decker
+SWKS,Skyworks Solutions,US,NASDAQ,XNAS,USD,Information Technology,Semiconductors,,en:Skyworks Solutions
+SYF,Synchrony Financial,US,NYSE,XNYS,USD,Financials,Consumer Finance,,en:Synchrony Financial
+SYK,Stryker Corporation,US,NYSE,XNYS,USD,Health Care,Health Care Equipment,,en:Stryker Corporation
+SYY,Sysco,US,NYSE,XNYS,USD,Consumer Staples,Food Distributors,,en:Sysco
+T,AT&T,US,NYSE,XNYS,USD,Communication Services,Integrated Telecommunication Services,,en:AT&T
+TDG,TransDigm Group,US,NYSE,XNYS,USD,Industrials,Aerospace & Defense,,en:TransDigm Group
+TDY,Teledyne Technologies,US,NYSE,XNYS,USD,Information Technology,Electronic Equipment & Instruments,,en:Teledyne Technologies
+TECH,Bio-Techne,US,NASDAQ,XNAS,USD,Health Care,Life Sciences Tools & Services,,en:Bio-Techne
+TEL,TE Connectivity,US,NYSE,XNYS,USD,Information Technology,Electronic Manufacturing Services,,en:TE Connectivity
+TER,Teradyne,US,NASDAQ,XNAS,USD,Information Technology,Semiconductor Materials & Equipment,,en:Teradyne
+TFC,Truist Financial,US,NYSE,XNYS,USD,Financials,Diversified Banks,,en:Truist Financial
+TGT,Target Corporation,US,NYSE,XNYS,USD,Consumer Staples,Consumer Staples Merchandise Retail,,en:Target Corporation
+TJX,TJX Companies,US,NYSE,XNYS,USD,Consumer Discretionary,Apparel Retail,,en:TJX Companies
+TKO,TKO Group Holdings,US,NYSE,XNYS,USD,Communication Services,Movies & Entertainment,,en:TKO Group Holdings
+TMO,Thermo Fisher Scientific,US,NYSE,XNYS,USD,Health Care,Life Sciences Tools & Services,,en:Thermo Fisher Scientific
+TMUS,T-Mobile US,US,NASDAQ,XNAS,USD,Communication Services,Wireless Telecommunication Services,,en:T-Mobile US
+TPL,Texas Pacific Land Corporation,US,NYSE,XNYS,USD,Energy,Oil & Gas Exploration & Production,,en:Texas Pacific Land Corporation
+TPR,"Tapestry, Inc.",US,NYSE,XNYS,USD,Consumer Discretionary,"Apparel, Accessories & Luxury Goods",,"en:Tapestry, Inc."
+TRGP,Targa Resources,US,NYSE,XNYS,USD,Energy,Oil & Gas Storage & Transportation,,en:Targa Resources
+TRMB,Trimble Inc.,US,NASDAQ,XNAS,USD,Information Technology,Application Software,,en:Trimble Inc.
+TROW,T. Rowe Price,US,NASDAQ,XNAS,USD,Financials,Asset Management & Custody Banks,,en:T. Rowe Price
+TRV,Travelers Companies (The),US,NYSE,XNYS,USD,Financials,Property & Casualty Insurance,,en:The Travelers Companies
+TSCO,Tractor Supply,US,NASDAQ,XNAS,USD,Consumer Discretionary,Other Specialty Retail,,en:Tractor Supply
+TSLA,"Tesla, Inc.",US,NASDAQ,XNAS,USD,Consumer Discretionary,Automobile Manufacturers,,"en:Tesla, Inc."
+TSN,Tyson Foods,US,NYSE,XNYS,USD,Consumer Staples,Packaged Foods & Meats,,en:Tyson Foods
+TT,Trane Technologies,US,NYSE,XNYS,USD,Industrials,Building Products,,en:Trane Technologies
+TTWO,Take-Two Interactive,US,NASDAQ,XNAS,USD,Communication Services,Interactive Home Entertainment,,en:Take-Two Interactive
+TWLO,Twilio,US,NYSE,XNYS,USD,Information Technology,Systems Software,,en:Twilio
+TXN,Texas Instruments,US,NASDAQ,XNAS,USD,Information Technology,Semiconductors,,en:Texas Instruments
+TXT,Textron,US,NYSE,XNYS,USD,Industrials,Aerospace & Defense,,en:Textron
+TYL,Tyler Technologies,US,NYSE,XNYS,USD,Information Technology,Application Software,,en:Tyler Technologies
+UAL,United Airlines Holdings,US,NASDAQ,XNAS,USD,Industrials,Passenger Airlines,,en:United Airlines Holdings
+UBER,Uber,US,NYSE,XNYS,USD,Industrials,Passenger Ground Transportation,,en:Uber
+UDR,"UDR, Inc.",US,NYSE,XNYS,USD,Real Estate,Multi-Family Residential REITs,,"en:UDR, Inc."
+UHS,Universal Health Services,US,NYSE,XNYS,USD,Health Care,Health Care Facilities,,en:Universal Health Services
+ULTA,Ulta Beauty,US,NASDAQ,XNAS,USD,Consumer Discretionary,Other Specialty Retail,,en:Ulta Beauty
+UNH,UnitedHealth Group,US,NYSE,XNYS,USD,Health Care,Managed Health Care,,en:UnitedHealth Group
+UNP,Union Pacific Corporation,US,NYSE,XNYS,USD,Industrials,Rail Transportation,,en:Union Pacific Corporation
+UPS,United Parcel Service,US,NYSE,XNYS,USD,Industrials,Air Freight & Logistics,,en:United Parcel Service
+URI,United Rentals,US,NYSE,XNYS,USD,Industrials,Trading Companies & Distributors,,en:United Rentals
+USB,U.S. Bancorp,US,NYSE,XNYS,USD,Financials,Diversified Banks,,en:U.S. Bancorp
+V,Visa Inc.,US,NYSE,XNYS,USD,Financials,Transaction & Payment Processing Services,,en:Visa Inc.
+VEEV,Veeva Systems,US,NYSE,XNYS,USD,Health Care,Health Care Technology,,en:Veeva Systems
+VICI,Vici Properties,US,NYSE,XNYS,USD,Real Estate,Hotel & Resort REITs,,en:Vici Properties
+VLO,Valero Energy,US,NYSE,XNYS,USD,Energy,Oil & Gas Refining & Marketing,,en:Valero Energy
+VLTO,Veralto,US,NYSE,XNYS,USD,Industrials,Environmental & Facilities Services,,en:Veralto
+VMC,Vulcan Materials Company,US,NYSE,XNYS,USD,Materials,Construction Materials,,en:Vulcan Materials Company
+VMRK,Vivmark Residential,US,NYSE,XNYS,USD,Real Estate,Multi-Family Residential REITs,,en:Vivmark Residential
+VRSK,Verisk Analytics,US,NASDAQ,XNAS,USD,Industrials,Research & Consulting Services,,en:Verisk Analytics
+VRSN,Verisign,US,NASDAQ,XNAS,USD,Information Technology,Internet Services & Infrastructure,,en:Verisign
+VRT,Vertiv,US,NYSE,XNYS,USD,Industrials,Electrical Components & Equipment,,en:Vertiv
+VRTX,Vertex Pharmaceuticals,US,NASDAQ,XNAS,USD,Health Care,Biotechnology,,en:Vertex Pharmaceuticals
+VST,Vistra Corp.,US,NYSE,XNYS,USD,Utilities,Electric Utilities,,en:Vistra Corp
+VTR,Ventas,US,NYSE,XNYS,USD,Real Estate,Health Care REITs,,en:Ventas (company)
+VTRS,Viatris,US,NASDAQ,XNAS,USD,Health Care,Pharmaceuticals,,en:Viatris
+VYLR,Vylor,US,NYSE,XNYS,USD,Consumer Staples,Agricultural Products & Services,,en:Vylor
+VZ,Verizon,US,NYSE,XNYS,USD,Communication Services,Integrated Telecommunication Services,,en:Verizon
+WAB,Wabtec,US,NYSE,XNYS,USD,Industrials,Construction Machinery & Heavy Transportation Equipment,,en:Wabtec
+WAT,Waters Corporation,US,NYSE,XNYS,USD,Health Care,Life Sciences Tools & Services,,en:Waters Corporation
+WDAY,"Workday, Inc.",US,NASDAQ,XNAS,USD,Information Technology,Application Software,,"en:Workday, Inc."
+WDC,Western Digital,US,NASDAQ,XNAS,USD,Information Technology,"Technology Hardware, Storage & Peripherals",,en:Western Digital
+WEC,WEC Energy Group,US,NYSE,XNYS,USD,Utilities,Electric Utilities,,en:WEC Energy Group
+WELL,Welltower,US,NYSE,XNYS,USD,Real Estate,Health Care REITs,,en:Welltower
+WFC,Wells Fargo,US,NYSE,XNYS,USD,Financials,Diversified Banks,,en:Wells Fargo
+WM,Waste Management,US,NYSE,XNYS,USD,Industrials,Environmental & Facilities Services,,"en:Waste Management, Inc."
+WMB,Williams Companies,US,NYSE,XNYS,USD,Energy,Oil & Gas Storage & Transportation,,en:Williams Companies
+WMT,Walmart,US,NASDAQ,XNAS,USD,Consumer Staples,Consumer Staples Merchandise Retail,,en:Walmart
+WRB,W. R. Berkley Corporation,US,NYSE,XNYS,USD,Financials,Property & Casualty Insurance,,en:W. R. Berkley Corporation
+WSM,"Williams-Sonoma, Inc.",US,NYSE,XNYS,USD,Consumer Discretionary,Homefurnishing Retail,,"en:Williams-Sonoma, Inc."
+WST,West Pharmaceutical Services,US,NYSE,XNYS,USD,Health Care,Health Care Supplies,,en:West Pharmaceutical Services
+WTW,Willis Towers Watson,US,NASDAQ,XNAS,USD,Financials,Insurance Brokers,,en:Willis Towers Watson
+WY,Weyerhaeuser,US,NYSE,XNYS,USD,Real Estate,Timber REITs,,en:Weyerhaeuser
+WYNN,Wynn Resorts,US,NASDAQ,XNAS,USD,Consumer Discretionary,Casinos & Gaming,,en:Wynn Resorts
+XEL,Xcel Energy,US,NASDAQ,XNAS,USD,Utilities,Multi-Utilities,,en:Xcel Energy
+XOM,ExxonMobil,US,NYSE,XNYS,USD,Energy,Integrated Oil & Gas,,en:ExxonMobil
+XYL,Xylem Inc.,US,NYSE,XNYS,USD,Industrials,Industrial Machinery & Supplies & Components,,en:Xylem Inc.
+XYZ,"Block, Inc.",US,NYSE,XNYS,USD,Financials,Transaction & Payment Processing Services,,"en:Block, Inc."
+YUM,Yum! Brands,US,NYSE,XNYS,USD,Consumer Discretionary,Restaurants,,en:Yum! Brands
+ZBH,Zimmer Biomet,US,NYSE,XNYS,USD,Health Care,Health Care Equipment,,en:Zimmer Biomet
+ZBRA,Zebra Technologies,US,NASDAQ,XNAS,USD,Information Technology,Electronic Equipment & Instruments,,en:Zebra Technologies
+ZTS,Zoetis,US,NYSE,XNYS,USD,Health Care,Pharmaceuticals,,en:Zoetis

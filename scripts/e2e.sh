@@ -17,6 +17,7 @@ export ADMIN_EMAIL=admin@e2e.test ADMIN_PASSWORD="E2e-$(openssl rand -hex 8)-Aa1
 export MARKET_DATA_PROVIDER=Mock ALPHAVANTAGE_API_KEY= ASPNETCORE_ENVIRONMENT=E2E AUTH_RATE_LIMIT_PER_MINUTE=1000
 # Simulated news only (no network); real news sources stay off on the disposable stack.
 export NEWS_YAHOO_ENABLED=false NEWS_OFFICIAL_FEEDS_ENABLED=false NEWS_MOCK_ENABLED=true
+export PROFILES_WIKIPEDIA_ENABLED=false PROFILES_MOCK_ENABLED=true
 
 COMPOSE="${COMPOSE:-podman compose}"
 cleanup() {

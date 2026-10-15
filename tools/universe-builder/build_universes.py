@@ -248,6 +248,15 @@ def rows(table):
     return result
 
 
+def wiki_title(raw_cell):
+    """Title of the first existing Wikipedia article linked in a table cell (red links are skipped), or ""."""
+    for href in re.findall(r'<a [^>]*href="/wiki/([^"#]+)', raw_cell):
+        title = urllib.parse.unquote(href).replace("_", " ")
+        if ":" not in title:  # skip File:, Help:, ... namespaces
+            return title
+    return ""
+
+
 def find_table(text, *required_headers):
     for table in tables(text):
         parsed = rows(table)
@@ -275,7 +284,7 @@ def sp500(text):
         exchange, mic = ("NASDAQ", "XNAS") if "nasdaq" in link else ("Cboe", "BATS") if "cboe" in link else ("NYSE", "XNYS")
         # Share classes use Yahoo's dash form (BRK-B), the catalogue's canonical convention.
         out.append(dict(symbol=cells[s].upper().replace(".", "-"), name=cells[n], country="US", exchange=exchange, mic=mic, currency="USD",
-                        sector=cells[sec], industry=cells[sub]))
+                        sector=cells[sec], industry=cells[sub], wiki=wiki_title(raw[n])))
     return out
 
 
@@ -284,14 +293,14 @@ def dax(text):
     t = next(i for i, h in enumerate(header) if h.startswith("ticker"))
     c, sec = col(header, "company"), col(header, "prime standard sector")
     out = []
-    for cells, _, _ in data:
+    for cells, raw, _ in data:
         # All DAX members trade on Xetra; the table sometimes shows a foreign primary listing (e.g. AIR.PA for Airbus).
         ticker = cells[t].upper().split(".")[0].split(" ")[0]
         name = cells[c]
         if ticker in DAX_TICKER_CHANGES:
             ticker, name = DAX_TICKER_CHANGES[ticker]
         label = cells[sec]
-        out.append(market_row("DE", ticker, name, DAX_SECTOR.get(label.lower(), "Unclassified"), label))
+        out.append(market_row("DE", ticker, name, DAX_SECTOR.get(label.lower(), "Unclassified"), label, wiki_title(raw[c])))
     return out
 
 
@@ -299,11 +308,12 @@ def cac40(text):
     header, data = find_table(text, "company", "gics sub-industry", "ticker")
     c, sec, sub, t = col(header, "company"), col(header, "sector"), col(header, "gics sub-industry"), col(header, "ticker")
     out = []
-    for cells, _, _ in data:
+    for cells, raw, _ in data:
         # Members listed outside Paris keep their own exchange (ArcelorMittal: Euronext Amsterdam, MT.AS).
         ticker, _, suffix = cells[t].upper().partition(".")
         country = "NL" if suffix == "AS" else "FR"
-        out.append(market_row(country, ticker, cells[c], YAHOO_STYLE_SECTOR.get(cells[sec].lower(), "Unclassified"), cells[sub] or cells[sec]))
+        out.append(market_row(country, ticker, cells[c], YAHOO_STYLE_SECTOR.get(cells[sec].lower(), "Unclassified"), cells[sub] or cells[sec],
+                              wiki_title(raw[c])))
     return out
 
 
@@ -311,11 +321,11 @@ def ftse100(text):
     header, data = find_table(text, "company", "ticker", "sector")
     c, t, sec = col(header, "company"), col(header, "ticker"), col(header, "sector")
     out = []
-    for cells, _, _ in data:
+    for cells, raw, _ in data:
         ticker = cells[t].upper().rstrip(".").replace(".", "-")
         label = cells[sec]
         sector = FTSE_OVERRIDES.get(ticker) or ICB_SECTOR.get(label.lower(), "Unclassified")
-        out.append(market_row("GB", ticker, cells[c], sector, label[:1].upper() + label[1:]))
+        out.append(market_row("GB", ticker, cells[c], sector, label[:1].upper() + label[1:], wiki_title(raw[c])))
     return out
 
 
@@ -323,16 +333,16 @@ def nikkei225(text):
     header, data = find_table(text, "code", "name", "branche")
     code, n, b = col(header, "code"), col(header, "name"), col(header, "branche")
     out = []
-    for cells, _, _ in data:
+    for cells, raw, _ in data:
         industry, sector = NIKKEI_INDUSTRY.get(cells[b], (cells[b], "Unclassified"))
-        out.append(market_row("JP", cells[code], cells[n], sector, industry))
+        out.append(market_row("JP", cells[code], cells[n], sector, industry, wiki_title(raw[n])))
     return out
 
 
-def market_row(country, ticker, name, sector, industry):
+def market_row(country, ticker, name, sector, industry, wiki=""):
     m = MARKET[country]
     return dict(symbol=ticker + m["suffix"], name=name, country=country, exchange=m["exchange"], mic=m["mic"],
-                currency=m["currency"], sector=sector, industry=industry)
+                currency=m["currency"], sector=sector, industry=industry, wiki=wiki)
 
 
 PARSERS = {"SP500": sp500, "DAX40": dax, "DAX30": dax, "CAC40": cac40, "FTSE100": ftse100, "NIKKEI225": nikkei225}
@@ -373,11 +383,11 @@ def main():
 
         path = os.path.join(OUT, f"{code}.csv")
         with open(path, "w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=["symbol", "name", "country", "exchange", "mic", "currency", "sector", "industry", "isin"],
-                                    lineterminator="\n")
+            writer = csv.DictWriter(f, fieldnames=["symbol", "name", "country", "exchange", "mic", "currency", "sector", "industry", "isin",
+                                                   "wiki"], lineterminator="\n")
             writer.writeheader()
             for m in sorted(members, key=lambda r: r["symbol"]):
-                writer.writerow({**m, "isin": ""})
+                writer.writerow({**m, "isin": "", "wiki": f"{lang}:{m['wiki']}" if m["wiki"] else ""})
         meta = INDICES[code]
         index_rows[code] = {
             "code": code, "name": meta["name"], "country": meta["country"], "currency": meta["currency"],

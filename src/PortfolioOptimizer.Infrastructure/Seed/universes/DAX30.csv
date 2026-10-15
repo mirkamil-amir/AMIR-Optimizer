@@ -1,31 +1,31 @@
-symbol,name,country,exchange,mic,currency,sector,industry,isin
-1COV.DE,Covestro,DE,XETRA,XETR,EUR,Materials,Basic Materials,
-ADS.DE,Adidas,DE,XETRA,XETR,EUR,Consumer Discretionary,Footwear,
-ALV.DE,Allianz,DE,XETRA,XETR,EUR,Financials,Financial Services,
-BAS.DE,BASF,DE,XETRA,XETR,EUR,Materials,Basic Materials,
-BAYN.DE,Bayer,DE,XETRA,XETR,EUR,Health Care,Healthcare,
-BMW.DE,BMW,DE,XETRA,XETR,EUR,Consumer Discretionary,Automobile,
-CON.DE,Continental,DE,XETRA,XETR,EUR,Consumer Discretionary,Automotive,
-DB1.DE,Deutsche Börse,DE,XETRA,XETR,EUR,Financials,Financial Services,
-DBK.DE,Deutsche Bank,DE,XETRA,XETR,EUR,Financials,Financial Services,
-DHER.DE,Delivery Hero,DE,XETRA,XETR,EUR,Consumer Discretionary,Online Food Ordering,
-DHL.DE,DHL Group (formerly Deutsche Post),DE,XETRA,XETR,EUR,Industrials,Industrials,
-DTE.DE,Deutsche Telekom,DE,XETRA,XETR,EUR,Communication Services,Communication Services,
-DWNI.DE,Deutsche Wohnen,DE,XETRA,XETR,EUR,Real Estate,Real Estate,
-ENR.DE,Siemens Energy,DE,XETRA,XETR,EUR,Industrials,Energy technology,
-EOAN.DE,E.ON,DE,XETRA,XETR,EUR,Utilities,Utilities,
-FME.DE,Fresenius Medical Care,DE,XETRA,XETR,EUR,Health Care,Healthcare,
-FRE.DE,Fresenius,DE,XETRA,XETR,EUR,Health Care,Healthcare,
-HEI.DE,HeidelbergCement,DE,XETRA,XETR,EUR,Materials,Basic Materials,
-HEN3.DE,Henkel,DE,XETRA,XETR,EUR,Consumer Staples,Consumer Goods,
-IFX.DE,Infineon Technologies,DE,XETRA,XETR,EUR,Information Technology,Technology,
-LIN.DE,Linde,DE,XETRA,XETR,EUR,Materials,Basic Materials,
-MBG.DE,Mercedes-Benz Group (formerly Daimler),DE,XETRA,XETR,EUR,Consumer Discretionary,Automobile,
-MRK.DE,Merck,DE,XETRA,XETR,EUR,Health Care,Healthcare,
-MTX.DE,MTU Aero Engines,DE,XETRA,XETR,EUR,Industrials,Industrials,
-MUV2.DE,Munich Re,DE,XETRA,XETR,EUR,Financials,Financial Services,
-RWE.DE,RWE,DE,XETRA,XETR,EUR,Utilities,Utilities,
-SAP.DE,SAP,DE,XETRA,XETR,EUR,Information Technology,Technology,
-SIE.DE,Siemens,DE,XETRA,XETR,EUR,Industrials,Industrials,
-VNA.DE,Vonovia,DE,XETRA,XETR,EUR,Real Estate,Real Estate,
-VOW3.DE,Volkswagen Group,DE,XETRA,XETR,EUR,Consumer Discretionary,Automobile,
+symbol,name,country,exchange,mic,currency,sector,industry,isin,wiki
+1COV.DE,Covestro,DE,XETRA,XETR,EUR,Materials,Basic Materials,,en:Covestro
+ADS.DE,Adidas,DE,XETRA,XETR,EUR,Consumer Discretionary,Footwear,,en:Adidas
+ALV.DE,Allianz,DE,XETRA,XETR,EUR,Financials,Financial Services,,en:Allianz
+BAS.DE,BASF,DE,XETRA,XETR,EUR,Materials,Basic Materials,,en:BASF
+BAYN.DE,Bayer,DE,XETRA,XETR,EUR,Health Care,Healthcare,,en:Bayer
+BMW.DE,BMW,DE,XETRA,XETR,EUR,Consumer Discretionary,Automobile,,en:BMW
+CON.DE,Continental,DE,XETRA,XETR,EUR,Consumer Discretionary,Automotive,,en:Continental AG
+DB1.DE,Deutsche Börse,DE,XETRA,XETR,EUR,Financials,Financial Services,,en:Deutsche Börse
+DBK.DE,Deutsche Bank,DE,XETRA,XETR,EUR,Financials,Financial Services,,en:Deutsche Bank
+DHER.DE,Delivery Hero,DE,XETRA,XETR,EUR,Consumer Discretionary,Online Food Ordering,,en:Delivery Hero
+DHL.DE,DHL Group (formerly Deutsche Post),DE,XETRA,XETR,EUR,Industrials,Industrials,,en:Deutsche Post
+DTE.DE,Deutsche Telekom,DE,XETRA,XETR,EUR,Communication Services,Communication Services,,en:Deutsche Telekom
+DWNI.DE,Deutsche Wohnen,DE,XETRA,XETR,EUR,Real Estate,Real Estate,,en:Deutsche Wohnen
+ENR.DE,Siemens Energy,DE,XETRA,XETR,EUR,Industrials,Energy technology,,en:Siemens Energy AG
+EOAN.DE,E.ON,DE,XETRA,XETR,EUR,Utilities,Utilities,,en:E.ON
+FME.DE,Fresenius Medical Care,DE,XETRA,XETR,EUR,Health Care,Healthcare,,en:Fresenius Medical Care
+FRE.DE,Fresenius,DE,XETRA,XETR,EUR,Health Care,Healthcare,,en:Fresenius SE
+HEI.DE,HeidelbergCement,DE,XETRA,XETR,EUR,Materials,Basic Materials,,en:HeidelbergCement
+HEN3.DE,Henkel,DE,XETRA,XETR,EUR,Consumer Staples,Consumer Goods,,en:Henkel
+IFX.DE,Infineon Technologies,DE,XETRA,XETR,EUR,Information Technology,Technology,,en:Infineon Technologies
+LIN.DE,Linde,DE,XETRA,XETR,EUR,Materials,Basic Materials,,en:Linde plc
+MBG.DE,Mercedes-Benz Group (formerly Daimler),DE,XETRA,XETR,EUR,Consumer Discretionary,Automobile,,en:Daimler AG
+MRK.DE,Merck,DE,XETRA,XETR,EUR,Health Care,Healthcare,,en:Merck Group
+MTX.DE,MTU Aero Engines,DE,XETRA,XETR,EUR,Industrials,Industrials,,en:MTU Aero Engines
+MUV2.DE,Munich Re,DE,XETRA,XETR,EUR,Financials,Financial Services,,en:Munich Re
+RWE.DE,RWE,DE,XETRA,XETR,EUR,Utilities,Utilities,,en:RWE
+SAP.DE,SAP,DE,XETRA,XETR,EUR,Information Technology,Technology,,en:SAP AG
+SIE.DE,Siemens,DE,XETRA,XETR,EUR,Industrials,Industrials,,en:Siemens
+VNA.DE,Vonovia,DE,XETRA,XETR,EUR,Real Estate,Real Estate,,en:Vonovia
+VOW3.DE,Volkswagen Group,DE,XETRA,XETR,EUR,Consumer Discretionary,Automobile,,en:Volkswagen Group

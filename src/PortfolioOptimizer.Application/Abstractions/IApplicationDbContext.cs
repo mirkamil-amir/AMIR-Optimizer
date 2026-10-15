@@ -31,6 +31,7 @@ public interface IApplicationDbContext
     DbSet<MlPredictionSet> MlPredictionSets { get; }
     DbSet<StrategyComparison> StrategyComparisons { get; }
     DbSet<WatchlistEntry> WatchlistEntries { get; }
+    DbSet<CompanyProfile> CompanyProfiles { get; }
     DbSet<NewsArticle> NewsArticles { get; }
     DbSet<NewsArticleAsset> NewsArticleAssets { get; }
     DbSet<NewsFetchState> NewsFetchStates { get; }
