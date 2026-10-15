@@ -37,10 +37,11 @@ User research sessions and saved runs (private per account) · the model API key
 
 ## Privacy: what leaves the application
 
-Only when `Agent:Llm:Provider = Anthropic`: the redacted objective, a redacted refinement request the rules could not
+Only when `Agent:Llm:Provider` is `Anthropic` or `Gemini`: the redacted objective, a redacted refinement request the rules could not
 parse (with symbols/names/sectors of the candidate universe), and the numeric evidence of a hypothesis. No e-mail,
 name, account or portfolio identifiers, no prices, no news. Before a pilot with real users this must be stated in the
-privacy notice, with a data-processing agreement with the provider (see [launch-readiness.md](launch-readiness.md)).
+privacy notice, with a data-processing agreement with the provider (note: Google's free Gemini tier may use inputs to
+improve its products – use a paid tier for real users) (see [launch-readiness.md](launch-readiness.md)).
 
 ## Residual risks
 

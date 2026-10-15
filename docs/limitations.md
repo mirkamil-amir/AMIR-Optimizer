@@ -41,6 +41,9 @@
 ## AI research assistant
 * The Anthropic provider has **not been exercised against the live API** (no key available); it compiles against SDK
   12.57.0 and the workflow is tested with a scripted mock. The server-side fallback option in the request is unverified.
+* The Gemini provider was verified live with `gemini-3.8-flash` on a free-tier key: answers take 9–36 s and the free tier
+  rate-limits bursts (HTTP 429), so during an evaluation some explanations fall back to the template. A paid tier or a
+  lighter model (`AGENT_LLM_MODEL=gemini-3.5-flash-lite`) reduces this; untested here.
 * Rule parsers cover common English phrasings; other languages and unusual wording reach the model (if configured) or
   get "not understood" with examples.
 * Only the mean-variance strategies and equal weight are available to hypotheses; ML signals, backtests and the strategy

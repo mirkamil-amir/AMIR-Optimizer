@@ -13,10 +13,14 @@ public sealed class LanguageModelOptions
 {
     public const string Section = "Agent:Llm";
 
-    /// <summary>None (default – deterministic only), Anthropic, or Mock (tests and the e2e stack).</summary>
+    /// <summary>None (default – deterministic only), Anthropic, Gemini, or Mock (tests and the e2e stack).</summary>
     public string Provider { get; set; } = "None";
-    public string Model { get; set; } = "claude-opus-5-5";
-    /// <summary>Secret. Supply via environment variable Agent__Llm__ApiKey (or ANTHROPIC_API_KEY); never commit it, never send it to the browser.</summary>
+    /// <summary>Model id; empty = the provider's default (claude-opus-5-5 / gemini-3.8-flash).</summary>
+    public string? Model { get; set; }
+    /// <summary>
+    /// Secret. Supply via environment variable Agent__Llm__ApiKey (or ANTHROPIC_API_KEY / GEMINI_API_KEY / LLM_API_KEY);
+    /// never commit it, never send it to the browser.
+    /// </summary>
     public string? ApiKey { get; set; }
     /// <summary>low, medium or high. Structured extraction and short explanations need little reasoning.</summary>
     public string Effort { get; set; } = "low";
@@ -60,7 +64,8 @@ public sealed class AnthropicLanguageModel : ILanguageModel
     }
 
     public string Provider => "Anthropic";
-    public string Model => _options.Model;
+    public const string DefaultModel = "claude-opus-5-5";
+    public string Model => string.IsNullOrWhiteSpace(_options.Model) ? DefaultModel : _options.Model.Trim();
     public bool IsAvailable { get; }
 
     public async Task<LlmResponse> GenerateAsync(LlmRequest request, CancellationToken ct)
@@ -71,7 +76,7 @@ public sealed class AnthropicLanguageModel : ILanguageModel
         {
             var response = await _client.Beta.Messages.Create(new MessageCreateParams
             {
-                Model = _options.Model,
+                Model = Model,
                 MaxTokens = request.MaxOutputTokens,
                 System = request.Instructions,
                 Messages = [new BetaMessageParam { Role = Role.User, Content = request.UserContent }],

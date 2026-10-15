@@ -22,7 +22,7 @@ language model was integrated and no API key for one is configured on this machi
 |---|---|
 | What does the assistant decide, and what does code decide? | Code decides the sequence (state machine), which tools run, all validation, all numbers, weights, review flags and suggestions. The model may only propose: brief fields (each with a verbatim quote from the user), a structured refinement (only when the rule parser does not understand the request) and an explanation (only accepted if every number and ticker is in the evidence). |
 | One agent or several? | One deterministic orchestrator (`ResearchAgent`) with five typed tools. Multiple autonomous agents would add non-determinism, cost and an attack surface without a task that needs them: the workflow is short, sequential and known in advance. |
-| Which model, and where? | Anthropic Claude via the official C# SDK (`Anthropic` NuGet), server-side only, model `claude-opus-5-5` by default, structured JSON output, low effort, 60 s timeout, 2 retries. Off by default (`Agent:Llm:Provider = None`). |
+| Which model, and where? | Server-side only, off by default (`Agent:Llm:Provider = None`). `Anthropic`: Claude via the official C# SDK, default `claude-opus-5-5`. `Gemini`: Google Gemini via the REST API (`generateContent` with `responseJsonSchema`), default `gemini-3.8-flash`. Both: structured JSON output, low effort, 60 s timeout, 2 retries on 429/5xx. |
 | Source of truth for numbers? | The optimizer (`OptimizationService.EvaluateAsync`) and the review (`RealityCheckService.AnalyzeAsync`) on stored prices. Templates and the validator only quote those values. |
 | What is persisted and how is it reproducible? | A `ResearchSession` (owner-scoped) holds the brief, candidate set, hypotheses (inputs + results + config hash), pending refinement and an append-only event log. Hypotheses are **not** optimization runs; only a confirmed save creates a normal `OptimizationRun`, recalculated with the stored inputs and linked back to the session in its diagnostics. |
 | What if the model fails, is slow, rate-limited or manipulated? | Every model use has a deterministic path (rule parser, template). Failures, timeouts, refusals, malformed or contradicting output are logged as `rejected` events and the deterministic result is shown with a note. Calculations never depend on the model. |
@@ -45,7 +45,7 @@ ResearchAgent  ── state machine, budgets, idempotency, events, persistence (
   ├─ HypothesisReview        deterministic flags + suggestions with exact changes
   ├─ InterpretationService   template (7 sections) or validated model narrative
   ├─ RefinementInterpreter   rules → optional model proposal → RefinementRules.Check (allow-list + feasibility)
-  └─ ILanguageModel          Disabled (default) | Anthropic | Mock (tests)
+  └─ ILanguageModel          Disabled (default) | Anthropic | Gemini | Mock (tests)
 ```
 
 Files: `src/PortfolioOptimizer.Application/Research/*`, `Domain/Research.cs`,
@@ -93,9 +93,9 @@ timeout 504, failed 502.
 
 | Setting (env) | Default | Meaning |
 |---|---|---|
-| `Agent__Llm__Provider` (`AGENT_LLM_PROVIDER` in compose) | `None` | `None` (rules only), `Anthropic`, `Mock` (tests) |
-| `Agent__Llm__Model` (`AGENT_LLM_MODEL`) | `claude-opus-5-5` | model id |
-| `Agent__Llm__ApiKey` (`ANTHROPIC_API_KEY`) | empty | server-side only; never logged, never sent to the browser |
+| `Agent__Llm__Provider` (`AGENT_LLM_PROVIDER` in compose) | `None` | `None` (rules only), `Anthropic`, `Gemini`, `Mock` (tests) |
+| `Agent__Llm__Model` (`AGENT_LLM_MODEL`) | empty = provider default | `claude-opus-5-5` / `gemini-3.8-flash` |
+| `Agent__Llm__ApiKey` (`LLM_API_KEY`, or `ANTHROPIC_API_KEY`; the Gemini provider also reads `GEMINI_API_KEY`) | empty | server-side only; never logged, never sent to the browser (Gemini: `x-goog-api-key` header, never in the URL) |
 | `Agent__Llm__TimeoutSeconds` | 60 | per request |
 | `Agent__Llm__MaxRetries` | 2 | SDK retries on 429/5xx |
 | `Agent__Llm__Effort` | `low` | output effort |
@@ -110,7 +110,12 @@ Three purposes, each with a JSON schema and fenced, redacted input:
 
 Not sent: e-mail, names, account or portfolio ids, other sessions, news or company descriptions, prices.
 Redaction removes e-mail addresses, IBAN-like and phone-like numbers before any model call. Token usage is recorded
-per session and shown in the UI. Requests opt into the server-side refusal fallback (`fallbacks: "default"` with the
+per session and shown in the UI. **Gemini (verified live 2026-10-15, `gemini-3.8-flash`, opt-in `LiveGeminiSmokeTests`):** a German objective the rules
+cannot parse became market DE, low risk, Energy excluded (each value with a verbatim quote); 6 of 7 explanation calls
+were accepted by the validator (one early run was rejected for "guarantee" before the negation rule and was correctly
+replaced by the template); latency 9–36 s; one call hit the 60 s timeout and one brief got HTTP 429 from the free tier –
+both fell back to the deterministic path as designed. `gemini-2.5-flash` is no longer available to new keys.
+Anthropic: requests opt into the server-side refusal fallback (`fallbacks: "default"` with the
 `server-side-fallback-2026-07-01` beta, as the SDK documentation recommends); a refusal or truncated answer that still
 arrives is treated as a failure → deterministic fallback. Live calls to Anthropic were **not** exercised in this pass
 (no key available); the provider compiles against SDK 12.57.0 and is covered only by the mock-based tests.
