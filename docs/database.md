@@ -11,11 +11,12 @@ PostgreSQL 17 via EF Core 10 + Npgsql. Context: `src/PortfolioOptimizer.Infrastr
 | Security | `AuditEvents`, `DataProtectionKeys` | audit is append-only (except the test-data purge, which is itself audited) |
 | Catalogue | `Assets` | symbol (unique, canonical), name, sector, industry, country, MIC, ISIN, currency, type (Equity/Etf/Index), tracked flag, metadata source |
 | Universes | `MarketIndices`, `IndexMemberships` | index metadata with source/revision/licence/verified date/content hash; membership = (index, asset) |
-| Prices | `HistoricalPrices`, `LatestQuotes` | daily bars unique per (asset, date, source); latest quote per (asset, source) incl. previous close |
+| Prices | `HistoricalPrices`, `LatestQuotes` | daily bars unique per (asset, date, source) in the asset's own currency; latest quote per (asset, source) incl. previous close |
+| Exchange rates | `FxRates` | units of a currency per 1 EUR per (source, currency, date); checks rate > 0 and currency ≠ EUR; shared, fetched on demand. See [currency.md](currency.md) |
 | Data jobs | `SyncJobs` + `SyncLogs`, `QuoteRefreshRuns` | history downloads with per-asset logs; quote refresh cycles (trigger, counts, message) |
 | Settings | `Settings` | single row: active provider, defaults, staleness threshold |
-| Paper trading | `Portfolios`, `Holdings`, `CashLedger`, `Executions`, `TradeProposals` (+ lines), `PaperTradeBatches`, `Orders` | `Portfolio.Version` is the concurrency token |
-| Analyses | `OptimizationRuns` (+ weights), `Backtests`, `MlExperiments`, `MlModelVersions`, `MlPredictionSets`, `StrategyComparisons` | inputs and results stored as `jsonb`; immutable after completion |
+| Paper trading | `Portfolios`, `Holdings`, `CashLedger`, `Executions`, `TradeProposals` (+ lines), `PaperTradeBatches`, `Orders` | `Portfolio.Version` is the concurrency token; cash, cost basis and P&L in the portfolio currency; executions/orders/lines keep the native price with currency, FX rate (`numeric(20,10)`, > 0), rate date and source |
+| Analyses | `OptimizationRuns` (+ weights), `Backtests`, `MlExperiments`, `MlModelVersions`, `MlPredictionSets`, `StrategyComparisons` | inputs and results stored as `jsonb`; immutable after completion; `Currency` and `FxSource` columns record the analysis currency |
 | Watchlist | `WatchlistEntries` | (owner, asset) unique; cascade-deleted with the user; asset FK restrict. See [watchlist.md](watchlist.md) |
 | News | `NewsArticles`, `NewsArticleAssets`, `NewsFetchStates` | shared; `Fingerprint` (canonical-URL SHA-256) unique, `HeadlineKey` indexed for syndication; links (article, asset) with match method; fetch state per source/query. Retention `News:RetentionDays` (120). See [financial-news.md](financial-news.md) |
 

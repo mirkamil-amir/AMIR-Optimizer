@@ -72,7 +72,7 @@ const optimizationInputs = [
   'Expected returns μ = historical mean daily return × 252 (arithmetic).',
   'Covariance Σ: sample estimator or Ledoit–Wolf shrinkage (default), annualized × 252.',
   'Risk-free rate, weight bounds, cash reserve and the optional constraints from the run settings.',
-  'All stocks must trade in one currency (no FX conversion); the benchmark is switched to one in the same currency if needed.',
+  'Stocks from several markets are combined in one analysis currency (the portfolio currency): prices are converted with the exchange rate of each date, so returns and risk include currency movements (unhedged). A single-market selection keeps its own market benchmark.',
 ]
 
 const optimizationSolving = 'The problem is a convex quadratic program solved by the built-in ADMM solver (an implementation of the OSQP algorithm) with a polishing step for ~1e-9 accuracy. Every result is checked against every constraint; if the problem is infeasible or the solver fails, the run reports why instead of returning weights. Max-holdings and minimum-position limits use a heuristic (drop the smallest position and re-solve), which is feasible but not guaranteed optimal.'

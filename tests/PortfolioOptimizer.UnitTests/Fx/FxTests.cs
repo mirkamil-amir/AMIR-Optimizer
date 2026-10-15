@@ -71,7 +71,7 @@ public sealed class FxTableTests
         var ex = Assert.Throws<FxRateUnavailableException>(() => t.Rate("JPY", "USD", new DateOnly(2026, 10, 19)));
         Assert.Contains("at most 4 are carried forward", ex.Message);
         // A currency with no data at all.
-        Assert.Throws<FxRateUnavailableException>(() => t.Rate("SEK", "EUR", Tue));
+        Assert.Contains("no SEK rates available", Assert.Throws<FxRateUnavailableException>(() => t.Rate("SEK", "EUR", Tue)).Message);
     }
 
     [Fact]
@@ -200,5 +200,23 @@ public sealed class FxProviderTests
     private sealed class FixedClock(DateTimeOffset now) : TimeProvider
     {
         public override DateTimeOffset GetUtcNow() => now;
+    }
+}
+
+/// <summary>Opt-in (PO_LIVE_SMOKE=1): the real ECB data API returns parseable rates in the expected direction.</summary>
+public sealed class LiveEcbSmokeTests
+{
+    [PortfolioOptimizer.UnitTests.MarketData.LiveSmokeFact]
+    public async Task Ecb_ReturnsRecentRates_ForUsdGbpJpyChf()
+    {
+        var provider = new EcbFxProvider(new HttpClient { Timeout = TimeSpan.FromSeconds(30) }, Microsoft.Extensions.Options.Options.Create(new EcbFxOptions()));
+        var to = DateOnly.FromDateTime(DateTime.UtcNow);
+        var rows = await provider.GetRatesAsync(["USD", "GBP", "JPY", "CHF"], to.AddDays(-14), to, CancellationToken.None);
+        foreach (var c in new[] { "USD", "GBP", "JPY", "CHF" })
+            Assert.Contains(rows, r => r.Currency == c);
+        // Units per EUR: plausibility ranges guard against an inverted direction.
+        Assert.All(rows.Where(r => r.Currency == "USD"), r => Assert.InRange(r.UnitsPerEur, 0.7m, 2m));
+        Assert.All(rows.Where(r => r.Currency == "JPY"), r => Assert.InRange(r.UnitsPerEur, 80m, 300m));
+        Assert.All(rows, r => Assert.True(r.Date.DayOfWeek is not DayOfWeek.Saturday and not DayOfWeek.Sunday));
     }
 }

@@ -31,9 +31,10 @@ public sealed record CreateAssetRequest
     [StringLength(50)]
     public string? Exchange { get; init; }
 
+    /// <summary>Trading currency (ISO 4217). Optional: derived from the exchange suffix (SAP.DE → EUR, 7203.T → JPY, no suffix → USD).</summary>
     /// <example>USD</example>
-    [Required, RegularExpression("^[A-Z]{3}$", ErrorMessage = "Currency must be an ISO 4217 code such as USD.")]
-    public string Currency { get; init; } = "USD";
+    [RegularExpression("^[A-Z]{3}$", ErrorMessage = "Currency must be an ISO 4217 code such as USD.")]
+    public string? Currency { get; init; }
 
     public AssetType AssetType { get; init; } = AssetType.Equity;
 

@@ -57,6 +57,19 @@ hidden and purged.
   get Playwright specs with role-based locators.
 * Frontend fixtures: build typed objects; cast partial fixtures with `as unknown as T` only in tests.
 
+## Results (2026-10-16, multi-currency portfolios)
+
+| Suite | Result |
+|---|---|
+| Unit | 240 passed, 7 skipped (live smoke) – adds `Fx/FxTests.cs` (FX table, converter, ECB parser, mock: 19) and `Optimization/AllocationValidatorTests.cs` (9) |
+| Live smoke | `PO_LIVE_SMOKE=1 --filter LiveEcbSmokeTests`: 1 passed – real ECB rates for USD, GBP, JPY, CHF parsed as units per EUR |
+| ML | 40 passed |
+| Integration | 106 passed – adds `MultiCurrencyTests` (12: EUR/CHF/JPY portfolios, mixed optimization, USD vs EUR results, simulated exchange reconciliation, reporting currency, performance with daily rates, dated historical conversion identity, backtest/ML currency, FX endpoints, listing currency) and `MissingFxTests` (4: exclusion with reason, null totals, proposal "no exchange rate", 422, domain rejection) |
+| Frontend unit (Vitest) | 69 passed (adds `lib/currency.test.ts`: 4) |
+| End-to-end | 22 passed incl. `multi-currency.spec.ts` (EUR portfolio with USD/EUR/JPY/GBP stocks: create → optimize → proposal → simulated execution → holdings in EUR and USD); desktop screenshots reviewed with a throwaway spec (deleted) |
+| Migration | applied to a restored copy of the development database (5 runs, 9 executions, 19 proposal lines preserved and backfilled) |
+| Lint / build | 0 errors / OK |
+
 ## Results (2026-10-15, AI research assistant)
 
 | Suite | Result |

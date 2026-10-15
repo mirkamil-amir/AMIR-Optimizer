@@ -38,6 +38,14 @@
 - Images are off by default (rights unverified). No notifications.
 - Event comparisons use daily closes, regular session hours and no holiday calendar; they cannot show causation.
 
+## Currencies
+* Daily ECB reference rates (≈16:00 CET); market closes are not simultaneous with them; no intraday FX, spreads or FX costs.
+* One cash balance per portfolio in its currency; no multi-currency cash, hedging or forwards; the portfolio currency is
+  fixed after creation (a reporting currency can be chosen per view).
+* Rates older than 4 days are not used: around long market closures values can be "not available" until new rates arrive.
+* No Swiss market in the catalogue yet (CHF portfolios work; CHF stocks cannot be selected).
+* Monitoring (scheduled reviews, alerts) is not implemented; review and rebalance are user-triggered.
+
 ## AI research assistant
 * The Anthropic provider has **not been exercised against the live API** (no key available); it compiles against SDK
   12.57.0 and the workflow is tested with a scripted mock. The server-side fallback option in the request is unverified.

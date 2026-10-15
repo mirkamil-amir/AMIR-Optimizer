@@ -110,6 +110,16 @@ public sealed class MissingFxTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task RateEndpoint_ReturnsAnExplicitError_ForAStaleRate()
+    {
+        var r = await _client.GetAsync("/api/v1/fx/rate?from=JPY&to=EUR");
+        Assert.Equal((System.Net.HttpStatusCode)422, r.StatusCode);
+        var body = await r.Content.ReadAsStringAsync();
+        Assert.Contains("No JPY→EUR exchange rate", body);
+        Assert.Contains("\"from\":\"JPY\"", body);
+    }
+
+    [Fact]
     public async Task ForeignTradeWithoutARate_IsRejectedByTheDomain()
     {
         var portfolio = new Portfolio { Id = Guid.NewGuid(), Name = "x", BaseCurrency = "EUR" };

@@ -25,14 +25,14 @@ Read this file before changing code; details are in `docs/` (linked below).
 | Path | What | Entry points |
 |---|---|---|
 | `src/PortfolioOptimizer.Api` | controllers, auth policies, antiforgery, rate limits, commands | `Program.cs` (`migrate`, `purge-test-data`), `Controllers/*`, `Security/*` |
-| `src/PortfolioOptimizer.Application` | use cases (owner-scoped), DTOs, validation | `MarketData/` (quotes, universes, discovery, `Markets.cs`, `PriceHistory.cs`), `Optimization/`, `Analytics/RealityCheckService.cs`, `Watchlists/`, `News/` (rules, service, `EventPriceComparison`), `MachineLearning/`, `Comparisons/`, `Research/` (AI research workflow: orchestrator, tools, validators), `Dtos/` |
+| `src/PortfolioOptimizer.Application` | use cases (owner-scoped), DTOs, validation | `Fx/` (FxService, FxTable, CurrencyConverter), `Portfolios/PortfolioValuationService.cs`, `MarketData/` (quotes, universes, discovery, `Markets.cs`, `PriceHistory.cs`), `Optimization/`, `Analytics/RealityCheckService.cs`, `Watchlists/`, `News/` (rules, service, `EventPriceComparison`), `MachineLearning/`, `Comparisons/`, `Research/` (AI research workflow: orchestrator, tools, validators), `Dtos/` |
 | `src/PortfolioOptimizer.Domain` | entities, rules | `MarketData.cs`, `Portfolio.cs`, `Runs.cs`, `MachineLearning.cs`, `Watchlist.cs`, `News.cs`, `Users.cs` (roles, audit, `TestDataPolicy`) |
 | `src/PortfolioOptimizer.Optimization` | pure math: QP solver, mean-variance, `PortfolioSimulator`, diversification diagnostics | `Portfolio/MeanVarianceOptimizer.cs`, `Portfolio/DiversificationMath.cs`, `Backtesting/*` |
 | `src/PortfolioOptimizer.MachineLearning` | pure ML (no I/O, no optimizer use) | `Training/ExperimentEngine.cs`, `Features/FeatureCatalog.cs` |
 | `src/PortfolioOptimizer.Infrastructure` | EF Core/Npgsql, Identity, providers, jobs, seeding | `Persistence/AppDbContext.cs`, `MarketData/*Provider.cs`, `News/NewsProviders.cs`, `Jobs/BackgroundJobWorker.cs`, `Persistence/UniverseSeeder.cs`, `Seed/universes/*.csv` |
 | `frontend/portfolio-dashboard/src` | React app | `main.tsx` (routes), `pages/*`, `components/*`, `lib/` (api, auth, selection, queries, types, interpretation, strategy-guide, glossary, quote-status, news) |
 | `tests/*` | unit, ML, integration (real PostgreSQL) | `IntegrationTests/ApiFactory.cs` |
-| `frontend/.../e2e` | Playwright | `admin.setup.ts` (environment guard), `journeys.spec.ts`, `research.spec.ts` (watchlist, news), `research-agent.spec.ts` (AI research journey) |
+| `frontend/.../e2e` | Playwright | `admin.setup.ts` (environment guard), `journeys.spec.ts`, `research.spec.ts` (watchlist, news), `research-agent.spec.ts` (AI research journey), `multi-currency.spec.ts` (EUR portfolio with four markets) |
 | `tools/` | `universe-builder` (constituent CSVs), `PortfolioOptimizer.DataMigration` (SQLite import) | |
 
 ## Run and test
@@ -56,7 +56,14 @@ Secrets live in `.env` (gitignored) – load with `set -a; . ./.env; set +a`; ne
   Runs store their own inputs. Quotes/prices/catalogue are shared.
 * **Prices:** never fabricate or zero-fill; label kind (Delayed quote / Last close), as-of time, retrieval time,
   cached/stale/SIMULATED. Never say "live". Store prices in ISO major units (`CurrencyUnits`). Never mix sources.
-* **Analyses:** one currency per universe (`UniverseCurrency`); weights are validated; infeasible → explanation.
+* **Currencies:** every instrument keeps its trading currency (`Asset.Currency`, derived from the venue) and native prices;
+  everything that combines instruments is computed in one base currency, converted ONLY through `FxService`
+  (`rate = target units per one source unit`, dated rate of each price date, ≤ 4 days carry-forward, never 1.0 or today's
+  rate for history). Missing rates → explicit error/exclusion/`null` totals, never a plausible number. Simulated prices use
+  simulated rates. Trades in another currency are simulated exchanges recorded with rate/date/source; the portfolio
+  currency is fixed; reporting currencies change nothing. Details: [currency.md](docs/currency.md).
+* **Analyses:** one analysis currency (portfolio base currency) with converted series and benchmark; weights are checked
+  by the independent `AllocationValidator` before a run is accepted; infeasible → explanation, never relaxed.
   Reality-check findings are labelled Fact/Estimate/Interpretation/Caution with documented thresholds and never
   tell users to buy or sell.
 * **News:** never fabricate or rewrite articles; store metadata and the provider's short summary only; link an
@@ -135,4 +142,4 @@ protection (Stooq); force-pushing or committing without being asked.
 [agentic architecture](docs/agentic-architecture.md) · [threat model](docs/threat-model.md) · [agent evaluation](docs/agent-evaluation.md) ·
 [decisions](docs/decisions.md) · [limitations](docs/limitations.md) · [watchlist](docs/watchlist.md) ·
 [financial news](docs/financial-news.md) · [portfolio reality check](docs/portfolio-reality-check.md) ·
-[roadmap](docs/roadmap.md) · [launch readiness](docs/launch-readiness.md)
+[roadmap](docs/roadmap.md) · [launch readiness](docs/launch-readiness.md) · [currencies & FX](docs/currency.md) · [currency audit](docs/currency-audit.md)

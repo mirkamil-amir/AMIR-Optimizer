@@ -27,6 +27,10 @@ language model was integrated and no API key for one is configured on this machi
 | What is persisted and how is it reproducible? | A `ResearchSession` (owner-scoped) holds the brief, candidate set, hypotheses (inputs + results + config hash), pending refinement and an append-only event log. Hypotheses are **not** optimization runs; only a confirmed save creates a normal `OptimizationRun`, recalculated with the stored inputs and linked back to the session in its diagnostics. |
 | What if the model fails, is slow, rate-limited or manipulated? | Every model use has a deterministic path (rule parser, template). Failures, timeouts, refusals, malformed or contradicting output are logged as `rejected` events and the deterministic result is shown with a note. Calculations never depend on the model. |
 
+**Currencies (2026-10-16):** hypotheses are evaluated in the user's (first) portfolio currency – stocks of other markets
+are converted with dated rates ([currency.md](currency.md)) – and every optimizer result passes `AllocationValidator`
+before it becomes a hypothesis.
+
 ## 2. Components
 
 ```

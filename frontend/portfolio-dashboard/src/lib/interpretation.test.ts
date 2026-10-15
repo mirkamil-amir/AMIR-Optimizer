@@ -5,7 +5,7 @@ import type { MlExperiment, OptimizationRun } from './types'
 const run = (overrides: Partial<OptimizationRun> = {}): OptimizationRun => ({
   id: 'r1', portfolioId: 'p1', createdAtUtc: '2026-10-14T10:00:00Z', objective: 'MinimumVariance', status: 'Succeeded', message: 'ok',
   expectedReturn: 0.09, volatility: 0.14, sharpeRatio: 0.36, periodStart: '2023-10-14', periodEnd: '2026-10-13', priceSource: 'Yahoo',
-  usesSimulatedData: false, symbols: ['AAA', 'BBB', 'CCC', 'DDD'], observations: 750, dataSnapshotHash: 'x',
+  usesSimulatedData: false, symbols: ['AAA', 'BBB', 'CCC', 'DDD'], observations: 750, dataSnapshotHash: 'x', currency: 'USD', fxSource: null, currencyExposure: null,
   settings: {
     universe: ['AAA', 'BBB', 'CCC', 'DDD'], lookbackDays: 756, objective: 'MinimumVariance', covarianceMethod: 'LedoitWolf', riskFreeRate: 0.03,
     benchmarkSymbol: 'SPY', minWeight: 0, maxWeight: 0.4, maxHoldings: null, minPositionWeight: null, cashReserve: 0, maxTurnover: null,

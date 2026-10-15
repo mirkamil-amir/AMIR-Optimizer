@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { AllocationDonut, ChartCard, TimeSeriesChart, timeSeriesTable } from '@/components/charts'
 import { DataBadge, EmptyState, ErrorState, LoadingBlock, MetricCard, MetricValue, PageHeader, Signed, Warnings } from '@/components/common'
+import { ValuationProblems } from '@/components/currency'
 import { usePortfolioContext } from '@/lib/portfolio-context'
 import { useHoldings, useMarketStatus, usePerformance, useRisk, useRuns, useTransactions } from '@/lib/queries'
 import { date, dateTime, money, num, objectiveLabels, pct, qty, relativeTime } from '@/lib/format'
@@ -42,7 +43,8 @@ export function OverviewPage() {
       {holdings.error && <ErrorState error={holdings.error} onRetry={() => holdings.refetch()} />}
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <MetricCard label="Total value" loading={!s} value={money(s?.totalValue, ccy)} sub={`Net contributions ${money(s?.netContributions, ccy)}`} hint="Market value of all simulated holdings at the latest price plus cash." />
+        <MetricCard label="Total value" loading={!s} value={s?.totalValue === null ? 'Not available' : money(s?.totalValue, ccy)} sub={`Net contributions ${money(s?.netContributions, ccy)}`}
+          hint="Market value of all simulated holdings at the latest price (converted into the portfolio currency at the rate of the price date) plus cash." />
         <MetricCard label="Cash · invested" loading={!s} value={money(s?.cashBalance, ccy)} sub={`${pct(s?.investedFraction, 1)} invested (${money(s?.marketValue, ccy, { compact: true })})`} hint="Uninvested simulated cash and the share of total value held in equities." />
         <MetricCard label="Total return" loading={!s} tone="signed" numeric={s?.totalReturn} value={pct(s?.totalReturn, 2, true)}
           sub={s?.benchmarkReturn !== null && s?.benchmarkReturn !== undefined ? <>vs {s.benchmarkSymbol} {pct(s.benchmarkReturn, 2, true)}</> : 'Since first contribution'}
@@ -60,7 +62,10 @@ export function OverviewPage() {
           sub={`Realized ${money(s?.realizedPnl, ccy, { signed: true })} · fees ${money(s?.totalFees, ccy)}`} hint="Market value − weighted-average cost basis (buy commissions are included in cost)." />
       </div>
 
-      <div className="mt-4"><Warnings items={s?.warnings} /></div>
+      <div className="mt-4 space-y-3">
+        <ValuationProblems problems={s?.valuationProblems} />
+        <Warnings items={s?.warnings.filter((w) => !s.valuationProblems?.includes(w))} />
+      </div>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2">
@@ -108,7 +113,7 @@ export function OverviewPage() {
               <AllocationDonut
                 items={[
                   ...holdings.data.holdings.filter((h) => (h.weight ?? 0) > 0).map((h) => ({ name: h.symbol, value: h.weight! })),
-                  { name: 'Cash', value: s!.totalValue > 0 ? s!.cashBalance / s!.totalValue : 1 },
+                  { name: 'Cash', value: (s?.totalValue ?? 0) > 0 ? s!.cashBalance / s!.totalValue! : 1 },
                 ]}
                 height={180}
                 centerLabel={<><span className="text-xs text-muted-foreground">Invested</span><span className="text-lg font-semibold">{pct(s?.investedFraction, 0)}</span></>}

@@ -96,6 +96,11 @@ Offline demo: start with `MarketData__DefaultProvider=Mock` on a new database, o
    large?") are answered from the computed values; changes ("cap at 15 %", "exclude JPM") are shown as an exact proposal
    and only recalculated after you confirm. Compare any two hypotheses; "Save as optimization run" (with confirmation)
    creates a normal run you can reopen, trade on paper or check further. Every tool call is in the activity log.
+0b. **Multi-currency portfolios.** Create a portfolio in any supported currency (EUR, USD, GBP, JPY, CHF, …) and combine
+   stocks from all markets. Prices stay in each stock's currency; analyses, valuations and simulated trades use the portfolio
+   currency with the exchange rate of each date (ECB reference rates; simulated rates with simulated prices). Holdings
+   show native price, rate and converted value, can be viewed in another reporting currency without changing anything,
+   and say "cannot be valued" instead of showing a guessed total when a rate is missing. See [currencies](docs/currency.md).
 1. **Sign in / apply.** New users apply on `/register`; their account stays *Pending* until an administrator
    approves it under **Users**. Pending, rejected and suspended accounts can sign in but only see their status page.
 2. **Stock selection.** Navigate market → index → sector, search by company or ticker, sort. Every sign-in starts a
@@ -150,6 +155,7 @@ in `appsettings*.json` or in git.
 | `MarketData__AlphaVantage__DailyRequestLimit` | `25` | Client-side daily quota for Alpha Vantage (free tier) |
 | `Universes__Directory` | – | Folder with `indices.csv` / `<CODE>.csv` overriding the bundled constituent files |
 | `RateLimiting__QuotePermitPerMinute` | `60` | On-demand quote refreshes per user |
+| `Fx__Ecb__BaseUrl` / `…TimeoutSeconds` | `https://data-api.ecb.europa.eu/service/` / `30` | ECB reference-rate API (no key); simulated prices use simulated rates |
 | `Agent__Llm__Provider` | `None` | Research assistant language model: `None` (deterministic rules only), `Anthropic`, `Gemini`, `Mock` (tests) |
 | `Agent__Llm__Model` / `…ApiKey` / `…TimeoutSeconds` / `…MaxRetries` / `…Effort` | provider default / – / `60` / `2` / `low` | Model settings; the key (**secret**; compose reads `LLM_API_KEY`) stays on the server |
 
@@ -161,6 +167,7 @@ readable `XSRF-TOKEN` cookie; `GET /auth/antiforgery` issues one). Swagger UI se
 
 | Area | Endpoints |
 |---|---|
+| Exchange rates | `GET /fx/currencies`, `GET /fx/rate?from&to` (422 with the reason when unavailable); `?currency=` on holdings and performance |
 | Auth | `GET /auth/antiforgery`, `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, `POST /auth/change-password` |
 | Administration | `GET /admin/overview`, `GET /admin/users?includeTestAccounts`, `GET /admin/users/{id}`, `PUT /admin/users/{id}/status`, `PUT /admin/users/{id}/roles`, `GET /admin/audit-events`, `POST /admin/catalogue/import`, `POST /admin/catalogue/universes/{code}`, `POST/GET /admin/catalogue/quote-refresh` |
 | Stock selection | `GET /markets`, `GET /sectors?country&index`, `GET /stocks?country&index&sector&search&sort&withPrices&symbols&page`, `GET /stocks/{symbol}`, `…/quote`, `…/prices`, `POST /stocks/quotes/refresh`, `POST /stocks/{symbol}/quote/refresh`, `GET /market-data/quote-refresh/latest` |

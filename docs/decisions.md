@@ -2,6 +2,27 @@
 
 Short records of decisions that are not obvious from the code. Newest first. Format: context → decision → consequences.
 
+## D-28 Independent allocation validation (2026-10-16)
+**Context:** the optimizer verifies its own solution, but with the same code that built the problem. **Decision:**
+`AllocationValidator` (pure, separate code) re-checks every result against the user's constraints (bounds, invested share,
+sector caps, holdings, minimum position, turnover, exclusions, finite numbers) before a run is accepted; a violation fails the
+run with the reason. Nothing is relaxed automatically. **Consequences:** one more guard; agent and UI never see an
+unchecked allocation.
+
+## D-27 Reporting currency is a view; the portfolio currency is fixed (2026-10-16)
+**Context:** "changing the base currency" must not corrupt holdings. **Decision:** the portfolio (account) currency holds
+cash, cost basis and P&L and is fixed at creation; `?currency=` converts values for display only (positions at the price
+date's rate, account amounts at today's rate, labelled). **Alternatives:** converting the account (a modelled exchange with
+costs – not implemented). **Consequences:** no hidden rewrites of history; returns are measured in the account currency.
+
+## D-26 FX via ECB reference rates, one convention, dated conversion, explicit gaps (2026-10-16)
+**Context:** no FX existed; mixed-market portfolios were impossible and one path mixed currencies silently
+([currency-audit.md](currency-audit.md)). **Decision:** daily ECB euro reference rates (official, free, since 1999) stored
+as units per EUR; one internal convention (target units per one source unit); each price converted with the rate of its
+date (≤ 4 days carry-forward); simulated prices with simulated rates; missing rates are errors, exclusions or null totals.
+**Alternatives:** Yahoo FX tickers (unofficial), commercial intraday feeds (paid). **Consequences:** correct historical
+returns including FX; daily granularity and asynchronous closes are documented approximations.
+
 ## D-25 Gemini as a second provider over plain REST (2026-10-15)
 **Context:** the user's key is a Google Gemini key. **Decision:** `GeminiLanguageModel` calls `generateContent` with
 `responseJsonSchema` through `IHttpClientFactory` (no SDK dependency), with the same failure mapping, redaction and

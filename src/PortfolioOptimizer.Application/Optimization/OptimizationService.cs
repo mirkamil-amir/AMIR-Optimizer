@@ -172,6 +172,13 @@ public sealed class OptimizationService(
             return (Fail(run, status, result.Message, diagnostics, excludedForData, sw, keepAnalytics: true), assets);
         }
 
+        // Independent check of the solver's answer against the user's hard constraints; a violation fails the run (nothing is relaxed).
+        var validation = AllocationValidator.Validate(usable, result.Weights!, input.Constraints, result.Statistics!.ExpectedReturn, result.Statistics.Volatility, current);
+        if (!validation.IsValid)
+            return (Fail(run, OptimizationRunStatus.Failed, $"The solver's allocation failed independent validation: {string.Join(" ", validation.Violations)}",
+                diagnostics, excludedForData, sw, keepAnalytics: true), assets);
+        diagnostics.Add($"Independent validation passed ({string.Join(", ", validation.Checks)}).");
+
         run.Status = OptimizationRunStatus.Succeeded;
         run.Message = result.Message;
         run.ExpectedReturn = result.Statistics!.ExpectedReturn;

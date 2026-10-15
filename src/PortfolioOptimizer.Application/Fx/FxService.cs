@@ -129,7 +129,13 @@ public sealed class FxService(IApplicationDbContext db, IEnumerable<IFxRateProvi
             .Where(r => r.Source == provider.Name && needed.Contains(r.Currency) && r.Date >= start && r.Date <= end)
             .Select(r => new { r.Currency, r.Date, r.UnitsPerEur })
             .ToListAsync(ct);
-        return new FxTable(provider.Name, provider.IsSimulated, rows.Select(r => (r.Currency, r.Date, (double)r.UnitsPerEur)));
+        // The last observation before the window as well, so that a gap is reported with its real age instead of "no rates".
+        var earlier = await db.FxRates.AsNoTracking()
+            .Where(r => r.Source == provider.Name && needed.Contains(r.Currency) && r.Date < start)
+            .GroupBy(r => r.Currency)
+            .Select(g => g.OrderByDescending(r => r.Date).Select(r => new { r.Currency, r.Date, r.UnitsPerEur }).First())
+            .ToListAsync(ct);
+        return new FxTable(provider.Name, provider.IsSimulated, rows.Concat(earlier).Select(r => (r.Currency, r.Date, (double)r.UnitsPerEur)));
     }
 
     /// <summary>Converts native series of the given assets into <paramref name="baseCurrency"/>.</summary>

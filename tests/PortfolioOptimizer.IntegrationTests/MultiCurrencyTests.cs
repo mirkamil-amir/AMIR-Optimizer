@@ -71,6 +71,34 @@ public sealed class MultiCurrencyTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task FxEndpoints_ExposeTheSource_Convention_AndConsistentRates()
+    {
+        var info = await (await _client.GetAsync("/api/v1/fx/currencies")).ReadAsync<FxInfoDto>();
+        Assert.Equal("MockFx", info.Source);
+        Assert.True(info.IsSimulated);
+        Assert.Contains("units of the target currency per one unit of the source", info.Convention);
+        Assert.Superset(new HashSet<string> { "EUR", "USD", "GBP", "JPY", "CHF" }, info.Currencies.ToHashSet());
+        var eurUsd = await (await _client.GetAsync("/api/v1/fx/rate?from=EUR&to=USD")).ReadAsync<FxRateDto>();
+        var usdEur = await (await _client.GetAsync("/api/v1/fx/rate?from=USD&to=EUR")).ReadAsync<FxRateDto>();
+        Assert.Equal(1.0, eurUsd.Rate * usdEur.Rate, 12);
+        Assert.Contains("not a rate at which money can be exchanged", eurUsd.Note);
+        Assert.Equal(HttpStatusCode.BadRequest, (await _client.GetAsync("/api/v1/fx/rate?from=XAU&to=USD")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await _client.GetAsync("/api/v1/fx/rate?from=eur&to=USD")).StatusCode);
+    }
+
+    [Fact]
+    public async Task NewListings_TakeTheCurrencyOfTheirExchange()
+    {
+        var de = await (await _client.PostJsonAsync("/api/v1/assets", new CreateAssetRequest { Symbol = "ZZTEST.DE" })).ReadAsync<AssetDto>();
+        Assert.Equal("EUR", de.Currency);
+        var us = await (await _client.PostJsonAsync("/api/v1/assets", new CreateAssetRequest { Symbol = "ZZTEST" })).ReadAsync<AssetDto>();
+        Assert.Equal("USD", us.Currency);
+        var wrong = await _client.PostJsonAsync("/api/v1/assets", new CreateAssetRequest { Symbol = "ZZTEST.T", Currency = "USD" });
+        Assert.Equal(HttpStatusCode.BadRequest, wrong.StatusCode);
+        Assert.Contains("trades in JPY", await wrong.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
     public async Task UnsupportedOrInvalidCurrencies_AreRejected_NotGuessed()
     {
         var r = await _client.PostJsonAsync("/api/v1/portfolios", new CreatePortfolioRequest { Name = "X", BaseCurrency = "XAU", Settings = new PortfolioSettingsDto { Universe = ["AAPL"] } });

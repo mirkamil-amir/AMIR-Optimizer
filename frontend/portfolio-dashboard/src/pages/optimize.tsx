@@ -29,6 +29,7 @@ import { errorMessage } from '@/lib/api'
 import { usePortfolioContext } from '@/lib/portfolio-context'
 import { useAssets, useCreateProposal, useFetchPrices, useHoldings, useMarketStatus, usePortfolio, useRun, useRunOptimization, useRuns, useStocks } from '@/lib/queries'
 import { useSelection } from '@/lib/selection'
+import { CurrencyExposureList } from '@/components/currency'
 import type { Allocation, Asset, ObjectiveKind, OptimizationRun, Portfolio, PortfolioSettings, TradeProposal } from '@/lib/types'
 import { date, dateTime, money, num, objectiveLabels, pct } from '@/lib/format'
 import { NoPortfolio } from './shared'
@@ -476,6 +477,9 @@ function RunResults({ run }: { run: OptimizationRun }) {
         <h2 className="text-lg font-semibold">{objectiveLabels[run.objective]}</h2>
         <Badge variant={ok ? 'secondary' : 'destructive'}>{run.status}</Badge>
         {run.usesSimulatedData ? <DataBadge kind="simulated" /> : <DataBadge kind="estimate" label={`${run.priceSource} · historical estimate`} />}
+        <Badge variant="outline" title={run.fxSource ? `Prices in other currencies converted to ${run.currency} with ${run.fxSource} rates of each date` : `All prices in ${run.currency}`}>
+          In {run.currency}{run.fxSource ? ` · FX ${run.fxSource}` : ''}
+        </Badge>
         <span className="text-xs text-muted-foreground">{dateTime(run.createdAtUtc)}</span>
         {ok && (
           <Button size="sm" variant="outline" className="ml-auto" render={<Link to={`/reality-check/${run.id}`} />}>
@@ -523,7 +527,18 @@ function RunResults({ run }: { run: OptimizationRun }) {
                 <AllocationDonut items={[...allocation.map((x) => ({ name: x.symbol, value: x.weight })), ...(cashWeight > 1e-6 ? [{ name: 'Cash', value: cashWeight }] : [])]} />
               </CardContent>
             </Card>
-            <AllocationTable rows={run.allocation} />
+            <AllocationTable rows={run.allocation} currency={run.currency} />
+            {run.currencyExposure && run.currencyExposure.length > 1 && (
+              <Card>
+                <CardContent className="space-y-2 pt-2">
+                  <h3 className="text-sm font-semibold">Currency exposure</h3>
+                  <CurrencyExposureList items={run.currencyExposure} />
+                  <p className="text-xs text-muted-foreground">
+                    Share of the allocation by trading currency. Returns and risk above are measured in {run.currency} and include these currencies&apos; movements against {run.currency} (unhedged).
+                  </p>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
         )}
 
@@ -604,6 +619,7 @@ function RunResults({ run }: { run: OptimizationRun }) {
               <dl className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
                 <Def k="Run ID" v={<code className="text-xs">{run.id}</code>} />
                 <Def k="Data source" v={`${run.priceSource}${run.usesSimulatedData ? ' (simulated)' : ''}`} />
+                <Def k="Analysis currency" v={run.fxSource ? `${run.currency} – other currencies converted with ${run.fxSource} rates of each date` : `${run.currency} (no conversion needed)`} />
                 <Def k="Estimation window" v={`${date(run.periodStart)} – ${date(run.periodEnd)} (${run.observations} daily returns)`} />
                 <Def k="Data snapshot hash" v={<code className="text-xs">{run.dataSnapshotHash || '—'}</code>} />
                 <Def k="Universe" v={run.symbols.join(', ') || '—'} />
@@ -650,7 +666,7 @@ function RunResults({ run }: { run: OptimizationRun }) {
   )
 }
 
-function AllocationTable({ rows }: { rows: Allocation[] }) {
+function AllocationTable({ rows, currency }: { rows: Allocation[]; currency: string }) {
   return (
     <DataTable
       caption="Recommended allocation"
@@ -661,8 +677,12 @@ function AllocationTable({ rows }: { rows: Allocation[] }) {
       columns={[
         { key: 's', header: 'Symbol', sortValue: (r) => r.symbol, cell: (r) => <div><div className="font-medium">{r.symbol}</div><div className="text-xs text-muted-foreground">{r.name}</div></div> },
         { key: 'sec', header: 'Sector', sortValue: (r) => r.sector, cell: (r) => <span className="text-xs">{r.sector ?? '—'}</span> },
+        {
+          key: 'ccy', header: 'Trades in', sortValue: (r) => r.currency ?? '',
+          cell: (r) => <span className={r.currency && r.currency !== currency ? 'text-xs font-medium' : 'text-xs text-muted-foreground'} title={r.currency && r.currency !== currency ? `Returns converted from ${r.currency} to ${currency}` : undefined}>{r.currency ?? '—'}</span>,
+        },
         { key: 'w', header: 'Weight', align: 'right', sortValue: (r) => r.weight, cell: (r) => <span className={r.weight > 1e-6 ? 'font-medium' : 'text-muted-foreground'}>{pct(r.weight)}</span> },
-        { key: 'mu', header: 'Exp. return', align: 'right', sortValue: (r) => r.expectedReturn, cell: (r) => pct(r.expectedReturn) },
+        { key: 'mu', header: `Exp. return (${currency})`, align: 'right', sortValue: (r) => r.expectedReturn, cell: (r) => pct(r.expectedReturn) },
         { key: 'vol', header: 'Volatility', align: 'right', sortValue: (r) => r.volatility, cell: (r) => pct(r.volatility) },
         { key: 'rc', header: 'Risk contrib.', align: 'right', sortValue: (r) => r.riskContribution, cell: (r) => pct(r.riskContribution) },
       ]}

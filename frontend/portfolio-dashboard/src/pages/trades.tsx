@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DataTable, Pager } from '@/components/data-table'
 import { EmptyState, ErrorState, LoadingBlock, PageHeader, Signed } from '@/components/common'
+import { FxNote } from '@/components/currency'
 import { ProposalStatusBadge, TradeProposalView } from '@/components/proposal'
 import { errorMessage } from '@/lib/api'
 import { usePortfolioContext } from '@/lib/portfolio-context'
@@ -109,7 +110,15 @@ function Transactions({ currency }: { currency: string }) {
           { key: 's', header: 'Symbol', cell: (t) => <span className="font-medium">{t.symbol}</span> },
           { key: 'side', header: 'Side', cell: (t) => <Badge variant="outline" className={t.side === 'Buy' ? 'text-gain' : 'text-loss'}>{t.side}</Badge> },
           { key: 'q', header: 'Quantity', align: 'right', cell: (t) => qty(t.quantity) },
-          { key: 'p', header: 'Price', align: 'right', cell: (t) => <span title={`Close of ${date(t.priceDate)}`}>{money(t.price, currency)}</span> },
+          {
+            key: 'p', header: 'Price (own currency)', align: 'right',
+            cell: (t) => (
+              <div>
+                <span title={`Close of ${date(t.priceDate)}`}>{money(t.price, t.currency)}</span>
+                {t.fxRate !== 1 && <div><FxNote rate={t.fxRate} from={t.currency} to={currency} on={t.fxRateDate} /></div>}
+              </div>
+            ),
+          },
           { key: 'g', header: 'Gross', align: 'right', cell: (t) => money(t.grossAmount, currency) },
           { key: 'f', header: 'Fees', align: 'right', cell: (t) => money(t.fees, currency) },
           { key: 'n', header: 'Net cash flow', align: 'right', cell: (t) => <Signed value={t.netCashFlow}>{money(t.netCashFlow, currency, { signed: true })}</Signed> },
@@ -140,7 +149,7 @@ function Orders({ currency }: { currency: string }) {
           { key: 'side', header: 'Side', cell: (o) => o.side },
           { key: 'rq', header: 'Requested', align: 'right', cell: (o) => qty(o.requestedQuantity) },
           { key: 'fq', header: 'Filled', align: 'right', cell: (o) => qty(o.filledQuantity) },
-          { key: 'px', header: 'Fill price', align: 'right', cell: (o) => money(o.executionPrice, currency) },
+          { key: 'px', header: 'Fill price', align: 'right', cell: (o) => <div>{money(o.executionPrice, o.currency)}{o.fxRate !== null && o.fxRate !== 1 && <div><FxNote rate={o.fxRate} from={o.currency} to={currency} /></div>}</div> },
           { key: 'st', header: 'Status', cell: (o) => <Badge variant={o.status === 'Rejected' ? 'destructive' : 'secondary'}>{o.status}</Badge> },
           { key: 'm', header: 'Message', cell: (o) => <span className="text-xs text-muted-foreground">{o.message}</span> },
         ]}

@@ -17,7 +17,7 @@ import { DataBadge, ErrorState, LoadingBlock, PageHeader } from '@/components/co
 import { errorMessage } from '@/lib/api'
 import { usePortfolioContext } from '@/lib/portfolio-context'
 import { useAuth } from '@/lib/auth'
-import { useAssets, useChangePassword, useCreatePortfolio, useDeletePortfolio, useSettings, useUpdateSettings } from '@/lib/queries'
+import { useAssets, useChangePassword, useCreatePortfolio, useDeletePortfolio, useFxInfo, useSettings, useUpdateSettings } from '@/lib/queries'
 import type { AppSettings, Asset, PortfolioSummary } from '@/lib/types'
 import { dateTime, money } from '@/lib/format'
 
@@ -187,7 +187,7 @@ function AppSettingsForm({ data, assets: assetList }: { data: AppSettings; asset
             </div>
           </div>
           <div className="text-xs text-muted-foreground">
-            Default currency: {data.defaultCurrency} (FX conversion is not supported). Scheduled refresh: {data.scheduledRefreshEnabled ? `every ${data.scheduledRefreshIntervalHours} h` : 'disabled'} (server configuration).
+            Default currency: {data.defaultCurrency} (preselected for new portfolios; stocks in other currencies are converted with dated exchange rates). Scheduled refresh: {data.scheduledRefreshEnabled ? `every ${data.scheduledRefreshIntervalHours} h` : 'disabled'} (server configuration).
           </div>
           <Button type="submit" disabled={!isDirty || update.isPending}>Save settings</Button>
         </form>
@@ -201,12 +201,15 @@ function PortfoliosCard() {
   const create = useCreatePortfolio()
   const remove = useDeletePortfolio()
   const settings = useSettings()
+  const fx = useFxInfo()
   const [toDelete, setToDelete] = useState<PortfolioSummary | null>(null)
+  const [currency, setCurrency] = useState<string>()
+  const baseCurrency = currency ?? settings.data?.defaultCurrency ?? 'USD'
   const { register, handleSubmit, reset, formState: { errors } } = useForm<PortfolioForm>({ resolver: zodResolver(portfolioSchema), defaultValues: { initialInvestment: 100000 } })
 
   const onCreate = handleSubmit(async (v) => {
     try {
-      const p = await create.mutateAsync({ name: v.name, initialInvestment: v.initialInvestment, baseCurrency: settings.data?.defaultCurrency ?? 'USD' })
+      const p = await create.mutateAsync({ name: v.name, initialInvestment: v.initialInvestment, baseCurrency })
       select(p.id)
       reset({ name: '', initialInvestment: 100000 })
       toast.success(`Portfolio “${p.name}” created`, { description: `${money(p.cashBalance, p.baseCurrency)} simulated cash` })
@@ -230,17 +233,28 @@ function PortfoliosCard() {
     <Card>
       <CardHeader>
         <CardTitle className="text-sm">Portfolios</CardTitle>
-        <CardDescription className="text-xs">Each portfolio starts with simulated cash. Optimization settings are edited in the Optimize workspace.</CardDescription>
+        <CardDescription className="text-xs">
+          Each portfolio starts with simulated cash in its currency. It can hold stocks from any market: their prices stay in their own
+          currency and are converted into the portfolio currency with dated exchange rates ({fx.data?.source ?? '…'}). The portfolio currency cannot be changed later.
+          Optimization settings are edited in the Optimize workspace.
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
-        <form onSubmit={onCreate} className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_10rem_auto] sm:items-end" noValidate>
+        <form onSubmit={onCreate} className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_8rem_10rem_auto] sm:items-end" noValidate>
           <div className="space-y-1.5">
             <Label htmlFor="pname">Name</Label>
             <Input id="pname" placeholder="e.g. Core US equities" aria-invalid={!!errors.name} {...register('name')} />
             {errors.name && <p role="alert" className="text-xs text-destructive">{errors.name.message}</p>}
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="pamt">Investment ({settings.data?.defaultCurrency ?? 'USD'})</Label>
+            <Label htmlFor="pccy">Currency</Label>
+            <Select value={baseCurrency} onValueChange={(v) => setCurrency(v as string)} items={(fx.data?.currencies ?? [baseCurrency]).map((c) => ({ value: c, label: c }))}>
+              <SelectTrigger id="pccy" className="w-full" aria-label="Portfolio currency"><SelectValue /></SelectTrigger>
+              <SelectContent>{(fx.data?.currencies ?? [baseCurrency]).map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="pamt">Investment ({baseCurrency})</Label>
             <Input id="pamt" type="number" step="1000" aria-invalid={!!errors.initialInvestment} {...register('initialInvestment', asNum)} />
             {errors.initialInvestment && <p role="alert" className="text-xs text-destructive">{errors.initialInvestment.message}</p>}
           </div>
@@ -253,7 +267,7 @@ function PortfoliosCard() {
               <div>
                 <div className="font-medium">{p.name}</div>
                 <div className="text-xs text-muted-foreground tabular">
-                  {money(p.totalValue, p.baseCurrency)} · {p.holdings} holding{p.holdings === 1 ? '' : 's'} · created {dateTime(p.createdAtUtc)}
+                  {p.totalValue === null ? 'Cannot be valued (exchange rate missing)' : money(p.totalValue, p.baseCurrency)} · {p.baseCurrency} · {p.holdings} holding{p.holdings === 1 ? '' : 's'} · created {dateTime(p.createdAtUtc)}
                 </div>
               </div>
               <Button variant="ghost" size="icon-sm" aria-label={`Delete ${p.name}`} onClick={() => setToDelete(p)}><Trash2 /></Button>
