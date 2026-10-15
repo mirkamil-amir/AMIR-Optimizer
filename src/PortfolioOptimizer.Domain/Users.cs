@@ -50,6 +50,7 @@ public static class AuditActions
     public const string PaperTradesExecuted = "trading.paper_trades_executed";
     public const string PortfolioDeleted = "portfolio.deleted";
     public const string TestDataPurged = "admin.test_data_purged";
+    public const string ResearchRunSaved = "research.run_saved";
 }
 
 /// <summary>

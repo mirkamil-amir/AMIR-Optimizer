@@ -38,6 +38,18 @@
 - Images are off by default (rights unverified). No notifications.
 - Event comparisons use daily closes, regular session hours and no holiday calendar; they cannot show causation.
 
+## AI research assistant
+* The Anthropic provider has **not been exercised against the live API** (no key available); it compiles against SDK
+  12.57.0 and the workflow is tested with a scripted mock. The server-side fallback option in the request is unverified.
+* Rule parsers cover common English phrasings; other languages and unusual wording reach the model (if configured) or
+  get "not understood" with examples.
+* Only the mean-variance strategies and equal weight are available to hypotheses; ML signals, backtests and the strategy
+  comparison are not part of the workflow (answered honestly when asked).
+* The universe screen uses only stored history; members without enough history are excluded (with a reason), so a fresh
+  database yields small shortlists until prices are downloaded. There is no tool to download history from the workflow.
+* Requests run synchronously (seconds); there is no background continuation or monitoring/alerting step yet.
+* Explanation quality was not evaluated with users.
+
 ## Quant & ML
 - The Portfolio Reality Check tests four assumption changes; it is not a full resampling/bootstrap analysis, and its
   out-of-sample section appears only once ≥ 20 trading days exist after the run's window.

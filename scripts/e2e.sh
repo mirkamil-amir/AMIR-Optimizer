@@ -18,6 +18,8 @@ export MARKET_DATA_PROVIDER=Mock ALPHAVANTAGE_API_KEY= ASPNETCORE_ENVIRONMENT=E2
 # Simulated news only (no network); real news sources stay off on the disposable stack.
 export NEWS_YAHOO_ENABLED=false NEWS_OFFICIAL_FEEDS_ENABLED=false NEWS_MOCK_ENABLED=true
 export PROFILES_WIKIPEDIA_ENABLED=false PROFILES_MOCK_ENABLED=true
+# Research assistant: deterministic rules only (no language model, no key).
+export AGENT_LLM_PROVIDER=None ANTHROPIC_API_KEY=
 
 COMPOSE="${COMPOSE:-podman compose}"
 cleanup() {

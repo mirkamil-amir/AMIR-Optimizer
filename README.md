@@ -1,6 +1,9 @@
 # AMIR Optimizer – Portfolio Research Platform
 
-An educational portfolio-research platform. Students browse ~900 stocks from five markets (S&P 500, DAX 40 and the
+An educational portfolio-research platform. An **AI research assistant** turns an investment objective into an
+editable research brief, researches a universe with evidence, runs the real optimizer and risk review, explains the
+results only with numbers it can show, and lets students refine and compare alternatives before deliberately saving
+one (works without any language model; see [agentic architecture](docs/agentic-architecture.md)). Students browse ~900 stocks from five markets (S&P 500, DAX 40 and the
 historical DAX 30, CAC 40, FTSE 100, Nikkei 225) with automatically refreshed, clearly labelled prices, build a
 temporary selection, follow stocks on a personal **watchlist** with price history and company news, read
 **financial news** from attributed sources (with an event and price-movement comparison that makes no causal claims),
@@ -20,11 +23,14 @@ an interpretation generated from its own numbers.
 | Backend | .NET 10, ASP.NET Core Web API, EF Core 10 + **PostgreSQL 17** (Npgsql), ASP.NET Core Identity (cookie sessions), Swagger UI |
 | Quant engine | Custom ADMM QP solver, Ledoit–Wolf covariance, efficient frontier, shared portfolio simulator |
 | ML engine | Ridge and logistic regression (in-house, closed form / IRLS), random forest and gradient boosting (ML.NET FastForest / FastTree) |
+| AI research | Deterministic orchestrator + typed tools; optional Claude (official Anthropic C# SDK) for validated brief/refinement/narrative proposals |
 | Frontend | React 19 + TypeScript, Vite 8, Tailwind CSS v4, shadcn/ui on Base UI, TanStack Query, Recharts |
 | Market data | Yahoo Finance (default; quotes in batches of 20), Alpha Vantage (optional, free key), Mock (simulated, tests) |
-| Tests | xUnit: 148 unit + 40 ML + 69 integration (real PostgreSQL) · Vitest: 54 · Playwright: 17 on a disposable stack · opt-in live provider smoke tests |
+| Tests | xUnit: 195 unit + 40 ML + 89 integration (real PostgreSQL) · Vitest: 65 · Playwright: 21 on a disposable stack · opt-in live provider smoke tests |
 
 Documentation: [AGENTS.md](AGENTS.md) (start here when changing code) · [architecture](docs/architecture.md) ·
+[agentic research architecture](docs/agentic-architecture.md) · [threat model](docs/threat-model.md) ·
+[agent evaluation](docs/agent-evaluation.md) ·
 [database](docs/database.md) · [market data](docs/market-data.md) · [quantitative strategies](docs/quantitative-strategies.md) ·
 [machine learning & strategy comparison](docs/machine-learning.md) · [security](docs/security.md) ·
 [testing](docs/testing.md) · [deployment, backup & restore](docs/deployment.md) ·
@@ -82,6 +88,14 @@ Offline demo: start with `MarketData__DefaultProvider=Mock` on a new database, o
 
 ## Using the platform
 
+0. **AI research** (`/research`, first in the navigation). Write an objective ("low-risk US stocks without energy,
+   at most 20 % per stock"). The brief separates what you said from what was assumed (badges) and asks only for what
+   blocks the research (the market). The shortlist shows the criterion and the evidence for every inclusion and
+   exclusion. "Run analysis" calculates your method and an equal-weight baseline with the real optimizer, reviews them
+   (concentration, sensitivity, in/out-of-sample) and explains them in seven sections. Questions ("why is MSFT so
+   large?") are answered from the computed values; changes ("cap at 15 %", "exclude JPM") are shown as an exact proposal
+   and only recalculated after you confirm. Compare any two hypotheses; "Save as optimization run" (with confirmation)
+   creates a normal run you can reopen, trade on paper or check further. Every tool call is in the activity log.
 1. **Sign in / apply.** New users apply on `/register`; their account stays *Pending* until an administrator
    approves it under **Users**. Pending, rejected and suspended accounts can sign in but only see their status page.
 2. **Stock selection.** Navigate market → index → sector, search by company or ticker, sort. Every sign-in starts a
@@ -136,6 +150,8 @@ in `appsettings*.json` or in git.
 | `MarketData__AlphaVantage__DailyRequestLimit` | `25` | Client-side daily quota for Alpha Vantage (free tier) |
 | `Universes__Directory` | – | Folder with `indices.csv` / `<CODE>.csv` overriding the bundled constituent files |
 | `RateLimiting__QuotePermitPerMinute` | `60` | On-demand quote refreshes per user |
+| `Agent__Llm__Provider` | `None` | Research assistant language model: `None` (deterministic rules only), `Anthropic`, `Mock` (tests) |
+| `Agent__Llm__Model` / `…ApiKey` / `…TimeoutSeconds` / `…MaxRetries` / `…Effort` | `claude-opus-5-5` / – / `60` / `2` / `low` | Model settings; the key (**secret**, or `ANTHROPIC_API_KEY`) stays on the server |
 
 ## API overview (`/api/v1`)
 
@@ -150,6 +166,7 @@ readable `XSRF-TOKEN` cookie; `GET /auth/antiforgery` issues one). Swagger UI se
 | Stock selection | `GET /markets`, `GET /sectors?country&index`, `GET /stocks?country&index&sector&search&sort&withPrices&symbols&page`, `GET /stocks/{symbol}`, `…/quote`, `…/prices`, `POST /stocks/quotes/refresh`, `POST /stocks/{symbol}/quote/refresh`, `GET /market-data/quote-refresh/latest` |
 | Machine learning | `GET /ml/models`, `POST/GET /ml/experiments`, `GET/DELETE /ml/experiments/{id}`, `…/metrics`, `…/backtest`, `…/models`, `GET/POST …/predictions` |
 | Strategy comparison | `POST/GET /strategy-comparisons`, `GET/DELETE /strategy-comparisons/{id}` |
+| AI research | `GET/POST /research`, `GET/DELETE /research/{id}`, `PUT …/brief`, `PUT …/universe`, `POST …/evaluate`, `POST/DELETE …/refinements`, `POST …/refinements/{proposalId}/apply`, `GET …/compare?a&b`, `POST …/save` (requires `confirm: true`), `GET …/companies/{symbol}` |
 | Market data & assets | `GET/POST /assets`, `PATCH /assets/{symbol}`, `POST /market-data/sync`, `GET /market-data/jobs/{id}`, `GET /market-data/status` |
 | Portfolios, optimization, trading, analytics, backtests | as before: `/portfolios/…`, `/optimization-runs/…`, `/trade-proposals/…`, `/backtests/…` (all owner-scoped) |
 | Settings | `GET /settings` (all users), `PUT /settings` (administrators) |

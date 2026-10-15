@@ -41,19 +41,39 @@ public sealed class OptimizationService(
 
     public async Task<OptimizationRunDto> RunAsync(Guid portfolioId, RunOptimizationRequest request, CancellationToken ct)
     {
-        var sw = Stopwatch.StartNew();
         var portfolio = await portfolios.LoadAsync(portfolioId, ct);
         var settings = request.Settings?.ToDomain() ?? portfolio.Settings;
         if (request.Settings is not null && request.PersistSettings)
             await portfolios.UpdateSettingsAsync(portfolioId, settings, ct);
 
+        var (run, assets) = await EvaluateAsync(portfolio, portfolio.OwnerId, settings, request.FrontierPoints, ct);
+        db.OptimizationRuns.Add(run);
+        await db.SaveChangesAsync(ct);
+        if (run.Status == OptimizationRunStatus.Succeeded)
+            logger.LogInformation("Optimization run {RunId} for portfolio {PortfolioId}: {Objective} E[r]={Return:P2} σ={Vol:P2}",
+                run.Id, portfolioId, run.Objective, run.ExpectedReturn, run.Volatility);
+        else
+            logger.LogInformation("Optimization run {RunId} ended with {Status}: {Message}", run.Id, run.Status, run.Message);
+        return ToDto(run, assets);
+    }
+
+    /// <summary>
+    /// Runs the optimization for <paramref name="settings"/> and returns the complete run record WITHOUT saving it
+    /// (successful or not). <see cref="RunAsync"/> saves it; the research workflow keeps it as an unsaved hypothesis until the
+    /// user explicitly saves. Without a portfolio, there are no current holdings (no turnover limit context) and
+    /// <see cref="OptimizationRun.PortfolioId"/> stays empty until the run is saved to a portfolio.
+    /// </summary>
+    public async Task<(OptimizationRun Run, Dictionary<string, Asset> Assets)> EvaluateAsync(Portfolio? portfolio, Guid ownerId, PortfolioSettings settings,
+        int frontierPoints, CancellationToken ct)
+    {
+        var sw = Stopwatch.StartNew();
         var app = await prices.SettingsAsync(ct);
         var source = app.ActiveProvider;
         var run = new OptimizationRun
         {
             Id = Guid.NewGuid(),
-            PortfolioId = portfolioId,
-            OwnerId = portfolio.OwnerId,
+            PortfolioId = portfolio?.Id ?? Guid.Empty,
+            OwnerId = ownerId,
             CreatedAtUtc = clock.GetUtcNow().UtcDateTime,
             Objective = settings.Objective,
             PriceSource = source,
@@ -68,7 +88,7 @@ public sealed class OptimizationService(
             // One currency per analysis (no FX conversion); the benchmark follows the universe's currency.
             var currency = await UniverseCurrency.ResolveAsync(db, universe, settings.BenchmarkSymbol, ct);
             if (currency.Note is not null) diagnostics.Add(currency.Note);
-            if (!string.Equals(currency.Currency, portfolio.BaseCurrency, StringComparison.OrdinalIgnoreCase))
+            if (portfolio is not null && !string.Equals(currency.Currency, portfolio.BaseCurrency, StringComparison.OrdinalIgnoreCase))
                 diagnostics.Add($"The stocks trade in {currency.Currency} but the portfolio \"{portfolio.Name}\" is in {portfolio.BaseCurrency}: the analysis is valid, " +
                                 $"but paper trades need a portfolio in {currency.Currency} (create one under Settings).");
             settings = settings with { BenchmarkSymbol = currency.Benchmark };
@@ -99,7 +119,7 @@ public sealed class OptimizationService(
         run.UsesSimulatedData = series.Values.Any(s => s.IsSimulated);
 
         if (usable.Count == 0)
-            return await SaveFailureAsync(run, OptimizationRunStatus.InvalidInput, "No asset in the universe has sufficient price history. Synchronize market data first.", diagnostics, excludedForData, sw, ct);
+            return (Fail(run, OptimizationRunStatus.InvalidInput, "No asset in the universe has sufficient price history. Synchronize market data first.", diagnostics, excludedForData, sw), assets);
 
         var matrix = ReturnMatrix.Build(series.Where(kv => usable.Contains(kv.Key)).ToDictionary(kv => kv.Key, kv => kv.Value.Points), usable);
         run.Symbols = usable;
@@ -111,13 +131,13 @@ public sealed class OptimizationService(
             diagnostics.Add($"{sym}: {dropped} observation(s) dropped to align dates with the other assets.");
 
         if (matrix.Observations < MinimumObservations)
-            return await SaveFailureAsync(run, OptimizationRunStatus.InvalidInput,
+            return (Fail(run, OptimizationRunStatus.InvalidInput,
                 $"Only {matrix.Observations} aligned daily returns are available (minimum {MinimumObservations}). Check for assets with short or non-overlapping histories.",
-                diagnostics, excludedForData, sw, ct);
+                diagnostics, excludedForData, sw), assets);
 
         var est = CovarianceEstimator.Estimate(matrix.Returns, settings.CovarianceMethod.ToOptimization(), conventions);
         var sectors = assets.Values.Where(a => a.Sector is not null).ToDictionary(a => a.Symbol, a => a.Sector!, StringComparer.OrdinalIgnoreCase);
-        var current = await CurrentWeightsAsync(portfolio, usable, source, app.StalePriceDays, ct);
+        var current = portfolio is null ? null : await CurrentWeightsAsync(portfolio, usable, source, app.StalePriceDays, ct);
         var input = new OptimizationInput(usable, est.ExpectedReturns, est.Covariance, settings.Objective.ToOptimization(),
             settings.ToConstraints(sectors), settings.RiskFreeRate, current);
 
@@ -127,7 +147,7 @@ public sealed class OptimizationService(
         run.SolverCalls = result.SolverCalls;
 
         var analytics = BuildAnalytics(input, est, matrix, series, settings, result, excludedForData,
-            await BenchmarkSeriesAsync(settings.BenchmarkSymbol, source, matrix.PriceDates, ct), request.FrontierPoints);
+            await BenchmarkSeriesAsync(settings.BenchmarkSymbol, source, matrix.PriceDates, ct), frontierPoints);
         run.AnalyticsJson = JsonSerializer.Serialize(analytics, Json);
 
         if (!result.Succeeded)
@@ -138,7 +158,7 @@ public sealed class OptimizationService(
                 OptimizationStatus.InvalidInput => OptimizationRunStatus.InvalidInput,
                 _ => OptimizationRunStatus.Failed,
             };
-            return await SaveFailureAsync(run, status, result.Message, diagnostics, excludedForData, sw, ct, keepAnalytics: true);
+            return (Fail(run, status, result.Message, diagnostics, excludedForData, sw, keepAnalytics: true), assets);
         }
 
         run.Status = OptimizationRunStatus.Succeeded;
@@ -158,10 +178,13 @@ public sealed class OptimizationService(
             RiskContribution = result.RiskContributions?[i],
         }).ToList();
         run.DurationMs = sw.Elapsed.TotalMilliseconds;
-        db.OptimizationRuns.Add(run);
-        await db.SaveChangesAsync(ct);
-        logger.LogInformation("Optimization run {RunId} for portfolio {PortfolioId}: {Objective} E[r]={Return:P2} σ={Vol:P2}",
-            run.Id, portfolioId, run.Objective, run.ExpectedReturn, run.Volatility);
+        return (run, assets);
+    }
+
+    /// <summary>The DTO of an unsaved run (research hypotheses use the same shape as saved runs).</summary>
+    public async Task<OptimizationRunDto> ToDtoAsync(OptimizationRun run, CancellationToken ct)
+    {
+        var assets = await db.Assets.AsNoTracking().Where(a => run.Symbols.Contains(a.Symbol)).ToDictionaryAsync(a => a.Symbol, ct);
         return ToDto(run, assets);
     }
 
@@ -305,8 +328,8 @@ public sealed class OptimizationService(
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(sb.ToString())))[..16].ToLowerInvariant();
     }
 
-    private async Task<OptimizationRunDto> SaveFailureAsync(OptimizationRun run, OptimizationRunStatus status, string message,
-        List<string> diagnostics, List<string> excludedForData, Stopwatch sw, CancellationToken ct, bool keepAnalytics = false)
+    private static OptimizationRun Fail(OptimizationRun run, OptimizationRunStatus status, string message,
+        List<string> diagnostics, List<string> excludedForData, Stopwatch sw, bool keepAnalytics = false)
     {
         run.Status = status;
         run.Message = message;
@@ -314,11 +337,7 @@ public sealed class OptimizationService(
         if (!keepAnalytics)
             run.AnalyticsJson = JsonSerializer.Serialize(new RunAnalyticsDto([], [], [], [], [], null, 0, excludedForData), Json);
         run.DurationMs = sw.Elapsed.TotalMilliseconds;
-        db.OptimizationRuns.Add(run);
-        await db.SaveChangesAsync(ct);
-        logger.LogInformation("Optimization run {RunId} ended with {Status}: {Message}", run.Id, status, message);
-        var assets = await db.Assets.AsNoTracking().Where(a => run.Symbols.Contains(a.Symbol)).ToDictionaryAsync(a => a.Symbol, ct);
-        return ToDto(run, assets);
+        return run;
     }
 
     private static OptimizationRunDto ToDto(OptimizationRun r, IReadOnlyDictionary<string, Asset> assets)

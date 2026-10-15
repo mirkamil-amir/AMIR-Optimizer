@@ -1,5 +1,24 @@
 # Implementation status
 
+## 2026-10-15 (3): AI research assistant (agentic workflow, first vertical slice)
+
+* **Delivered:** `/research` start page and workspace; `ResearchAgent` state machine with five typed tools through
+  `ToolRunner` (ownership, confirmation, budgets, timeouts, events); brief with stated vs assumed fields and the one
+  blocking question; transparent universe screen with reasons; hypotheses from the real optimizer + reality-check review
+  (unsaved until confirmed); deterministic flags, suggestions and 7-section interpretation; refinement proposed then
+  confirmed; comparison; confirmed, idempotent save as a normal optimization run; activity log and budget; optional
+  language model (`Agent:Llm:Provider`, Anthropic SDK) with quote/allow-list/numeric validation and deterministic
+  fallbacks. Docs: [agentic-architecture.md](agentic-architecture.md), [threat-model.md](threat-model.md),
+  [agent-evaluation.md](agent-evaluation.md), decisions D-21–D-24, launch blockers in launch-readiness.md.
+* **Verified:** 15 evaluation cases + journey (integration, real PostgreSQL), rule/validator unit tests, Vitest, e2e
+  journey of 17 steps on the disposable stack, desktop/phone screenshots reviewed. Bugs found by the tests and fixed:
+  "equal weighting" not recognised; infeasible per-stock caps were proposable; tool failures were not persisted in the
+  activity log; company context accepted symbols outside the session; candidate table buried the shortlist under
+  excluded rows; lowercase hypothesis labels.
+* **Not verified:** live Anthropic calls (no key); explanation quality with users; German phrasing.
+* **Known gaps:** no in-workflow history download, backtest/ML tools, or monitoring step (roadmap §0); sessions are kept
+  until the user deletes them (no retention policy).
+
 ## 2026-10-15 (2): stock-detail panel and company descriptions
 
 * **Panel too small – root cause:** the stock browser opened a right-hand `Sheet` limited to `sm:max-w-xl` (576 px) with a

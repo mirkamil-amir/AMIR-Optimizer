@@ -28,6 +28,20 @@ Wording rules (enforced in reviews): never "beat the market", "guaranteed", "ris
 | Controlled pilot with real users | **Not yet** | needs hosting with TLS, backups rehearsed, monitoring, CI; data sources (Yahoo unofficial) are for personal, non-commercial use; privacy notice and terms; legal view on advice regulation; accessibility review |
 | Public commercial launch | **No** | licensed prices, constituents and news with redistribution rights; regulatory opinion; DPA/GDPR documentation; security review/pen test; support and incident processes |
 
+## AI research assistant – launch blockers (EU)
+
+Recorded, not resolved:
+* **Advice boundary:** a workflow that takes a user's risk preference, loss capacity and horizon and returns a portfolio
+  is close to a "personal recommendation" (MiFID II Art. 4(1)(4); KWG/WpIG in Germany) even with disclaimers and without
+  orders. Needs a legal opinion before real users; options include generic-only outputs or operating under a licence.
+* **Suitability-like questions:** asking for loss capacity resembles a suitability assessment without the obligations
+  that come with it; wording and purpose need review.
+* **EU AI Act:** likely limited-risk (transparency obligations: users must know they interact with AI and which text is
+  model-generated – implemented as labels); confirm classification and documentation duties.
+* **GDPR:** objectives may contain personal financial information; with a model enabled, redacted text goes to a
+  processor in a third country → privacy notice, DPA/SCCs, retention rules for sessions (no automatic deletion yet).
+* **Consumer protection / unfair practices:** no performance claims; explanations labelled as estimates – keep enforced.
+
 ## Questions for qualified legal and regulatory review (not answered here)
 
 1. **Investment advice / regulated services (Germany: KWG §1 Abs. 1a Nr. 1a, WpIG; EU: MiFID II; UK: FCA PERG 8).**

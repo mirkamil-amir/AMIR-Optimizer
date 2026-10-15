@@ -55,6 +55,10 @@ services:
       # Company descriptions (docs/market-data.md#company-descriptions).
       MarketData__Profiles__Wikipedia__Enabled: ${PROFILES_WIKIPEDIA_ENABLED:-true}
       MarketData__Profiles__Mock__Enabled: ${PROFILES_MOCK_ENABLED:-false}
+      # Research assistant language model (docs/agentic-architecture.md#language-model). None = deterministic rules only.
+      Agent__Llm__Provider: ${AGENT_LLM_PROVIDER:-None}
+      Agent__Llm__Model: ${AGENT_LLM_MODEL:-claude-opus-5-5}
+      Agent__Llm__ApiKey: ${ANTHROPIC_API_KEY:-}
       Admin__Email: ${ADMIN_EMAIL:-}
       Admin__Password: ${ADMIN_PASSWORD:-}
       ModelArtifacts__RootPath: /app/artifacts

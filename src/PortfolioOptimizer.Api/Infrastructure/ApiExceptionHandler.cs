@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using PortfolioOptimizer.Application.Abstractions;
 using PortfolioOptimizer.Application.Common;
+using PortfolioOptimizer.Application.Research;
 using PortfolioOptimizer.Domain;
 
 namespace PortfolioOptimizer.Api.Infrastructure;
@@ -23,6 +24,28 @@ public sealed class ApiExceptionHandler(IProblemDetailsService problemDetails, I
             AuthenticationFailedException => new ProblemDetails { Status = StatusCodes.Status401Unauthorized, Title = "Sign-in failed", Detail = exception.Message },
             ForbiddenException => new ProblemDetails { Status = StatusCodes.Status403Forbidden, Title = "Forbidden", Detail = exception.Message },
             ConflictException => new ProblemDetails { Status = StatusCodes.Status409Conflict, Title = "Conflict", Detail = exception.Message },
+            ToolException t => new ProblemDetails
+            {
+                Status = t.Code switch
+                {
+                    "invalid_arguments" => StatusCodes.Status400BadRequest,
+                    "unauthorized" => StatusCodes.Status404NotFound,
+                    "confirmation_required" or "budget_exceeded" => StatusCodes.Status409Conflict,
+                    "timeout" => StatusCodes.Status504GatewayTimeout,
+                    _ => StatusCodes.Status502BadGateway,
+                },
+                Title = t.Code switch
+                {
+                    "confirmation_required" => "Confirmation required",
+                    "budget_exceeded" => "Session budget used up",
+                    "timeout" => "Analysis timed out",
+                    "invalid_arguments" => "Invalid analysis request",
+                    "unauthorized" => "Not found",
+                    _ => "Analysis failed",
+                },
+                Detail = t.Message,
+                Extensions = { ["code"] = t.Code },
+            },
             DomainException => new ProblemDetails { Status = StatusCodes.Status422UnprocessableEntity, Title = "Business rule violated", Detail = exception.Message },
             MarketDataProviderException => new ProblemDetails { Status = StatusCodes.Status502BadGateway, Title = "Market data provider error", Detail = exception.Message },
             // A stored model failed its checksum/format check or its file is missing: never load or substitute it.

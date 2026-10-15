@@ -2,7 +2,7 @@ import { Suspense, useState } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router'
 import {
   Activity, BarChart3, Eye, Newspaper, BookOpen, BrainCircuit, GraduationCap, Briefcase, Database, FlaskConical, Gauge, GitCompareArrows, History, LayoutDashboard, ListChecks, LogOut, Menu,
-  ScrollText, Search, Settings, ShieldCheck, Sigma, UserRound, Users,
+  ScrollText, Search, Settings, ShieldCheck, Sigma, Sparkles, UserRound, Users,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -26,6 +26,7 @@ const sections: { title: string; items: NavEntry[] }[] = [
   {
     title: 'Research',
     items: [
+      { to: '/research', label: 'AI research', icon: Sparkles },
       { to: '/', label: 'Overview', icon: LayoutDashboard, end: true },
       { to: '/watchlist', label: 'Watchlist', icon: Eye },
       { to: '/news', label: 'Financial news', icon: Newspaper },

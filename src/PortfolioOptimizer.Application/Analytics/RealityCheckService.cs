@@ -49,6 +49,15 @@ public sealed class RealityCheckService(
     public async Task<RealityCheckDto> GetAsync(Guid runId, CancellationToken ct)
     {
         var run = await optimizations.LoadRunAsync(runId, ct); // owner check
+        return await AnalyzeAsync(run, ct);
+    }
+
+    /// <summary>
+    /// Reality check of a run record – saved (via <see cref="GetAsync"/>, owner-checked) or an unsaved research hypothesis
+    /// produced for the current user by <see cref="OptimizationService.EvaluateAsync"/>. Callers are responsible for ownership.
+    /// </summary>
+    public async Task<RealityCheckDto> AnalyzeAsync(OptimizationRun run, CancellationToken ct)
+    {
         if (run.Status != OptimizationRunStatus.Succeeded || run.Weights.Count == 0)
             throw new ConflictException("Only successful optimization runs can be checked; this run has no weights.");
         if (run.PeriodStart is not { } start || run.PeriodEnd is not { } end)

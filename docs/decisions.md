@@ -2,6 +2,36 @@
 
 Short records of decisions that are not obvious from the code. Newest first. Format: context → decision → consequences.
 
+## D-24 The model cannot change user data; saving is a separate confirmed request (2026-10-15)
+**Context:** an assistant that "does things" invites prompt injection into persistent actions. **Decision:** the only
+writing tool (`save_research_run`) is `UserDataChange`; `ToolRunner` denies it unless the request carries
+`Confirm = true`, which the UI sends only from a confirmation dialog. Model output can never trigger it.
+**Consequences:** one extra click; denied attempts are visible in the activity log; no high-impact tools exist.
+
+## D-23 Explanations are templates first; model narratives must pass a numeric validator (2026-10-15)
+**Context:** explanations that contradict the numbers are worse than none. **Decision:** every hypothesis gets a
+deterministic seven-section explanation from its computed values; a model narrative replaces it only if every number is
+within 0.05 of a value in the evidence (or its rounding), every ticker belongs to the hypothesis and no forbidden promise
+appears. Otherwise the template is shown with the reason. **Alternatives:** trusting the model; asking the model to
+self-check (not verifiable). **Consequences:** the product is fully usable without a model; model text is
+labelled; some correct but differently-rounded narratives are rejected (conservative).
+
+## D-22 Hypotheses are unsaved evaluations; only a confirmed save creates a run (2026-10-15)
+**Context:** research explores many alternatives; persisting each as an optimization run would flood the history and
+blur what the user chose. **Decision:** `OptimizationService.EvaluateAsync` and `RealityCheckService.AnalyzeAsync`
+compute without saving; hypotheses live in the research session with their full inputs and a config hash (idempotency).
+Saving re-evaluates with the stored inputs and links the run to the session. **Consequences:** reproducible, no
+duplicates; the existing optimizer and reality-check pages work unchanged on saved runs.
+
+## D-21 One deterministic orchestrator with bounded model calls, model off by default (2026-10-15)
+**Context:** the challenge asked for an agentic, explainable research platform; no model key is available and numbers
+must never come from a model. **Decision:** a state machine (`ResearchAgent`) with five typed tools; a language model
+is used for three schema-bound proposals (brief fields, unclear refinements, narratives) via `ILanguageModel`
+(Anthropic official SDK, `claude-opus-5-5`), with deterministic fallbacks; `Agent:Llm:Provider = None` by default.
+**Alternatives:** an autonomous tool-calling loop (non-deterministic, harder to bound and test); multi-agent designs
+(no task needs them). **Consequences:** testable with a scripted mock; predictable cost; the "agent" cannot pursue
+goals on its own – deliberate.
+
 ## D-20 Company descriptions from the catalogue's Wikipedia links (2026-10-15)
 **Context:** the stock panel's description was always empty because nothing ever wrote one; Alpha Vantage `OVERVIEW` is
 premium for the configured key and Yahoo profiles sit behind an anti-scraping crumb. **Decision:** record the company

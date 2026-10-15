@@ -57,6 +57,21 @@ hidden and purged.
   get Playwright specs with role-based locators.
 * Frontend fixtures: build typed objects; cast partial fixtures with `as unknown as T` only in tests.
 
+## Results (2026-10-15, AI research assistant)
+
+| Suite | Result |
+|---|---|
+| Unit | 195 passed, 5 skipped (live smoke) – adds `Research/ResearchRulesTests.cs`: 32 |
+| ML | 40 passed |
+| Integration | 89 passed – adds `ResearchAgentTests`: 16 (journey + evaluation cases, see [agent-evaluation.md](agent-evaluation.md)) |
+| Frontend unit (Vitest) | 65 passed (adds `lib/research.test.ts`: 3) |
+| End-to-end | 23 passed incl. `research-agent.spec.ts` (2) and two throwaway screenshot tests (desktop 1440 / phone 390, no horizontal scroll; spec deleted afterwards) |
+| Lint / build | 0 errors / OK |
+| Live language model | **not run** – no API key available; provider covered only with the scripted mock |
+
+Note: `scripts/e2e.sh` failed three times in a row while the container build context was archived (`read …: operation
+canceled` on varying files of the iCloud-synced worktree); a later rerun succeeded. Rerun when this happens.
+
 ## Results (2026-10-15, stock-detail panel)
 
 | Suite | Result |

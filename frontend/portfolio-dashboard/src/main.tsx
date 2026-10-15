@@ -12,6 +12,8 @@ import { SelectionProvider } from '@/lib/selection'
 import './index.css'
 
 // Route-level code splitting keeps the initial bundle small.
+const ResearchHomePage = lazy(() => import('@/pages/research').then((m) => ({ default: m.ResearchHomePage })))
+const ResearchWorkspacePage = lazy(() => import('@/pages/research').then((m) => ({ default: m.ResearchWorkspacePage })))
 const OverviewPage = lazy(() => import('@/pages/overview').then((m) => ({ default: m.OverviewPage })))
 const HoldingsPage = lazy(() => import('@/pages/holdings').then((m) => ({ default: m.HoldingsPage })))
 const OptimizePage = lazy(() => import('@/pages/optimize').then((m) => ({ default: m.OptimizePage })))
@@ -61,6 +63,8 @@ const router = createBrowserRouter([
         element: <AppShell />,
         children: [
           { path: '/', element: <OverviewPage /> },
+          { path: '/research', element: <ResearchHomePage /> },
+          { path: '/research/:sessionId', element: <ResearchWorkspacePage /> },
           { path: '/stocks', element: <StocksPage /> },
           { path: '/stocks/:symbol', element: <StockPage /> },
           { path: '/watchlist', element: <WatchlistPage /> },

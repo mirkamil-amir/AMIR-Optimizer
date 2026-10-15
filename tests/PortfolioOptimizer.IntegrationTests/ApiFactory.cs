@@ -53,6 +53,8 @@ public sealed class ApiFactory(string connectionString) : WebApplicationFactory<
         // Company descriptions: simulated provider only (no network).
         builder.UseSetting("MarketData:Profiles:Wikipedia:Enabled", "false");
         builder.UseSetting("MarketData:Profiles:Mock:Enabled", "true");
+        // Research assistant: deterministic rules unless a test injects a scripted mock model.
+        builder.UseSetting("Agent:Llm:Provider", "None");
         builder.UseSetting("Seed:Assets", "true");
         builder.UseSetting("Seed:DemoPortfolio", "false");
         builder.UseSetting("Seed:SyncOnEmptyDatabase", "false");
