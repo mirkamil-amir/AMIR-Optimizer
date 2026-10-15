@@ -1,7 +1,7 @@
 namespace PortfolioOptimizer.Application.MarketData;
 
-/// <summary>Chart ranges. <see cref="OneDay"/> needs intraday bars, which no configured source stores.</summary>
-public enum PriceRange { OneDay, OneMonth, ThreeMonths, SixMonths, OneYear, FiveYears }
+/// <summary>Chart ranges. <see cref="OneDay"/> needs intraday bars, which no configured source stores; <see cref="Max"/> is all stored history.</summary>
+public enum PriceRange { OneDay, OneMonth, ThreeMonths, SixMonths, OneYear, FiveYears, Max }
 
 public readonly record struct HistoryBar(DateOnly Date, decimal Close, decimal? AdjustedClose);
 
@@ -31,7 +31,7 @@ public static class PriceHistory
     public static readonly IReadOnlyDictionary<string, PriceRange> Codes = new Dictionary<string, PriceRange>(StringComparer.OrdinalIgnoreCase)
     {
         ["1D"] = PriceRange.OneDay, ["1M"] = PriceRange.OneMonth, ["3M"] = PriceRange.ThreeMonths,
-        ["6M"] = PriceRange.SixMonths, ["1Y"] = PriceRange.OneYear, ["5Y"] = PriceRange.FiveYears,
+        ["6M"] = PriceRange.SixMonths, ["1Y"] = PriceRange.OneYear, ["5Y"] = PriceRange.FiveYears, ["MAX"] = PriceRange.Max,
     };
 
     public static string Code(PriceRange range) => Codes.First(kv => kv.Value == range).Key;
@@ -43,6 +43,7 @@ public static class PriceHistory
         PriceRange.SixMonths => end.AddMonths(-6),
         PriceRange.OneYear => end.AddYears(-1),
         PriceRange.FiveYears => end.AddYears(-5),
+        PriceRange.Max => DateOnly.MinValue,
         _ => end,
     };
 
@@ -57,7 +58,7 @@ public static class PriceHistory
 
         var end = ordered[^1].Date;
         var target = StartFor(range, end);
-        var baseIndex = ordered.FindLastIndex(b => b.Date <= target);
+        var baseIndex = range == PriceRange.Max ? 0 : ordered.FindLastIndex(b => b.Date <= target);
         if (baseIndex < 0)
             return Empty(range, ordered,
                 $"Stored history starts on {ordered[0].Date:yyyy-MM-dd}; {Code(range)} needs a price on or before {target:yyyy-MM-dd}. Choose a shorter range or download more history.");

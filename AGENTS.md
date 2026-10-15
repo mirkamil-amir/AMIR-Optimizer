@@ -85,6 +85,8 @@ Secrets live in `.env` (gitignored) – load with `set -a; . ./.env; set +a`; ne
   (optimizer + tests + label + guide entry + interpretation branch).
 * **Add an ML model:** implement `IModelTrainer` in `MachineLearning/Models`, register it in `ModelRegistry`, add a
   default grid, determinism and artifact round-trip tests, a guide entry and `guideForModel` mapping.
+* **Company descriptions:** only via `ICompanyProfileProvider` + `CompanyProfileService` (cached in `CompanyProfiles`);
+  never generate or paraphrase descriptions, never fall back to name/ticker matching, keep source, licence and date.
 * **Add a news provider:** implement `ICompanyNewsProvider` and/or `INewsFeedProvider` in `Infrastructure/News`
   (return provider tags as canonical symbols, skip incomplete items, throw `NewsProviderException` on bad responses),
   register it with `AddProviderClient`, unit-test parsing from synthetic payloads in the real response shape, and

@@ -262,6 +262,10 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<string>("ReferenceArticle")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
                     b.Property<string>("Sector")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
@@ -424,6 +428,56 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                     b.HasIndex("PortfolioId", "TimestampUtc");
 
                     b.ToTable("CashLedger");
+                });
+
+            modelBuilder.Entity("PortfolioOptimizer.Domain.CompanyProfile", b =>
+                {
+                    b.Property<int>("AssetId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("AttemptedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("Language")
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("Licence")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Reference")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<DateTime?>("RetrievedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("SourceName")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("SourceUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("AssetId");
+
+                    b.ToTable("CompanyProfiles");
                 });
 
             modelBuilder.Entity("PortfolioOptimizer.Domain.DataSyncLog", b =>
@@ -1950,6 +2004,17 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                         .HasForeignKey("PortfolioId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("PortfolioOptimizer.Domain.CompanyProfile", b =>
+                {
+                    b.HasOne("PortfolioOptimizer.Domain.Asset", "Asset")
+                        .WithOne()
+                        .HasForeignKey("PortfolioOptimizer.Domain.CompanyProfile", "AssetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Asset");
                 });
 
             modelBuilder.Entity("PortfolioOptimizer.Domain.DataSyncLog", b =>

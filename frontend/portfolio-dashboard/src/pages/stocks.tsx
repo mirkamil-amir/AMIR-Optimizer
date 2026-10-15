@@ -1,7 +1,6 @@
 import { useDeferredValue, useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, CheckCircle2, CheckSquare, Download, Loader2, Minus, Plus, RefreshCw, Search } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, CheckSquare, Loader2, Minus, RefreshCw, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -10,22 +9,20 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { WatchToggle } from '@/components/watchlist'
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { StockDetailDialog } from '@/components/stock-detail-dialog'
 import { Switch } from '@/components/ui/switch'
-import { ChartCard, TimeSeriesChart, timeSeriesTable } from '@/components/charts'
 import { DataTable, Pager, type Column } from '@/components/data-table'
 import { EmptyState, ErrorState, InfoTip, LoadingBlock, PageHeader } from '@/components/common'
-import { QuoteCell, QuoteProvenance, RefreshQuoteButton, SelectionTray } from '@/components/stock-selection'
+import { QuoteCell, RefreshQuoteButton, SelectionTray } from '@/components/stock-selection'
 import { UniverseNav, type UniverseScope } from '@/components/universe-nav'
 import { errorMessage } from '@/lib/api'
 import {
-  useFetchPrices, useMarkets, usePrices, useQuoteRefreshCycle, useRefreshQuotes, useSectors, useStock, useStocks, type StockSort,
+  useMarkets, useQuoteRefreshCycle, useRefreshQuotes, useSectors, useStocks, type StockSort,
 } from '@/lib/queries'
 import { age, symbolsNeedingRefresh } from '@/lib/quote-status'
 import { useSelection } from '@/lib/selection'
 import type { Market, QuoteRefreshRun, StockListItem } from '@/lib/types'
-import { date, dateTime, money, num } from '@/lib/format'
+import { num } from '@/lib/format'
 
 const sortOptions: { value: StockSort; label: string }[] = [
   { value: 'name', label: 'Company name A–Z' },
@@ -237,7 +234,7 @@ export function StocksPage() {
         </div>
       </div>
 
-      <StockDetailSheet symbol={detail} onClose={() => setDetail(null)} markets={markets.data} />
+      <StockDetailDialog symbol={detail} items={items} markets={markets.data} onNavigate={setDetail} onClose={() => setDetail(null)} />
     </>
   )
 }
@@ -275,118 +272,4 @@ function describeScope(markets: Market[] | undefined, scope: UniverseScope) {
   const parts = [scope.index ? indexLabel(markets, scope.index) : market?.name ?? 'All markets']
   if (scope.sector) parts.push(scope.sector)
   return parts.join(' › ')
-}
-
-function StockDetailSheet({ symbol, onClose, markets }: { symbol: string | null; onClose: () => void; markets: Market[] | undefined }) {
-  const detail = useStock(symbol ?? undefined)
-  const [fromDate] = useState(() => new Date(Date.now() - 365 * 86_400_000).toISOString().slice(0, 10))
-  const prices = usePrices(detail.data && detail.data.stock.observations > 0 ? symbol ?? undefined : undefined, fromDate)
-  const selection = useSelection()
-  const fetchPrices = useFetchPrices()
-  const s = detail.data?.stock
-
-  const fetchNow = async () => {
-    if (!s) return
-    try {
-      const job = await fetchPrices.mutateAsync([s.symbol])
-      if (job.assetsFailed === 0) toast.success(`Price history for ${s.symbol} downloaded`)
-      else toast.error(`Price history for ${s.symbol} could not be downloaded`, { description: job.message ?? undefined })
-    } catch (e) {
-      toast.error('Could not request the price history', { description: errorMessage(e) })
-    }
-  }
-
-  const bars = prices.data?.items ?? []
-  const dates = bars.map((b) => b.date)
-  const series = [
-    { name: 'Close (raw)', values: bars.map((b) => b.close) },
-    ...(bars.some((b) => b.adjustedClose !== null) ? [{ name: 'Adjusted close', values: bars.map((b) => b.adjustedClose), dashed: true }] : []),
-  ]
-
-  return (
-    <Sheet open={!!symbol} onOpenChange={(open) => { if (!open) onClose() }}>
-      <SheetContent side="right" className="w-full gap-0 overflow-y-auto sm:max-w-xl">
-        <SheetHeader>
-          <SheetTitle>{s ? `${s.symbol} · ${s.name ?? ''}` : symbol}</SheetTitle>
-          <SheetDescription>{s ? [s.sector ?? 'Unclassified', s.industry, s.exchange, s.currency].filter(Boolean).join(' · ') : 'Loading…'}</SheetDescription>
-        </SheetHeader>
-        <div className="space-y-5 px-4 pb-6">
-          {detail.error && <ErrorState error={detail.error} />}
-          {!s ? <LoadingBlock /> : (
-            <>
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <div className="text-2xl font-semibold tabular">{s.quote.price !== null ? money(s.quote.price, s.quote.currency) : 'No price available'}</div>
-                  <QuoteProvenance quote={s.quote} />
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <RefreshQuoteButton symbol={s.symbol} size="sm" />
-                  <WatchToggle symbol={s.symbol} />
-                  <Button size="sm" variant="ghost" render={<Link to={`/stocks/${encodeURIComponent(s.symbol)}`} />}>Full page</Button>
-                  {s.observations === 0 && (
-                    <Button variant="outline" size="sm" onClick={fetchNow} disabled={fetchPrices.isPending}>
-                      {fetchPrices.isPending ? <Loader2 className="animate-spin" /> : <Download />} Fetch history
-                    </Button>
-                  )}
-                  <Button size="sm" variant={selection.has(s.symbol) ? 'outline' : 'default'}
-                    onClick={() => selection.toggle({ symbol: s.symbol, name: s.name, sector: s.sector, currency: s.currency })}>
-                    {selection.has(s.symbol) ? <Minus /> : <Plus />}
-                    {selection.has(s.symbol) ? 'Remove from selection' : 'Add to selection'}
-                  </Button>
-                </div>
-              </div>
-
-              <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                <Item label="Previous close" value={s.quote.previousClose !== null ? `${money(s.quote.previousClose, s.quote.currency)}${s.quote.previousCloseDate ? ` (${date(s.quote.previousCloseDate)})` : ''}` : '—'} />
-                <Item label="Price applies to" value={s.quote.asOfUtc ? dateTime(s.quote.asOfUtc) : date(s.quote.priceDate)} />
-                <Item label="Retrieved" value={s.quote.retrievedAtUtc ? `${dateTime(s.quote.retrievedAtUtc)} (${age(s.quote.retrievedAtUtc)})` : '—'} />
-                <Item label="Currency" value={s.currency} />
-                <Item label="Index membership" value={s.indices.length ? s.indices.map((i) => indexLabel(markets, i)).join(', ') : '—'} />
-                <Item label="Listing (MIC)" value={[s.exchange, detail.data!.mic].filter(Boolean).join(' · ') || '—'} />
-                <Item label="ISIN" value={detail.data!.isin ?? 'Not provided by the source'} />
-                <Item label="Stored history" value={s.observations > 0 ? `${num(s.observations, 0)} days (${date(s.firstDate)} – ${date(s.lastDate)})` : 'None yet'} />
-                <Item label="Adjusted closes" value={s.observations === 0 ? '—' : detail.data!.hasAdjustedCloses ? 'Available' : 'Not provided (raw closes only)'} />
-                <Item label="Data provider" value={detail.data!.dataSource} />
-              </dl>
-
-              {bars.length > 1 && (
-                <ChartCard
-                  title="Price history (1 year)"
-                  hint="Raw closes are traded prices; adjusted closes include splits and dividends and are used for return calculations."
-                  legend={series.map((x, i) => ({ name: x.name, color: `var(--series-${i + 1})`, dashed: 'dashed' in x }))}
-                  table={timeSeriesTable(dates, series, (v) => money(v, s.currency))}
-                >
-                  <TimeSeriesChart dates={dates} series={series} format={(v) => money(v, s.currency, { compact: true })} height={220} />
-                </ChartCard>
-              )}
-
-              <section className="space-y-1.5">
-                <h3 className="text-sm font-semibold">About</h3>
-                {detail.data!.description ? <p className="text-sm leading-relaxed">{detail.data!.description}</p> : null}
-                <p className="text-xs text-muted-foreground">{detail.data!.descriptionNote}</p>
-                {detail.data!.metadataSource && (
-                  <p className="text-xs text-muted-foreground">
-                    Classification and membership source: {detail.data!.metadataSource}
-                    {detail.data!.metadataUpdatedAtUtc && ` (loaded ${dateTime(detail.data!.metadataUpdatedAtUtc)})`}.
-                  </p>
-                )}
-              </section>
-              {s.observations > 0 && s.observations < 61 && (
-                <Badge variant="outline" className="border-warn/50 text-warn">Fewer than 61 daily prices – excluded from analyses until more history is available</Badge>
-              )}
-            </>
-          )}
-        </div>
-      </SheetContent>
-    </Sheet>
-  )
-}
-
-function Item({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="tabular">{value}</dd>
-    </div>
-  )
 }

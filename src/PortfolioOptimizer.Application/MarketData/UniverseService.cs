@@ -30,9 +30,10 @@ public sealed record IndexDefinition(
 /// </summary>
 public sealed partial class UniverseService(IApplicationDbContext db, IAuditLog audit, TimeProvider clock)
 {
-    public static readonly string[] MemberColumns = ["symbol", "name", "country", "exchange", "mic", "currency", "sector", "industry", "isin"];
+    public static readonly string[] MemberColumns = ["symbol", "name", "country", "exchange", "mic", "currency", "sector", "industry", "isin", "wiki"];
 
-    public sealed record MemberRow(string Symbol, string Name, string Country, string? Exchange, string? Mic, string Currency, string? Sector, string? Industry, string? Isin);
+    public sealed record MemberRow(string Symbol, string Name, string Country, string? Exchange, string? Mic, string Currency, string? Sector, string? Industry, string? Isin,
+        string? ReferenceArticle = null);
 
     public async Task<UniverseImportResultDto> ImportAsync(IndexDefinition index, string membersCsv, CancellationToken ct, bool recordAudit = true)
     {
@@ -85,7 +86,8 @@ public sealed partial class UniverseService(IApplicationDbContext db, IAuditLog 
             }
 
             var changed = asset.Name != r.Name || asset.Sector != r.Sector || asset.Industry != r.Industry || asset.Country != r.Country ||
-                          asset.Exchange != r.Exchange || asset.Mic != r.Mic || (r.Isin is not null && asset.Isin != r.Isin);
+                          asset.Exchange != r.Exchange || asset.Mic != r.Mic || (r.Isin is not null && asset.Isin != r.Isin) ||
+                          (r.ReferenceArticle is not null && asset.ReferenceArticle != r.ReferenceArticle);
             asset.Name = r.Name;
             asset.Sector = r.Sector;
             asset.Industry = r.Industry;
@@ -93,6 +95,8 @@ public sealed partial class UniverseService(IApplicationDbContext db, IAuditLog 
             asset.Exchange = r.Exchange;
             asset.Mic = r.Mic;
             if (r.Isin is not null) asset.Isin = r.Isin;
+            // Only a supplied reference replaces the stored one (a file without the column keeps it).
+            if (r.ReferenceArticle is not null) asset.ReferenceArticle = r.ReferenceArticle;
             if (changed || asset.MetadataSource is null)
             {
                 asset.MetadataSource = provenance.Length > 300 ? provenance[..300] : provenance;
@@ -212,8 +216,10 @@ public sealed partial class UniverseService(IApplicationDbContext db, IAuditLog 
             if (currency is null || !CurrencyPattern().IsMatch(currency)) { errors.Add($"Line {number}: {symbol} has an invalid currency."); continue; }
             var isin = Cell("isin", 12)?.ToUpperInvariant();
             if (isin is not null && !IsinPattern().IsMatch(isin)) { errors.Add($"Line {number}: {symbol} has an invalid ISIN; ignored."); isin = null; }
+            var wiki = Cell("wiki", 300);
+            if (wiki is not null && !ReferencePattern().IsMatch(wiki)) { errors.Add($"Line {number}: {symbol} has an invalid wiki reference (expected lang:Title); ignored."); wiki = null; }
             rows.Add(new MemberRow(symbol, name, country, Cell("exchange", 50) ?? venue.Exchange, Cell("mic", 4) ?? venue.Mic, currency,
-                Cell("sector", 100), Cell("industry", 150), isin));
+                Cell("sector", 100), Cell("industry", 150), isin, wiki));
         }
         return (rows, errors);
     }
@@ -238,4 +244,8 @@ public sealed partial class UniverseService(IApplicationDbContext db, IAuditLog 
 
     [GeneratedRegex("^[A-Z0-9]{2,20}$")]
     private static partial Regex CodePattern();
+
+    /// <summary>Wikipedia language code, colon, article title (no further namespaces).</summary>
+    [GeneratedRegex(@"^[a-z]{2,3}:[^:\[\]{}|#<>]+$")]
+    private static partial Regex ReferencePattern();
 }

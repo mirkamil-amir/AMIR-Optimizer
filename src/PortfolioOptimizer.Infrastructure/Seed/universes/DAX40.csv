@@ -1,41 +1,41 @@
-symbol,name,country,exchange,mic,currency,sector,industry,isin
-ADS.DE,Adidas,DE,XETRA,XETR,EUR,Consumer Discretionary,Apparel,
-AIR.DE,Airbus,DE,XETRA,XETR,EUR,Industrials,Aerospace & Defence,
-ALV.DE,Allianz,DE,XETRA,XETR,EUR,Financials,Financial Services,
-BAS.DE,BASF,DE,XETRA,XETR,EUR,Materials,Chemicals,
-BAYN.DE,Bayer,DE,XETRA,XETR,EUR,Health Care,Pharmaceuticals,
-BEI.DE,Beiersdorf,DE,XETRA,XETR,EUR,Consumer Staples,Consumer goods,
-BMW.DE,BMW,DE,XETRA,XETR,EUR,Consumer Discretionary,Automotive,
-BNR.DE,Brenntag,DE,XETRA,XETR,EUR,Industrials,Distribution,
-CBK.DE,Commerzbank,DE,XETRA,XETR,EUR,Financials,Financial Services,
-CON.DE,Continental,DE,XETRA,XETR,EUR,Consumer Discretionary,Automotive,
-DB1.DE,Deutsche Börse,DE,XETRA,XETR,EUR,Financials,Financial Services,
-DBK.DE,Deutsche Bank,DE,XETRA,XETR,EUR,Financials,Financial Services,
-DHL.DE,Deutsche Post,DE,XETRA,XETR,EUR,Industrials,Logistics,
-DTE.DE,Deutsche Telekom,DE,XETRA,XETR,EUR,Communication Services,Telecommunication,
-DTG.DE,Daimler Truck,DE,XETRA,XETR,EUR,Consumer Discretionary,Automotive,
-ENR.DE,Siemens Energy,DE,XETRA,XETR,EUR,Industrials,Energy technology,
-EOAN.DE,E.ON,DE,XETRA,XETR,EUR,Utilities,Utilities,
-FME.DE,Fresenius Medical Care,DE,XETRA,XETR,EUR,Health Care,Healthcare,
-FRE.DE,Fresenius,DE,XETRA,XETR,EUR,Health Care,Healthcare,
-G1A.DE,GEA Group,DE,XETRA,XETR,EUR,Industrials,Mechanical Engineering,
-G24.DE,Scout24,DE,XETRA,XETR,EUR,Consumer Discretionary,E-Commerce,
-HEI.DE,Heidelberg Materials,DE,XETRA,XETR,EUR,Materials,Construction Materials,
-HEN3.DE,Henkel,DE,XETRA,XETR,EUR,Consumer Staples,Consumer Goods,
-HNR1.DE,Hannover Re,DE,XETRA,XETR,EUR,Financials,Insurance,
-IFX.DE,Infineon Technologies,DE,XETRA,XETR,EUR,Information Technology,Technology,
-MBG.DE,Mercedes-Benz Group,DE,XETRA,XETR,EUR,Consumer Discretionary,Automotive,
-MRK.DE,Merck,DE,XETRA,XETR,EUR,Health Care,Pharmaceuticals,
-MTX.DE,MTU Aero Engines,DE,XETRA,XETR,EUR,Industrials,Aerospace & Defence,
-MUV2.DE,Munich Re,DE,XETRA,XETR,EUR,Financials,Financial Services,
-PAH3.DE,Porsche SE,DE,XETRA,XETR,EUR,Consumer Discretionary,Automotive,
-QIA.DE,Qiagen,DE,XETRA,XETR,EUR,Health Care,Biotech,
-RHM.DE,Rheinmetall,DE,XETRA,XETR,EUR,Industrials,Aerospace & Defence,
-RWE.DE,RWE,DE,XETRA,XETR,EUR,Utilities,Utilities,
-SAP.DE,SAP,DE,XETRA,XETR,EUR,Information Technology,Technology,
-SHL.DE,Siemens Healthineers,DE,XETRA,XETR,EUR,Health Care,Medical Equipment,
-SIE.DE,Siemens,DE,XETRA,XETR,EUR,Industrials,Industrials,
-SY1.DE,Symrise,DE,XETRA,XETR,EUR,Materials,Chemicals,
-VNA.DE,Vonovia,DE,XETRA,XETR,EUR,Real Estate,Real Estate,
-VOW3.DE,Volkswagen Group,DE,XETRA,XETR,EUR,Consumer Discretionary,Automotive,
-ZAL.DE,Zalando,DE,XETRA,XETR,EUR,Consumer Discretionary,E-Commerce,
+symbol,name,country,exchange,mic,currency,sector,industry,isin,wiki
+ADS.DE,Adidas,DE,XETRA,XETR,EUR,Consumer Discretionary,Apparel,,en:Adidas
+AIR.DE,Airbus,DE,XETRA,XETR,EUR,Industrials,Aerospace & Defence,,en:Airbus
+ALV.DE,Allianz,DE,XETRA,XETR,EUR,Financials,Financial Services,,en:Allianz
+BAS.DE,BASF,DE,XETRA,XETR,EUR,Materials,Chemicals,,en:BASF
+BAYN.DE,Bayer,DE,XETRA,XETR,EUR,Health Care,Pharmaceuticals,,en:Bayer
+BEI.DE,Beiersdorf,DE,XETRA,XETR,EUR,Consumer Staples,Consumer goods,,en:Beiersdorf
+BMW.DE,BMW,DE,XETRA,XETR,EUR,Consumer Discretionary,Automotive,,en:BMW
+BNR.DE,Brenntag,DE,XETRA,XETR,EUR,Industrials,Distribution,,en:Brenntag
+CBK.DE,Commerzbank,DE,XETRA,XETR,EUR,Financials,Financial Services,,en:Commerzbank
+CON.DE,Continental,DE,XETRA,XETR,EUR,Consumer Discretionary,Automotive,,en:Continental AG
+DB1.DE,Deutsche Börse,DE,XETRA,XETR,EUR,Financials,Financial Services,,en:Deutsche Börse
+DBK.DE,Deutsche Bank,DE,XETRA,XETR,EUR,Financials,Financial Services,,en:Deutsche Bank
+DHL.DE,Deutsche Post,DE,XETRA,XETR,EUR,Industrials,Logistics,,en:Deutsche Post
+DTE.DE,Deutsche Telekom,DE,XETRA,XETR,EUR,Communication Services,Telecommunication,,en:Deutsche Telekom
+DTG.DE,Daimler Truck,DE,XETRA,XETR,EUR,Consumer Discretionary,Automotive,,en:Daimler Truck
+ENR.DE,Siemens Energy,DE,XETRA,XETR,EUR,Industrials,Energy technology,,en:Siemens Energy AG
+EOAN.DE,E.ON,DE,XETRA,XETR,EUR,Utilities,Utilities,,en:E.ON
+FME.DE,Fresenius Medical Care,DE,XETRA,XETR,EUR,Health Care,Healthcare,,en:Fresenius Medical Care
+FRE.DE,Fresenius,DE,XETRA,XETR,EUR,Health Care,Healthcare,,en:Fresenius SE
+G1A.DE,GEA Group,DE,XETRA,XETR,EUR,Industrials,Mechanical Engineering,,en:GEA Group
+G24.DE,Scout24,DE,XETRA,XETR,EUR,Consumer Discretionary,E-Commerce,,en:Scout24
+HEI.DE,Heidelberg Materials,DE,XETRA,XETR,EUR,Materials,Construction Materials,,en:HeidelbergCement
+HEN3.DE,Henkel,DE,XETRA,XETR,EUR,Consumer Staples,Consumer Goods,,en:Henkel
+HNR1.DE,Hannover Re,DE,XETRA,XETR,EUR,Financials,Insurance,,en:Hannover Re
+IFX.DE,Infineon Technologies,DE,XETRA,XETR,EUR,Information Technology,Technology,,en:Infineon Technologies
+MBG.DE,Mercedes-Benz Group,DE,XETRA,XETR,EUR,Consumer Discretionary,Automotive,,en:Mercedes-Benz Group
+MRK.DE,Merck,DE,XETRA,XETR,EUR,Health Care,Pharmaceuticals,,en:Merck Group
+MTX.DE,MTU Aero Engines,DE,XETRA,XETR,EUR,Industrials,Aerospace & Defence,,en:MTU Aero Engines
+MUV2.DE,Munich Re,DE,XETRA,XETR,EUR,Financials,Financial Services,,en:Munich Re
+PAH3.DE,Porsche SE,DE,XETRA,XETR,EUR,Consumer Discretionary,Automotive,,en:Porsche SE
+QIA.DE,Qiagen,DE,XETRA,XETR,EUR,Health Care,Biotech,,en:Qiagen
+RHM.DE,Rheinmetall,DE,XETRA,XETR,EUR,Industrials,Aerospace & Defence,,en:Rheinmetall
+RWE.DE,RWE,DE,XETRA,XETR,EUR,Utilities,Utilities,,en:RWE
+SAP.DE,SAP,DE,XETRA,XETR,EUR,Information Technology,Technology,,en:SAP
+SHL.DE,Siemens Healthineers,DE,XETRA,XETR,EUR,Health Care,Medical Equipment,,en:Siemens Healthineers
+SIE.DE,Siemens,DE,XETRA,XETR,EUR,Industrials,Industrials,,en:Siemens
+SY1.DE,Symrise,DE,XETRA,XETR,EUR,Materials,Chemicals,,en:Symrise
+VNA.DE,Vonovia,DE,XETRA,XETR,EUR,Real Estate,Real Estate,,en:Vonovia
+VOW3.DE,Volkswagen Group,DE,XETRA,XETR,EUR,Consumer Discretionary,Automotive,,en:Volkswagen Group
+ZAL.DE,Zalando,DE,XETRA,XETR,EUR,Consumer Discretionary,E-Commerce,,en:Zalando

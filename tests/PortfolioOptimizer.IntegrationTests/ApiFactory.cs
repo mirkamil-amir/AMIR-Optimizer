@@ -50,6 +50,9 @@ public sealed class ApiFactory(string connectionString) : WebApplicationFactory<
         builder.UseSetting("News:Yahoo:Enabled", "false");
         builder.UseSetting("News:OfficialFeeds:Enabled", "false");
         builder.UseSetting("News:Mock:Enabled", "true");
+        // Company descriptions: simulated provider only (no network).
+        builder.UseSetting("MarketData:Profiles:Wikipedia:Enabled", "false");
+        builder.UseSetting("MarketData:Profiles:Mock:Enabled", "true");
         builder.UseSetting("Seed:Assets", "true");
         builder.UseSetting("Seed:DemoPortfolio", "false");
         builder.UseSetting("Seed:SyncOnEmptyDatabase", "false");

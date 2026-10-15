@@ -65,8 +65,6 @@ public sealed class StockDiscoveryTests : IAsyncLifetime
         Assert.Equal(QuoteKind.None, detail.Stock.Quote.Kind);
         Assert.Null(detail.Stock.Quote.Price);
         Assert.False(detail.Stock.IsTracked);
-        Assert.Null(detail.Description);
-        Assert.Contains("No company description", detail.DescriptionNote);
         Assert.Contains("Wikipedia", detail.MetadataSource);
 
         await _user.SyncAndWaitAsync(new SyncRequest { Symbols = ["CVX"], StartDate = DateOnly.FromDateTime(DateTime.UtcNow).AddMonths(-3) });

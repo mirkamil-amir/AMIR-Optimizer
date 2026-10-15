@@ -69,6 +69,16 @@ public static class DependencyInjection
         services.AddTransient<IMarketDataProvider>(sp => sp.GetRequiredService<AlphaVantageProvider>());
         services.AddScoped<IMarketDataProviderRegistry, MarketDataProviderRegistry>();
 
+        // Company descriptions: Wikipedia summary API (article from the catalogue), simulated provider for tests only.
+        // The simulated provider is registered first so a test configuration that enables it takes precedence.
+        services.Configure<WikipediaProfileOptions>(configuration.GetSection(WikipediaProfileOptions.Section));
+        services.Configure<MockProfileOptions>(configuration.GetSection(MockProfileOptions.Section));
+        AddProviderClient<WikipediaProfileProvider, WikipediaProfileOptions>(services, (o, c) => c.Timeout = Timeout.InfiniteTimeSpan,
+            o => o.MinRequestIntervalMs, o => o.TimeoutSeconds);
+        services.AddSingleton<MockProfileProvider>();
+        services.AddTransient<ICompanyProfileProvider>(sp => sp.GetRequiredService<MockProfileProvider>());
+        services.AddTransient<ICompanyProfileProvider>(sp => sp.GetRequiredService<WikipediaProfileProvider>());
+
         // News: Yahoo company news (unofficial), official central-bank RSS feeds, and a simulated provider for tests only.
         services.Configure<NewsOptions>(configuration.GetSection(NewsOptions.Section));
         services.Configure<YahooNewsOptions>(configuration.GetSection(YahooNewsOptions.Section));

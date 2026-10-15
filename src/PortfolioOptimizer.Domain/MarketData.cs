@@ -23,8 +23,16 @@ public class Asset
     public string? Isin { get; set; }
     /// <summary>Index memberships (S&amp;P 500, DAX 40, ...).</summary>
     public List<IndexMembership> Memberships { get; set; } = [];
-    /// <summary>Short company description, only when supplied by a licensed source (never generated).</summary>
+    /// <summary>
+    /// Legacy column, never populated by any import. Company descriptions are served from <see cref="CompanyProfile"/>
+    /// (kept so existing databases need no destructive migration).
+    /// </summary>
     public string? Description { get; set; }
+    /// <summary>
+    /// Encyclopedia article of the company as linked in the constituent source table, as "lang:Title" (e.g. "en:Apple Inc.").
+    /// The exact link avoids name-based guessing when the company description is looked up.
+    /// </summary>
+    public string? ReferenceArticle { get; set; }
     /// <summary>Where name/sector/industry came from (e.g. catalogue file and revision, provider name).</summary>
     public string? MetadataSource { get; set; }
     public DateTime? MetadataUpdatedAtUtc { get; set; }

@@ -15,7 +15,8 @@ namespace PortfolioOptimizer.Api.Controllers;
 /// </remarks>
 [ApiController]
 [Route("api/v1")]
-public sealed class StocksController(StockDiscoveryService stocks, MarketDataService marketData, QuoteRefreshService quoteRefresh) : ControllerBase
+public sealed class StocksController(StockDiscoveryService stocks, MarketDataService marketData, QuoteRefreshService quoteRefresh,
+    CompanyProfileService profiles) : ControllerBase
 {
     /// <summary>Markets (countries) with their index universes, provenance and price coverage.</summary>
     [HttpGet("markets")]
@@ -83,6 +84,15 @@ public sealed class StocksController(StockDiscoveryService stocks, MarketDataSer
     [ProducesResponseType<StockQuoteDto>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public Task<StockQuoteDto> Quote(string symbol, CancellationToken ct) => stocks.GetQuoteAsync(symbol, ct);
+
+    /// <summary>
+    /// Company description with its source, licence and retrieval time (cached; refreshed from the source at most every
+    /// 30 days). Status: Available, NotFound, NoReference, Error or NotConfigured – never invented text.
+    /// </summary>
+    [HttpGet("stocks/{symbol}/profile")]
+    [ProducesResponseType<CompanyProfileDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public Task<CompanyProfileDto> Profile(string symbol, CancellationToken ct) => profiles.GetAsync(symbol, ct);
 
     /// <summary>
     /// Chart data for a range (1M, 3M, 6M, 1Y, 5Y; 1D is reported as unsupported because no intraday bars are stored) with

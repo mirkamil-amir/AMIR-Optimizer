@@ -57,6 +57,18 @@ hidden and purged.
   get Playwright specs with role-based locators.
 * Frontend fixtures: build typed objects; cast partial fixtures with `as unknown as T` only in tests.
 
+## Results (2026-10-15, stock-detail panel)
+
+| Suite | Result |
+|---|---|
+| Unit | 163 passed, 5 skipped (live smoke) |
+| Live smoke (`PO_LIVE_SMOKE=1 --filter LiveProfileSmokeTests`) | 1 passed: real Wikipedia descriptions for AAPL, SAP, Toyota (de→en) |
+| ML | 40 passed |
+| Integration | 73 passed (adds `CompanyProfileTests`: 4) |
+| Frontend unit (Vitest) | 62 passed (adds `stock-detail-dialog.test.tsx`: 8) |
+| End-to-end | 19 passed (adds `stock-detail.spec.ts`: 2) |
+| Lint / build | 0 errors / OK |
+
 ## Results (2026-10-15)
 
 | Suite | Result |

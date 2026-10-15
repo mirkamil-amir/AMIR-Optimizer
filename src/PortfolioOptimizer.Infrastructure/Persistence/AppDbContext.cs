@@ -41,6 +41,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<MlPredictionSet> MlPredictionSets => Set<MlPredictionSet>();
     public DbSet<StrategyComparison> StrategyComparisons => Set<StrategyComparison>();
     public DbSet<WatchlistEntry> WatchlistEntries => Set<WatchlistEntry>();
+    public DbSet<CompanyProfile> CompanyProfiles => Set<CompanyProfile>();
     public DbSet<NewsArticle> NewsArticles => Set<NewsArticle>();
     public DbSet<NewsArticleAsset> NewsArticleAssets => Set<NewsArticleAsset>();
     public DbSet<NewsFetchState> NewsFetchStates => Set<NewsFetchState>();
@@ -142,6 +143,21 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             e.HasOne(x => x.Asset).WithMany().HasForeignKey(x => x.AssetId).OnDelete(DeleteBehavior.Restrict);
         });
 
+        b.Entity<CompanyProfile>(e =>
+        {
+            e.HasKey(x => x.AssetId);
+            e.Property(x => x.Reference).HasMaxLength(300);
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.Description).HasMaxLength(2000);
+            e.Property(x => x.SourceName).HasMaxLength(100);
+            e.Property(x => x.SourceUrl).HasMaxLength(1000);
+            e.Property(x => x.Licence).HasMaxLength(100);
+            e.Property(x => x.Language).HasMaxLength(8);
+            e.Property(x => x.LastError).HasMaxLength(300);
+            // Shared reference data: removing an asset removes its cached description.
+            e.HasOne(x => x.Asset).WithOne().HasForeignKey<CompanyProfile>(x => x.AssetId).OnDelete(DeleteBehavior.Cascade);
+        });
+
         b.Entity<NewsArticle>(e =>
         {
             e.Property(x => x.Id).ValueGeneratedNever();
@@ -203,6 +219,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             e.Property(x => x.Sector).HasMaxLength(100);
             e.Property(x => x.Industry).HasMaxLength(150);
             e.Property(x => x.Description).HasMaxLength(4000);
+            e.Property(x => x.ReferenceArticle).HasMaxLength(300);
             e.Property(x => x.MetadataSource).HasMaxLength(300);
             e.Property(x => x.Country).HasMaxLength(2);
             e.Property(x => x.Mic).HasMaxLength(4);

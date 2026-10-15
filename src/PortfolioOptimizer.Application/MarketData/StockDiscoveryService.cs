@@ -96,11 +96,7 @@ public sealed class StockDiscoveryService(
         var item = (await BuildItemsAsync([asset], settings, ct))[0];
         var hasAdjusted = item.Observations > 0 && !await db.HistoricalPrices.AnyAsync(
             p => p.AssetId == asset.Id && p.Source == settings.ActiveProvider && p.AdjustedClose == null, ct);
-        var note = asset.Description is null
-            ? "No company description is available from the configured catalogue or data provider."
-            : $"Description source: {asset.MetadataSource ?? "unknown"}.";
-        return new StockDetailDto(item, asset.Description, asset.MetadataSource, asset.MetadataUpdatedAtUtc, hasAdjusted, settings.ActiveProvider, note,
-            asset.Isin, asset.Mic);
+        return new StockDetailDto(item, asset.MetadataSource, asset.MetadataUpdatedAtUtc, hasAdjusted, settings.ActiveProvider, asset.Isin, asset.Mic);
     }
 
     public async Task<StockQuoteDto> GetQuoteAsync(string symbol, CancellationToken ct)
@@ -148,7 +144,7 @@ public sealed class StockDiscoveryService(
     }
 
     /// <summary>Ranges a client may request; 1D is accepted but always reported as unsupported (no intraday bars are stored).</summary>
-    public static readonly IReadOnlyList<string> SupportedRanges = ["1M", "3M", "6M", "1Y", "5Y"];
+    public static readonly IReadOnlyList<string> SupportedRanges = ["1M", "3M", "6M", "1Y", "5Y", "MAX"];
 
     public sealed record StoredBars(List<HistoryBar> Bars, bool IsSimulated, DateTime? LastRetrievedAtUtc);
 
@@ -163,7 +159,7 @@ public sealed class StockDiscoveryService(
             .GroupBy(p => p.AssetId).Select(g => new { AssetId = g.Key, Last = g.Max(p => p.Date) }).ToListAsync(ct);
         if (lastDates.Count == 0) return [];
         // Ten extra days cover weekends and holiday runs before the range start.
-        var from = PriceHistory.StartFor(range, lastDates.Min(x => x.Last)).AddDays(-10);
+        var from = range == PriceRange.Max ? DateOnly.MinValue : PriceHistory.StartFor(range, lastDates.Min(x => x.Last)).AddDays(-10);
         var rows = await db.HistoricalPrices.AsNoTracking()
             .Where(p => assetIds.Contains(p.AssetId) && p.Source == source && p.Date >= from)
             .Select(p => new { p.AssetId, p.Date, p.Close, p.AdjustedClose, p.IsSimulated, p.RetrievedAtUtc })

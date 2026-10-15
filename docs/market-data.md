@@ -144,3 +144,31 @@ trades need a portfolio in the stocks' currency.
 ## Price history ranges and news
 
 Chart ranges and period changes are described in [watchlist.md](watchlist.md); news providers, their terms and the event comparison in [financial-news.md](financial-news.md). Neither adds a new price source: both read the stored prices of the active provider.
+
+## Company descriptions
+
+Shown in the stock-detail panel and on `/stocks/{symbol}` (`CompanyOverview`), served by
+`GET /api/v1/stocks/{symbol}/profile` (`CompanyProfileService`).
+
+* **Source:** the lead section of the company's Wikipedia article via the Wikimedia REST API
+  (`/api/rest_v1/page/summary/{title}`), text licensed **CC BY-SA 4.0** and always shown with source link, licence and
+  retrieval date. The article is the one linked in the pinned constituent table the catalogue was built from
+  (`wiki` column, stored as `Asset.ReferenceArticle`, e.g. `en:Apple Inc.`), so no name search and no ticker guessing is
+  involved. References into another language edition (Nikkei 225 comes from German Wikipedia) are resolved to the English
+  article through the interlanguage link when one exists. Coverage of the seed files: S&P 500 502/503, DAX 40/30, CAC 40
+  and FTSE 100 all members, Nikkei 225 196/224.
+* **Not usable (verified 2026-10-15):** Alpha Vantage `OVERVIEW` answers "premium endpoint" for the configured key;
+  Yahoo `quoteSummary/assetProfile` requires a session crumb (an anti-scraping mechanism) and returned HTTP 429 – using it
+  would mean working around bot protection, which this project does not do.
+* **Cache:** table `CompanyProfiles` (one row per listing, separate from quotes). A description is reused for 30 days, a
+  "not found" for 7 days, an error is retried after 15 minutes; one fetch per listing at a time; a failed refresh keeps
+  the earlier text and marks it stale. A changed catalogue reference or a different source (e.g. simulated → Wikipedia)
+  invalidates the entry.
+* **Statuses:** `Available`, `NotFound` (missing page, disambiguation page, extract shorter than 40 characters),
+  `NoReference` (no article in the catalogue, or an index/ETF), `Error` (source unreachable, HTTP error, rate limit,
+  malformed JSON, timeout 20 s), `NotConfigured`. The UI shows "Company description is currently unavailable." with the
+  reason; it never shows invented text or the ticker as a description.
+* **Configuration:** `MarketData:Profiles:Wikipedia:Enabled` (default true; compose `PROFILES_WIKIPEDIA_ENABLED`),
+  `MarketData:Profiles:Mock:Enabled` (simulated text for tests/e2e only; compose `PROFILES_MOCK_ENABLED`). Requests send a
+  descriptive User-Agent as Wikimedia asks and are throttled to one per 200 ms.
+* `Asset.Description` is a legacy column that was never populated; it is no longer exposed.

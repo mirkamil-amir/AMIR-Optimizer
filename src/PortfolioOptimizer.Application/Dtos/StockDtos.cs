@@ -124,14 +124,13 @@ public sealed record StockListItemDto(
     DateOnly? LastDate,
     StockQuoteDto Quote);
 
+/// <summary>Stock metadata; the company description has its own endpoint (<c>/stocks/{symbol}/profile</c>).</summary>
 public sealed record StockDetailDto(
     StockListItemDto Stock,
-    string? Description,
     string? MetadataSource,
     DateTime? MetadataUpdatedAtUtc,
     bool HasAdjustedCloses,
     string DataSource,
-    string DescriptionNote,
     string? Isin,
     string? Mic);
 

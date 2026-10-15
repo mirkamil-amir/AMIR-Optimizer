@@ -676,12 +676,10 @@ export interface StockListItem {
 
 export interface StockDetail {
   stock: StockListItem
-  description: string | null
   metadataSource: string | null
   metadataUpdatedAtUtc: string | null
   hasAdjustedCloses: boolean
   dataSource: string
-  descriptionNote: string
   isin: string | null
   mic: string | null
 }
@@ -935,7 +933,7 @@ export interface PricePoint {
   price: number
 }
 
-export type HistoryRange = '1D' | '1M' | '3M' | '6M' | '1Y' | '5Y'
+export type HistoryRange = '1D' | '1M' | '3M' | '6M' | '1Y' | '5Y' | 'MAX'
 
 /** Stored daily prices for a chart range. `change` is null (with `limitation`) when the stored history does not cover the range. */
 export interface PriceHistory {
@@ -1175,4 +1173,24 @@ export interface EventComparison {
   overlappingArticles: NewsArticle[]
   limitations: string[]
   disclaimer: string
+}
+
+// ---------------------------------------------------------------- company profile
+
+export type CompanyProfileStatus = 'Available' | 'NotFound' | 'NoReference' | 'Error' | 'NotConfigured'
+
+/** Company description with its source; `description` is null unless `status` is Available (never invented). */
+export interface CompanyProfile {
+  symbol: string
+  status: CompanyProfileStatus
+  description: string | null
+  sourceName: string | null
+  sourceUrl: string | null
+  licence: string | null
+  language: string | null
+  retrievedAtUtc: string | null
+  /** An earlier description shown because the latest refresh failed. */
+  isStale: boolean
+  isSimulated: boolean
+  message: string | null
 }

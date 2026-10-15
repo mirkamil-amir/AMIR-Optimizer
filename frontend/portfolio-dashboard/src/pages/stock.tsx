@@ -7,6 +7,7 @@ import { ErrorState, LoadingBlock, PageHeader } from '@/components/common'
 import { QuoteProvenance, RefreshQuoteButton } from '@/components/stock-selection'
 import { ChangeText, PriceHistoryCard, WatchToggle } from '@/components/watchlist'
 import { CompanyNews } from '@/components/news'
+import { CompanyOverview } from '@/components/company-overview'
 import { date, dateTime, money, num } from '@/lib/format'
 import { useStock } from '@/lib/queries'
 import { useSelection } from '@/lib/selection'
@@ -68,16 +69,13 @@ export function StockPage() {
 
       <PriceHistoryCard symbol={s.symbol} range={range} onRangeChange={setRange} />
 
+      <CompanyOverview symbol={s.symbol} />
+
       <CompanyNews symbol={s.symbol} />
 
-      <section className="space-y-1.5">
-        <h2 className="text-sm font-semibold">About</h2>
-        {detail.data.description && <p className="text-sm leading-relaxed">{detail.data.description}</p>}
-        <p className="text-xs text-muted-foreground">{detail.data.descriptionNote}</p>
-        {detail.data.metadataSource && (
-          <p className="text-xs text-muted-foreground">Classification and membership source: {detail.data.metadataSource}.</p>
-        )}
-      </section>
+      {detail.data.metadataSource && (
+        <p className="text-xs text-muted-foreground">Classification and membership source: {detail.data.metadataSource}.</p>
+      )}
     </div>
   )
 }
