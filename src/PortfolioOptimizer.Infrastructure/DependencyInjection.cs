@@ -16,6 +16,7 @@ using PortfolioOptimizer.Infrastructure.ModelArtifacts;
 using PortfolioOptimizer.Infrastructure.Jobs;
 using PortfolioOptimizer.Infrastructure.MarketData;
 using PortfolioOptimizer.Infrastructure.News;
+using PortfolioOptimizer.Infrastructure.Llm;
 using PortfolioOptimizer.Application.News;
 using PortfolioOptimizer.Infrastructure.Persistence;
 
@@ -68,6 +69,20 @@ public static class DependencyInjection
         services.AddTransient<IMarketDataProvider>(sp => sp.GetRequiredService<YahooFinanceProvider>());
         services.AddTransient<IMarketDataProvider>(sp => sp.GetRequiredService<AlphaVantageProvider>());
         services.AddScoped<IMarketDataProviderRegistry, MarketDataProviderRegistry>();
+
+        // Language model for the research assistant (optional; deterministic rules are used when none is configured).
+        services.Configure<LanguageModelOptions>(configuration.GetSection(LanguageModelOptions.Section));
+        services.AddSingleton<MockLanguageModel>();
+        services.AddSingleton<ILanguageModel>(sp =>
+        {
+            var o = sp.GetRequiredService<IOptions<LanguageModelOptions>>().Value;
+            return o.Provider switch
+            {
+                "Anthropic" => ActivatorUtilities.CreateInstance<AnthropicLanguageModel>(sp),
+                "Mock" => sp.GetRequiredService<MockLanguageModel>(),
+                _ => new DisabledLanguageModel(),
+            };
+        });
 
         // Company descriptions: Wikipedia summary API (article from the catalogue), simulated provider for tests only.
         // The simulated provider is registered first so a test configuration that enables it takes precedence.

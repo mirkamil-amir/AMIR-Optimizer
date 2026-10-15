@@ -41,6 +41,16 @@ public static class DependencyInjection
         services.AddScoped<CatalogueService>();
         services.AddScoped<StockDiscoveryService>();
         services.AddScoped<CompanyProfileService>();
+        services.AddScoped<Research.ToolRunner>();
+        services.AddScoped<Research.BriefInterpreter>();
+        services.AddScoped<Research.RefinementInterpreter>();
+        services.AddScoped<Research.InterpretationService>();
+        services.AddScoped<Research.SearchUniverseTool>();
+        services.AddScoped<Research.EvaluateHypothesisTool>();
+        services.AddScoped<Research.ReviewHypothesisTool>();
+        services.AddScoped<Research.CompanyContextTool>();
+        services.AddScoped<Research.SaveHypothesisTool>();
+        services.AddScoped<Research.ResearchAgent>();
         services.AddScoped<QuoteRefreshService>();
         services.AddScoped<UniverseService>();
         services.AddScoped<MlDataLoader>();

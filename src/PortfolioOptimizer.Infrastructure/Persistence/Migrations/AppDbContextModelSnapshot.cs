@@ -1466,6 +1466,109 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                     b.ToTable("QuoteRefreshRuns");
                 });
 
+            modelBuilder.Entity("PortfolioOptimizer.Domain.ResearchEvent", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("AtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<double>("DurationMs")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Summary")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SessionId", "Id");
+
+                    b.ToTable("ResearchEvents");
+                });
+
+            modelBuilder.Entity("PortfolioOptimizer.Domain.ResearchSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("BriefJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("CandidatesJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("HypothesesJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<int>("LlmInputTokens")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("LlmOutputTokens")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PendingRefinementJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<int>("ToolCalls")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerId", "UpdatedAtUtc");
+
+                    b.ToTable("ResearchSessions");
+                });
+
             modelBuilder.Entity("PortfolioOptimizer.Domain.SimulatedOrder", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2179,6 +2282,24 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("PortfolioOptimizer.Domain.ResearchEvent", b =>
+                {
+                    b.HasOne("PortfolioOptimizer.Domain.ResearchSession", null)
+                        .WithMany("Events")
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("PortfolioOptimizer.Domain.ResearchSession", b =>
+                {
+                    b.HasOne("PortfolioOptimizer.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("PortfolioOptimizer.Domain.SimulatedOrder", b =>
                 {
                     b.HasOne("PortfolioOptimizer.Domain.PaperTradeBatch", null)
@@ -2303,6 +2424,11 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                     b.Navigation("Executions");
 
                     b.Navigation("Holdings");
+                });
+
+            modelBuilder.Entity("PortfolioOptimizer.Domain.ResearchSession", b =>
+                {
+                    b.Navigation("Events");
                 });
 
             modelBuilder.Entity("PortfolioOptimizer.Domain.TradeProposal", b =>

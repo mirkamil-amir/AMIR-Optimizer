@@ -32,6 +32,8 @@ public interface IApplicationDbContext
     DbSet<StrategyComparison> StrategyComparisons { get; }
     DbSet<WatchlistEntry> WatchlistEntries { get; }
     DbSet<CompanyProfile> CompanyProfiles { get; }
+    DbSet<ResearchSession> ResearchSessions { get; }
+    DbSet<ResearchEvent> ResearchEvents { get; }
     DbSet<NewsArticle> NewsArticles { get; }
     DbSet<NewsArticleAsset> NewsArticleAssets { get; }
     DbSet<NewsFetchState> NewsFetchStates { get; }
