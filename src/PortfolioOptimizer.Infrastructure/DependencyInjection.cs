@@ -73,12 +73,18 @@ public static class DependencyInjection
         // Language model for the research assistant (optional; deterministic rules are used when none is configured).
         services.Configure<LanguageModelOptions>(configuration.GetSection(LanguageModelOptions.Section));
         services.AddSingleton<MockLanguageModel>();
+        services.AddHttpClient(GeminiLanguageModel.HttpClientName, c =>
+        {
+            c.BaseAddress = new Uri("https://generativelanguage.googleapis.com/");
+            c.Timeout = Timeout.InfiniteTimeSpan; // per-request timeout in GeminiLanguageModel
+        });
         services.AddSingleton<ILanguageModel>(sp =>
         {
             var o = sp.GetRequiredService<IOptions<LanguageModelOptions>>().Value;
             return o.Provider switch
             {
                 "Anthropic" => ActivatorUtilities.CreateInstance<AnthropicLanguageModel>(sp),
+                "Gemini" => ActivatorUtilities.CreateInstance<GeminiLanguageModel>(sp),
                 "Mock" => sp.GetRequiredService<MockLanguageModel>(),
                 _ => new DisabledLanguageModel(),
             };

@@ -23,7 +23,7 @@ an interpretation generated from its own numbers.
 | Backend | .NET 10, ASP.NET Core Web API, EF Core 10 + **PostgreSQL 17** (Npgsql), ASP.NET Core Identity (cookie sessions), Swagger UI |
 | Quant engine | Custom ADMM QP solver, Ledoit–Wolf covariance, efficient frontier, shared portfolio simulator |
 | ML engine | Ridge and logistic regression (in-house, closed form / IRLS), random forest and gradient boosting (ML.NET FastForest / FastTree) |
-| AI research | Deterministic orchestrator + typed tools; optional Claude (official Anthropic C# SDK) for validated brief/refinement/narrative proposals |
+| AI research | Deterministic orchestrator + typed tools; optional Claude (official Anthropic C# SDK) or Gemini (REST) for validated brief/refinement/narrative proposals |
 | Frontend | React 19 + TypeScript, Vite 8, Tailwind CSS v4, shadcn/ui on Base UI, TanStack Query, Recharts |
 | Market data | Yahoo Finance (default; quotes in batches of 20), Alpha Vantage (optional, free key), Mock (simulated, tests) |
 | Tests | xUnit: 195 unit + 40 ML + 89 integration (real PostgreSQL) · Vitest: 65 · Playwright: 21 on a disposable stack · opt-in live provider smoke tests |
@@ -150,8 +150,8 @@ in `appsettings*.json` or in git.
 | `MarketData__AlphaVantage__DailyRequestLimit` | `25` | Client-side daily quota for Alpha Vantage (free tier) |
 | `Universes__Directory` | – | Folder with `indices.csv` / `<CODE>.csv` overriding the bundled constituent files |
 | `RateLimiting__QuotePermitPerMinute` | `60` | On-demand quote refreshes per user |
-| `Agent__Llm__Provider` | `None` | Research assistant language model: `None` (deterministic rules only), `Anthropic`, `Mock` (tests) |
-| `Agent__Llm__Model` / `…ApiKey` / `…TimeoutSeconds` / `…MaxRetries` / `…Effort` | `claude-opus-5-5` / – / `60` / `2` / `low` | Model settings; the key (**secret**, or `ANTHROPIC_API_KEY`) stays on the server |
+| `Agent__Llm__Provider` | `None` | Research assistant language model: `None` (deterministic rules only), `Anthropic`, `Gemini`, `Mock` (tests) |
+| `Agent__Llm__Model` / `…ApiKey` / `…TimeoutSeconds` / `…MaxRetries` / `…Effort` | provider default / – / `60` / `2` / `low` | Model settings; the key (**secret**; compose reads `LLM_API_KEY`) stays on the server |
 
 ## API overview (`/api/v1`)
 

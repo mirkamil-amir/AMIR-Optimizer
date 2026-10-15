@@ -2,6 +2,13 @@
 
 Short records of decisions that are not obvious from the code. Newest first. Format: context → decision → consequences.
 
+## D-25 Gemini as a second provider over plain REST (2026-10-15)
+**Context:** the user's key is a Google Gemini key. **Decision:** `GeminiLanguageModel` calls `generateContent` with
+`responseJsonSchema` through `IHttpClientFactory` (no SDK dependency), with the same failure mapping, redaction and
+validation as the Anthropic provider; the validator now allows negated cautions ("does not guarantee") and rejects
+leaked JSON field names. **Consequences:** both providers are interchangeable by configuration; the request shape is
+covered by unit tests from a recorded response and by an opt-in live test.
+
 ## D-24 The model cannot change user data; saving is a separate confirmed request (2026-10-15)
 **Context:** an assistant that "does things" invites prompt injection into persistent actions. **Decision:** the only
 writing tool (`save_research_run`) is `UserDataChange`; `ToolRunner` denies it unless the request carries
