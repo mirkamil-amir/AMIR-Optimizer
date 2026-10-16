@@ -26,21 +26,26 @@ const ranges = [
  */
 export function CurrencyConverterCard({ base, className }: { base: string; className?: string }) {
   const info = useFxInfo()
-  const currencies = useMemo(() => converterCurrencies(base, info.data?.currencies), [base, info.data?.currencies])
-  const quotes = currencies.filter((c) => c !== base)
-  const board = useFxBoard(base, quotes)
+  // The board's base ("1 USD =") is selectable among all published currencies; it defaults to the portfolio currency.
+  const [boardBase, setBoardBase] = useState<string>()
+  const b = boardBase ?? base
+  const allCurrencies = useMemo(() => [...(info.data?.currencies ?? [base])].sort(), [info.data?.currencies, base])
+  const currencies = useMemo(() => [...new Set([b, ...converterCurrencies(base, info.data?.currencies)])], [b, base, info.data?.currencies])
+  const quotes = currencies.filter((c) => c !== b)
+  const board = useFxBoard(b, quotes)
   const [pair, setPair] = useState<string>()
   const chartQuote = pair && quotes.includes(pair) ? pair : quotes[0]
   const [range, setRange] = useState<(typeof ranges)[number]['label']>('1Y')
-  const history = useFxHistory(base, chartQuote, ranges.find((r) => r.label === range)!.days)
+  const history = useFxHistory(b, chartQuote, ranges.find((r) => r.label === range)!.days)
 
   const [amount, setAmount] = useState('1000')
   const [from, setFrom] = useState<string>()
   const [to, setTo] = useState<string>()
-  const fromCcy = from ?? quotes[0] ?? base
+  // Default pair: the chosen board base (or the first major) → the portfolio currency, never X → X.
+  const fromCcy = from ?? (b !== base ? b : quotes[0]) ?? base
   const toCcy = to ?? base
   const rates = useMemo(() => Object.fromEntries((board.data?.rows ?? []).map((r) => [r.quote, r.rate])), [board.data])
-  const rate = crossFromBoard(rates, base, fromCcy, toCcy)
+  const rate = crossFromBoard(rates, b, fromCcy, toCcy)
   const result = convertAmount(Number(amount.replace(',', '.')), rate)
   const rateDates = (board.data?.rows ?? []).filter((r) => r.quote === fromCcy || r.quote === toCcy).map((r) => r.observationDate).filter((d): d is string => !!d)
   const asOf = rateDates.length ? rateDates.sort()[0] : board.data?.rows.find((r) => r.observationDate)?.observationDate ?? null
@@ -100,9 +105,16 @@ export function CurrencyConverterCard({ base, className }: { base: string; class
         <div className="grid gap-4 lg:grid-cols-[minmax(0,14rem)_minmax(0,1fr)]">
           {/* Rate board */}
           <div>
-            <h3 className="mb-2 text-xs font-medium text-muted-foreground uppercase">1 {base} =</h3>
+            <div className="mb-2 flex items-center gap-2">
+              <span className="text-xs font-medium text-muted-foreground uppercase">1</span>
+              <Select value={b} onValueChange={(v) => setBoardBase(v as string)} items={allCurrencies.map((c) => ({ value: c, label: c }))}>
+                <SelectTrigger size="sm" className="w-24" aria-label="Base currency of the rates"><SelectValue /></SelectTrigger>
+                <SelectContent>{allCurrencies.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+              </Select>
+              <span className="text-xs font-medium text-muted-foreground uppercase">=</span>
+            </div>
             {board.isLoading ? <LoadingBlock height="h-40" /> : (
-              <ul className="space-y-1" aria-label={`Exchange rates against ${base}`}>
+              <ul className="space-y-1" aria-label={`Exchange rates against ${b}`}>
                 {(board.data?.rows ?? []).map((r) => (
                   <li key={r.quote}>
                     <button type="button" onClick={() => setPair(r.quote)} aria-pressed={r.quote === chartQuote}
@@ -123,7 +135,7 @@ export function CurrencyConverterCard({ base, className }: { base: string; class
           {/* Chart of the selected pair */}
           <div className="min-w-0">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-xs font-medium text-muted-foreground uppercase">{chartQuote} per {base}</h3>
+              <h3 className="text-xs font-medium text-muted-foreground uppercase">{chartQuote} per {b}</h3>
               <div role="radiogroup" aria-label="Exchange-rate range" className="flex gap-1">
                 {ranges.map((r) => (
                   <Button key={r.label} size="xs" variant={r.label === range ? 'secondary' : 'ghost'} role="radio" aria-checked={r.label === range} onClick={() => setRange(r.label)}>
@@ -136,7 +148,7 @@ export function CurrencyConverterCard({ base, className }: { base: string; class
               <>
                 <TimeSeriesChart
                   dates={history.data.points.map((p) => p.date)}
-                  series={[{ name: `${chartQuote} per ${base}`, values: history.data.points.map((p) => p.rate) }]}
+                  series={[{ name: `${chartQuote} per ${b}`, values: history.data.points.map((p) => p.rate) }]}
                   format={(v) => v.toLocaleString('en-US', { maximumFractionDigits: v >= 100 ? 1 : 4 })}
                   yDomain={['auto', 'auto']}
                   height={190}

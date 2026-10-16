@@ -1,7 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
   <title>AMIR – Allocation · Modelling · Investment · Research</title>
-  <rect x="1" y="1" width="30" height="30" rx="8" fill="#1f5fbf"/>
-  <path d="M8.5 24.5 L16 7.5 L23.5 24.5" fill="none" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M10.6 19.6 L13.7 17.4 L16.6 18.4 L21.2 14.2" fill="none" stroke="#f5c542" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="21.6" cy="13.9" r="1.9" fill="#f5c542"/>
+  <defs>
+    <linearGradient id="t" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#26407a"/><stop offset="1" stop-color="#14234a"/></linearGradient>
+  </defs>
+  <rect x="1" y="1" width="38" height="38" rx="10" fill="url(#t)"/>
+  <rect x="3.5" y="3.5" width="33" height="33" rx="7.5" fill="none" stroke="#d9b25a" stroke-opacity="0.5" stroke-width="0.8"/>
+  <path d="M9.5 31 L18.4 8.5 L21.6 8.5 L30.5 31 L27.2 31 L20 12.6 L12.8 31 Z" fill="#ffffff"/>
+  <rect x="16.4" y="28" width="2" height="3" rx="0.4" fill="#d9b25a"/>
+  <rect x="19" y="25.6" width="2" height="5.4" rx="0.4" fill="#d9b25a"/>
+  <rect x="21.6" y="23.2" width="2" height="7.8" rx="0.4" fill="#d9b25a"/>
 </svg>

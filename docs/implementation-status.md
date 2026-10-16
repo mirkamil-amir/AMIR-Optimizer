@@ -1,5 +1,13 @@
 # Implementation status
 
+## 2026-10-16 (3): brand v2, ten skins, converter base selection
+
+* Converter only on the overview; its base ("1 USD =") is selectable among all published currencies – board, chart and the
+  calculator default (base → portfolio currency) follow it.
+* New mark and serif wordmark; ten skins with themed sidebars (Navy & Gold default); old "forest" choice maps to Emerald.
+* Verified: Vitest 80, e2e 25 (incl. base selection, dark Burgundy persisting), screenshots of Navy light/dark, Midnight,
+  Burgundy, Emerald dark, sign-in and the appearance picker.
+
 ## 2026-10-16 (2): currency converter, AMIR brand and themes
 
 * Converter card (rates board, pair chart, calculator) on the overview and stock-selection pages, backed by

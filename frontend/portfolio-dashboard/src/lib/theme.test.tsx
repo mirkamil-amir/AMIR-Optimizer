@@ -13,20 +13,25 @@ afterEach(() => localStorage.clear())
 
 describe('theme', () => {
   it('falls back to safe defaults for missing or invalid saved values', () => {
-    expect(readTheme()).toEqual({ mode: 'system', skin: 'graphite' })
+    expect(readTheme()).toEqual({ mode: 'system', skin: 'navy' })
     localStorage.setItem(STORAGE_KEY, '{"mode":"neon","skin":"<script>"}')
-    expect(readTheme()).toEqual({ mode: 'system', skin: 'graphite' })
+    expect(readTheme()).toEqual({ mode: 'system', skin: 'navy' })
     localStorage.setItem(STORAGE_KEY, 'not json')
-    expect(readTheme()).toEqual({ mode: 'system', skin: 'graphite' })
+    expect(readTheme()).toEqual({ mode: 'system', skin: 'navy' })
+  })
+
+  it('keeps a skin chosen under its old name', () => {
+    localStorage.setItem(STORAGE_KEY, '{"mode":"dark","skin":"forest"}')
+    expect(readTheme()).toEqual({ mode: 'dark', skin: 'emerald' })
   })
 
   it('applies mode and skin to the document', () => {
     applyTheme('dark', 'ocean')
     expect(document.documentElement.classList.contains('dark')).toBe(true)
     expect(document.documentElement.dataset.skin).toBe('ocean')
-    applyTheme('light', 'forest')
+    applyTheme('light', 'emerald')
     expect(document.documentElement.classList.contains('dark')).toBe(false)
-    expect(document.documentElement.dataset.skin).toBe('forest')
+    expect(document.documentElement.dataset.skin).toBe('emerald')
   })
 
   it('switches mode and skin from the controls and remembers the choice', async () => {
