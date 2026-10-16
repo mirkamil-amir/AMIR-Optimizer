@@ -123,7 +123,9 @@ admin ──► POST /admin/catalogue/quote-refresh;  scheduler (every 12 h) ─
 
 Unchanged from earlier versions: incremental downloads with a 7-day overlap, normalization (`PriceNormalizer`),
 adjusted closes when the provider supplies them (Yahoo yes, Alpha Vantage free tier no), full re-download when
-adjustments change. Users fetch history for up to 50 selected stocks at once; ML experiments and comparisons queue
+adjustments change (more than 0.05 % on overlapping dates – a new dividend or split back-adjusts all earlier adjusted
+closes; the refresh keeps the series consistent). This is routine: the Market data table shows such a sync as "OK" with
+the note "History refreshed … after a dividend or split adjustment" in its tooltip. Users fetch history for up to 50 selected stocks at once; ML experiments and comparisons queue
 missing history (e.g. an index benchmark) automatically before they run.
 
 ## Analyses and currencies

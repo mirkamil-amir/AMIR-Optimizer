@@ -255,7 +255,9 @@ public sealed class MarketDataService(
                 {
                     // Back-adjusted series changed (new dividend or split): refresh the full stored history.
                     var fullFrom = existing.Min < start ? existing.Min : start;
-                    messages.Add($"Adjusted prices changed on overlapping dates; re-downloaded full history from {fullFrom:yyyy-MM-dd}.");
+                    // Routine, not a problem: kept as a short note (shown on demand), logged for operators.
+                    messages.Add($"History refreshed from {fullFrom:yyyy-MM-dd} after a dividend or split adjustment.");
+                    logger.LogInformation("{Symbol}: adjusted closes changed (dividend/split); full history re-downloaded from {From}", symbol, fullFrom);
                     var full = await provider.GetHistoricalPricesAsync(symbol, fullFrom, end, ct);
                     Accumulate(log, full, await UpsertAsync(asset, provider, full, ct));
                     break;
@@ -308,7 +310,7 @@ public sealed class MarketDataService(
         if (!string.Equals(history.Currency, asset.Currency, StringComparison.OrdinalIgnoreCase))
         {
             throw new MarketDataProviderException(provider.Descriptor.Name, asset.Symbol,
-                $"Provider currency {history.Currency} differs from the asset currency {asset.Currency}. Currency conversion is not supported; fix the asset definition.");
+                $"Provider currency {history.Currency} differs from the listing currency {asset.Currency}; prices are not stored. Check the listing (exchange suffix) of this asset.");
         }
 
         if (asset.Name is null && history.CompanyName is not null) asset.Name = history.CompanyName;
