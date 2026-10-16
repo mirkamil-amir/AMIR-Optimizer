@@ -51,6 +51,9 @@ public class Portfolio
     public List<CashLedgerEntry> CashEntries { get; set; } = [];
     public List<TradeExecution> Executions { get; set; } = [];
 
+    /// <summary>Money columns store 6 decimals; amounts are rounded to that before they change cash, so the ledger reconciles exactly.</summary>
+    public const int MoneyDecimals = 6;
+
     public CashLedgerEntry Deposit(decimal amount, DateTime timestampUtc, string description)
     {
         if (amount <= 0) throw new DomainException("Deposit amount must be positive.");
@@ -73,7 +76,7 @@ public class Portfolio
         if (price <= 0) throw new DomainException($"Invalid price {price} for {asset.Symbol}.");
         if (fee < 0) throw new DomainException("Fees cannot be negative.");
         var basePrice = BasePrice(asset, price, fx);
-        var gross = quantity * basePrice;
+        var gross = Math.Round(quantity * basePrice, MoneyDecimals, MidpointRounding.AwayFromZero);
         if (gross + fee > CashBalance)
             throw new DomainException($"Insufficient cash to buy {quantity} {asset.Symbol}: requires {gross + fee:N2}, available {CashBalance:N2}.");
 
@@ -106,7 +109,7 @@ public class Portfolio
         var holding = Holdings.SingleOrDefault(h => h.AssetId == asset.Id && h.Quantity > 0)
             ?? throw new DomainException($"No position in {asset.Symbol} to sell.");
         var basePrice = BasePrice(asset, price, fx);
-        var gross = quantity * basePrice;
+        var gross = Math.Round(quantity * basePrice, MoneyDecimals, MidpointRounding.AwayFromZero);
         if (gross - fee + CashBalance < 0) throw new DomainException("Fees exceed available cash and sale proceeds.");
 
         var realized = holding.ApplySell(quantity, basePrice, fee, timestampUtc);

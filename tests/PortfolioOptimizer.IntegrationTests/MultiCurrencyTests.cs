@@ -87,6 +87,23 @@ public sealed class MultiCurrencyTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task FxHistoryAndBoard_ShowPublishedRates_WithChanges()
+    {
+        var h = await (await _client.GetAsync("/api/v1/fx/history?from=EUR&to=USD&days=90")).ReadAsync<FxHistoryDto>();
+        Assert.True(h.Points.Count > 50);
+        Assert.All(h.Points, p => Assert.True(p.Date.DayOfWeek is not DayOfWeek.Saturday and not DayOfWeek.Sunday));
+        Assert.Contains("SIMULATED", h.Note);
+        var board = await (await _client.GetAsync("/api/v1/fx/board?base=EUR&quotes=USD,GBP,JPY,CHF,EUR")).ReadAsync<FxBoardDto>();
+        Assert.Equal(["USD", "GBP", "JPY", "CHF"], board.Rows.Select(r => r.Quote));     // the base itself is left out
+        var usd = board.Rows.Single(r => r.Quote == "USD");
+        Assert.Equal(h.Points[^1].Rate, usd.Rate!.Value, 9);                             // same published rate as the chart
+        Assert.NotNull(usd.Change1D);
+        Assert.NotNull(usd.Change1M);
+        Assert.Contains("not live", board.Note);
+        Assert.Equal(HttpStatusCode.BadRequest, (await _client.GetAsync("/api/v1/fx/board?base=EUR&quotes=usd")).StatusCode);
+    }
+
+    [Fact]
     public async Task NewListings_TakeTheCurrencyOfTheirExchange()
     {
         var de = await (await _client.PostJsonAsync("/api/v1/assets", new CreateAssetRequest { Symbol = "ZZTEST.DE" })).ReadAsync<AssetDto>();

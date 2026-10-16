@@ -19,3 +19,22 @@ public sealed record FxRateDto(
     string Source,
     bool IsSimulated,
     string Note);
+
+/// <summary>Published daily rates of one pair (only days with an observation; nothing is carried forward).</summary>
+public sealed record FxHistoryDto(
+    string From,
+    string To,
+    string Source,
+    bool IsSimulated,
+    IReadOnlyList<FxPointDto> Points,
+    string Note);
+
+public sealed record FxPointDto(DateOnly Date, double Rate);
+
+/// <summary>Latest reference rates of several currencies against one base, with recent changes.</summary>
+public sealed record FxBoardDto(string Base, string Source, bool IsSimulated, IReadOnlyList<FxBoardRowDto> Rows, string Note);
+
+/// <param name="Rate">Units of <paramref name="Quote"/> per one unit of the base.</param>
+/// <param name="Change1D">Relative change since the previous published rate (null when not available).</param>
+/// <param name="Change1M">Relative change since the last rate at least one month earlier.</param>
+public sealed record FxBoardRowDto(string Quote, double? Rate, DateOnly? ObservationDate, double? Change1D, double? Change1M, string? Problem);

@@ -2,7 +2,7 @@ import { Suspense, useState } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router'
 import {
   Activity, BarChart3, Eye, Newspaper, BookOpen, BrainCircuit, GraduationCap, Briefcase, Database, FlaskConical, Gauge, GitCompareArrows, History, LayoutDashboard, ListChecks, LogOut, Menu,
-  ScrollText, Search, Settings, ShieldCheck, Sigma, Sparkles, UserRound, Users,
+  Palette, ScrollText, Search, Settings, ShieldCheck, Sigma, Sparkles, UserRound, Users,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -12,6 +12,8 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { DataBadge, LoadingBlock } from '@/components/common'
+import { AmirWordmark } from '@/components/brand'
+import { ThemeQuickToggle } from '@/components/theme-controls'
 import { useAuth } from '@/lib/auth'
 import { identityLabel } from '@/lib/identity'
 import { usePortfolioContext } from '@/lib/portfolio-context'
@@ -104,15 +106,9 @@ function NavItems({ onNavigate }: { onNavigate?: () => void }) {
 
 function Brand() {
   return (
-    <div className="flex items-center gap-2 px-2.5">
-      <div className="flex size-7 items-center justify-center rounded-md bg-foreground text-background">
-        <Sigma className="size-4" aria-hidden />
-      </div>
-      <div className="leading-tight">
-        <div className="text-sm font-semibold">AMIR Optimizer</div>
-        <div className="text-[11px] text-muted-foreground">Research · optimization · ML</div>
-      </div>
-    </div>
+    <Link to="/" className="block rounded-md px-2.5 focus-visible:ring-2 focus-visible:ring-ring" aria-label="AMIR Optimizer – home">
+      <AmirWordmark compact />
+    </Link>
   )
 }
 
@@ -213,6 +209,7 @@ function UserMenu() {
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => navigate('/settings')}><Settings /> Account &amp; portfolios</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => navigate('/settings#appearance')}><Palette /> Appearance &amp; themes</DropdownMenuItem>
         {user.isAdministrator && <DropdownMenuItem onClick={() => navigate('/admin')}><ScrollText /> Administration</DropdownMenuItem>}
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => void logout()}><LogOut /> Sign out</DropdownMenuItem>
@@ -256,6 +253,7 @@ export function AppShell() {
             <span className="hidden items-center gap-1 2xl:flex"><FlaskConical className="size-3.5" aria-hidden /> Simulated trading only</span>
             <div className="hidden md:block"><PortfolioSelector /></div>
             <SelectionIndicator />
+            <ThemeQuickToggle />
             <UserMenu />
           </div>
         </header>

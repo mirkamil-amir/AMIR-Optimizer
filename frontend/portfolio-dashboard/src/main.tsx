@@ -9,6 +9,7 @@ import { RequireAdministrator, RequireApprovedUser } from '@/components/route-gu
 import { ApiError } from '@/lib/api'
 import { AuthProvider } from '@/lib/auth'
 import { SelectionProvider } from '@/lib/selection'
+import { ThemeProvider } from '@/lib/theme'
 import './index.css'
 
 // Route-level code splitting keeps the initial bundle small.
@@ -104,6 +105,7 @@ const router = createBrowserRouter([
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
+    <ThemeProvider>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider delay={200}>
         <AuthProvider>
@@ -114,5 +116,6 @@ createRoot(document.getElementById('root')!).render(
       </TooltipProvider>
       <Toaster richColors position="bottom-right" />
     </QueryClientProvider>
+    </ThemeProvider>
   </StrictMode>,
 )

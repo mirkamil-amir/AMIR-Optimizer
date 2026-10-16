@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -14,6 +15,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { DataBadge, ErrorState, LoadingBlock, PageHeader } from '@/components/common'
+import { AppearanceCard } from '@/components/theme-controls'
 import { errorMessage } from '@/lib/api'
 import { usePortfolioContext } from '@/lib/portfolio-context'
 import { useAuth } from '@/lib/auth'
@@ -38,13 +40,18 @@ type PortfolioForm = z.infer<typeof portfolioSchema>
 const asNum = { setValueAs: (v: unknown) => (v === '' || v === null || v === undefined ? undefined : Number(v)) }
 
 export function SettingsPage() {
+  const { hash } = useLocation()
+  useEffect(() => {
+    if (hash === '#appearance') document.getElementById('appearance')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [hash])
   return (
     <>
-      <PageHeader title="Settings" description="Your simulated portfolios and account. Data-provider settings are managed by administrators." />
+      <PageHeader title="Settings" description="Your simulated portfolios, account and appearance. Data-provider settings are managed by administrators." />
       <div className="grid gap-6 lg:grid-cols-2">
         <PortfoliosCard />
         <AccountCard />
       </div>
+      <div className="mt-6"><AppearanceCard /></div>
     </>
   )
 }

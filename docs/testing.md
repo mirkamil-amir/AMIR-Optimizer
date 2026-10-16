@@ -57,6 +57,16 @@ hidden and purged.
   get Playwright specs with role-based locators.
 * Frontend fixtures: build typed objects; cast partial fixtures with `as unknown as T` only in tests.
 
+## Results (2026-10-16, currency converter, brand and themes)
+
+| Suite | Result |
+|---|---|
+| Unit | 241 passed, 8 skipped (live smoke) – adds `ObservedSeries` |
+| ML / Integration | 40 / 107 passed – adds `FxHistoryAndBoard_ShowPublishedRates_WithChanges` |
+| Frontend unit (Vitest) | 78 passed – adds `currency-converter.test.tsx` (3), `theme.test.tsx` (3), currency helpers (3) |
+| End-to-end | 25 passed – adds `converter-themes.spec.ts` (converter on both pages, calculator, chart range; title, logo, dark mode + skin persisting across reload) |
+| Bug found and fixed | gross amounts of foreign trades were stored rounded to 6 decimals but cash was reduced by the unrounded amount (≤ 0.000001 ledger drift); amounts are now rounded before they change cash |
+
 ## Results (2026-10-16, multi-currency portfolios)
 
 | Suite | Result |

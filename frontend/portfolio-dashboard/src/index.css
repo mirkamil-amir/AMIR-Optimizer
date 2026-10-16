@@ -185,3 +185,29 @@
 }
 
 .tabular { font-variant-numeric: tabular-nums; }
+
+/* ------------------------------------------------------------------ brand + skins
+   Mode: class "dark" on <html>. Skin: data-skin on <html> (lib/theme.tsx). Skins only change the brand and primary
+   (buttons, focus ring, active navigation); semantic colours (gain/loss/warn) and chart series never change meaning. */
+:root {
+  --brand: oklch(0.205 0 0);
+  --brand-foreground: oklch(0.985 0 0);
+  --brand-accent: oklch(0.82 0.16 80);
+}
+.dark {
+  --brand: oklch(0.92 0 0);
+  --brand-foreground: oklch(0.205 0 0);
+  --brand-accent: oklch(0.72 0.17 70);
+}
+
+[data-skin="ocean"] { --primary: oklch(0.48 0.16 256); --primary-foreground: oklch(0.985 0 0); --ring: oklch(0.62 0.14 256); --sidebar-primary: oklch(0.48 0.16 256); --brand: oklch(0.48 0.16 256); --brand-foreground: oklch(0.985 0 0); --brand-accent: oklch(0.85 0.13 85); --accent: oklch(0.96 0.02 256); }
+.dark[data-skin="ocean"] { --primary: oklch(0.68 0.15 256); --primary-foreground: oklch(0.16 0.03 256); --ring: oklch(0.6 0.13 256); --sidebar-primary: oklch(0.68 0.15 256); --brand: oklch(0.6 0.16 256); --brand-foreground: oklch(0.985 0 0); --accent: oklch(0.28 0.04 256); }
+
+[data-skin="forest"] { --primary: oklch(0.47 0.12 155); --primary-foreground: oklch(0.985 0 0); --ring: oklch(0.6 0.11 155); --sidebar-primary: oklch(0.47 0.12 155); --brand: oklch(0.45 0.11 155); --brand-foreground: oklch(0.985 0 0); --brand-accent: oklch(0.86 0.15 95); --accent: oklch(0.96 0.02 155); }
+.dark[data-skin="forest"] { --primary: oklch(0.7 0.13 155); --primary-foreground: oklch(0.17 0.03 155); --ring: oklch(0.6 0.11 155); --sidebar-primary: oklch(0.7 0.13 155); --brand: oklch(0.58 0.12 155); --brand-foreground: oklch(0.985 0 0); --accent: oklch(0.28 0.04 155); }
+
+[data-skin="amber"] { --primary: oklch(0.55 0.15 55); --primary-foreground: oklch(0.985 0 0); --ring: oklch(0.68 0.14 60); --sidebar-primary: oklch(0.55 0.15 55); --brand: oklch(0.55 0.15 55); --brand-foreground: oklch(0.985 0 0); --brand-accent: oklch(0.93 0.09 95); --accent: oklch(0.97 0.02 70); }
+.dark[data-skin="amber"] { --primary: oklch(0.76 0.14 65); --primary-foreground: oklch(0.2 0.04 55); --ring: oklch(0.66 0.13 60); --sidebar-primary: oklch(0.76 0.14 65); --brand: oklch(0.66 0.15 58); --brand-foreground: oklch(0.15 0.02 55); --accent: oklch(0.3 0.04 60); }
+
+[data-skin="violet"] { --primary: oklch(0.5 0.2 290); --primary-foreground: oklch(0.985 0 0); --ring: oklch(0.64 0.17 290); --sidebar-primary: oklch(0.5 0.2 290); --brand: oklch(0.5 0.2 290); --brand-foreground: oklch(0.985 0 0); --brand-accent: oklch(0.86 0.14 85); --accent: oklch(0.96 0.025 290); }
+.dark[data-skin="violet"] { --primary: oklch(0.72 0.15 290); --primary-foreground: oklch(0.18 0.05 290); --ring: oklch(0.62 0.15 290); --sidebar-primary: oklch(0.72 0.15 290); --brand: oklch(0.6 0.18 290); --brand-foreground: oklch(0.985 0 0); --accent: oklch(0.3 0.05 290); }

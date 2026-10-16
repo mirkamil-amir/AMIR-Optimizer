@@ -1460,3 +1460,31 @@ export interface FxRate {
   isSimulated: boolean
   note: string
 }
+
+export interface FxHistory {
+  from: string
+  to: string
+  source: string
+  isSimulated: boolean
+  /** Published rates only (business days); units of `to` per one `from`. */
+  points: { date: string; rate: number }[]
+  note: string
+}
+
+export interface FxBoardRow {
+  quote: string
+  /** Units of `quote` per one unit of the board's base currency. */
+  rate: number | null
+  observationDate: string | null
+  change1D: number | null
+  change1M: number | null
+  problem: string | null
+}
+
+export interface FxBoard {
+  base: string
+  source: string
+  isSimulated: boolean
+  rows: FxBoardRow[]
+  note: string
+}

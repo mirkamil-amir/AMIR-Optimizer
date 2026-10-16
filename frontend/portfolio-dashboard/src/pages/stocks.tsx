@@ -14,6 +14,8 @@ import { Switch } from '@/components/ui/switch'
 import { DataTable, Pager, type Column } from '@/components/data-table'
 import { EmptyState, ErrorState, InfoTip, LoadingBlock, PageHeader } from '@/components/common'
 import { QuoteCell, RefreshQuoteButton, SelectionTray } from '@/components/stock-selection'
+import { CurrencyConverterCard } from '@/components/currency-converter'
+import { usePortfolioContext } from '@/lib/portfolio-context'
 import { UniverseNav, type UniverseScope } from '@/components/universe-nav'
 import { errorMessage } from '@/lib/api'
 import {
@@ -33,6 +35,7 @@ const sortOptions: { value: StockSort; label: string }[] = [
 ]
 
 export function StocksPage() {
+  const { portfolio } = usePortfolioContext()
   const [scope, setScope] = useState<UniverseScope>({})
   const [searchText, setSearchText] = useState('')
   const search = useDeferredValue(searchText.trim())
@@ -226,6 +229,7 @@ export function StocksPage() {
               )}
             </CardContent>
           </Card>
+          <CurrencyConverterCard base={portfolio?.baseCurrency ?? 'USD'} />
           <p className="text-xs text-muted-foreground">
             Prices come from the server&apos;s data provider and are delayed quotes or last closes – never real-time. Each price shows when it
             applies and when it was retrieved; prices are converted to the trading currency (London quotes from pence to pounds). Index

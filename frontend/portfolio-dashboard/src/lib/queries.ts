@@ -7,7 +7,7 @@ import type {
   Transaction, UserAccountStatus, UserSummary, MlCatalog, MlExperiment, MlExperimentRequest, MlExperimentSummary, MlBacktest,
   MlPredictionSet, StrategyComparison, StrategyComparisonRequest, StrategyComparisonSummary, Market, QuoteRefreshRun, QuoteRefreshResult,
   AdminOverview, HistoryRange, PriceHistory, Watchlist, WatchlistAddResult, NewsFeed, NewsFilters, EventComparison, RealityCheck, CompanyProfile,
-  FxInfo, FxRate, ResearchSession, ResearchSessionSummary, UpdateBriefRequest, HypothesisComparison, CompanyContext, RefinementChange,
+  FxInfo, FxRate, FxHistory, FxBoard, ResearchSession, ResearchSessionSummary, UpdateBriefRequest, HypothesisComparison, CompanyContext, RefinementChange,
 } from './types'
 
 const V1 = '/api/v1'
@@ -729,4 +729,23 @@ export const useFxRate = (from: string | undefined, to: string | undefined) =>
     enabled: !!from && !!to && from !== to,
     staleTime: 15 * 60_000,
     retry: false,
+  })
+
+/** Published daily rates of a pair for charts. */
+export const useFxHistory = (from: string | undefined, to: string | undefined, days = 365) =>
+  useQuery({
+    queryKey: ['fx-history', from ?? '', to ?? '', days] as const,
+    queryFn: () => api.get<FxHistory>(`${V1}/fx/history?from=${from}&to=${to}&days=${days}`),
+    enabled: !!from && !!to && from !== to,
+    staleTime: 30 * 60_000,
+    placeholderData: keepPreviousData,
+  })
+
+/** Latest reference rates of several currencies against `base`, with 1-day and 1-month changes. */
+export const useFxBoard = (base: string | undefined, quotes: string[]) =>
+  useQuery({
+    queryKey: ['fx-board', base ?? '', quotes.join(',')] as const,
+    queryFn: () => api.get<FxBoard>(`${V1}/fx/board?base=${base}&quotes=${quotes.join(',')}`),
+    enabled: !!base && quotes.length > 0,
+    staleTime: 30 * 60_000,
   })

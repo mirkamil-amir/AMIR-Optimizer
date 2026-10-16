@@ -205,6 +205,57 @@ public sealed class FxService(IApplicationDbContext db, IEnumerable<IFxRateProvi
     /// Latest usable rate for valuing current holdings. A rate older than the carry-forward window counts as unavailable
     /// (the caller shows "cannot be valued" instead of a total).
     /// </summary>
+    /// <summary>Published daily rates of a pair over the last <paramref name="days"/> calendar days (for charts).</summary>
+    public async Task<Dtos.FxHistoryDto> HistoryAsync(string from, string to, int days, CancellationToken ct)
+    {
+        from = Domain.Currencies.Normalize(from);
+        to = Domain.Currencies.Normalize(to);
+        if (days is < 7 or > 3700) throw new ValidationException("days", "Choose between 7 and 3700 days.");
+        var simulated = await ActiveSourceIsSimulatedAsync(ct);
+        var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
+        var start = today.AddDays(-days);
+        var table = await GetTableAsync([from, to], start, today, simulated, ct);
+        var points = table.ObservedSeries(from, to, start, today).Select(p => new Dtos.FxPointDto(p.Date, p.Rate)).ToList();
+        return new Dtos.FxHistoryDto(from, to, table.Source, table.IsSimulated, points,
+            $"{(table.IsSimulated ? "SIMULATED rates" : "ECB euro reference rates")}: one rate per business day, units of {to} per one {from}. " +
+            "Reference rates for information – not rates at which money can be exchanged.");
+    }
+
+    /// <summary>Latest published rate of each quote currency against <paramref name="baseCurrency"/>, with 1-day and 1-month changes.</summary>
+    public async Task<Dtos.FxBoardDto> BoardAsync(string baseCurrency, IReadOnlyCollection<string> quotes, CancellationToken ct)
+    {
+        baseCurrency = Domain.Currencies.Normalize(baseCurrency);
+        var list = quotes.Select(Domain.Currencies.Normalize).Where(q => q != baseCurrency).Distinct().Take(12).ToList();
+        var simulated = await ActiveSourceIsSimulatedAsync(ct);
+        var provider = ProviderFor(simulated);
+        var unsupported = list.Where(q => q != FxTable.Pivot && !provider.SupportedCurrencies.Contains(q)).ToHashSet();
+        var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
+        var table = await GetTableAsync(list.Where(q => !unsupported.Contains(q)).Append(baseCurrency), today.AddDays(-45), today, simulated, ct);
+        var rows = new List<Dtos.FxBoardRowDto>();
+        foreach (var q in list)
+        {
+            if (unsupported.Contains(q))
+            {
+                rows.Add(new(q, null, null, null, null, $"{provider.Name} publishes no {q} rates."));
+                continue;
+            }
+            var series = table.ObservedSeries(baseCurrency, q, today.AddDays(-45), today);
+            if (series.Count == 0 || today.DayNumber - series[^1].Date.DayNumber > FxTable.DefaultMaxCarryForwardDays)
+            {
+                rows.Add(new(q, null, series.Count == 0 ? null : series[^1].Date, null, null,
+                    series.Count == 0 ? "No recent rate." : $"Latest rate is from {series[^1].Date:yyyy-MM-dd} – too old to use."));
+                continue;
+            }
+            var last = series[^1];
+            double? d1 = series.Count > 1 ? last.Rate / series[^2].Rate - 1 : null;
+            var monthAgo = series.LastOrDefault(p => p.Date <= last.Date.AddMonths(-1));
+            double? m1 = monthAgo.Rate > 0 ? last.Rate / monthAgo.Rate - 1 : null;
+            rows.Add(new(q, last.Rate, last.Date, d1, m1, null));
+        }
+        return new Dtos.FxBoardDto(baseCurrency, table.Source, table.IsSimulated, rows,
+            $"{(table.IsSimulated ? "SIMULATED" : "ECB reference")} rates, units per one {baseCurrency}; published once per business day (not live).");
+    }
+
     public async Task<FxQuote> LatestAsync(string from, string to, bool simulatedPrices, CancellationToken ct)
     {
         from = Domain.Currencies.Normalize(from);

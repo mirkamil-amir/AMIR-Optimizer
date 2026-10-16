@@ -2,6 +2,12 @@
 
 Short records of decisions that are not obvious from the code. Newest first. Format: context → decision → consequences.
 
+## D-29 Brand, themes and skins are presentation only (2026-10-16)
+**Context:** a recognizable identity and user-selectable themes were requested. **Decision:** AMIR = Allocation · Modelling ·
+Investment · Research; an SVG mark driven by CSS variables; light/dark/system mode plus five skins that change only the
+brand/primary colours (semantic gain/loss/warn and chart series keep their meaning); the choice is stored in the browser and
+applied before the first paint. **Consequences:** no server state; a cleared browser falls back to Graphite/system.
+
 ## D-28 Independent allocation validation (2026-10-16)
 **Context:** the optimizer verifies its own solution, but with the same code that built the problem. **Decision:**
 `AllocationValidator` (pure, separate code) re-checks every result against the user's constraints (bounds, invested share,
