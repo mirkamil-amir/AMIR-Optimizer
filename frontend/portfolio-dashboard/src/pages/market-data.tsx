@@ -103,7 +103,13 @@ export function MarketDataPage() {
           { key: 'adj', header: 'Adj. close', cell: (c) => c.observations === 0 ? '—' : c.hasAdjustedClose ? <Badge variant="secondary">Yes</Badge> : <Badge variant="outline" className="text-warn" title="Returns exclude dividends">Raw only</Badge> },
           { key: 'px', header: 'Latest price', align: 'right', sortValue: (c) => c.latestPrice, cell: (c) => <span title={c.latestPriceAsOfUtc ? dateTime(c.latestPriceAsOfUtc) : undefined}>{money(c.latestPrice)}</span> },
           { key: 'ret', header: 'Retrieved', sortValue: (c) => c.lastRetrievedAtUtc, cell: (c) => <span className="text-xs text-muted-foreground">{relativeTime(c.lastRetrievedAtUtc)}</span> },
-          { key: 'msg', header: 'Last sync', cell: (c) => c.lastSyncSuccess === false ? <span className="text-xs text-loss" title={c.lastSyncMessage ?? ''}>Failed: {(c.lastSyncMessage ?? '').slice(0, 60)}</span> : <span className="max-w-56 truncate text-xs text-muted-foreground" title={c.lastSyncMessage ?? ''}>{c.lastSyncMessage || (c.lastSyncSuccess ? 'OK' : '—')}</span> },
+          {
+            key: 'msg', header: 'Last sync',
+            // Successful syncs show "OK"; routine notes (e.g. a history refresh after a dividend) stay available as a tooltip.
+            cell: (c) => c.lastSyncSuccess === false
+              ? <span className="text-xs text-loss" title={c.lastSyncMessage ?? ''}>Failed: {(c.lastSyncMessage ?? '').slice(0, 60)}</span>
+              : <span className="text-xs text-muted-foreground" title={c.lastSyncMessage && c.lastSyncMessage !== 'Already up to date.' ? c.lastSyncMessage : undefined}>{c.lastSyncSuccess ? 'OK' : '—'}</span>,
+          },
           {
             key: 'enabled', header: 'Enabled',
             cell: (c) => (
