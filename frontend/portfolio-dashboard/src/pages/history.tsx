@@ -51,7 +51,7 @@ export function HistoryPage() {
     {
       key: 'window',
       header: 'Estimation window',
-      cell: (r) => <span className="text-xs text-muted-foreground">{r.periodStart ? `${date(r.periodStart)} – ${date(r.periodEnd)}` : '—'} · {r.priceSource}</span>,
+      cell: (r) => <span className="text-xs text-muted-foreground">{r.periodStart ? `${date(r.periodStart)} – ${date(r.periodEnd)}` : '—'}</span>,
       className: 'hidden lg:table-cell',
     },
   ]

@@ -119,7 +119,7 @@ public sealed class FxService(IApplicationDbContext db, IEnumerable<IFxRateProvi
         var needed = currencies.Select(Domain.Currencies.Normalize).Where(c => c != FxTable.Pivot).Distinct().ToList();
         var unsupported = needed.Where(c => !provider.SupportedCurrencies.Contains(c)).ToList();
         if (unsupported.Count > 0)
-            throw new ValidationException("currency", $"{provider.Name} publishes no rates for {string.Join(", ", unsupported)}; such assets cannot be converted.");
+            throw new ValidationException("currency", $"No reference rates are published for {string.Join(", ", unsupported)}; such assets cannot be converted.");
         var start = from.AddDays(-(FxTable.DefaultMaxCarryForwardDays + 3));
         var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
         var end = to > today ? today : to;
@@ -155,9 +155,9 @@ public sealed class FxService(IApplicationDbContext db, IEnumerable<IFxRateProvi
             var currencies = foreign.Select(kv => nativeCurrencyBySymbol[kv.Key]).Append(baseCurrency).Distinct().ToList();
             var unsupported = currencies.Where(c => c != FxTable.Pivot && !provider.SupportedCurrencies.Contains(c)).ToHashSet();
             foreach (var (symbol, _) in foreign.Where(kv => unsupported.Contains(nativeCurrencyBySymbol[kv.Key])))
-                excluded[symbol] = $"{provider.Name} publishes no {nativeCurrencyBySymbol[symbol]} rates, so its prices cannot be converted to {baseCurrency}.";
+                excluded[symbol] = $"No {nativeCurrencyBySymbol[symbol]} reference rates are published, so its prices cannot be converted to {baseCurrency}.";
             if (unsupported.Contains(baseCurrency))
-                throw new ValidationException("currency", $"{provider.Name} publishes no {baseCurrency} rates; choose another base currency.");
+                throw new ValidationException("currency", $"No {baseCurrency} reference rates are published; choose another base currency.");
             var dated = foreign.Where(kv => !excluded.ContainsKey(kv.Key)).ToList();
             if (dated.Count > 0)
                 fx = await GetTableAsync(currencies.Where(c => !unsupported.Contains(c)), dated.Min(kv => kv.Value.Points[0].Date), dated.Max(kv => kv.Value.Points[^1].Date), simulated, ct);
@@ -174,7 +174,7 @@ public sealed class FxService(IApplicationDbContext db, IEnumerable<IFxRateProvi
             var c = CurrencyConverter.Convert(series, native, baseCurrency, native == baseCurrency ? null : fx);
             if (series.Points.Count > 0 && c.DroppedPoints > series.Points.Count * CurrencyConverter.MaxDroppedShare)
             {
-                excluded[symbol] = $"{c.DroppedPoints} of {series.Points.Count} prices have no {native}→{baseCurrency} rate within {FxTable.DefaultMaxCarryForwardDays} days ({fx?.Source}).";
+                excluded[symbol] = $"{c.DroppedPoints} of {series.Points.Count} prices have no {native}→{baseCurrency} rate within {FxTable.DefaultMaxCarryForwardDays} days.";
                 continue;
             }
             if (c.DroppedPoints > 0) notes.Add($"{symbol}: {c.DroppedPoints} price(s) dropped – no {native}→{baseCurrency} rate within {FxTable.DefaultMaxCarryForwardDays} days.");
@@ -183,7 +183,7 @@ public sealed class FxService(IApplicationDbContext db, IEnumerable<IFxRateProvi
 
         var nativeCurrencies = converted.Values.Where(v => v.NativeCurrency != baseCurrency).Select(v => v.NativeCurrency).Distinct().Order().ToList();
         if (nativeCurrencies.Count > 0 && fx is not null)
-            notes.Insert(0, $"Prices in {string.Join(", ", nativeCurrencies)} were converted to {baseCurrency} with the {fx.Source} rate of each price date " +
+            notes.Insert(0, $"Prices in {string.Join(", ", nativeCurrencies)} were converted to {baseCurrency} with the reference rate of each price date " +
                             $"(units of {baseCurrency} per unit of the local currency; weekends/holidays use the previous rate, at most {FxTable.DefaultMaxCarryForwardDays} days old). " +
                             "Returns in the base currency include currency movements. Closing prices of different markets are not simultaneous.");
         return new CurrencyConversionResult(baseCurrency, converted, excluded, notes, fx?.Source, fx?.IsSimulated ?? false);
@@ -217,7 +217,7 @@ public sealed class FxService(IApplicationDbContext db, IEnumerable<IFxRateProvi
         var table = await GetTableAsync([from, to], start, today, simulated, ct);
         var points = table.ObservedSeries(from, to, start, today).Select(p => new Dtos.FxPointDto(p.Date, p.Rate)).ToList();
         return new Dtos.FxHistoryDto(from, to, table.Source, table.IsSimulated, points,
-            $"{(table.IsSimulated ? "SIMULATED rates" : "ECB euro reference rates")}: one rate per business day, units of {to} per one {from}. " +
+            $"{(table.IsSimulated ? "SIMULATED rates" : "Euro reference rates")}: one rate per business day, units of {to} per one {from}. " +
             "Reference rates for information – not rates at which money can be exchanged.");
     }
 
@@ -236,7 +236,7 @@ public sealed class FxService(IApplicationDbContext db, IEnumerable<IFxRateProvi
         {
             if (unsupported.Contains(q))
             {
-                rows.Add(new(q, null, null, null, null, $"{provider.Name} publishes no {q} rates."));
+                rows.Add(new(q, null, null, null, null, $"No {q} reference rates are published."));
                 continue;
             }
             var series = table.ObservedSeries(baseCurrency, q, today.AddDays(-45), today);
@@ -253,7 +253,7 @@ public sealed class FxService(IApplicationDbContext db, IEnumerable<IFxRateProvi
             rows.Add(new(q, last.Rate, last.Date, d1, m1, null));
         }
         return new Dtos.FxBoardDto(baseCurrency, table.Source, table.IsSimulated, rows,
-            $"{(table.IsSimulated ? "SIMULATED" : "ECB reference")} rates, units per one {baseCurrency}; published once per business day (not live).");
+            $"{(table.IsSimulated ? "SIMULATED" : "Reference")} rates, units per one {baseCurrency}; published once per business day (not live).");
     }
 
     public async Task<FxQuote> LatestAsync(string from, string to, bool simulatedPrices, CancellationToken ct)

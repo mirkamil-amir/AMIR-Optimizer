@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { DataBadge, InfoTip } from '@/components/common'
 import { errorMessage } from '@/lib/api'
 import { usePortfolioContext } from '@/lib/portfolio-context'
-import { useFetchPrices, useFxInfo, useRefreshQuote, useStocks } from '@/lib/queries'
+import { useFetchPrices, useRefreshQuote, useStocks } from '@/lib/queries'
 import { age, quoteStatus } from '@/lib/quote-status'
 import { useSelection } from '@/lib/selection'
 import type { StockQuote } from '@/lib/types'
@@ -47,10 +47,9 @@ export function QuoteProvenance({ quote }: { quote: StockQuote }) {
   return (
     <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
       {quote.isSimulated ? <DataBadge kind="simulated" /> : status.label === 'No price' ? <DataBadge kind="missing" /> : quote.isStale ? <DataBadge kind="stale" /> : <DataBadge kind="cached" label={status.label} />}
-      <span>{quote.provider ?? '—'}</span>
       {status.when && <span>· {status.when}</span>}
       {quote.retrievedAtUtc && <span>· retrieved {age(quote.retrievedAtUtc)}</span>}
-      <InfoTip label="Price source">{quote.description}</InfoTip>
+      <InfoTip label="Price details">{quote.description}</InfoTip>
     </div>
   )
 }
@@ -97,7 +96,6 @@ function describeQuote(quote?: StockQuote) {
  */
 export function SelectionTray({ className }: { className?: string }) {
   const { portfolio } = usePortfolioContext()
-  const fx = useFxInfo()
   const analysisCurrency = portfolio?.baseCurrency ?? 'USD'
   const selection = useSelection()
   const coverage = useStocks({ symbols: selection.symbols, pageSize: 200 }, selection.count > 0)
@@ -109,7 +107,7 @@ export function SelectionTray({ className }: { className?: string }) {
   const fetchMissing = async () => {
     try {
       const job = await fetchPrices.mutateAsync(missing.slice(0, 50))
-      if (job.assetsFailed === 0) toast.success('Price history downloaded', { description: `${job.assetsCompleted} stock(s) from ${job.source}.` })
+      if (job.assetsFailed === 0) toast.success('Price history downloaded', { description: `${job.assetsCompleted} stock(s).` })
       else toast.warning(`Price history: ${job.assetsCompleted} downloaded, ${job.assetsFailed} failed`, { description: job.message ?? undefined })
     } catch (e) {
       toast.error('Could not queue the download', { description: errorMessage(e) })
@@ -145,7 +143,7 @@ export function SelectionTray({ className }: { className?: string }) {
         <p className="mt-2 flex items-start gap-1.5 text-xs text-muted-foreground" role="status" aria-label="Currency conversion">
           <Coins className="mt-0.5 size-3.5 shrink-0" aria-hidden />
           Your selection trades in {selection.currencies.join(', ')}. Analyses for “{portfolio?.name ?? 'your portfolio'}” are computed in {analysisCurrency}:
-          prices are converted with the {fx.data?.source ?? 'reference'} rate of each date, so returns include currency movements (unhedged).
+          prices are converted with the reference rate of each date, so returns include currency movements (unhedged).
         </p>
       )}
       <ul className="mt-2 flex max-h-28 flex-wrap gap-1.5 overflow-y-auto" aria-label="Selected tickers">

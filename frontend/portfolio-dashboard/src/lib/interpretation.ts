@@ -101,7 +101,7 @@ export function interpretOptimization(run: OptimizationRun): Insight[] {
         : `Even in-sample, equal weight has a Sharpe ratio (${equal.sharpeRatio.toFixed(2)}) at least as high as this portfolio (${run.sharpeRatio.toFixed(2)}). Optimization does not automatically improve risk-adjusted return.`,
     })
 
-  if (run.usesSimulatedData) out.push({ kind: 'caution', text: 'These results use SIMULATED prices from the mock provider – they say nothing about real stocks.' })
+  if (run.usesSimulatedData) out.push({ kind: 'caution', text: 'These results use SIMULATED prices – they say nothing about real stocks.' })
   out.push({ kind: 'caution', text: 'Expected returns estimated from a few years of history are very noisy; small changes in the window can change the weights a lot. Past performance does not predict future results.' })
   return out
 }

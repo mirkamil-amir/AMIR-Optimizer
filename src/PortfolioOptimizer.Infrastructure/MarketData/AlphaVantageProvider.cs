@@ -55,7 +55,7 @@ public sealed class AlphaVantageProvider(HttpClient http, IOptions<AlphaVantageO
 
         var normalized = PriceNormalizer.Normalize(raw, startDate, endDate, today);
         var warnings = normalized.Warnings.ToList();
-        if (!o.UseAdjustedEndpoint) warnings.Add("Alpha Vantage free tier: raw closes only (no dividend/split adjustment).");
+        if (!o.UseAdjustedEndpoint) warnings.Add("Raw closes only (no dividend/split adjustment) from the current data source.");
         // Alpha Vantage does not return the currency; prices are in the venue's currency (pence converted above).
         return new ProviderHistory(symbol, venue.Currency, normalized.Bars, raw.Count, normalized.Rejected, normalized.Duplicates, warnings);
     }
@@ -86,7 +86,7 @@ public sealed class AlphaVantageProvider(HttpClient http, IOptions<AlphaVantageO
         QuoteFetching.OneByOneAsync(this, symbols, cancellationToken);
 
     private static string Map(string symbol) =>
-        SymbolMapper.ForAlphaVantage(symbol) ?? throw new MarketDataProviderException(Name, symbol, "Alpha Vantage does not cover this market (e.g. Tokyo listings or index levels).");
+        SymbolMapper.ForAlphaVantage(symbol) ?? throw new MarketDataProviderException(Name, symbol, "The data source does not cover this market (e.g. Tokyo listings or index levels).");
 
     private async Task<JsonDocument> GetJsonAsync(string pathAndQuery, string symbol, CancellationToken ct)
     {
@@ -96,7 +96,7 @@ public sealed class AlphaVantageProvider(HttpClient http, IOptions<AlphaVantageO
 
         if (!quota.TryAcquire())
             throw new MarketDataProviderException(Name, symbol,
-                $"Daily Alpha Vantage request limit ({options.Value.DailyRequestLimit}) reached; try again tomorrow or use another provider.", isTransient: true);
+                $"The data source's daily request limit ({options.Value.DailyRequestLimit}) is reached; try again tomorrow.", isTransient: true);
 
         using var response = await http.GetAsync($"{pathAndQuery}&apikey={Uri.EscapeDataString(key)}", ct);
         var body = await response.Content.ReadAsStringAsync(ct);

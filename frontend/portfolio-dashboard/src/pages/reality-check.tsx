@@ -50,7 +50,7 @@ function Report({ r }: { r: RealityCheck }) {
     <>
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <Badge variant="secondary">{objectiveLabels[r.objective] ?? r.objective}</Badge>
-        {r.usesSimulatedData ? <DataBadge kind="simulated" /> : <DataBadge kind="estimate" label={`${r.priceSource} · historical data`} />}
+        {r.usesSimulatedData ? <DataBadge kind="simulated" /> : <DataBadge kind="estimate" label="Historical data" />}
         {r.dataChangedSinceRun && <Badge variant="outline" className="border-warn/50 text-warn">Stored data changed since the run</Badge>}
         <span className="text-muted-foreground">
           Run of {dateTime(r.runCreatedAtUtc)} · window {date(r.windowStart)} – {date(r.windowEnd)} ({r.observations} daily returns) · {r.currency}

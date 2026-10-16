@@ -101,7 +101,7 @@ public sealed class BacktestService(
             run.FxSource = conversion.FxSource;
             var missing = config.Universe.Where(s => !series.TryGetValue(s, out var x) || x.Points.Count == 0).ToList();
             if (missing.Count == config.Universe.Count)
-                throw new InvalidOperationException($"No {run.PriceSource} price data for the selected universe. Synchronize market data first.");
+                throw new InvalidOperationException("No stored price data for the selected universe. Fetch price history first.");
 
             PriceSeries? bench = null;
             if (!string.IsNullOrWhiteSpace(config.BenchmarkSymbol))

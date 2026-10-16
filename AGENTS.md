@@ -12,7 +12,7 @@ Read this file before changing code; details are in `docs/` (linked below).
 3. Never claim a test, browser check, provider call or deployment that did not happen; report failures and skips as such.
 4. Keep financial calculations pure and independently tested (`Optimization`, `MachineLearning`, static helpers in `Application`).
 5. No look-ahead, leakage or in-sample numbers presented as performance; label in-sample vs out-of-sample.
-6. Timestamps, currency, source and data quality are part of every price, chart and article shown.
+6. Timestamps, currency, price kind and data quality are part of every price, chart and article shown; data-provider names are shown to administrators only (decision D-30), article publishers to everyone.
 7. Respect data and news licensing: metadata + links + provider teasers only; images only when enabled.
 8. Never expose credentials or personal data (logs, responses, commits, screenshots).
 9. Enforce authorization on the server; frontend guards are cosmetic.

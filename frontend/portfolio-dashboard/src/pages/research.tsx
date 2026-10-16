@@ -364,7 +364,7 @@ function UniverseCard({ session: s, onCompany }: { session: ResearchSession; onC
         <CardTitle>Universe research · {marketNames[c.market] ?? c.market}</CardTitle>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           {c.candidates.some((x) => x.isSimulated) && <DataBadge kind="simulated" />}
-          <span>{c.priceSource} · retrieved {dateTime(c.retrievedAtUtc)}</span>
+          <span>Retrieved {dateTime(c.retrievedAtUtc)}</span>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -494,7 +494,7 @@ function HypothesisCard({ session: s, h, onCompany }: { session: ResearchSession
               <Stat label="Expected return (est.)" value={pct(r.expectedReturn, 1)} hint="Annualized mean of past daily returns over the window – not a forecast." />
               <Stat label="Volatility (est.)" value={pct(r.volatility, 1)} hint="Annualized standard deviation implied by the estimated covariance." />
               <Stat label="Sharpe ratio (est.)" value={r.sharpeRatio?.toFixed(2) ?? '—'} hint="(Expected return − risk-free rate) / volatility, in-sample." />
-              <Stat label="Window" value={`${date(r.periodStart)} – ${date(r.periodEnd)}`} hint={`${r.observations} daily observations · ${r.priceSource}`} />
+              <Stat label="Window" value={`${date(r.periodStart)} – ${date(r.periodEnd)}`} hint={`${r.observations} daily observations`} />
             </div>
             <div>
               <h3 className="mb-2 text-xs font-medium text-muted-foreground uppercase">Weights</h3>

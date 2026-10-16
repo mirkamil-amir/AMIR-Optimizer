@@ -70,6 +70,14 @@ After any update, run a quote refresh (Admin overview → *Refresh prices now*) 
 
 Stooq was evaluated earlier and is blocked by a bot challenge; it is not supported (and must not be bypassed).
 
+**Who sees provider names.** Only administrators: the admin overview and settings, the provider cards, active source
+and job sources on the Market data page, the sidebar data status and the news-source table. Regular users see neutral
+labels ("Stored prices", "Historical estimate", "reference rates", "Market data") and every backend message they can
+receive (quote descriptions, refresh results, sync logs, optimizer/ML diagnostics, FX notes and errors) is worded
+without a provider name. Simulated data is still labelled **SIMULATED** everywhere. The JSON fields (`priceSource`,
+`fxSource`, `source`) are kept for reproducibility of stored runs; they are just not rendered for users. Article
+publishers and Wikipedia attribution stay visible (licence requirement).
+
 **Alpha Vantage key.** Configured in `.env` (`ALPHAVANTAGE_API_KEY`) and passed to the API container as
 `MarketData__AlphaVantage__ApiKey`; locally use user-secrets. It never reaches the browser: the admin overview only
 shows "Key configured" and the remaining daily requests; provider error messages redact the key. A free key cannot

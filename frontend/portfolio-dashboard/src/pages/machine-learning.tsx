@@ -362,7 +362,7 @@ function ExperimentDetail({ id }: { id: string }) {
             <div>
               <h2 className="text-lg font-semibold">{s.name}</h2>
               <p className="text-xs text-muted-foreground">
-                {familyLabels[s.modelFamily]} · {targetLabels[s.target]} · {s.horizonDays}-day horizon · {e.symbols.length} stocks · benchmark {e.benchmarkSymbol} · {e.priceSource} data
+                {familyLabels[s.modelFamily]} · {targetLabels[s.target]} · {s.horizonDays}-day horizon · {e.symbols.length} stocks · benchmark {e.benchmarkSymbol}
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
@@ -743,7 +743,7 @@ function SetupTab({ e }: { e: MlExperiment }) {
       <Card><CardContent className="grid gap-3 py-4 text-sm sm:grid-cols-2">
         <Info label="Feature set" value={`${e.featureSetVersion} · ${r.featureNames.length} features`} />
         <Info label="Selected hyperparameters" value={Object.entries(r.selectedHyperparameters).map(([k, v]) => `${k}=${v}`).join(', ')} />
-        <Info label="Data" value={`${e.priceSource} · ${date(e.historyStart)} – ${date(e.historyEnd)} · snapshot ${e.dataSnapshotHash ?? '—'}`} />
+        <Info label="Data" value={`${date(e.historyStart)} – ${date(e.historyEnd)} · snapshot ${e.dataSnapshotHash ?? '—'}`} />
         <Info label="Samples" value={`${num(r.totalSamples, 0)} total · ${num(r.droppedSamples, 0)} dropped for missing features`} />
         <Info label="Duration" value={e.durationMs ? `${num(e.durationMs / 1000, 1)} s` : '—'} />
         <Info label="Universe" value={e.symbols.join(', ')} />

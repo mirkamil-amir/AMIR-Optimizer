@@ -31,7 +31,7 @@ public sealed class MlDataLoader(PriceQueryService prices, FxService fx)
         }, StringComparer.OrdinalIgnoreCase);
         if (!series.TryGetValue(benchmark, out var bench) || bench.Bars.Count < MinimumObservations)
             throw new InvalidOperationException(
-                $"The benchmark {benchmark} has {(bench?.Bars.Count ?? 0)} stored {source} prices in the period (minimum {MinimumObservations}). Synchronize it first.");
+                $"The benchmark {benchmark} has {(bench?.Bars.Count ?? 0)} stored prices in the period (minimum {MinimumObservations}). Synchronize it first.");
 
         var warnings = new List<string>(conversion.Notes);
         var excluded = new List<string>();
@@ -47,10 +47,10 @@ public sealed class MlDataLoader(PriceQueryService prices, FxService fx)
             if (!series.TryGetValue(symbol, out var s) || s.Bars.Count < MinimumObservations)
             {
                 excluded.Add(symbol);
-                warnings.Add($"{symbol}: {(s?.Bars.Count ?? 0)} stored {source} prices (minimum {MinimumObservations}); excluded. Fetch prices to include it.");
+                warnings.Add($"{symbol}: {(s?.Bars.Count ?? 0)} stored prices (minimum {MinimumObservations}); excluded. Fetch prices to include it.");
                 continue;
             }
-            if (!s.UsesAdjustedClose) warnings.Add($"{symbol}: adjusted closes unavailable from {source}; raw closes used (dividends ignored).");
+            if (!s.UsesAdjustedClose) warnings.Add($"{symbol}: adjusted closes unavailable; raw closes used (dividends ignored).");
             assets.Add(new InstrumentHistory(s.Symbol, s.Sector, s.Bars.Select(b => new DailyObservation(b.Date, b.Price, b.Volume)).ToList()));
         }
         if (assets.Count < 5)

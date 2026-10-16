@@ -20,6 +20,9 @@ Configuration (`appsettings` / environment): `News:Enabled`, `News:RefreshMinute
 (10), `News:RetentionDays` (120), `News:ShowImages` (**false**), `News:WatchlistRefreshLimit` (5),
 `News:Yahoo:Enabled`, `News:OfficialFeeds:Enabled`, `News:Mock:Enabled`. Compose maps them to `NEWS_*` variables.
 
+Regular users see article publishers and the attribution/limitations notes; the news-source table (provider names,
+terms, fetch status) and the names of failing sources are shown to administrators only.
+
 ## Fetching
 
 Fetches happen on demand when a feed or stock page is requested, never in the browser:

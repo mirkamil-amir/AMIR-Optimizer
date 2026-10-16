@@ -92,7 +92,7 @@ export function HoldingsPage() {
         actions={
           <>
             <ReportingCurrencySelect value={reporting} accountCurrency={account} onChange={setReporting} />
-            {s && (s.usesSimulatedData ? <DataBadge kind="simulated" /> : <DataBadge kind="cached" label={`${s.priceSource} · ${date(s.valuationDate)}`} />)}
+            {s && (s.usesSimulatedData ? <DataBadge kind="simulated" /> : <DataBadge kind="cached" label={`Prices of ${date(s.valuationDate)}`} />)}
           </>
         }
       />

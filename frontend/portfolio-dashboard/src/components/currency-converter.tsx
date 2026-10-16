@@ -58,7 +58,7 @@ export function CurrencyConverterCard({ base, className }: { base: string; class
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
         <CardTitle className="flex items-center gap-2 text-sm"><Coins className="size-4" aria-hidden /> Currency converter</CardTitle>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          {board.data?.isSimulated ? <DataBadge kind="simulated" /> : board.data && <Badge variant="outline">{board.data.source} reference rates</Badge>}
+          {board.data?.isSimulated ? <DataBadge kind="simulated" /> : board.data && <Badge variant="outline">Reference rates</Badge>}
           {asOf && <span>as of {date(asOf)}</span>}
         </div>
       </CardHeader>

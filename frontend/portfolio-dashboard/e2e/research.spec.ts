@@ -82,7 +82,8 @@ test('financial news: views, filters, official sources and attribution', async (
   await page.getByRole('tab', { name: 'My watchlist' }).click()
   await expect(page.getByText('No news about your watched stocks yet')).toBeVisible()
 
-  // Sources and limitations are disclosed.
-  await page.getByText('Sources, attribution and limitations').click()
+  // Attribution and limitations are disclosed; the news-source table (provider names, fetch status) is for administrators.
+  await page.getByText('Attribution and limitations').click()
   await expect(page.getByText(/Articles are linked to stocks only when the provider tagged them/)).toBeVisible()
+  await expect(page.getByRole('columnheader', { name: 'Last fetched' })).toHaveCount(0)
 })

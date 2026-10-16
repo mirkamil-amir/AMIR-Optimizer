@@ -214,7 +214,7 @@ function BacktestResults({ bt }: { bt: Backtest }) {
         <StatusBadge status={bt.status} />
         <DataBadge kind="backtest" />
         {bt.usesSimulatedData && <DataBadge kind="simulated" />}
-        <span className="text-xs text-muted-foreground">{date(bt.config.startDate)} – {date(bt.config.endDate)} · {objectiveLabels[bt.config.objective]} · {bt.config.rebalanceFrequency === 'None' ? 'buy & hold' : bt.config.rebalanceFrequency.toLowerCase()} · {bt.priceSource}</span>
+        <span className="text-xs text-muted-foreground">{date(bt.config.startDate)} – {date(bt.config.endDate)} · {objectiveLabels[bt.config.objective]} · {bt.config.rebalanceFrequency === 'None' ? 'buy & hold' : bt.config.rebalanceFrequency.toLowerCase()}</span>
       </div>
 
       {running && (

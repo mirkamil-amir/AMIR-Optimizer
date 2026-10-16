@@ -84,7 +84,7 @@ public static class QuoteFetching
             ct.ThrowIfCancellationRequested();
             if (!provider.Supports(symbol))
             {
-                results.Add(QuoteFetch.Unsupported(symbol, $"{provider.Descriptor.DisplayName} does not cover this market."));
+                results.Add(QuoteFetch.Unsupported(symbol, "The data source does not cover this market."));
                 continue;
             }
             try
@@ -119,7 +119,7 @@ public interface IMarketDataProviderRegistry
 
 /// <summary>Raised by providers for failed requests (network errors, throttling, unknown symbols, malformed responses).</summary>
 public sealed class MarketDataProviderException(string provider, string symbol, string message, bool isTransient = false, Exception? inner = null)
-    : Exception($"{provider} request for {symbol} failed: {message}", inner)
+    : Exception($"{symbol}: {message}", inner)
 {
     public string Provider { get; } = provider;
     public string Symbol { get; } = symbol;

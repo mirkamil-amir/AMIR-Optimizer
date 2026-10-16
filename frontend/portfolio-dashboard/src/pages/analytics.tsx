@@ -76,7 +76,7 @@ export function AnalyticsPage() {
         <MetricCard label="Max drawdown" loading={perf.isLoading} value={<MetricValue metric={p?.maxDrawdown} format={(v) => pct(v)} />} hint="Largest peak-to-trough decline of the value index." />
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-        {p?.usesSimulatedData ? <DataBadge kind="simulated" /> : p && <DataBadge kind="cached" label={p.priceSource} />}
+        {p?.usesSimulatedData ? <DataBadge kind="simulated" /> : p && <DataBadge kind="cached" label="Stored prices" />}
         <span>{p?.methodology}</span>
       </div>
       <div className="mt-3"><Warnings items={p?.warnings} /></div>

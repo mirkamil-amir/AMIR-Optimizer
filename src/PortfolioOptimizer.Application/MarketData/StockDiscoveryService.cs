@@ -286,7 +286,7 @@ public sealed class StockDiscoveryService(
                 result[asset.Id] = new StockQuoteDto(asset.Symbol, quote.Price, asset.Currency, intraday ? QuoteKind.DelayedQuote : QuoteKind.LastClose,
                     priceDate, quote.AsOfUtc, reference, referenceDate, change, Percent(change, reference), source, quote.RetrievedAtUtc, quote.IsSimulated,
                     PriceQueryService.BusinessDaysBetween(priceDate, today) > settings.StalePriceDays, cached,
-                    $"{kindText} from {providerName}: last trade {quote.AsOfUtc:yyyy-MM-dd HH:mm} UTC ({venue.Exchange}), retrieved {quote.RetrievedAtUtc:yyyy-MM-dd HH:mm} UTC" +
+                    $"{kindText}: last trade {quote.AsOfUtc:yyyy-MM-dd HH:mm} UTC ({venue.Exchange}), retrieved {quote.RetrievedAtUtc:yyyy-MM-dd HH:mm} UTC" +
                     $"{(cached ? " (cached)" : "")}. Provider prices are delayed or end-of-day, never real-time.");
             }
             else if (last is not null)
@@ -295,12 +295,12 @@ public sealed class StockDiscoveryService(
                 result[asset.Id] = new StockQuoteDto(asset.Symbol, last.Close, asset.Currency, QuoteKind.LastClose, last.Date, null,
                     prev?.Close, prev?.Date, change, Percent(change, prev?.Close), source, last.RetrievedAtUtc, last.IsSimulated,
                     PriceQueryService.BusinessDaysBetween(last.Date, today) > settings.StalePriceDays, true,
-                    $"{(last.IsSimulated ? "SIMULATED daily close" : "Last stored daily close")} of {last.Date:yyyy-MM-dd} from {providerName}, retrieved {last.RetrievedAtUtc:yyyy-MM-dd HH:mm} UTC.");
+                    $"{(last.IsSimulated ? "SIMULATED daily close" : "Last stored daily close")} of {last.Date:yyyy-MM-dd}, retrieved {last.RetrievedAtUtc:yyyy-MM-dd HH:mm} UTC.");
             }
             else
             {
                 result[asset.Id] = new StockQuoteDto(asset.Symbol, null, asset.Currency, QuoteKind.None, null, null, null, null, null, null,
-                    source, null, false, false, false, $"No {providerName} price available yet. Use refresh to request one.");
+                    source, null, false, false, false, "No price available yet. Use refresh to request one.");
             }
         }
         return result;

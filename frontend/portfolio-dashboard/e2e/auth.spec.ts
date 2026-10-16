@@ -39,4 +39,14 @@ test('registration requires administrator approval before the app opens', async 
   await page.goto('/admin/users')
   await expect(page.getByText('Administrators only')).toBeVisible()
   await expect(page.getByRole('navigation', { name: 'Main' }).getByText('Users')).toHaveCount(0)
+
+  // Data-source names are for administrators only.
+  const providerNames = /\bMock(Fx)?\b|Yahoo|Alpha ?Vantage|\bECB\b/
+  for (const path of ['/', '/market-data']) {
+    await page.goto(path)
+    await expect(page.locator('main')).toBeVisible()
+    await page.waitForLoadState('networkidle')
+    await expect(page.locator('body')).not.toContainText(providerNames)
+  }
+  await expect(page.getByText('Providers', { exact: true })).toHaveCount(0)
 })

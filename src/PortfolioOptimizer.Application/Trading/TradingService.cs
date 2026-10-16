@@ -202,7 +202,7 @@ public sealed class TradingService(
             order.FxRate = fx.Rate;
             order.Status = qty < line.OrderQuantity ? OrderStatus.PartiallyFilled : OrderStatus.Filled;
             order.Message = $"Simulated fill at {lp.Price} {asset.Currency} ({lp.Origin.ToLowerInvariant()} of {lp.PriceDate:yyyy-MM-dd})" +
-                            (asset.Currency == portfolio.BaseCurrency ? "." : $"; simulated exchange at {fx.Rate:0.######} {portfolio.BaseCurrency}/{asset.Currency} ({fx.Source}, {fx.RateDate:yyyy-MM-dd}) – no real currency was exchanged.");
+                            (asset.Currency == portfolio.BaseCurrency ? "." : $"; simulated exchange at {fx.Rate:0.######} {portfolio.BaseCurrency}/{asset.Currency} (reference rate of {fx.RateDate:yyyy-MM-dd}) – no real currency was exchanged.");
             if (line.Price is { } est && est != lp.Price)
                 batch.Notes.Add($"{line.Symbol}: executed at {lp.Price} instead of the proposal estimate {est} (newer price available).");
             if (qty < line.OrderQuantity)
@@ -281,10 +281,10 @@ public sealed class TradingService(
         };
         var foreign = valuation.Positions.Values.Where(v => v.Fx is not null).Select(v => v.Currency).Distinct().Order().ToList();
         if (foreign.Count > 0)
-            proposal.Notes.Insert(0, $"Prices in {string.Join(", ", foreign)} are converted to {portfolio.BaseCurrency} with the {valuation.FxSource} rate of each price date. " +
+            proposal.Notes.Insert(0, $"Prices in {string.Join(", ", foreign)} are converted to {portfolio.BaseCurrency} with the reference rate of each price date. " +
                                      "Executing buys or sells them through a SIMULATED currency exchange of the portfolio cash; no real money is converted.");
         if (valuation.Positions.Values.Any(v => v.Price?.IsSimulated == true))
-            proposal.Notes.Insert(0, "Prices are SIMULATED (mock data provider) and do not reflect real markets.");
+            proposal.Notes.Insert(0, "Prices are SIMULATED and do not reflect real markets.");
 
         await db.TradeProposals.Where(p => p.PortfolioId == portfolioId && p.Status == ProposalStatus.Pending)
             .ExecuteUpdateAsync(s => s.SetProperty(p => p.Status, ProposalStatus.Superseded), ct);

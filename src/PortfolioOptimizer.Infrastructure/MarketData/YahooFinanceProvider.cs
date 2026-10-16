@@ -135,7 +135,7 @@ public sealed class YahooFinanceProvider(HttpClient http, IOptions<YahooFinanceO
             {
                 if (!doc.RootElement.TryGetProperty(yahooSymbol, out var item) || item.ValueKind != JsonValueKind.Object)
                 {
-                    results.Add(QuoteFetch.Fail(symbol, "Yahoo returned no data for this symbol (unknown, delisted or not traded)."));
+                    results.Add(QuoteFetch.Fail(symbol, "No data for this symbol (unknown, delisted or not traded)."));
                     continue;
                 }
                 var closes = Arr(item, "close");
@@ -156,7 +156,7 @@ public sealed class YahooFinanceProvider(HttpClient http, IOptions<YahooFinanceO
                 }
                 if (last is null || lastTime is null)
                 {
-                    results.Add(QuoteFetch.Fail(symbol, "Yahoo returned no recent trade for this symbol."));
+                    results.Add(QuoteFetch.Fail(symbol, "No recent trade for this symbol."));
                     continue;
                 }
                 var venue = Markets.ForSymbol(symbol);
@@ -182,7 +182,7 @@ public sealed class YahooFinanceProvider(HttpClient http, IOptions<YahooFinanceO
         if (response.StatusCode == HttpStatusCode.NotFound)
             throw new MarketDataProviderException(Name, symbol, $"Symbol not found ({ErrorDescription(body) ?? "404"}).");
         if (response.StatusCode == HttpStatusCode.TooManyRequests)
-            throw new MarketDataProviderException(Name, symbol, "Rate limited by Yahoo (HTTP 429) after retries. Try again later.", isTransient: true);
+            throw new MarketDataProviderException(Name, symbol, "The data source is rate limiting requests. Try again later.", isTransient: true);
         if (!response.IsSuccessStatusCode)
             throw new MarketDataProviderException(Name, symbol, $"HTTP {(int)response.StatusCode}: {ErrorDescription(body) ?? response.ReasonPhrase}", isTransient: (int)response.StatusCode >= 500);
 

@@ -114,6 +114,8 @@ function Brand() {
 
 function DataStatus() {
   const { data } = useMarketStatus()
+  // Data-source names are operational details: only administrators see them.
+  const { isAdministrator } = useAuth()
   if (!data) return null
   const enabled = data.coverage.filter((c) => c.isEnabled)
   const stale = enabled.filter((c) => c.freshness !== 'Fresh').length
@@ -122,7 +124,7 @@ function DataStatus() {
   return (
     <div className="space-y-1.5 rounded-lg border p-2.5 text-xs">
       <div className="flex items-center justify-between">
-        <span className="font-medium">{data.activeProvider}</span>
+        <span className="font-medium">{isAdministrator ? data.activeProvider : 'Market data'}</span>
         {data.activeProviderIsSimulated ? <DataBadge kind="simulated" /> : stale > 0 ? <DataBadge kind="stale" label={`${stale} stale`} /> : <DataBadge kind="live" />}
       </div>
       <div className="text-muted-foreground">{running ? 'Synchronizing…' : `Updated ${relativeTime(lastRetrieved)}`}</div>

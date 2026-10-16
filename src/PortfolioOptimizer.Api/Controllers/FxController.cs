@@ -42,7 +42,7 @@ public sealed class FxController(FxService fx) : ControllerBase
         var q = await fx.LatestAsync(from, to, simulated, ct);
         return new FxRateDto(q.From, q.To, q.Rate, q.ObservationDate, q.CarriedForwardDays, q.Source, q.IsSimulated,
             q.IsIdentity ? "Same currency." :
-            $"Reference rate of {q.ObservationDate:yyyy-MM-dd} ({q.Source}){(q.CarriedForwardDays > 0 ? $", carried forward {q.CarriedForwardDays} day(s)" : "")}. " +
+            $"Reference rate of {q.ObservationDate:yyyy-MM-dd}{(q.CarriedForwardDays > 0 ? $", carried forward {q.CarriedForwardDays} day(s)" : "")}. " +
             "For analysis and reporting – not a rate at which money can be exchanged.");
     }
 }

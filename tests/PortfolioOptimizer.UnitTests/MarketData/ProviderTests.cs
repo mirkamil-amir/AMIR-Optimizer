@@ -156,7 +156,8 @@ public class ProviderTests
 
         var sap = Assert.Single(results, r => r.Symbol == "SAP.DE");
         Assert.Null(sap.Quote);                              // missing in the response → reported, never invented
-        Assert.Contains("no data", sap.Error);
+        Assert.Contains("No data", sap.Error);
+        Assert.DoesNotContain("Yahoo", sap.Error);
     }
 
     [Fact]
@@ -211,7 +212,8 @@ public class ProviderTests
         var results = await provider.GetLatestQuotesAsync(["IBM", "MSFT", "AAPL"], CancellationToken.None);
         Assert.Equal(2, results.Count(r => r.Quote is not null));
         var blocked = Assert.Single(results, r => r.Quote is null);
-        Assert.Contains("Daily Alpha Vantage request limit", blocked.Error);
+        Assert.Contains("daily request limit", blocked.Error);
+        Assert.DoesNotContain("Alpha Vantage", blocked.Error);
         Assert.True(blocked.IsTransient);
         Assert.Equal(0, provider.RemainingDailyRequests);
     }
