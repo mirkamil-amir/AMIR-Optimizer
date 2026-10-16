@@ -210,7 +210,7 @@ function KeyFacts({ symbol, s, d, markets }: {
         <Fact label="Index membership" value={s.indices.length ? s.indices.map(indexName).join(', ') : '—'} />
         <Fact label="ISIN" value={d ? d.isin ?? 'Not provided by the source' : '…'} />
         <Fact label="Stored history" value={s.observations > 0 ? `${num(s.observations, 0)} days (${date(s.firstDate)} – ${date(s.lastDate)})` : 'None yet'} />
-        {d && <Fact label="Price provider" value={`${d.dataSource}${d.hasAdjustedCloses ? ' · adjusted closes' : s.observations > 0 ? ' · raw closes only' : ''}`} />}
+        {d && s.observations > 0 && <Fact label="Price basis" value={d.hasAdjustedCloses ? 'Adjusted closes (splits and dividends)' : 'Raw closes only'} />}
       </dl>
       {s.observations > 0 && s.observations < 61 && (
         <Badge variant="outline" className="border-warn/50 text-warn">Fewer than 61 daily prices – excluded from analyses</Badge>

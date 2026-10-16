@@ -92,10 +92,10 @@ export function MetricValue({ metric, format }: { metric: Metric | undefined; fo
 export type DataKind = 'live' | 'cached' | 'stale' | 'simulated' | 'backtest' | 'estimate' | 'missing'
 
 const dataKindStyles: Record<DataKind, { label: string; className: string; icon: ReactNode; title: string }> = {
-  live: { label: 'Market data', className: 'border-gain/40 text-gain', icon: <Database className="size-3" />, title: 'Real provider data (delayed or end-of-day, not live).' },
+  live: { label: 'Market data', className: 'border-gain/40 text-gain', icon: <Database className="size-3" />, title: 'Real market data (delayed or end-of-day, not live).' },
   cached: { label: 'Cached', className: 'border-border text-muted-foreground', icon: <Database className="size-3" />, title: 'Stored market data from the last synchronization.' },
   stale: { label: 'Stale', className: 'border-warn/50 text-warn', icon: <AlertTriangle className="size-3" />, title: 'The latest price is older than the staleness threshold.' },
-  simulated: { label: 'SIMULATED', className: 'border-series-2/60 bg-series-2/10 text-foreground', icon: <FlaskConical className="size-3" />, title: 'Synthetic prices from the mock provider – not real market data.' },
+  simulated: { label: 'SIMULATED', className: 'border-series-2/60 bg-series-2/10 text-foreground', icon: <FlaskConical className="size-3" />, title: 'Synthetic prices – not real market data.' },
   backtest: { label: 'Backtest', className: 'border-series-7/50 text-foreground', icon: <RefreshCw className="size-3" />, title: 'Hypothetical historical simulation – not a forecast.' },
   estimate: { label: 'Estimate', className: 'border-border text-muted-foreground', icon: <Info className="size-3" />, title: 'Historical estimate used as model input – not a forecast.' },
   missing: { label: 'No data', className: 'border-loss/40 text-loss', icon: <AlertTriangle className="size-3" />, title: 'No price data stored for this asset.' },

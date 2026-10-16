@@ -83,6 +83,6 @@ test('administrator overview shows market-data health without secrets', async ({
   await page.goto('/admin')
   await expect(page.getByRole('heading', { name: 'Admin overview' })).toBeVisible()
   await expect(page.getByRole('table', { name: 'Market universes' })).toContainText('DAX 40')
-  await expect(page.getByText(/Simulated data \(mock provider\)/)).toBeVisible()
+  await expect(page.getByText('Simulated data', { exact: true }).first()).toBeVisible()
   await expect(page.locator('body')).not.toContainText(/apikey|password=/i)
 })

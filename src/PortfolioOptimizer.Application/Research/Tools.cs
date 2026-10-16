@@ -100,7 +100,7 @@ public sealed class SearchUniverseTool(StockDiscoveryService stocks, PriceQueryS
 
         var warnings = new List<string>();
         if (chosen.Count < 3) warnings.Add($"Only {chosen.Count} stock(s) meet the data requirements. Download price history for more {brief.Index} members or shorten the history window.");
-        if (candidates.Any(c => c.IsSimulated)) warnings.Add("Prices are SIMULATED (mock provider): no conclusion applies to real markets.");
+        if (candidates.Any(c => c.IsSimulated)) warnings.Add("Prices are SIMULATED: no conclusion applies to real markets.");
         var stale = candidates.Count(c => c.StalePrice);
         if (stale > 0) warnings.Add($"{stale} member(s) have stale prices and were excluded.");
         var missing = candidates.Count(c => !c.Included && c.Reason.StartsWith("Only "));

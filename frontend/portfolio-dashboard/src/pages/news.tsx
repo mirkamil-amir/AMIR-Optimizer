@@ -8,6 +8,7 @@ import { EmptyState, ErrorState, LoadingBlock, PageHeader } from '@/components/c
 import { NewsCard, SourceProblems } from '@/components/news'
 import { dateTime } from '@/lib/format'
 import { categoryLabels, regionLabels } from '@/lib/news'
+import { useAuth } from '@/lib/auth'
 import { useNews } from '@/lib/queries'
 import type { NewsCategory, NewsFilters, NewsScope } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -26,6 +27,8 @@ const ALL = '__all'
 const PAGE_SIZE = 20
 
 export function NewsPage() {
+  // News source names, terms and fetch status are shown to administrators only; article publishers stay visible.
+  const { isAdministrator } = useAuth()
   const [params, setParams] = useSearchParams()
   const view = (params.get('view') as View | null) ?? 'latest'
   const category = params.get('category') as NewsCategory | null
@@ -127,7 +130,7 @@ export function NewsPage() {
           {failing.length > 0 && <SourceProblems sources={failing} />}
           {configured.length === 0 && (
             <EmptyState icon={<Newspaper className="size-8" />} title="No news source is configured"
-              description="An administrator can enable the Yahoo Finance and official central-bank sources (News:Yahoo:Enabled, News:OfficialFeeds:Enabled). See docs/financial-news.md." />
+              description={isAdministrator ? 'Enable the company-news and official central-bank sources (News:Yahoo:Enabled, News:OfficialFeeds:Enabled). See docs/financial-news.md.' : 'An administrator can enable news sources.'} />
           )}
           {configured.length > 0 && data.items.length === 0 && (
             <EmptyState icon={<Newspaper className="size-8" />}
@@ -145,9 +148,9 @@ export function NewsPage() {
             </div>
           )}
           <details className="pt-4 text-xs text-muted-foreground">
-            <summary className="cursor-pointer font-medium text-foreground">Sources, attribution and limitations</summary>
+            <summary className="cursor-pointer font-medium text-foreground">{isAdministrator ? 'Sources, attribution and limitations' : 'Attribution and limitations'}</summary>
             <ul className="mt-2 list-disc space-y-0.5 pl-4">{data.notes.map((n) => <li key={n}>{n}</li>)}</ul>
-            <table className="mt-3 w-full">
+            {isAdministrator && <table className="mt-3 w-full">
               <thead><tr className="border-b text-left"><th className="py-1 font-medium">Source</th><th className="py-1 font-medium">Coverage</th><th className="py-1 font-medium">Last fetched</th><th className="py-1 font-medium">Status</th></tr></thead>
               <tbody>
                 {data.sources.map((s) => (
@@ -159,7 +162,7 @@ export function NewsPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table>}
           </details>
         </div>
       )}

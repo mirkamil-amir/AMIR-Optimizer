@@ -12,6 +12,7 @@ import { categoryLabels, publishedLabel, safeExternalUrl, sourceLine } from '@/l
 import { useEventComparison, useNews } from '@/lib/queries'
 import type { NewsArticle, NewsSourceStatus } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/lib/auth'
 
 const relevanceStyles = {
   High: 'border-foreground/40 text-foreground',
@@ -130,12 +131,14 @@ export function CompanyNews({ symbol }: { symbol: string }) {
 }
 
 export function SourceProblems({ sources }: { sources: NewsSourceStatus[] }) {
+  // Which source failed is an operational detail for administrators.
+  const { isAdministrator } = useAuth()
   return (
     <p className="flex items-start gap-1.5 rounded-md border border-warn/40 p-2 text-xs text-muted-foreground">
       <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-warn" aria-hidden />
       <span>
         Some sources could not be reached; stored articles are shown.{' '}
-        {sources.map((s) => `${s.displayName}: ${s.lastError}`).join(' · ')}
+        {isAdministrator && sources.map((s) => `${s.displayName}: ${s.lastError}`).join(' · ')}
       </span>
     </p>
   )
@@ -159,7 +162,7 @@ export function EventComparisonDialog({ article, symbol, onClose }: { article: N
               <Row label="Timing" value={c.timing} />
               <Row label="Reference close (before publication)" value={c.referenceDate ? `${money(c.referencePrice, c.currency)} on ${date(c.referenceDate)}` : 'none'} />
               <Row label="Benchmark" value={c.benchmarkSymbol ?? 'none'} />
-              <Row label="Price basis" value={`${c.basis} · ${c.currency} · source ${c.source}${c.isSimulated ? ' · SIMULATED' : ''}`} />
+              <Row label="Price basis" value={`${c.basis} · ${c.currency}${c.isSimulated ? ' · SIMULATED' : ''}`} />
             </dl>
             <table className="w-full text-sm tabular">
               <caption className="sr-only">Changes after publication</caption>

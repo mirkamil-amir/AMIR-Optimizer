@@ -49,7 +49,7 @@ test('mixed-currency portfolio: EUR base with US, German, Japanese and UK stocks
   await page.getByRole('combobox', { name: 'Optimization method' }).click()
   await page.getByRole('option', { name: 'Minimum variance' }).click()
   await page.getByRole('button', { name: 'Run optimization' }).click()
-  await expect(page.getByText(/^In EUR · FX MockFx$/)).toBeVisible({ timeout: 60_000 })
+  await expect(page.getByText(/^In EUR · FX converted$/)).toBeVisible({ timeout: 60_000 })
   const allocation = page.getByRole('table', { name: 'Recommended allocation' })
   await expect(allocation.getByRole('row', { name: /7203\.T/ })).toContainText('JPY')
   await expect(allocation.getByRole('row', { name: /AZN\.L/ })).toContainText('GBP')

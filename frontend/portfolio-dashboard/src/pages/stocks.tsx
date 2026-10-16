@@ -253,7 +253,7 @@ function PriceStatus({ run, pageRefreshing }: { run: QuoteRefreshRun | undefined
         <>
           {run.status === 'Succeeded' ? <CheckCircle2 className="size-3.5 text-gain" aria-hidden /> : <AlertTriangle className="size-3.5 text-warn" aria-hidden />}
           <span>
-            Prices last updated {age(run.completedAtUtc)} from {run.source}: {num(run.updated, 0)} refreshed, {num(run.unchanged, 0)} already current
+            Prices last updated {age(run.completedAtUtc)}: {num(run.updated, 0)} refreshed, {num(run.unchanged, 0)} already current
             {run.failed > 0 && `, ${num(run.failed, 0)} unavailable`}.
           </span>
           {run.message && <InfoTip label="Refresh details">{run.message}</InfoTip>}

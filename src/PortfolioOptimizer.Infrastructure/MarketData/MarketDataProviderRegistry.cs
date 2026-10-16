@@ -13,12 +13,12 @@ public sealed class MarketDataProviderRegistry(IEnumerable<IMarketDataProvider> 
     public IMarketDataProvider Get(string name)
     {
         if (!_providers.TryGetValue(name, out var provider))
-            throw new ValidationException("provider", $"Unknown market data provider '{name}'. Available: {string.Join(", ", _providers.Keys)}.");
+            throw new ValidationException("provider", "Unknown data source.");
         if (!provider.Descriptor.IsConfigured)
         {
             throw new ValidationException("provider", provider.Descriptor.RequiresApiKey
-                ? $"Provider '{provider.Descriptor.Name}' requires an API key. Set MarketData__{provider.Descriptor.Name}__ApiKey on the server."
-                : $"Provider '{provider.Descriptor.Name}' is disabled in configuration.");
+                ? "The selected data source requires an API key that is not configured on the server."
+                : "The selected data source is disabled in configuration.");
         }
         return provider;
     }

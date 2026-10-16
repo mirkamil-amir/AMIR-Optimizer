@@ -31,7 +31,7 @@ public sealed class EcbFxProvider(HttpClient http, IOptions<EcbFxOptions> option
 
     public string Name => FxSources.Ecb;
     public bool IsSimulated => false;
-    public string Description => "ECB euro foreign exchange reference rates (daily, ~16:00 CET; reference rates, not transaction rates)";
+    public string Description => "Euro foreign exchange reference rates (daily, ~16:00 CET; reference rates, not transaction rates)";
     public IReadOnlySet<string> SupportedCurrencies => Currencies;
 
     public async Task<IReadOnlyList<FxObservation>> GetRatesAsync(IReadOnlyCollection<string> currencies, DateOnly from, DateOnly to, CancellationToken ct)
@@ -97,7 +97,7 @@ public sealed class MockFxProvider(TimeProvider clock) : IFxRateProvider
 
     public string Name => FxSources.Mock;
     public bool IsSimulated => true;
-    public string Description => "Simulated exchange rates (mock provider) – NOT real rates";
+    public string Description => "Simulated exchange rates – NOT real rates";
     public IReadOnlySet<string> SupportedCurrencies => EcbFxProvider.Currencies;
 
     public Task<IReadOnlyList<FxObservation>> GetRatesAsync(IReadOnlyCollection<string> currencies, DateOnly from, DateOnly to, CancellationToken ct)

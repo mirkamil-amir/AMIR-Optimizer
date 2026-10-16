@@ -114,7 +114,7 @@ public sealed class OptimizationService(
             else if (!series.TryGetValue(symbol, out var s) || s.Points.Count == 0)
             {
                 excludedForData.Add(symbol);
-                diagnostics.Add($"{symbol}: no price data from {source}; excluded. Run a market-data sync.");
+                diagnostics.Add($"{symbol}: no stored price data; excluded. Fetch its price history first.");
             }
             else if (s.Points.Count < MinimumObservations + 1)
             {
@@ -124,7 +124,7 @@ public sealed class OptimizationService(
             else
             {
                 usable.Add(symbol);
-                if (!s.UsesAdjustedClose) diagnostics.Add($"{symbol}: adjusted closes unavailable from {source}; raw closes used (dividends ignored).");
+                if (!s.UsesAdjustedClose) diagnostics.Add($"{symbol}: adjusted closes unavailable; raw closes used (dividends ignored).");
             }
         }
         run.UsesSimulatedData = series.Values.Any(s => s.IsSimulated);

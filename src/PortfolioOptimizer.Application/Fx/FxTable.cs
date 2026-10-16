@@ -126,7 +126,7 @@ public sealed class FxTable
         if (currency == Pivot) return true;
         if (!_series.TryGetValue(currency, out var s) || s.Dates.Length == 0)
         {
-            reason = $"{Source} has no {currency} rates available for this period";
+            reason = $"no {currency} reference rates are available for this period";
             return false;
         }
         var i = Array.BinarySearch(s.Dates, date);

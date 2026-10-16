@@ -17,6 +17,8 @@ import { DataTable } from '@/components/data-table'
 import { ChartCard, TimeSeriesChart } from '@/components/charts'
 import { DataBadge, ErrorState, LoadingBlock, PageHeader } from '@/components/common'
 import { errorMessage } from '@/lib/api'
+import { useAuth } from '@/lib/auth'
+import { cn } from '@/lib/utils'
 import { useCreateAsset, useMarketStatus, usePrices, useSync, useUpdateAsset } from '@/lib/queries'
 import type { AssetCoverage } from '@/lib/types'
 import { date, dateTime, money, relativeTime } from '@/lib/format'
@@ -30,6 +32,8 @@ const historyOptions = [
 
 export function MarketDataPage() {
   const { data, isLoading, error, refetch } = useMarketStatus()
+  // Provider names, terms and job sources are shown to administrators only.
+  const { isAdministrator } = useAuth()
   const sync = useSync()
   const update = useUpdateAsset()
   const [years, setYears] = useState('5')
@@ -42,7 +46,7 @@ export function MarketDataPage() {
     start.setFullYear(start.getFullYear() - Number(years))
     try {
       const job = await sync.mutateAsync({ symbols, startDate: start.toISOString().slice(0, 10), forceFullRefresh: force })
-      toast.success('Download queued', { description: `${job.assetsTotal} asset(s) from ${job.source}` })
+      toast.success('Download queued', { description: isAdministrator ? `${job.assetsTotal} asset(s) from ${job.source}` : `${job.assetsTotal} asset(s)` })
     } catch (e) {
       toast.error('Could not start download', { description: errorMessage(e) })
     }
@@ -55,7 +59,7 @@ export function MarketDataPage() {
     <>
       <PageHeader
         title="Market data"
-        description={<>Active source <strong>{data.activeProvider}</strong> · prices older than {data.stalePriceDays} business days are flagged stale.</>}
+        description={<>{isAdministrator && <>Active source <strong>{data.activeProvider}</strong> · </>}Prices older than {data.stalePriceDays} business days are flagged stale.</>}
         actions={
           <>
             <Select value={years} onValueChange={(v) => setYears(String(v))} items={historyOptions}>
@@ -70,7 +74,7 @@ export function MarketDataPage() {
 
       {data.activeProviderIsSimulated && (
         <div className="mb-4 flex items-center gap-2 rounded-lg border border-series-2/50 bg-series-2/10 px-3 py-2 text-sm">
-          <DataBadge kind="simulated" /> The active provider generates synthetic prices. Switch to a live provider in Settings for real market data.
+          <DataBadge kind="simulated" /> Prices are synthetic, not real market data.{isAdministrator && ' Switch to a live provider in Administration › Settings.'}
         </div>
       )}
 
@@ -78,7 +82,7 @@ export function MarketDataPage() {
         <Card className="mb-4">
           <CardContent className="space-y-2 py-4">
             <div className="flex items-center justify-between text-sm">
-              <span className="flex items-center gap-2"><RefreshCw className="size-4 animate-spin" /> Downloading from {running.source}…</span>
+              <span className="flex items-center gap-2"><RefreshCw className="size-4 animate-spin" /> Downloading{isAdministrator ? ` from ${running.source}` : ''}…</span>
               <span className="tabular text-muted-foreground">{running.assetsCompleted + running.assetsFailed} / {running.assetsTotal}</span>
             </div>
             <Progress value={((running.assetsCompleted + running.assetsFailed) / Math.max(1, running.assetsTotal)) * 100} />
@@ -128,8 +132,8 @@ export function MarketDataPage() {
 
       {preview && <PricePreview symbol={preview} />}
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-2">
-        <Card>
+      <div className={cn('mt-6 grid gap-4', isAdministrator && 'lg:grid-cols-2')}>
+        {isAdministrator && <Card>
           <CardHeader><CardTitle className="text-sm">Providers</CardTitle><CardDescription className="text-xs">API keys are configured on the server only and never sent to the browser.</CardDescription></CardHeader>
           <CardContent className="space-y-3 text-sm">
             {data.providers.map((p) => (
@@ -147,7 +151,7 @@ export function MarketDataPage() {
               </div>
             ))}
           </CardContent>
-        </Card>
+        </Card>}
         <Card>
           <CardHeader><CardTitle className="text-sm">Recent download jobs</CardTitle></CardHeader>
           <CardContent className="space-y-2 text-sm">
@@ -155,7 +159,7 @@ export function MarketDataPage() {
             {data.recentJobs.map((j) => (
               <details key={j.id} className="rounded-md border px-3 py-2">
                 <summary className="flex cursor-pointer items-center justify-between gap-2">
-                  <span>{j.source} · {j.symbols.length} asset(s)</span>
+                  <span>{isAdministrator && `${j.source} · `}{j.symbols.length} asset(s)</span>
                   <span className="flex items-center gap-2 text-xs text-muted-foreground">{dateTime(j.requestedAtUtc)}<Badge variant={j.status === 'Failed' ? 'destructive' : j.status === 'Succeeded' ? 'secondary' : 'outline'}>{j.status}</Badge></span>
                 </summary>
                 <p className="mt-1 text-xs text-muted-foreground">{j.message}</p>
@@ -190,7 +194,7 @@ function PricePreview({ symbol }: { symbol: string }) {
     <ChartCard
       className="mt-4"
       title={`${symbol} price history`}
-      description={`${items[0].source}${items[0].isSimulated ? ' (simulated)' : ''}, USD, ${date(items[0].date)} – ${date(items[items.length - 1].date)} · ${items.length.toLocaleString()} observations`}
+      description={`${items[0].isSimulated ? 'Simulated, ' : ''}USD, ${date(items[0].date)} – ${date(items[items.length - 1].date)} · ${items.length.toLocaleString()} observations`}
       hint="Raw close is the traded price. Adjusted close is back-adjusted for splits and dividends and is used for return calculations."
       legend={hasAdj ? [{ name: 'Raw close', color: 'var(--series-1)' }, { name: 'Adjusted close', color: 'var(--series-2)', dashed: true }] : undefined}
       table={{ columns: ['Date', 'Close', 'Adj. close', 'Volume'], rows: items.slice(-260).reverse().map((p) => [p.date, money(p.close), p.adjustedClose !== null ? money(p.adjustedClose) : '—', p.volume?.toLocaleString() ?? '—']) }}

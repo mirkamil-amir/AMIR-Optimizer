@@ -391,7 +391,7 @@ public sealed class NewsService(
         if (!Options.ShowImages) notes.Add("Article images are not shown: display rights for third-party images have not been confirmed for this deployment.");
         if (!Options.Enabled) notes.Add("News retrieval is disabled by configuration (News:Enabled=false); only stored articles are shown.");
         if (!companyProviders.Any(p => p.Descriptor.IsConfigured) && !feedProviders.Any(p => p.Descriptor.IsConfigured))
-            notes.Add("No news provider is configured. Enable News:Yahoo:Enabled and/or News:OfficialFeeds:Enabled (see docs/financial-news.md).");
+            notes.Add("No news source is configured.");
         return notes;
     }
 

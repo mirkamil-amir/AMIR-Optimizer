@@ -202,7 +202,7 @@ public sealed class StrategyComparisonRunner(
             if (config.MlTestStart is { } testStart && start < testStart)
                 issues.Add($"The ML hyperparameters were selected on a validation period ending {config.MlValidationEnd:yyyy-MM-dd}; the evaluation starts {start:yyyy-MM-dd}, " +
                            $"before the experiment's out-of-sample test period ({testStart:yyyy-MM-dd}). The ML result is partly in-sample.");
-            if (data.UsesSimulatedData) notes.Add("Prices are SIMULATED (mock provider) – not real market data.");
+            if (data.UsesSimulatedData) notes.Add("Prices are SIMULATED – not real market data.");
 
             var mathSettings = BuildMathSettings(config, data.Panel);
             var mlConfig = MlExperimentRunner.ToConfiguration(config.MlConfiguration) with { TransactionCostBps = request.TransactionCostBps };

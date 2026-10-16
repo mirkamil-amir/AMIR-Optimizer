@@ -76,7 +76,7 @@ public sealed class RealityCheckService(
         var series = (await fx.GetSeriesInCurrencyAsync(symbols, run.PriceSource, start, end, currency, ct)).PriceSeries();
         var missing = symbols.Where(s => !series.TryGetValue(s, out var ps) || ps.Points.Count < 2).ToList();
         if (missing.Count > 0)
-            throw new ConflictException($"Stored prices for {string.Join(", ", missing)} in the run's window are no longer available from {run.PriceSource}.");
+            throw new ConflictException($"Stored prices for {string.Join(", ", missing)} in the run's window are no longer available.");
         var matrix = ReturnMatrix.Build(series.ToDictionary(kv => kv.Key, kv => kv.Value.Points, StringComparer.OrdinalIgnoreCase), symbols);
         if (matrix.Observations < OptimizationService.MinimumObservations)
             throw new ConflictException($"Only {matrix.Observations} aligned returns remain in the run's window (minimum {OptimizationService.MinimumObservations}).");
@@ -295,7 +295,7 @@ public sealed class RealityCheckService(
             Add("Estimate", "Costs", $"Switching to the most different scenario would cost about {sc:0.00%} of the portfolio at {costs.CostBps:G} bps ({costs.SwitchCostAtTripleBps:0.00%} at three times that rate).",
                 "2 × turnover × cost rate");
 
-        if (run.UsesSimulatedData) Add("Caution", "Data", "The run used SIMULATED prices from the mock provider; none of these numbers describe real markets.");
+        if (run.UsesSimulatedData) Add("Caution", "Data", "The run used SIMULATED prices; none of these numbers describe real markets.");
         if (dataChanged) Add("Caution", "Data", "The stored prices for the run's window have changed since the run (re-downloaded or revised data); figures here use the current data.");
         return f;
     }

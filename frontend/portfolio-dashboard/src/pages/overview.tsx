@@ -30,7 +30,7 @@ export function OverviewPage() {
     <>
       <PageHeader
         title={portfolio?.name ?? 'Overview'}
-        description={s?.valuationDate ? `Valued at ${s.priceSource} prices as of ${date(s.valuationDate)}` : 'Simulated portfolio overview'}
+        description={s?.valuationDate ? `Valued at stored prices as of ${date(s.valuationDate)}` : 'Simulated portfolio overview'}
         actions={
           <>
             {s?.usesSimulatedData && <DataBadge kind="simulated" />}
@@ -124,8 +124,6 @@ export function OverviewPage() {
         </Card>
       </div>
 
-      <CurrencyConverterCard base={ccy} className="mt-4" />
-
       <div className="mt-4 grid gap-4 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
@@ -179,10 +177,12 @@ export function OverviewPage() {
           <CardContent className="space-y-2 text-sm">
             {status.data && (
               <>
-                <div className="flex items-center justify-between">
-                  <span>Provider</span>
-                  <span className="flex items-center gap-2 font-medium">{status.data.activeProvider}{status.data.activeProviderIsSimulated && <DataBadge kind="simulated" />}</span>
-                </div>
+                {status.data.activeProviderIsSimulated && (
+                  <div className="flex items-center justify-between">
+                    <span>Prices</span>
+                    <DataBadge kind="simulated" />
+                  </div>
+                )}
                 {(['Fresh', 'Stale', 'Missing'] as const).map((f) => {
                   const n = status.data.coverage.filter((c) => c.isEnabled && c.freshness === f).length
                   return (
@@ -201,6 +201,8 @@ export function OverviewPage() {
           </CardContent>
         </Card>
       </div>
+
+      <CurrencyConverterCard base={ccy} className="mt-6" />
     </>
   )
 }

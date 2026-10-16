@@ -2,6 +2,12 @@
 
 Short records of decisions that are not obvious from the code. Newest first. Format: context → decision → consequences.
 
+## D-30 Data-provider names are shown to administrators only (2026-10-16)
+Users see what kind of price they look at (delayed quote, last close, adjusted/raw, as-of and retrieval time,
+SIMULATED) but not which vendor delivered it; administrators keep the full provenance. Backend texts are worded
+generically so no screen leaks a name; structured source fields stay in the API for reproducibility. Licence-bound
+attribution (news publishers, Wikipedia CC BY-SA) is unaffected.
+
 ## D-29 Brand, themes and skins are presentation only (2026-10-16)
 **Context:** a recognizable identity and user-selectable themes were requested. **Decision:** AMIR = Allocation · Modelling ·
 Investment · Research; an SVG mark driven by CSS variables (v2: geometric A over ascending gold bars, serif wordmark);

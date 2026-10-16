@@ -71,7 +71,9 @@ public sealed class FxTableTests
         var ex = Assert.Throws<FxRateUnavailableException>(() => t.Rate("JPY", "USD", new DateOnly(2026, 10, 19)));
         Assert.Contains("at most 4 are carried forward", ex.Message);
         // A currency with no data at all.
-        Assert.Contains("no SEK rates available", Assert.Throws<FxRateUnavailableException>(() => t.Rate("SEK", "EUR", Tue)).Message);
+        var missing = Assert.Throws<FxRateUnavailableException>(() => t.Rate("SEK", "EUR", Tue)).Message;
+        Assert.Contains("no SEK reference rates are available", missing);
+        Assert.DoesNotContain("ECB", missing);
     }
 
     [Fact]

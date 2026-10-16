@@ -126,7 +126,7 @@ public sealed class QuoteRefreshService(
                 // Quota-limited providers (Alpha Vantage free tier): only tracked instruments, within a share of today's budget.
                 var budget = (int)Math.Floor(remaining * options.Value.CycleQuotaShare);
                 var limited = ordered.Where(a => a.IsEnabled).Take(budget).ToList();
-                run.Message = $"{provider.Descriptor.DisplayName} has a daily request quota: refreshed up to {budget} tracked instruments " +
+                run.Message = $"The data source has a daily request quota: refreshed up to {budget} tracked instruments " +
                               $"({remaining} requests left today); other quotes stay cached.";
                 ordered = limited;
             }
@@ -215,7 +215,7 @@ public sealed class QuoteRefreshService(
             if (!assets.TryGetValue(symbol, out var asset)) { results.Add(new(symbol, QuoteRefreshOutcome.NotFound, "Not in the catalogue.")); continue; }
             if (!provider.Supports(symbol))
             {
-                results.Add(new(symbol, QuoteRefreshOutcome.Unsupported, $"{provider.Descriptor.DisplayName} does not cover {Markets.ForSymbol(symbol).CountryName}."));
+                results.Add(new(symbol, QuoteRefreshOutcome.Unsupported, $"The data source does not cover {Markets.ForSymbol(symbol).CountryName}."));
                 continue;
             }
             if (stored.TryGetValue(asset.Id, out var q) && now - q.RetrievedAtUtc < freshFor)

@@ -476,9 +476,9 @@ function RunResults({ run }: { run: OptimizationRun }) {
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="text-lg font-semibold">{objectiveLabels[run.objective]}</h2>
         <Badge variant={ok ? 'secondary' : 'destructive'}>{run.status}</Badge>
-        {run.usesSimulatedData ? <DataBadge kind="simulated" /> : <DataBadge kind="estimate" label={`${run.priceSource} · historical estimate`} />}
-        <Badge variant="outline" title={run.fxSource ? `Prices in other currencies converted to ${run.currency} with ${run.fxSource} rates of each date` : `All prices in ${run.currency}`}>
-          In {run.currency}{run.fxSource ? ` · FX ${run.fxSource}` : ''}
+        {run.usesSimulatedData ? <DataBadge kind="simulated" /> : <DataBadge kind="estimate" label="Historical estimate" />}
+        <Badge variant="outline" title={run.fxSource ? `Prices in other currencies converted to ${run.currency} with the reference rate of each date` : `All prices in ${run.currency}`}>
+          In {run.currency}{run.fxSource ? ' · FX converted' : ''}
         </Badge>
         <span className="text-xs text-muted-foreground">{dateTime(run.createdAtUtc)}</span>
         {ok && (
@@ -618,8 +618,8 @@ function RunResults({ run }: { run: OptimizationRun }) {
               <p className="leading-relaxed text-muted-foreground">{run.methodology}</p>
               <dl className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
                 <Def k="Run ID" v={<code className="text-xs">{run.id}</code>} />
-                <Def k="Data source" v={`${run.priceSource}${run.usesSimulatedData ? ' (simulated)' : ''}`} />
-                <Def k="Analysis currency" v={run.fxSource ? `${run.currency} – other currencies converted with ${run.fxSource} rates of each date` : `${run.currency} (no conversion needed)`} />
+                <Def k="Prices" v={run.usesSimulatedData ? 'Simulated' : 'Stored daily closes'} />
+                <Def k="Analysis currency" v={run.fxSource ? `${run.currency} – other currencies converted with the reference rate of each date` : `${run.currency} (no conversion needed)`} />
                 <Def k="Estimation window" v={`${date(run.periodStart)} – ${date(run.periodEnd)} (${run.observations} daily returns)`} />
                 <Def k="Data snapshot hash" v={<code className="text-xs">{run.dataSnapshotHash || '—'}</code>} />
                 <Def k="Universe" v={run.symbols.join(', ') || '—'} />

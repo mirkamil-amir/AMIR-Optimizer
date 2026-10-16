@@ -242,7 +242,7 @@ function PortfoliosCard() {
         <CardTitle className="text-sm">Portfolios</CardTitle>
         <CardDescription className="text-xs">
           Each portfolio starts with simulated cash in its currency. It can hold stocks from any market: their prices stay in their own
-          currency and are converted into the portfolio currency with dated exchange rates ({fx.data?.source ?? '…'}). The portfolio currency cannot be changed later.
+          currency and are converted into the portfolio currency with dated reference exchange rates. The portfolio currency cannot be changed later.
           Optimization settings are edited in the Optimize workspace.
         </CardDescription>
       </CardHeader>

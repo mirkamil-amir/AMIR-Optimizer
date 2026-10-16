@@ -124,10 +124,10 @@ export function PriceHistoryCard({ symbol, range, onRangeChange, height = 240, c
     <ChartCard
       className={className}
       title="Price history"
-      hint="Daily closes stored from the configured provider. Adjusted closes include splits and dividends (total return); raw closes are the traded prices. Missing days are not filled in."
+      hint="Stored daily closes. Adjusted closes include splits and dividends (total return); raw closes are the traded prices. Missing days are not filled in."
       description={h ? (
         <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span>{h.basis} · {h.currency} · {h.exchange} · source {h.source}</span>
+          <span>{h.basis} · {h.currency} · {h.exchange}</span>
           {h.isSimulated && <DataBadge kind="simulated" />}
           {h.lastRetrievedAtUtc && <span>· retrieved {dateTime(h.lastRetrievedAtUtc)}</span>}
         </span>

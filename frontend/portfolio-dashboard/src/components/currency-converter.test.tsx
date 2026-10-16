@@ -14,7 +14,7 @@ beforeEach(() => {
     calls.push(String(url))
     if (url.includes('/fx/currencies')) return Promise.resolve(ok({ source: 'ECB', description: '', isSimulated: false, currencies: ['EUR', 'USD', 'GBP', 'JPY', 'CHF'], convention: '', maxCarryForwardDays: 4 }))
     if (url.includes('/fx/board')) return Promise.resolve(ok({
-      base: 'EUR', source: 'ECB', isSimulated: false, note: 'ECB reference rates, units per one EUR; published once per business day (not live).',
+      base: 'EUR', source: 'ECB', isSimulated: false, note: 'Reference rates, units per one EUR; published once per business day (not live).',
       rows: [
         { quote: 'USD', rate: 1.1, observationDate: '2026-10-15', change1D: 0.002, change1M: -0.01, problem: null },
         { quote: 'GBP', rate: 0.85, observationDate: '2026-10-15', change1D: -0.001, change1M: 0.004, problem: null },
@@ -42,6 +42,8 @@ describe('CurrencyConverterCard', () => {
     await waitFor(() => expect(screen.getByLabelText('Converted amount')).toHaveTextContent('€909.09'))
     expect(screen.getByText(/1 USD = 0\.909091 EUR · reference rate of/)).toBeInTheDocument()
     expect(screen.getByText(/not live/)).toBeInTheDocument()
+    // The data-source name (here ECB) is not shown to users.
+    expect(screen.queryByText(/ECB/)).toBeNull()
   })
 
   it('swaps the direction and recomputes', async () => {

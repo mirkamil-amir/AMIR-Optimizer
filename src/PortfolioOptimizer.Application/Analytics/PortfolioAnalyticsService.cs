@@ -256,7 +256,7 @@ public sealed class PortfolioAnalyticsService(
         calendar = valued;
         if (calendar.Count == 0) return Empty("No day in the range could be valued: exchange rates are missing.");
         if (assetCurrency.Values.Any(c => c != ccy))
-            warnings.Insert(0, $"Values in {ccy}: positions in other currencies are converted with the {rates?.Source} rate of each day, so returns include currency movements.");
+            warnings.Insert(0, $"Values in {ccy}: positions in other currencies are converted with the reference rate of each day, so returns include currency movements.");
 
         decimal Apply(DateOnly d)
         {

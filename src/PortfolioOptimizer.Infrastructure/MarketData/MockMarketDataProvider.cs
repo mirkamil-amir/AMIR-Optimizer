@@ -18,7 +18,7 @@ public sealed class MockMarketDataProvider(IOptions<MockProviderOptions> options
 
     public ProviderDescriptor Descriptor { get; } = new(
         Name,
-        "Simulated data (mock provider)",
+        "Simulated data",
         IsSimulated: true,
         RequiresApiKey: false,
         IsConfigured: options.Value.Enabled,

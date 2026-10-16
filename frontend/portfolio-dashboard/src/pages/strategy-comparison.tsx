@@ -216,7 +216,7 @@ function ComparisonDetail({ id }: { id: string }) {
             <h2 className="text-lg font-semibold">{s.name}</h2>
             <p className="text-xs text-muted-foreground">
               {date(s.evaluationStart)} – {date(s.evaluationEnd)} · {money(c.configuration.request.initialCapital)} · {c.configuration.request.transactionCostBps} bps ·
-              {' '}{c.configuration.request.rebalance} · {c.configuration.request.universe} universe · benchmark {c.benchmarkSymbol} · {c.priceSource}
+              {' '}{c.configuration.request.rebalance} · {c.configuration.request.universe} universe · benchmark {c.benchmarkSymbol}
             </p>
           </div>
           <div className="flex items-center gap-1.5">
