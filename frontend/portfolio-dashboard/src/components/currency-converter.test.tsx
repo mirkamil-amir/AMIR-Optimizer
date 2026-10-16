@@ -61,4 +61,18 @@ describe('CurrencyConverterCard', () => {
     await user.click(within(list).getByRole('button', { name: /JPY/ }))
     await waitFor(() => expect(calls.some((c) => c.includes('/fx/history?from=EUR&to=JPY'))).toBe(true))
   })
+
+  it('lets the user choose the base of the rates; board and chart follow it', async () => {
+    const user = userEvent.setup()
+    renderCard()
+    await screen.findByRole('list', { name: 'Exchange rates against EUR' })
+    await user.click(screen.getByRole('combobox', { name: 'Base currency of the rates' }))
+    await user.click(await screen.findByRole('option', { name: 'GBP' }))
+    await waitFor(() => expect(calls.some((c) => c.includes('/fx/board?base=GBP'))).toBe(true))
+    await waitFor(() => expect(calls.some((c) => c.includes('/fx/history?from=GBP&to='))).toBe(true))
+    expect(screen.getByText(/per GBP/)).toBeInTheDocument()
+    // The calculator now converts from the chosen base into the portfolio currency.
+    expect(screen.getByRole('combobox', { name: 'Convert from' })).toHaveTextContent('GBP')
+    expect(screen.getByRole('combobox', { name: 'Convert to' })).toHaveTextContent('EUR')
+  })
 })

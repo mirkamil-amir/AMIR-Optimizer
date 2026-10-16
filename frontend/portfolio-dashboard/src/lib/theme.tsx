@@ -1,18 +1,27 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 
 export type ThemeMode = 'light' | 'dark' | 'system'
-export type Skin = 'graphite' | 'ocean' | 'forest' | 'amber' | 'violet'
+export type Skin = 'graphite' | 'navy' | 'midnight' | 'slate' | 'ocean' | 'teal' | 'emerald' | 'burgundy' | 'amber' | 'violet'
 
-export const skins: { value: Skin; label: string; swatch: string }[] = [
-  { value: 'graphite', label: 'Graphite', swatch: '#262626' },
-  { value: 'ocean', label: 'Ocean', swatch: '#1f5fbf' },
-  { value: 'forest', label: 'Forest', swatch: '#1d7a4a' },
-  { value: 'amber', label: 'Amber', swatch: '#b35c00' },
-  { value: 'violet', label: 'Violet', swatch: '#6a3fd1' },
+/** Colour skins; `sidebar` tells whether the skin uses a dark sidebar in light mode. */
+export const skins: { value: Skin; label: string; description: string; swatch: string; accent: string; sidebar: 'light' | 'dark' }[] = [
+  { value: 'navy', label: 'Navy & Gold', description: 'Private-bank classic', swatch: '#1c2f5e', accent: '#d9b25a', sidebar: 'dark' },
+  { value: 'midnight', label: 'Midnight', description: 'Institutional terminal', swatch: '#23262d', accent: '#e0b94e', sidebar: 'dark' },
+  { value: 'graphite', label: 'Graphite', description: 'Neutral and minimal', swatch: '#2b2d33', accent: '#d9b25a', sidebar: 'light' },
+  { value: 'slate', label: 'Slate', description: 'Calm blue-grey', swatch: '#4a5d7a', accent: '#a9c6e8', sidebar: 'light' },
+  { value: 'ocean', label: 'Ocean', description: 'Corporate blue', swatch: '#1f5fbf', accent: '#e8c45c', sidebar: 'light' },
+  { value: 'teal', label: 'Teal', description: 'Modern and clear', swatch: '#1d6f73', accent: '#e9cf6a', sidebar: 'light' },
+  { value: 'emerald', label: 'Emerald', description: 'Wealth green', swatch: '#1f6b4e', accent: '#d9b25a', sidebar: 'light' },
+  { value: 'burgundy', label: 'Burgundy', description: 'Heritage private office', swatch: '#6e1f2b', accent: '#d6ad5b', sidebar: 'light' },
+  { value: 'amber', label: 'Bronze', description: 'Warm and confident', swatch: '#a55a12', accent: '#f1d88a', sidebar: 'light' },
+  { value: 'violet', label: 'Violet', description: 'Contemporary', swatch: '#5b3cc4', accent: '#e8c45c', sidebar: 'light' },
 ]
 
+/** Skins renamed in earlier versions keep working. */
+const aliases: Record<string, Skin> = { forest: 'emerald' }
+
 export const STORAGE_KEY = 'amir-theme'
-const defaults = { mode: 'system' as ThemeMode, skin: 'graphite' as Skin }
+const defaults = { mode: 'system' as ThemeMode, skin: 'navy' as Skin }
 
 /** Reads the saved choice (per browser; a convenience only – falls back to the defaults when storage is unavailable). */
 export function readTheme(): { mode: ThemeMode; skin: Skin } {
@@ -22,7 +31,7 @@ export function readTheme(): { mode: ThemeMode; skin: Skin } {
     const v = JSON.parse(raw) as Partial<{ mode: ThemeMode; skin: Skin }>
     return {
       mode: v.mode === 'light' || v.mode === 'dark' || v.mode === 'system' ? v.mode : defaults.mode,
-      skin: skins.some((s) => s.value === v.skin) ? v.skin! : defaults.skin,
+      skin: skins.some((s) => s.value === v.skin) ? v.skin! : (v.skin && aliases[v.skin]) || defaults.skin,
     }
   } catch {
     return defaults

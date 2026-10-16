@@ -1,7 +1,8 @@
 # AMIR Optimizer – Portfolio Research Platform
 
-**AMIR = Allocation · Modelling · Investment · Research.** The logo is an “A” whose crossbar is a rising return path
-ending in a highlighted point – the optimum on an efficient frontier (`frontend/…/src/components/brand.tsx`, `public/favicon.svg`).
+**AMIR = Allocation · Modelling · Investment · Research.** The logo is a geometric “A” standing over three ascending gold bars
+(allocation and growth) on a graded tile with a fine gold frame; the name is set in a classic serif
+(`frontend/…/src/components/brand.tsx`, `public/favicon.svg`).
 
 An educational portfolio-research platform. An **AI research assistant** turns an investment objective into an
 editable research brief, researches a universe with evidence, runs the real optimizer and risk review, explains the
@@ -99,10 +100,11 @@ Offline demo: start with `MarketData__DefaultProvider=Mock` on a new database, o
    large?") are answered from the computed values; changes ("cap at 15 %", "exclude JPM") are shown as an exact proposal
    and only recalculated after you confirm. Compare any two hypotheses; "Save as optimization run" (with confirmation)
    creates a normal run you can reopen, trade on paper or check further. Every tool call is in the activity log.
-0c. **Currency converter and themes.** The overview and stock-selection pages have a currency converter: reference rates of
-   the major currencies against the portfolio currency with 1-day changes, a 1M–5Y chart of the selected pair and a calculator
-   (ECB daily reference rates, dated, never “live”; simulated with simulated prices). Appearance (light / dark / system and the
-   skins Graphite, Ocean, Forest, Amber, Violet) is chosen in Settings → Appearance or with the header toggle and kept per browser.
+0c. **Currency converter and themes.** The overview has a currency converter: reference rates of the major currencies against
+   a selectable base (“1 USD =”, any published currency, default the portfolio currency) with 1-day changes, a 1M–5Y chart of
+   the selected pair and a calculator (ECB daily reference rates, dated, never “live”; simulated with simulated prices).
+   Appearance: light / dark / system and ten skins – Navy & Gold (default), Midnight, Graphite, Slate, Ocean, Teal, Emerald,
+   Burgundy, Bronze, Violet – in Settings → Appearance or with the header toggle; kept per browser.
 0b. **Multi-currency portfolios.** Create a portfolio in any supported currency (EUR, USD, GBP, JPY, CHF, …) and combine
    stocks from all markets. Prices stay in each stock's currency; analyses, valuations and simulated trades use the portfolio
    currency with the exchange rate of each date (ECB reference rates; simulated rates with simulated prices). Holdings

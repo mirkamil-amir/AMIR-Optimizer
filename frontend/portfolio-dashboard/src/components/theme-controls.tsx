@@ -41,13 +41,18 @@ export function AppearanceCard() {
             </Button>
           ))}
         </div>
-        <div role="radiogroup" aria-label="Colour skin" className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+        <div role="radiogroup" aria-label="Colour skin" className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
           {skins.map((s) => (
-            <button key={s.value} type="button" role="radio" aria-checked={skin === s.value} onClick={() => setSkin(s.value)}
-              className={cn('flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm hover:bg-muted/60', skin === s.value && 'border-primary ring-2 ring-ring/40')}>
-              <span className="size-4 shrink-0 rounded-full border" style={{ background: s.swatch }} aria-hidden />
-              <span className="flex-1">{s.label}</span>
-              {skin === s.value && <Check className="size-3.5" aria-hidden />}
+            <button key={s.value} type="button" role="radio" aria-checked={skin === s.value} aria-label={s.label} onClick={() => setSkin(s.value)}
+              className={cn('flex items-center gap-2.5 rounded-lg border px-3 py-2 text-left hover:bg-muted/60', skin === s.value && 'border-primary ring-2 ring-ring/40')}>
+              <span className="relative size-7 shrink-0 overflow-hidden rounded-md border" style={{ background: s.swatch }} aria-hidden>
+                <span className="absolute right-0 bottom-0 left-0 h-1.5" style={{ background: s.accent }} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-medium">{s.label}</span>
+                <span className="block truncate text-xs text-muted-foreground">{s.description}</span>
+              </span>
+              {skin === s.value && <Check className="size-3.5 shrink-0" aria-hidden />}
             </button>
           ))}
         </div>

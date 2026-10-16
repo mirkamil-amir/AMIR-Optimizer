@@ -187,27 +187,142 @@
 .tabular { font-variant-numeric: tabular-nums; }
 
 /* ------------------------------------------------------------------ brand + skins
-   Mode: class "dark" on <html>. Skin: data-skin on <html> (lib/theme.tsx). Skins only change the brand and primary
-   (buttons, focus ring, active navigation); semantic colours (gain/loss/warn) and chart series never change meaning. */
+   Mode: class "dark" on <html>. Skin: data-skin on <html> (lib/theme.tsx). Skins change the brand, primary (buttons,
+   focus ring, active navigation) and the sidebar surface; semantic colours (gain/loss/warn) and chart series never change
+   meaning. The sidebar re-maps the general tokens through .sidebar-surface so everything inside it adapts. */
 :root {
-  --brand: oklch(0.205 0 0);
+  --brand: oklch(0.24 0.01 260);
   --brand-foreground: oklch(0.985 0 0);
-  --brand-accent: oklch(0.82 0.16 80);
+  --brand-accent: oklch(0.8 0.12 85);
 }
 .dark {
-  --brand: oklch(0.92 0 0);
-  --brand-foreground: oklch(0.205 0 0);
-  --brand-accent: oklch(0.72 0.17 70);
+  --brand: oklch(0.93 0 0);
+  --brand-foreground: oklch(0.2 0 0);
+  --brand-accent: oklch(0.78 0.12 85);
 }
 
-[data-skin="ocean"] { --primary: oklch(0.48 0.16 256); --primary-foreground: oklch(0.985 0 0); --ring: oklch(0.62 0.14 256); --sidebar-primary: oklch(0.48 0.16 256); --brand: oklch(0.48 0.16 256); --brand-foreground: oklch(0.985 0 0); --brand-accent: oklch(0.85 0.13 85); --accent: oklch(0.96 0.02 256); }
-.dark[data-skin="ocean"] { --primary: oklch(0.68 0.15 256); --primary-foreground: oklch(0.16 0.03 256); --ring: oklch(0.6 0.13 256); --sidebar-primary: oklch(0.68 0.15 256); --brand: oklch(0.6 0.16 256); --brand-foreground: oklch(0.985 0 0); --accent: oklch(0.28 0.04 256); }
+.sidebar-surface {
+  --foreground: var(--sidebar-foreground);
+  --muted: var(--sidebar-accent);
+  --muted-foreground: color-mix(in oklch, var(--sidebar-foreground) 64%, transparent);
+  --border: var(--sidebar-border);
+  --background: var(--sidebar);
+}
 
-[data-skin="forest"] { --primary: oklch(0.47 0.12 155); --primary-foreground: oklch(0.985 0 0); --ring: oklch(0.6 0.11 155); --sidebar-primary: oklch(0.47 0.12 155); --brand: oklch(0.45 0.11 155); --brand-foreground: oklch(0.985 0 0); --brand-accent: oklch(0.86 0.15 95); --accent: oklch(0.96 0.02 155); }
-.dark[data-skin="forest"] { --primary: oklch(0.7 0.13 155); --primary-foreground: oklch(0.17 0.03 155); --ring: oklch(0.6 0.11 155); --sidebar-primary: oklch(0.7 0.13 155); --brand: oklch(0.58 0.12 155); --brand-foreground: oklch(0.985 0 0); --accent: oklch(0.28 0.04 155); }
+/* Navy & gold – private-bank look: deep navy sidebar, gold accents. */
+[data-skin="navy"] {
+  --primary: oklch(0.33 0.09 262); --primary-foreground: oklch(0.985 0 0); --ring: oklch(0.55 0.1 262); --accent: oklch(0.965 0.012 262);
+  --brand: oklch(0.3 0.08 262); --brand-foreground: oklch(0.985 0 0); --brand-accent: oklch(0.8 0.12 85);
+  --sidebar: oklch(0.25 0.06 262); --sidebar-foreground: oklch(0.96 0.01 262); --sidebar-accent: oklch(0.33 0.07 262);
+  --sidebar-accent-foreground: oklch(0.99 0 0); --sidebar-border: oklch(0.33 0.05 262); --sidebar-primary: oklch(0.8 0.12 85);
+}
+.dark[data-skin="navy"] {
+  --primary: oklch(0.8 0.11 85); --primary-foreground: oklch(0.22 0.05 262); --ring: oklch(0.7 0.1 85); --accent: oklch(0.28 0.04 262);
+  --background: oklch(0.17 0.025 262); --card: oklch(0.21 0.03 262); --popover: oklch(0.21 0.03 262);
+  --brand: oklch(0.36 0.09 262); --brand-foreground: oklch(0.985 0 0);
+  --sidebar: oklch(0.14 0.03 262); --sidebar-foreground: oklch(0.94 0.01 262); --sidebar-accent: oklch(0.26 0.05 262);
+  --sidebar-border: oklch(0.27 0.04 262); --sidebar-primary: oklch(0.8 0.12 85);
+}
 
-[data-skin="amber"] { --primary: oklch(0.55 0.15 55); --primary-foreground: oklch(0.985 0 0); --ring: oklch(0.68 0.14 60); --sidebar-primary: oklch(0.55 0.15 55); --brand: oklch(0.55 0.15 55); --brand-foreground: oklch(0.985 0 0); --brand-accent: oklch(0.93 0.09 95); --accent: oklch(0.97 0.02 70); }
-.dark[data-skin="amber"] { --primary: oklch(0.76 0.14 65); --primary-foreground: oklch(0.2 0.04 55); --ring: oklch(0.66 0.13 60); --sidebar-primary: oklch(0.76 0.14 65); --brand: oklch(0.66 0.15 58); --brand-foreground: oklch(0.15 0.02 55); --accent: oklch(0.3 0.04 60); }
+/* Midnight – charcoal sidebar with gold, neutral content (institutional terminal look). */
+[data-skin="midnight"] {
+  --primary: oklch(0.25 0.01 260); --primary-foreground: oklch(0.985 0 0); --ring: oklch(0.55 0.02 260);
+  --brand: oklch(0.2 0.01 260); --brand-foreground: oklch(0.985 0 0); --brand-accent: oklch(0.82 0.13 85);
+  --sidebar: oklch(0.19 0.01 260); --sidebar-foreground: oklch(0.95 0 0); --sidebar-accent: oklch(0.27 0.01 260);
+  --sidebar-accent-foreground: oklch(0.99 0 0); --sidebar-border: oklch(0.29 0.01 260); --sidebar-primary: oklch(0.82 0.13 85);
+}
+.dark[data-skin="midnight"] {
+  --primary: oklch(0.82 0.12 85); --primary-foreground: oklch(0.2 0.02 85); --ring: oklch(0.7 0.11 85);
+  --background: oklch(0.13 0.005 260); --card: oklch(0.18 0.006 260); --popover: oklch(0.18 0.006 260);
+  --brand: oklch(0.26 0.01 260); --brand-foreground: oklch(0.985 0 0);
+  --sidebar: oklch(0.1 0.005 260); --sidebar-foreground: oklch(0.94 0 0); --sidebar-accent: oklch(0.22 0.01 260);
+  --sidebar-border: oklch(0.24 0.01 260); --sidebar-primary: oklch(0.82 0.13 85);
+}
 
-[data-skin="violet"] { --primary: oklch(0.5 0.2 290); --primary-foreground: oklch(0.985 0 0); --ring: oklch(0.64 0.17 290); --sidebar-primary: oklch(0.5 0.2 290); --brand: oklch(0.5 0.2 290); --brand-foreground: oklch(0.985 0 0); --brand-accent: oklch(0.86 0.14 85); --accent: oklch(0.96 0.025 290); }
-.dark[data-skin="violet"] { --primary: oklch(0.72 0.15 290); --primary-foreground: oklch(0.18 0.05 290); --ring: oklch(0.62 0.15 290); --sidebar-primary: oklch(0.72 0.15 290); --brand: oklch(0.6 0.18 290); --brand-foreground: oklch(0.985 0 0); --accent: oklch(0.3 0.05 290); }
+/* Slate – calm institutional blue-grey. */
+[data-skin="slate"] {
+  --primary: oklch(0.42 0.05 250); --primary-foreground: oklch(0.985 0 0); --ring: oklch(0.6 0.05 250); --accent: oklch(0.965 0.008 250);
+  --brand: oklch(0.4 0.05 250); --brand-foreground: oklch(0.985 0 0); --brand-accent: oklch(0.85 0.06 220);
+  --sidebar: oklch(0.975 0.006 250); --sidebar-accent: oklch(0.93 0.012 250); --sidebar-primary: oklch(0.42 0.05 250); --sidebar-border: oklch(0.9 0.01 250);
+}
+.dark[data-skin="slate"] {
+  --primary: oklch(0.75 0.05 250); --primary-foreground: oklch(0.2 0.03 250); --ring: oklch(0.62 0.05 250); --accent: oklch(0.29 0.02 250);
+  --background: oklch(0.17 0.012 250); --card: oklch(0.21 0.015 250); --popover: oklch(0.21 0.015 250);
+  --brand: oklch(0.5 0.06 250); --brand-foreground: oklch(0.985 0 0);
+  --sidebar: oklch(0.15 0.012 250); --sidebar-accent: oklch(0.26 0.02 250); --sidebar-primary: oklch(0.75 0.05 250);
+}
+
+/* Ocean – bright corporate blue. */
+[data-skin="ocean"] {
+  --primary: oklch(0.48 0.16 256); --primary-foreground: oklch(0.985 0 0); --ring: oklch(0.62 0.14 256); --accent: oklch(0.96 0.02 256);
+  --brand: oklch(0.48 0.16 256); --brand-foreground: oklch(0.985 0 0); --brand-accent: oklch(0.85 0.13 85);
+  --sidebar: oklch(0.975 0.01 256); --sidebar-accent: oklch(0.93 0.03 256); --sidebar-primary: oklch(0.48 0.16 256); --sidebar-border: oklch(0.9 0.02 256);
+}
+.dark[data-skin="ocean"] {
+  --primary: oklch(0.68 0.15 256); --primary-foreground: oklch(0.16 0.03 256); --ring: oklch(0.6 0.13 256); --accent: oklch(0.28 0.04 256);
+  --brand: oklch(0.6 0.16 256); --brand-foreground: oklch(0.985 0 0);
+  --sidebar: oklch(0.17 0.02 256); --sidebar-accent: oklch(0.27 0.04 256); --sidebar-primary: oklch(0.68 0.15 256);
+}
+
+/* Teal – modern, clear. */
+[data-skin="teal"] {
+  --primary: oklch(0.47 0.09 195); --primary-foreground: oklch(0.985 0 0); --ring: oklch(0.62 0.08 195); --accent: oklch(0.965 0.015 195);
+  --brand: oklch(0.45 0.09 195); --brand-foreground: oklch(0.985 0 0); --brand-accent: oklch(0.88 0.11 90);
+  --sidebar: oklch(0.975 0.008 195); --sidebar-accent: oklch(0.93 0.02 195); --sidebar-primary: oklch(0.47 0.09 195); --sidebar-border: oklch(0.9 0.015 195);
+}
+.dark[data-skin="teal"] {
+  --primary: oklch(0.74 0.1 195); --primary-foreground: oklch(0.18 0.03 195); --ring: oklch(0.62 0.08 195); --accent: oklch(0.28 0.03 195);
+  --brand: oklch(0.55 0.09 195); --brand-foreground: oklch(0.985 0 0);
+  --sidebar: oklch(0.16 0.015 195); --sidebar-accent: oklch(0.26 0.03 195); --sidebar-primary: oklch(0.74 0.1 195);
+}
+
+/* Emerald – wealth green. */
+[data-skin="emerald"] {
+  --primary: oklch(0.45 0.11 160); --primary-foreground: oklch(0.985 0 0); --ring: oklch(0.6 0.1 160); --accent: oklch(0.965 0.015 160);
+  --brand: oklch(0.38 0.09 160); --brand-foreground: oklch(0.985 0 0); --brand-accent: oklch(0.84 0.12 85);
+  --sidebar: oklch(0.975 0.008 160); --sidebar-accent: oklch(0.93 0.02 160); --sidebar-primary: oklch(0.45 0.11 160); --sidebar-border: oklch(0.9 0.015 160);
+}
+.dark[data-skin="emerald"] {
+  --primary: oklch(0.72 0.12 160); --primary-foreground: oklch(0.17 0.03 160); --ring: oklch(0.6 0.1 160); --accent: oklch(0.28 0.03 160);
+  --brand: oklch(0.5 0.1 160); --brand-foreground: oklch(0.985 0 0);
+  --sidebar: oklch(0.16 0.015 160); --sidebar-accent: oklch(0.26 0.03 160); --sidebar-primary: oklch(0.72 0.12 160);
+}
+
+/* Burgundy – heritage, private-office look. */
+[data-skin="burgundy"] {
+  --primary: oklch(0.4 0.13 15); --primary-foreground: oklch(0.985 0 0); --ring: oklch(0.58 0.12 15); --accent: oklch(0.965 0.012 15);
+  --brand: oklch(0.36 0.12 15); --brand-foreground: oklch(0.985 0 0); --brand-accent: oklch(0.82 0.11 80);
+  --sidebar: oklch(0.975 0.007 15); --sidebar-accent: oklch(0.93 0.02 15); --sidebar-primary: oklch(0.4 0.13 15); --sidebar-border: oklch(0.9 0.012 15);
+}
+.dark[data-skin="burgundy"] {
+  --primary: oklch(0.72 0.11 15); --primary-foreground: oklch(0.18 0.04 15); --ring: oklch(0.6 0.1 15); --accent: oklch(0.29 0.04 15);
+  --brand: oklch(0.48 0.13 15); --brand-foreground: oklch(0.985 0 0);
+  --sidebar: oklch(0.16 0.02 15); --sidebar-accent: oklch(0.27 0.04 15); --sidebar-primary: oklch(0.72 0.11 15);
+}
+
+/* Amber – warm bronze. */
+[data-skin="amber"] {
+  --primary: oklch(0.52 0.13 55); --primary-foreground: oklch(0.985 0 0); --ring: oklch(0.66 0.13 60); --accent: oklch(0.97 0.02 70);
+  --brand: oklch(0.5 0.13 55); --brand-foreground: oklch(0.985 0 0); --brand-accent: oklch(0.93 0.09 95);
+  --sidebar: oklch(0.978 0.01 70); --sidebar-accent: oklch(0.935 0.03 70); --sidebar-primary: oklch(0.52 0.13 55); --sidebar-border: oklch(0.9 0.02 70);
+}
+.dark[data-skin="amber"] {
+  --primary: oklch(0.76 0.13 65); --primary-foreground: oklch(0.2 0.04 55); --ring: oklch(0.66 0.13 60); --accent: oklch(0.3 0.04 60);
+  --brand: oklch(0.6 0.14 58); --brand-foreground: oklch(0.15 0.02 55);
+  --sidebar: oklch(0.17 0.015 60); --sidebar-accent: oklch(0.28 0.03 60); --sidebar-primary: oklch(0.76 0.13 65);
+}
+
+/* Violet – contemporary. */
+[data-skin="violet"] {
+  --primary: oklch(0.47 0.18 290); --primary-foreground: oklch(0.985 0 0); --ring: oklch(0.62 0.15 290); --accent: oklch(0.965 0.02 290);
+  --brand: oklch(0.45 0.18 290); --brand-foreground: oklch(0.985 0 0); --brand-accent: oklch(0.86 0.12 85);
+  --sidebar: oklch(0.975 0.01 290); --sidebar-accent: oklch(0.93 0.03 290); --sidebar-primary: oklch(0.47 0.18 290); --sidebar-border: oklch(0.9 0.02 290);
+}
+.dark[data-skin="violet"] {
+  --primary: oklch(0.72 0.14 290); --primary-foreground: oklch(0.18 0.05 290); --ring: oklch(0.62 0.15 290); --accent: oklch(0.3 0.05 290);
+  --brand: oklch(0.56 0.17 290); --brand-foreground: oklch(0.985 0 0);
+  --sidebar: oklch(0.17 0.02 290); --sidebar-accent: oklch(0.28 0.05 290); --sidebar-primary: oklch(0.72 0.14 290);
+}
+
+/* Wordmark: a classic serif for the name (system fonts; no download). */
+.font-brand { font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif; }

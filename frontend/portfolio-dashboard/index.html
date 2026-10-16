@@ -9,11 +9,12 @@
     <script>
       // Applies the saved theme before the first paint (no flash); lib/theme.tsx keeps it in sync afterwards.
       (function () {
-        var mode = 'system', skin = 'graphite'
+        var mode = 'system', skin = 'navy'
         try {
           var v = JSON.parse(localStorage.getItem('amir-theme') || '{}')
           if (v.mode === 'light' || v.mode === 'dark' || v.mode === 'system') mode = v.mode
-          if (['graphite', 'ocean', 'forest', 'amber', 'violet'].indexOf(v.skin) >= 0) skin = v.skin
+          if (v.skin === 'forest') v.skin = 'emerald'
+          if (['graphite', 'navy', 'midnight', 'slate', 'ocean', 'teal', 'emerald', 'burgundy', 'amber', 'violet'].indexOf(v.skin) >= 0) skin = v.skin
         } catch (e) { /* storage unavailable: defaults */ }
         var dark = mode === 'dark' || (mode === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)
         var root = document.documentElement

@@ -4,8 +4,11 @@ import { ADMIN_STATE } from './helpers'
 // Currency converter on the overview and stock-selection pages, the AMIR brand, and switchable themes.
 test.use({ storageState: ADMIN_STATE })
 
-test('currency converter shows dated reference rates, a chart and a calculator', async ({ page }) => {
-  for (const path of ['/', '/stocks']) {
+test('currency converter (overview only) shows dated reference rates, a chart and a calculator', async ({ page }) => {
+  await page.goto('/stocks')
+  await expect(page.getByRole('heading', { name: 'Stock selection' })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Currency converter' })).toHaveCount(0)
+  for (const path of ['/']) {
     await page.goto(path)
     const card = page.getByRole('region', { name: 'Currency converter' })
     await expect(card).toBeVisible()
@@ -20,23 +23,28 @@ test('currency converter shows dated reference rates, a chart and a calculator',
   await expect(card.getByLabel('Converted amount')).not.toHaveText(before)
   await card.getByRole('radio', { name: '3M' }).click()
   await expect(card.getByText(/3M change:/)).toBeVisible()
+  // The base of the board ("1 USD =") is selectable; the list and the chart follow it.
+  await card.getByRole('combobox', { name: 'Base currency of the rates' }).click()
+  await page.getByRole('option', { name: 'JPY', exact: true }).click()
+  await expect(card.getByRole('list', { name: 'Exchange rates against JPY' })).toBeVisible()
+  await expect(card.getByText(/per JPY/)).toBeVisible()
 })
 
 test('AMIR brand and themes: logo in the shell, dark mode and skins persist', async ({ page }) => {
   await page.goto('/')
   await expect(page).toHaveTitle(/AMIR Optimizer – Allocation · Modelling · Investment · Research/)
   await expect(page.getByRole('link', { name: 'AMIR Optimizer – home' })).toBeVisible()
-  await expect(page.getByText('Allocation · Modelling · Investment · Research').first()).toBeVisible()
+  await expect(page.locator('[title*="Allocation · Modelling · Investment · Research"]').first()).toBeAttached()
 
   await page.goto('/settings#appearance')
   await page.getByRole('radio', { name: /Dark/ }).click()
-  await page.getByRole('radio', { name: /Ocean/ }).click()
+  await page.getByRole('radio', { name: 'Burgundy' }).click()
   await expect(page.locator('html')).toHaveClass(/dark/)
-  await expect(page.locator('html')).toHaveAttribute('data-skin', 'ocean')
+  await expect(page.locator('html')).toHaveAttribute('data-skin', 'burgundy')
   await page.reload()
   await expect(page.locator('html')).toHaveClass(/dark/)                        // applied before React renders
-  await expect(page.locator('html')).toHaveAttribute('data-skin', 'ocean')
+  await expect(page.locator('html')).toHaveAttribute('data-skin', 'burgundy')
   await page.getByRole('radio', { name: /Light/ }).click()
-  await page.getByRole('radio', { name: /Graphite/ }).click()
+  await page.getByRole('radio', { name: 'Navy & Gold' }).click()
   await expect(page.locator('html')).not.toHaveClass(/dark/)
 })

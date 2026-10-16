@@ -90,7 +90,7 @@ function NavItems({ onNavigate }: { onNavigate?: () => void }) {
           className={({ isActive }) =>
             cn(
               'flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
-              isActive && 'bg-muted font-medium text-foreground',
+              isActive && 'bg-muted font-medium text-foreground shadow-[inset_2px_0_0_var(--sidebar-primary)]',
             )
           }
         >
@@ -225,7 +225,7 @@ export function AppShell() {
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:bg-background focus:px-3 focus:py-2">
         Skip to content
       </a>
-      <aside className="fixed inset-y-0 left-0 hidden w-60 flex-col gap-6 overflow-y-auto border-r bg-background px-3 py-4 lg:flex">
+      <aside className="sidebar-surface fixed inset-y-0 left-0 hidden w-60 flex-col gap-6 overflow-y-auto border-r bg-sidebar px-3 py-4 text-sidebar-foreground lg:flex">
         <Brand />
         <NavItems />
         <div className="mt-auto space-y-2">
@@ -235,7 +235,7 @@ export function AppShell() {
       </aside>
 
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent side="left" className="w-64 gap-6 p-4">
+        <SheetContent side="left" className="sidebar-surface w-64 gap-6 bg-sidebar p-4 text-sidebar-foreground">
           <SheetTitle className="sr-only">Navigation</SheetTitle>
           <Brand />
           <NavItems onNavigate={() => setOpen(false)} />
