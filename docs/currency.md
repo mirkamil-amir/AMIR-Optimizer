@@ -98,9 +98,17 @@ selection). A mixed selection keeps the requested benchmark, converted.
 ## API
 
 `GET /api/v1/fx/currencies` (source, convention, supported currencies) · `GET /api/v1/fx/rate?from=&to=` (latest usable
-rate with date and source, 422 with the reason when unavailable) · `GET /portfolios/{id}/holdings?currency=` ·
+rate with date and source, 422 with the reason when unavailable) · `GET /api/v1/fx/history?from=&to=&days=` (only days
+with a published rate – nothing carried forward, for charts) · `GET /api/v1/fx/board?base=&quotes=` (latest published rate
+per quote with 1-day and 1-month change; a quote without a recent rate shows its reason instead of a number) · `GET /portfolios/{id}/holdings?currency=` ·
 `GET /portfolios/{id}/performance?currency=` · `currency` on backtest and ML requests · `currency`, `fxSource`,
 `currencyExposure` on runs · `currency`, `fxRate`, `fxRateDate`, `fxSource` on transactions, orders and proposal lines.
+
+## Currency converter (UI)
+
+`components/currency-converter.tsx` on the overview and stock-selection pages: rates of the major currencies against the
+portfolio currency, a chart of the selected pair (1M/3M/1Y/5Y) and a calculator (amount × rate, cross rates via the board's
+base). Every number is labelled with the source and rate date; it states that reference rates are not exchange offers.
 
 ## Limitations
 

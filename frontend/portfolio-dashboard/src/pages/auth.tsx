@@ -3,7 +3,8 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { CheckCircle2, Clock, Loader2, LogOut, ShieldAlert, Sigma } from 'lucide-react'
+import { CheckCircle2, Clock, Loader2, LogOut, ShieldAlert } from 'lucide-react'
+import { AmirWordmark } from '@/components/brand'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
@@ -18,11 +19,8 @@ function AuthLayout({ title, description, children, footer }: { title: string; d
   return (
     <div className="flex min-h-svh items-center justify-center bg-muted/30 px-4 py-10">
       <div className="w-full max-w-sm space-y-6">
-        <div className="flex items-center justify-center gap-2">
-          <div className="flex size-8 items-center justify-center rounded-md bg-foreground text-background">
-            <Sigma className="size-4" aria-hidden />
-          </div>
-          <span className="text-lg font-semibold">AMIR Optimizer</span>
+        <div className="flex justify-center">
+          <AmirWordmark />
         </div>
         <Card>
           <CardHeader>

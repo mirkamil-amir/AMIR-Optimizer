@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { AllocationDonut, ChartCard, TimeSeriesChart, timeSeriesTable } from '@/components/charts'
 import { DataBadge, EmptyState, ErrorState, LoadingBlock, MetricCard, MetricValue, PageHeader, Signed, Warnings } from '@/components/common'
 import { ValuationProblems } from '@/components/currency'
+import { CurrencyConverterCard } from '@/components/currency-converter'
 import { usePortfolioContext } from '@/lib/portfolio-context'
 import { useHoldings, useMarketStatus, usePerformance, useRisk, useRuns, useTransactions } from '@/lib/queries'
 import { date, dateTime, money, num, objectiveLabels, pct, qty, relativeTime } from '@/lib/format'
@@ -123,6 +124,8 @@ export function OverviewPage() {
         </Card>
       </div>
 
+      <CurrencyConverterCard base={ccy} className="mt-4" />
+
       <div className="mt-4 grid gap-4 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
@@ -159,7 +162,7 @@ export function OverviewPage() {
                   <span className="flex items-center gap-2">
                     <Badge variant="outline" className={t.side === 'Buy' ? 'text-gain' : 'text-loss'}>{t.side}</Badge>
                     <span className="font-medium">{t.symbol}</span>
-                    <span className="tabular text-muted-foreground">{qty(t.quantity)} @ {money(t.price, ccy)}</span>
+                    <span className="tabular text-muted-foreground">{qty(t.quantity)} @ {money(t.price, t.currency)}</span>
                   </span>
                   <Signed value={t.netCashFlow}>{money(t.netCashFlow, ccy, { signed: true })}</Signed>
                 </li>

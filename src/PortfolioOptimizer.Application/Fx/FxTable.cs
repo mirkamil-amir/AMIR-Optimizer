@@ -72,6 +72,24 @@ public sealed class FxTable
     public DateOnly? LastObservation(string currency) =>
         currency == Pivot ? null : _series.TryGetValue(currency, out var s) && s.Dates.Length > 0 ? s.Dates[^1] : null;
 
+    /// <summary>
+    /// Daily rates from → to on the days in [start, end] on which every non-EUR leg has its own observation (no carried-forward
+    /// values – charts show only published rates).
+    /// </summary>
+    public IReadOnlyList<(DateOnly Date, double Rate)> ObservedSeries(string from, string to, DateOnly start, DateOnly end)
+    {
+        if (from == to) return [];
+        var legs = new[] { from, to }.Where(c => c != Pivot).Distinct().ToList();
+        if (legs.Any(c => !_series.ContainsKey(c))) return [];
+        var dates = legs.Select(c => _series[c].Dates.Where(d => d >= start && d <= end).ToHashSet())
+            .Aggregate((a, b) => { a.IntersectWith(b); return a; })
+            .Order();
+        var result = new List<(DateOnly, double)>();
+        foreach (var d in dates)
+            if (TryRate(from, to, d, out var q, out _) && q!.CarriedForwardDays == 0) result.Add((d, q.Rate));
+        return result;
+    }
+
     public FxQuote Rate(string from, string to, DateOnly date)
     {
         if (TryRate(from, to, date, out var quote, out var reason)) return quote!;

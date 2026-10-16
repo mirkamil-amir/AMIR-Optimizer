@@ -25,3 +25,28 @@ export function exposureRows(items: CurrencyExposure[] | null | undefined): Curr
 export function foreignCurrencies(currencies: (string | null | undefined)[], base: string): string[] {
   return [...new Set(currencies.filter((c): c is string => !!c && c !== base))].sort()
 }
+
+/** Amount converted with a rate in the app convention (units of target per one source); null when either is invalid. */
+export function convertAmount(amount: number | null | undefined, rate: number | null | undefined): number | null {
+  if (amount === null || amount === undefined || !Number.isFinite(amount)) return null
+  if (rate === null || rate === undefined || !Number.isFinite(rate) || rate <= 0) return null
+  return amount * rate
+}
+
+/** Rate from `from` to `to` derived from a board quoted against `base` (rates = units per one base). */
+export function crossFromBoard(rates: Record<string, number | null | undefined>, base: string, from: string, to: string): number | null {
+  if (from === to) return 1
+  const perBase = (c: string) => (c === base ? 1 : rates[c] ?? null)
+  const f = perBase(from)
+  const t = perBase(to)
+  if (!f || !t || f <= 0 || t <= 0) return null
+  return t / f
+}
+
+/** Currencies offered in the converter: the portfolio currency first, then the majors. */
+export const majorCurrencies = ['USD', 'EUR', 'GBP', 'JPY', 'CHF', 'CAD', 'AUD', 'CNY', 'SEK', 'NOK']
+
+export function converterCurrencies(base: string, supported: string[] | undefined): string[] {
+  const set = new Set(supported ?? majorCurrencies)
+  return [base, ...majorCurrencies.filter((c) => c !== base && set.has(c))]
+}

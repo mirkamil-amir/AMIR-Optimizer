@@ -1,5 +1,8 @@
 # AMIR Optimizer – Portfolio Research Platform
 
+**AMIR = Allocation · Modelling · Investment · Research.** The logo is an “A” whose crossbar is a rising return path
+ending in a highlighted point – the optimum on an efficient frontier (`frontend/…/src/components/brand.tsx`, `public/favicon.svg`).
+
 An educational portfolio-research platform. An **AI research assistant** turns an investment objective into an
 editable research brief, researches a universe with evidence, runs the real optimizer and risk review, explains the
 results only with numbers it can show, and lets students refine and compare alternatives before deliberately saving
@@ -96,6 +99,10 @@ Offline demo: start with `MarketData__DefaultProvider=Mock` on a new database, o
    large?") are answered from the computed values; changes ("cap at 15 %", "exclude JPM") are shown as an exact proposal
    and only recalculated after you confirm. Compare any two hypotheses; "Save as optimization run" (with confirmation)
    creates a normal run you can reopen, trade on paper or check further. Every tool call is in the activity log.
+0c. **Currency converter and themes.** The overview and stock-selection pages have a currency converter: reference rates of
+   the major currencies against the portfolio currency with 1-day changes, a 1M–5Y chart of the selected pair and a calculator
+   (ECB daily reference rates, dated, never “live”; simulated with simulated prices). Appearance (light / dark / system and the
+   skins Graphite, Ocean, Forest, Amber, Violet) is chosen in Settings → Appearance or with the header toggle and kept per browser.
 0b. **Multi-currency portfolios.** Create a portfolio in any supported currency (EUR, USD, GBP, JPY, CHF, …) and combine
    stocks from all markets. Prices stay in each stock's currency; analyses, valuations and simulated trades use the portfolio
    currency with the exchange rate of each date (ECB reference rates; simulated rates with simulated prices). Holdings
@@ -167,7 +174,7 @@ readable `XSRF-TOKEN` cookie; `GET /auth/antiforgery` issues one). Swagger UI se
 
 | Area | Endpoints |
 |---|---|
-| Exchange rates | `GET /fx/currencies`, `GET /fx/rate?from&to` (422 with the reason when unavailable); `?currency=` on holdings and performance |
+| Exchange rates | `GET /fx/currencies`, `GET /fx/rate?from&to` (422 with the reason when unavailable), `GET /fx/history?from&to&days` (published daily rates), `GET /fx/board?base&quotes` (latest rates with 1-day/1-month change); `?currency=` on holdings and performance |
 | Auth | `GET /auth/antiforgery`, `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, `POST /auth/change-password` |
 | Administration | `GET /admin/overview`, `GET /admin/users?includeTestAccounts`, `GET /admin/users/{id}`, `PUT /admin/users/{id}/status`, `PUT /admin/users/{id}/roles`, `GET /admin/audit-events`, `POST /admin/catalogue/import`, `POST /admin/catalogue/universes/{code}`, `POST/GET /admin/catalogue/quote-refresh` |
 | Stock selection | `GET /markets`, `GET /sectors?country&index`, `GET /stocks?country&index&sector&search&sort&withPrices&symbols&page`, `GET /stocks/{symbol}`, `…/quote`, `…/prices`, `POST /stocks/quotes/refresh`, `POST /stocks/{symbol}/quote/refresh`, `GET /market-data/quote-refresh/latest` |

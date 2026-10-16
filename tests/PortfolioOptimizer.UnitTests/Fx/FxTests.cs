@@ -90,6 +90,18 @@ public sealed class FxTableTests
     }
 
     [Fact]
+    public void ObservedSeries_ContainsOnlyPublishedDays()
+    {
+        // USD has Fri/Mon/Tue/Wed, JPY Fri/Mon/Tue: USD→JPY exists only where both legs were published.
+        var s = Table().ObservedSeries("USD", "JPY", Fri, Wed);
+        Assert.Equal([Fri, Mon, Tue], s.Select(p => p.Date));
+        Assert.Equal(162.0 / 1.15, s[^1].Rate, 10);
+        Assert.Equal([Fri, Mon, Tue, Wed], Table().ObservedSeries("EUR", "USD", Fri, Wed).Select(p => p.Date));
+        Assert.Empty(Table().ObservedSeries("USD", "USD", Fri, Wed));
+        Assert.Empty(Table().ObservedSeries("SEK", "EUR", Fri, Wed));
+    }
+
+    [Fact]
     public void Identity_IsOneByDefinition()
     {
         var q = new FxTable("TEST", false, []).Rate("CHF", "CHF", Tue);

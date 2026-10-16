@@ -1,5 +1,13 @@
 # Implementation status
 
+## 2026-10-16 (2): currency converter, AMIR brand and themes
+
+* Converter card (rates board, pair chart, calculator) on the overview and stock-selection pages, backed by
+  `/fx/history` and `/fx/board`; labelled reference rates with dates, never "live".
+* AMIR = Allocation · Modelling · Investment · Research; SVG mark in the sidebar, sign-in pages, favicon, tab title.
+* Light / dark / system mode and five colour skins; header toggle and Settings → Appearance; persisted per browser.
+* Verified by unit, integration, Vitest and e2e tests and by screenshots (light, dark Ocean, Violet).
+
 ## 2026-10-16: multi-currency portfolios (FX service, dated conversion, independent validation)
 
 * **Root causes** ([currency-audit.md](currency-audit.md)): no FX capability existed, so analyses rejected mixed selections
