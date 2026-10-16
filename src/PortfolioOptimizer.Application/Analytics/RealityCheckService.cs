@@ -21,6 +21,7 @@ public sealed class RealityCheckService(
     IApplicationDbContext db,
     OptimizationService optimizations,
     PriceQueryService prices,
+    Fx.FxService fx,
     IPortfolioOptimizer optimizer,
     AnalyticsConventions conventions,
     TimeProvider clock)
@@ -68,10 +69,11 @@ public sealed class RealityCheckService(
         var saved = run.Weights.Select(w => w.Weight).ToArray();
         var assets = await db.Assets.AsNoTracking().Where(a => symbols.Contains(a.Symbol)).ToDictionaryAsync(a => a.Symbol, ct);
         var sectors = assets.Values.Where(a => a.Sector is not null).ToDictionary(a => a.Symbol, a => a.Sector!, StringComparer.OrdinalIgnoreCase);
-        var currency = assets.Values.Select(a => a.Currency).FirstOrDefault() ?? "USD";
+        // Everything is analysed in the run's own currency (prices converted exactly as in the run).
+        var currency = run.Currency;
 
         // The run's own window, from the run's own price source.
-        var series = await prices.GetSeriesAsync(symbols, run.PriceSource, start, end, ct);
+        var series = (await fx.GetSeriesInCurrencyAsync(symbols, run.PriceSource, start, end, currency, ct)).PriceSeries();
         var missing = symbols.Where(s => !series.TryGetValue(s, out var ps) || ps.Points.Count < 2).ToList();
         if (missing.Count > 0)
             throw new ConflictException($"Stored prices for {string.Join(", ", missing)} in the run's window are no longer available from {run.PriceSource}.");
@@ -88,10 +90,10 @@ public sealed class RealityCheckService(
 
         // In-sample: the same window that chose the weights.
         var benchmark = settings.BenchmarkSymbol;
-        var inSample = await HistoryAsync("In-sample (the estimation window that chose these weights)", matrix, saved, benchmark, run.PriceSource, ct);
+        var inSample = await HistoryAsync("In-sample (the estimation window that chose these weights)", matrix, saved, benchmark, run.PriceSource, currency, ct);
 
         // Out-of-sample: prices after the window, if any were stored since.
-        var (outOfSample, oosReason) = await OutOfSampleAsync(symbols, saved, end, benchmark, run.PriceSource, ct);
+        var (outOfSample, oosReason) = await OutOfSampleAsync(symbols, saved, end, benchmark, run.PriceSource, currency, ct);
 
         var scenarios = Sensitivity(run, settings, symbols, saved, matrix, est, sectors);
         var costs = Costs(settings, saved, scenarios);
@@ -111,13 +113,13 @@ public sealed class RealityCheckService(
 
     // ------------------------------------------------------------------ history
 
-    private async Task<HistoricalCheckDto> HistoryAsync(string label, ReturnMatrix matrix, double[] weights, string benchmark, string source, CancellationToken ct)
+    private async Task<HistoricalCheckDto> HistoryAsync(string label, ReturnMatrix matrix, double[] weights, string benchmark, string source, string currency, CancellationToken ct)
     {
         var daily = DiversificationMath.PortfolioReturns(matrix.Returns, weights);
         var h = DiversificationMath.History(daily, conventions);
         double? benchCum = null;
         MetricDto? benchDd = null, beta = null;
-        var b = await prices.GetSeriesAsync([benchmark], source, matrix.PriceDates[0], matrix.PriceDates[^1], ct);
+        var b = (await fx.GetSeriesInCurrencyAsync([benchmark], source, matrix.PriceDates[0], matrix.PriceDates[^1], currency, ct)).PriceSeries();
         if (b.TryGetValue(benchmark, out var bs))
         {
             var byDate = bs.Points.ToDictionary(p => p.Date, p => p.Price);
@@ -137,16 +139,16 @@ public sealed class RealityCheckService(
     }
 
     private async Task<(HistoricalCheckDto?, string?)> OutOfSampleAsync(List<string> symbols, double[] weights, DateOnly windowEnd, string benchmark, string source,
-        CancellationToken ct)
+        string currency, CancellationToken ct)
     {
-        var after = await prices.GetSeriesAsync(symbols, source, windowEnd, null, ct);
+        var after = (await fx.GetSeriesInCurrencyAsync(symbols, source, windowEnd, null, currency, ct)).PriceSeries();
         if (symbols.Any(s => !after.TryGetValue(s, out var ps) || ps.Points.Count < 2))
             return (null, "No stored prices after the estimation window yet for every holding.");
         var matrix = ReturnMatrix.Build(after.ToDictionary(kv => kv.Key, kv => kv.Value.Points, StringComparer.OrdinalIgnoreCase), symbols);
         if (matrix.Observations < 20)
             return (null, $"Only {matrix.Observations} trading day(s) since the estimation window ended; at least 20 are needed for a meaningful comparison.");
         var label = $"Out-of-sample ({matrix.Observations} trading days after the window; weights unchanged, no costs)";
-        return (await HistoryAsync(label, matrix, weights, benchmark, source, ct), null);
+        return (await HistoryAsync(label, matrix, weights, benchmark, source, currency, ct), null);
     }
 
     // ------------------------------------------------------------------ sensitivity
@@ -320,7 +322,7 @@ public sealed class RealityCheckService(
             "Index membership is today's: stocks that left the index or were delisted are missing (survivorship bias).",
             "Volatility, correlation and risk shares are estimates from one historical window; they change over time and usually rise in crises.",
             "Value at risk and expected shortfall are one-day historical figures; losses beyond the observed history are possible.",
-            "No FX conversion: the analysis is in one currency. Dividends are included only through adjusted closes.",
+            "All prices are in the run's currency; stocks traded in other currencies were converted with the FX rate of each date, so their returns include currency movements (unhedged). Dividends are included only through adjusted closes.",
         };
         if (run.SettingsSnapshot.MaxTurnover is not null)
             l.Add("Sensitivity scenarios ignore the turnover limit, because they have no current holdings to measure turnover against.");

@@ -4,7 +4,7 @@ export interface SelectedStock {
   symbol: string
   name: string | null
   sector: string | null
-  /** Trading currency; analyses need a single-currency selection (no FX conversion). */
+  /** Trading currency; analyses convert prices into the portfolio currency with dated exchange rates. */
   currency?: string
 }
 

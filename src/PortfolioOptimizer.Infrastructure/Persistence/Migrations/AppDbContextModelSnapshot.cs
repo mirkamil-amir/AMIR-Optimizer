@@ -355,8 +355,17 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
                     b.Property<string>("Error")
                         .HasColumnType("text");
+
+                    b.Property<string>("FxSource")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -533,6 +542,40 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                     b.HasIndex("Source", "AssetId", "CompletedAtUtc");
 
                     b.ToTable("SyncLogs");
+                });
+
+            modelBuilder.Entity("PortfolioOptimizer.Domain.FxRate", b =>
+                {
+                    b.Property<string>("Source")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("Currency")
+                        .HasMaxLength(3)
+                        .HasColumnType("character(3)")
+                        .IsFixedLength();
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<bool>("IsSimulated")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("RetrievedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("UnitsPerEur")
+                        .HasPrecision(20, 8)
+                        .HasColumnType("numeric(20,8)");
+
+                    b.HasKey("Source", "Currency", "Date");
+
+                    b.ToTable("FxRates", t =>
+                        {
+                            t.HasCheckConstraint("CK_FxRates_NotEur", "\"Currency\" <> 'EUR'");
+
+                            t.HasCheckConstraint("CK_FxRates_Positive", "\"UnitsPerEur\" > 0");
+                        });
                 });
 
             modelBuilder.Entity("PortfolioOptimizer.Domain.HistoricalPrice", b =>
@@ -826,6 +869,11 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
                     b.Property<string>("DataSnapshotHash")
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
@@ -839,6 +887,10 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("FeatureSetVersion")
                         .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("FxSource")
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)");
 
@@ -1207,6 +1259,11 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
                     b.Property<string>("DataSnapshotHash")
                         .IsRequired()
                         .HasColumnType("text");
@@ -1220,6 +1277,10 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
 
                     b.Property<double?>("ExpectedReturn")
                         .HasColumnType("double precision");
+
+                    b.Property<string>("FxSource")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
 
                     b.Property<string>("Message")
                         .IsRequired()
@@ -1583,6 +1644,11 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
                     b.Property<decimal?>("ExecutionPrice")
                         .HasPrecision(18, 6)
                         .HasColumnType("numeric(18,6)");
@@ -1590,6 +1656,10 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                     b.Property<decimal>("FilledQuantity")
                         .HasPrecision(18, 6)
                         .HasColumnType("numeric(18,6)");
+
+                    b.Property<decimal?>("FxRate")
+                        .HasPrecision(20, 10)
+                        .HasColumnType("numeric(20,10)");
 
                     b.Property<string>("Message")
                         .HasColumnType("text");
@@ -1647,6 +1717,11 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
                     b.Property<string>("DataSnapshotHash")
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
@@ -1660,6 +1735,10 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
 
                     b.Property<DateOnly>("EvaluationStart")
                         .HasColumnType("date");
+
+                    b.Property<string>("FxSource")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
 
                     b.Property<bool?>("IsFair")
                         .HasColumnType("boolean");
@@ -1732,12 +1811,28 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                     b.Property<int>("AssetId")
                         .HasColumnType("integer");
 
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
                     b.Property<DateTime>("ExecutedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<decimal>("Fees")
                         .HasPrecision(18, 6)
                         .HasColumnType("numeric(18,6)");
+
+                    b.Property<decimal>("FxRate")
+                        .HasPrecision(20, 10)
+                        .HasColumnType("numeric(20,10)");
+
+                    b.Property<DateOnly?>("FxRateDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("FxSource")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
 
                     b.Property<decimal>("GrossAmount")
                         .HasPrecision(18, 6)
@@ -1783,7 +1878,10 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("PortfolioId", "ExecutedAtUtc");
 
-                    b.ToTable("Executions");
+                    b.ToTable("Executions", t =>
+                        {
+                            t.HasCheckConstraint("CK_TradeExecutions_FxRate", "\"FxRate\" > 0");
+                        });
                 });
 
             modelBuilder.Entity("PortfolioOptimizer.Domain.TradeProposal", b =>
@@ -1863,6 +1961,11 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                     b.Property<string>("CompanyName")
                         .HasColumnType("text");
 
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
                     b.Property<decimal>("CurrentQuantity")
                         .HasPrecision(18, 6)
                         .HasColumnType("numeric(18,6)");
@@ -1877,6 +1980,13 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                     b.Property<decimal>("EstimatedTradeValue")
                         .HasPrecision(18, 6)
                         .HasColumnType("numeric(18,6)");
+
+                    b.Property<decimal?>("FxRate")
+                        .HasPrecision(20, 10)
+                        .HasColumnType("numeric(20,10)");
+
+                    b.Property<DateOnly?>("FxRateDate")
+                        .HasColumnType("date");
 
                     b.Property<string>("Note")
                         .HasColumnType("text");

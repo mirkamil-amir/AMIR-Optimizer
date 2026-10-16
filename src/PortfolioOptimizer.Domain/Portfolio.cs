@@ -58,12 +58,22 @@ public class Portfolio
         return AddCash(CashEntryType.Deposit, amount, timestampUtc, null, description);
     }
 
-    public TradeExecution Buy(Asset asset, decimal quantity, decimal price, DateOnly priceDate, decimal fee, Guid orderId, DateTime timestampUtc)
+    /// <summary>Buy in the portfolio's own currency (the asset must trade in <see cref="BaseCurrency"/>).</summary>
+    public TradeExecution Buy(Asset asset, decimal quantity, decimal price, DateOnly priceDate, decimal fee, Guid orderId, DateTime timestampUtc) =>
+        Buy(asset, quantity, price, priceDate, TradeFx.SameCurrency, fee, orderId, timestampUtc);
+
+    /// <summary>
+    /// Buys <paramref name="quantity"/> at <paramref name="price"/> in the asset's own currency. For a foreign asset the
+    /// portfolio's cash is exchanged at <paramref name="fx"/> (a SIMULATED exchange, recorded on the execution); cost basis,
+    /// cash flows and <paramref name="fee"/> are in the portfolio currency.
+    /// </summary>
+    public TradeExecution Buy(Asset asset, decimal quantity, decimal price, DateOnly priceDate, TradeFx fx, decimal fee, Guid orderId, DateTime timestampUtc)
     {
         if (quantity <= 0) throw new DomainException("Buy quantity must be positive.");
         if (price <= 0) throw new DomainException($"Invalid price {price} for {asset.Symbol}.");
         if (fee < 0) throw new DomainException("Fees cannot be negative.");
-        var gross = quantity * price;
+        var basePrice = BasePrice(asset, price, fx);
+        var gross = quantity * basePrice;
         if (gross + fee > CashBalance)
             throw new DomainException($"Insufficient cash to buy {quantity} {asset.Symbol}: requires {gross + fee:N2}, available {CashBalance:N2}.");
 
@@ -73,36 +83,60 @@ public class Portfolio
             holding = new Holding { Id = Guid.NewGuid(), PortfolioId = Id, AssetId = asset.Id, Symbol = asset.Symbol, OpenedAtUtc = timestampUtc };
             Holdings.Add(holding);
         }
-        holding.ApplyBuy(quantity, price, fee, timestampUtc);
+        holding.ApplyBuy(quantity, basePrice, fee, timestampUtc);
 
         CashBalance -= gross + fee;
-        var execution = NewExecution(asset, OrderSide.Buy, quantity, price, priceDate, fee, -(gross + fee), null, orderId, timestampUtc);
-        AddCash(CashEntryType.BuySettlement, -gross, timestampUtc, execution.Id, $"Buy {quantity} {asset.Symbol} @ {price}");
+        var execution = NewExecution(asset, OrderSide.Buy, quantity, price, priceDate, fx, gross, fee, -(gross + fee), null, orderId, timestampUtc);
+        AddCash(CashEntryType.BuySettlement, -gross, timestampUtc, execution.Id, $"Buy {quantity} {asset.Symbol} @ {price} {asset.Currency}{FxText(asset, fx)}");
         if (fee > 0) AddCash(CashEntryType.Fee, -fee, timestampUtc, execution.Id, $"Commission {asset.Symbol}");
         Touch(timestampUtc);
         return execution;
     }
 
-    public TradeExecution Sell(Asset asset, decimal quantity, decimal price, DateOnly priceDate, decimal fee, Guid orderId, DateTime timestampUtc)
+    /// <summary>Sell in the portfolio's own currency (the asset must trade in <see cref="BaseCurrency"/>).</summary>
+    public TradeExecution Sell(Asset asset, decimal quantity, decimal price, DateOnly priceDate, decimal fee, Guid orderId, DateTime timestampUtc) =>
+        Sell(asset, quantity, price, priceDate, TradeFx.SameCurrency, fee, orderId, timestampUtc);
+
+    /// <summary>Sells at <paramref name="price"/> in the asset's own currency; proceeds are exchanged at <paramref name="fx"/> (simulated).</summary>
+    public TradeExecution Sell(Asset asset, decimal quantity, decimal price, DateOnly priceDate, TradeFx fx, decimal fee, Guid orderId, DateTime timestampUtc)
     {
         if (quantity <= 0) throw new DomainException("Sell quantity must be positive.");
         if (price <= 0) throw new DomainException($"Invalid price {price} for {asset.Symbol}.");
         if (fee < 0) throw new DomainException("Fees cannot be negative.");
         var holding = Holdings.SingleOrDefault(h => h.AssetId == asset.Id && h.Quantity > 0)
             ?? throw new DomainException($"No position in {asset.Symbol} to sell.");
-        var gross = quantity * price;
+        var basePrice = BasePrice(asset, price, fx);
+        var gross = quantity * basePrice;
         if (gross - fee + CashBalance < 0) throw new DomainException("Fees exceed available cash and sale proceeds.");
 
-        var realized = holding.ApplySell(quantity, price, fee, timestampUtc);
+        var realized = holding.ApplySell(quantity, basePrice, fee, timestampUtc);
         CashBalance += gross - fee;
-        var execution = NewExecution(asset, OrderSide.Sell, quantity, price, priceDate, fee, gross - fee, realized, orderId, timestampUtc);
-        AddCash(CashEntryType.SellSettlement, gross, timestampUtc, execution.Id, $"Sell {quantity} {asset.Symbol} @ {price}");
+        var execution = NewExecution(asset, OrderSide.Sell, quantity, price, priceDate, fx, gross, fee, gross - fee, realized, orderId, timestampUtc);
+        AddCash(CashEntryType.SellSettlement, gross, timestampUtc, execution.Id, $"Sell {quantity} {asset.Symbol} @ {price} {asset.Currency}{FxText(asset, fx)}");
         if (fee > 0) AddCash(CashEntryType.Fee, -fee, timestampUtc, execution.Id, $"Commission {asset.Symbol}");
         Touch(timestampUtc);
         return execution;
     }
 
-    private TradeExecution NewExecution(Asset asset, OrderSide side, decimal qty, decimal price, DateOnly priceDate, decimal fee, decimal netCash, decimal? realized, Guid orderId, DateTime ts)
+    /// <summary>Price in the portfolio currency. A foreign asset needs an explicit rate; the same currency must not carry one.</summary>
+    private decimal BasePrice(Asset asset, decimal nativePrice, TradeFx fx)
+    {
+        if (fx.Rate <= 0) throw new DomainException($"Invalid exchange rate {fx.Rate} for {asset.Symbol}.");
+        if (asset.Currency == BaseCurrency)
+        {
+            if (fx.Rate != 1) throw new DomainException($"{asset.Symbol} trades in {BaseCurrency}, the portfolio currency; no exchange rate applies.");
+            return nativePrice;
+        }
+        if (fx.Source is null)
+            throw new DomainException($"{asset.Symbol} trades in {asset.Currency} but the portfolio is in {BaseCurrency}: an exchange rate with its source is required.");
+        return nativePrice * fx.Rate;
+    }
+
+    private string FxText(Asset asset, TradeFx fx) =>
+        asset.Currency == BaseCurrency ? "" : $" × {fx.Rate:0.######} {BaseCurrency}/{asset.Currency} ({fx.Source} {fx.RateDate:yyyy-MM-dd}, simulated exchange)";
+
+    private TradeExecution NewExecution(Asset asset, OrderSide side, decimal qty, decimal price, DateOnly priceDate, TradeFx fx, decimal gross, decimal fee,
+        decimal netCash, decimal? realized, Guid orderId, DateTime ts)
     {
         var e = new TradeExecution
         {
@@ -115,7 +149,11 @@ public class Portfolio
             Quantity = qty,
             Price = price,
             PriceDate = priceDate,
-            GrossAmount = qty * price,
+            Currency = asset.Currency,
+            FxRate = asset.Currency == BaseCurrency ? 1 : fx.Rate,
+            FxRateDate = asset.Currency == BaseCurrency ? null : fx.RateDate,
+            FxSource = asset.Currency == BaseCurrency ? null : fx.Source,
+            GrossAmount = gross,
             Fees = fee,
             NetCashFlow = netCash,
             RealizedPnl = realized,
@@ -189,6 +227,15 @@ public class Holding
     }
 }
 
+/// <summary>
+/// Exchange rate applied to a simulated trade: portfolio-currency units per unit of the asset's currency, with the date
+/// and source of the observation. This models a currency exchange in the paper portfolio; no real money is converted.
+/// </summary>
+public readonly record struct TradeFx(decimal Rate, DateOnly? RateDate, string? Source)
+{
+    public static TradeFx SameCurrency => new(1, null, null);
+}
+
 /// <summary>Immutable cash movement. Amount is signed (+ inflow, − outflow).</summary>
 public class CashLedgerEntry
 {
@@ -212,8 +259,19 @@ public class TradeExecution
     public required string Symbol { get; set; }
     public OrderSide Side { get; set; }
     public decimal Quantity { get; set; }
+    /// <summary>Execution price in the instrument's own currency (<see cref="Currency"/>).</summary>
     public decimal Price { get; set; }
     public DateOnly PriceDate { get; set; }
+    /// <summary>Trading currency of the instrument.</summary>
+    public string Currency { get; set; } = "USD";
+    /// <summary>
+    /// Portfolio-currency units per unit of <see cref="Currency"/> of the SIMULATED currency exchange that funded the trade
+    /// (1 when the currencies match). Gross amount, fees, cash flow and realized P&amp;L are in the portfolio currency.
+    /// </summary>
+    public decimal FxRate { get; set; } = 1;
+    public DateOnly? FxRateDate { get; set; }
+    public string? FxSource { get; set; }
+    /// <summary>Quantity × price × FX rate, in the portfolio currency.</summary>
     public decimal GrossAmount { get; set; }
     public decimal Fees { get; set; }
     public decimal NetCashFlow { get; set; }

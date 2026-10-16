@@ -39,12 +39,16 @@ public sealed class MarketDataService(
         var symbol = Asset.NormalizeSymbol(request.Symbol);
         if (await db.Assets.AnyAsync(a => a.Symbol == symbol, ct))
             throw new ConflictException($"Asset {symbol} already exists.");
+        // The listing's venue determines its trading currency; a contradicting value is an error, not a guess.
+        var venueCurrency = Markets.ForSymbol(symbol).Currency;
+        if (request.Currency is { } given && given != venueCurrency)
+            throw new ValidationException("currency", $"{symbol} is listed on {Markets.ForSymbol(symbol).Exchange}, which trades in {venueCurrency}, not {given}.");
         var asset = new Asset
         {
             Symbol = symbol,
             Name = request.Name?.Trim(),
             Exchange = request.Exchange?.Trim(),
-            Currency = request.Currency.ToUpperInvariant(),
+            Currency = venueCurrency,
             AssetType = request.AssetType,
             Sector = request.Sector?.Trim(),
             IsEnabled = true,

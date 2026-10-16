@@ -115,6 +115,7 @@ function NewExperimentCard() {
 
 function NewExperimentForm({ catalog, benchmark, riskFree }: { catalog: MlCatalog; benchmark: string; riskFree: number }) {
   const selection = useSelection()
+  const { portfolio } = usePortfolioContext()
   const create = useCreateMlExperiment()
   const navigate = useNavigate()
   const [form, setForm] = useState({ ...defaults, benchmarkSymbol: benchmark, riskFreeRate: riskFree })
@@ -137,7 +138,8 @@ function NewExperimentForm({ catalog, benchmark, riskFree }: { catalog: MlCatalo
 
   const submit = async () => {
     try {
-      const result = await create.mutateAsync({ ...form, universe, features: allFeatures ? [] : form.features })
+      // Computed in the portfolio's currency: stocks of other markets are converted with dated exchange rates.
+      const result = await create.mutateAsync({ ...form, universe, features: allFeatures ? [] : form.features, currency: portfolio?.baseCurrency ?? null })
       toast.success('Experiment queued', { description: 'Training, validation, testing and the backtest run in the background.' })
       navigate(`/machine-learning/${result.summary.id}`)
     } catch (e) {

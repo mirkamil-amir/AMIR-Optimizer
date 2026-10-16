@@ -46,7 +46,9 @@ public sealed class MlExperimentRunner(
         try
         {
             var request = JsonSerializer.Deserialize<CreateMlExperimentRequest>(experiment.ConfigJson, MlJson.Options)!;
-            var data = await loader.LoadAsync(experiment.Symbols, experiment.BenchmarkSymbol, experiment.PriceSource, experiment.HistoryStart, experiment.HistoryEnd, timeout.Token);
+            var data = await loader.LoadAsync(experiment.Symbols, experiment.BenchmarkSymbol, experiment.PriceSource, experiment.HistoryStart, experiment.HistoryEnd,
+                experiment.Currency, timeout.Token);
+            experiment.FxSource = data.FxSource;
             experiment.UsesSimulatedData = data.UsesSimulatedData;
             var config = ToConfiguration(request);
 

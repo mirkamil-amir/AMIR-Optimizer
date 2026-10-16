@@ -7,7 +7,7 @@ import type {
   Transaction, UserAccountStatus, UserSummary, MlCatalog, MlExperiment, MlExperimentRequest, MlExperimentSummary, MlBacktest,
   MlPredictionSet, StrategyComparison, StrategyComparisonRequest, StrategyComparisonSummary, Market, QuoteRefreshRun, QuoteRefreshResult,
   AdminOverview, HistoryRange, PriceHistory, Watchlist, WatchlistAddResult, NewsFeed, NewsFilters, EventComparison, RealityCheck, CompanyProfile,
-  ResearchSession, ResearchSessionSummary, UpdateBriefRequest, HypothesisComparison, CompanyContext, RefinementChange,
+  FxInfo, FxRate, ResearchSession, ResearchSessionSummary, UpdateBriefRequest, HypothesisComparison, CompanyContext, RefinementChange,
 } from './types'
 
 const V1 = '/api/v1'
@@ -15,14 +15,14 @@ const V1 = '/api/v1'
 export const keys = {
   portfolios: ['portfolios'] as const,
   portfolio: (id: string) => ['portfolio', id] as const,
-  holdings: (id: string) => ['holdings', id] as const,
+  holdings: (id: string, currency?: string) => ['holdings', id, currency ?? ''] as const,
   transactions: (id: string, page: number, symbol?: string) => ['transactions', id, page, symbol ?? ''] as const,
   orders: (id: string, page: number) => ['orders', id, page] as const,
   cash: (id: string, page: number) => ['cash', id, page] as const,
   proposals: (id: string) => ['proposals', id] as const,
   runs: (id: string) => ['runs', id] as const,
   run: (id: string) => ['run', id] as const,
-  performance: (id: string, from?: string) => ['performance', id, from ?? ''] as const,
+  performance: (id: string, from?: string, currency?: string) => ['performance', id, from ?? '', currency ?? ''] as const,
   risk: (id: string) => ['risk', id] as const,
   status: ['market-status'] as const,
   assets: ['assets'] as const,
@@ -46,8 +46,14 @@ export const usePortfolios = () => useQuery({ queryKey: keys.portfolios, queryFn
 export const usePortfolio = (id?: string) =>
   useQuery({ queryKey: keys.portfolio(id ?? ''), queryFn: () => api.get<Portfolio>(`${V1}/portfolios/${id}`), enabled: !!id })
 
-export const useHoldings = (id?: string) =>
-  useQuery({ queryKey: keys.holdings(id ?? ''), queryFn: () => api.get<HoldingsResponse>(`${V1}/portfolios/${id}/holdings`), enabled: !!id })
+/** Holdings valued in the portfolio currency, or in `currency` (a reporting conversion that changes nothing). */
+export const useHoldings = (id?: string, currency?: string) =>
+  useQuery({
+    queryKey: keys.holdings(id ?? '', currency),
+    queryFn: () => api.get<HoldingsResponse>(`${V1}/portfolios/${id}/holdings${currency ? `?currency=${currency}` : ''}`),
+    enabled: !!id,
+    placeholderData: keepPreviousData,
+  })
 
 export const useTransactions = (id: string | undefined, page = 1, symbol?: string, pageSize = 25) =>
   useQuery({
@@ -80,10 +86,15 @@ export const useProposals = (id?: string) =>
     enabled: !!id,
   })
 
-export const usePerformance = (id?: string, from?: string) =>
+export const usePerformance = (id?: string, from?: string, currency?: string) =>
   useQuery({
-    queryKey: keys.performance(id ?? '', from),
-    queryFn: () => api.get<Performance>(`${V1}/portfolios/${id}/performance${from ? `?from=${from}` : ''}`),
+    queryKey: keys.performance(id ?? '', from, currency),
+    queryFn: () => {
+      const q = new URLSearchParams()
+      if (from) q.set('from', from)
+      if (currency) q.set('currency', currency)
+      return api.get<Performance>(`${V1}/portfolios/${id}/performance${q.size ? `?${q}` : ''}`)
+    },
     enabled: !!id,
     placeholderData: keepPreviousData,
   })
@@ -216,7 +227,7 @@ export function useSync() {
 export function useCreateAsset() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: { symbol: string; name?: string; currency: string; assetType: 'Equity' | 'Etf'; sector?: string }) =>
+    mutationFn: (body: { symbol: string; name?: string; currency?: string; assetType: 'Equity' | 'Etf'; sector?: string }) =>
       api.post<Asset>(`${V1}/assets`, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: keys.assets })
@@ -702,4 +713,20 @@ export const useCompanyProfile = (symbol: string | undefined) =>
     queryFn: ({ signal }) => api.get<CompanyProfile>(`${V1}/stocks/${encodeURIComponent(symbol!)}/profile`, signal),
     enabled: !!symbol,
     staleTime: 60 * 60_000,
+  })
+
+// ---------------------------------------------------------------- exchange rates
+
+/** The FX source, its convention and the currencies it can convert (changes rarely). */
+export const useFxInfo = () =>
+  useQuery({ queryKey: ['fx-info'] as const, queryFn: () => api.get<FxInfo>(`${V1}/fx/currencies`), staleTime: 60 * 60_000 })
+
+/** Latest usable rate (units of `to` per one `from`); the query errors with the reason when none is available. */
+export const useFxRate = (from: string | undefined, to: string | undefined) =>
+  useQuery({
+    queryKey: ['fx-rate', from ?? '', to ?? ''] as const,
+    queryFn: () => api.get<FxRate>(`${V1}/fx/rate?from=${from}&to=${to}`),
+    enabled: !!from && !!to && from !== to,
+    staleTime: 15 * 60_000,
+    retry: false,
   })

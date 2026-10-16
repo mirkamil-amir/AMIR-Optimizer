@@ -158,11 +158,13 @@ export interface PortfolioSummary {
   baseCurrency: string
   initialInvestment: number
   cashBalance: number
-  marketValue: number
-  totalValue: number
+  /** Null when a position cannot be converted into the base currency (see valuationProblems). */
+  marketValue: number | null
+  totalValue: number | null
   holdings: number
   createdAtUtc: string
   updatedAtUtc: string
+  valuationProblems?: string[] | null
 }
 
 export interface Portfolio {
@@ -197,12 +199,26 @@ export interface Holding {
   weightDeviation: number | null
   dailyChange: number | null
   updatedAtUtc: string
+  /** Trading currency; latestPrice is in it. Money amounts are in the valuation currency. */
+  currency: string
+  /** Valuation-currency units per unit of `currency` at the price date (null for the same currency). */
+  fxRate: number | null
+  fxRateDate: string | null
+  valuationProblem: string | null
+}
+
+/** Share of value per currency (unhedged currency exposure). */
+export interface CurrencyExposure {
+  currency: string
+  weight: number
+  holdings: number
 }
 
 export interface Valuation {
-  marketValue: number
+  /** Null when a position cannot be converted (see valuationProblems): no partial total is shown. */
+  marketValue: number | null
   cashBalance: number
-  totalValue: number
+  totalValue: number | null
   investedFraction: number
   totalCostBasis: number
   unrealizedPnl: number
@@ -219,6 +235,14 @@ export interface Valuation {
   priceSource: string
   usesSimulatedData: boolean
   warnings: string[]
+  /** Valuation (reporting) currency. */
+  currency: string
+  /** Currency of the paper account's cash, cost basis and returns. */
+  accountCurrency: string
+  accountToReportingRate: number | null
+  fxSource: string | null
+  currencyExposure: CurrencyExposure[] | null
+  valuationProblems: string[] | null
 }
 
 export interface HoldingsResponse {
@@ -239,6 +263,12 @@ export interface Transaction {
   netCashFlow: number
   realizedPnl: number | null
   executedAtUtc: string
+  /** Currency of `price`; amounts are in the portfolio currency. */
+  currency: string
+  /** Portfolio-currency units per unit of `currency` of the simulated exchange. */
+  fxRate: number
+  fxRateDate: string | null
+  fxSource: string | null
 }
 
 export interface CashEntry {
@@ -262,6 +292,8 @@ export interface Order {
   executionPrice: number | null
   createdAtUtc: string
   message: string | null
+  currency: string
+  fxRate: number | null
 }
 
 export interface Allocation {
@@ -272,6 +304,8 @@ export interface Allocation {
   expectedReturn: number
   volatility: number
   riskContribution: number | null
+  /** Trading currency of the stock (returns converted into the run currency); absent on older runs. */
+  currency?: string | null
 }
 
 export interface FrontierPoint {
@@ -324,6 +358,8 @@ export interface OptimizationRunSummary {
   periodEnd: string | null
   priceSource: string
   usesSimulatedData: boolean
+  /** Currency of every value of the run. */
+  currency: string
 }
 
 export interface OptimizationRun extends Omit<OptimizationRunSummary, 'assetCount'> {
@@ -338,6 +374,9 @@ export interface OptimizationRun extends Omit<OptimizationRunSummary, 'assetCoun
   allocation: Allocation[]
   analytics: RunAnalytics
   methodology: string
+  /** FX source used to convert prices in other currencies (null when none were). */
+  fxSource: string | null
+  currencyExposure: CurrencyExposure[] | null
 }
 
 export interface ProposalLine {
@@ -357,6 +396,10 @@ export interface ProposalLine {
   estimatedTradeValue: number
   estimatedCost: number
   note: string | null
+  /** Currency of `price`; values and costs are in the portfolio currency. */
+  currency: string
+  fxRate: number | null
+  fxRateDate: string | null
 }
 
 export interface TradeProposal {
@@ -414,6 +457,7 @@ export interface Performance {
   priceSource: string
   usesSimulatedData: boolean
   warnings: string[]
+  currency: string
 }
 
 export interface Risk {
@@ -436,6 +480,7 @@ export interface Risk {
   correlation: number[][]
   methodology: string
   warnings: string[]
+  currency: string
 }
 
 export interface BacktestRequest {
@@ -457,6 +502,8 @@ export interface BacktestRequest {
   maxHoldings: number | null
   targetReturn: number | null
   maxVolatility: number | null
+  /** Analysis currency; stocks in other currencies are converted with dated FX rates. */
+  currency?: string | null
 }
 
 export interface BacktestSeriesMetrics {
@@ -702,6 +749,8 @@ export interface MlExperimentRequest {
   name?: string | null
   universe: string[]
   benchmarkSymbol: string
+  /** Analysis currency; stocks in other currencies are converted with dated FX rates. */
+  currency?: string | null
   modelFamily: ModelFamily
   target: PredictionTarget
   horizonDays: number
@@ -826,6 +875,7 @@ export interface MlExperiment {
   modelVersions: MlModelVersion[]
   latestPredictions: MlPredictionSet | null
   disclaimer: string
+  currency: string
 }
 
 export interface StrategyPerformance {
@@ -924,6 +974,8 @@ export interface StrategyComparison {
   warnings: string[]
   result: ComparisonResult | null
   disclaimer: string
+  /** Currency of both strategies, the benchmark and all results. */
+  currency: string
 }
 
 // ---------------------------------------------------------------- watchlist & price history
@@ -1383,5 +1435,28 @@ export interface CompanyContext {
   symbol: string
   profile: CompanyProfile
   recentNews: NewsArticle[]
+  note: string
+}
+
+// ---------------------------------------------------------------- exchange rates
+
+export interface FxInfo {
+  source: string
+  description: string
+  isSimulated: boolean
+  currencies: string[]
+  convention: string
+  maxCarryForwardDays: number
+}
+
+export interface FxRate {
+  from: string
+  to: string
+  /** Units of `to` per one unit of `from`. */
+  rate: number
+  observationDate: string
+  carriedForwardDays: number
+  source: string
+  isSimulated: boolean
   note: string
 }

@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using PortfolioOptimizer.Application.Abstractions;
 using PortfolioOptimizer.Application.Common;
+using PortfolioOptimizer.Application.Fx;
 using PortfolioOptimizer.Application.Dtos;
 using PortfolioOptimizer.Application.MarketData;
 using PortfolioOptimizer.Application.Portfolios;
@@ -19,7 +20,9 @@ namespace PortfolioOptimizer.Application.Optimization;
 public sealed class OptimizationService(
     IApplicationDbContext db,
     PortfolioService portfolios,
+    PortfolioValuationService valuations,
     PriceQueryService prices,
+    FxService fx,
     IPortfolioOptimizer optimizer,
     AnalyticsConventions conventions,
     ICurrentUser currentUser,
@@ -63,8 +66,9 @@ public sealed class OptimizationService(
     /// user explicitly saves. Without a portfolio, there are no current holdings (no turnover limit context) and
     /// <see cref="OptimizationRun.PortfolioId"/> stays empty until the run is saved to a portfolio.
     /// </summary>
+    /// <param name="analysisCurrency">Currency of the analysis when there is no portfolio (the portfolio's base currency wins).</param>
     public async Task<(OptimizationRun Run, Dictionary<string, Asset> Assets)> EvaluateAsync(Portfolio? portfolio, Guid ownerId, PortfolioSettings settings,
-        int frontierPoints, CancellationToken ct)
+        int frontierPoints, CancellationToken ct, string? analysisCurrency = null)
     {
         var sw = Stopwatch.StartNew();
         var app = await prices.SettingsAsync(ct);
@@ -83,24 +87,31 @@ public sealed class OptimizationService(
         var diagnostics = new List<string>();
         var excludedForData = new List<string>();
         var universe = settings.Universe.Except(settings.ExcludedSymbols, StringComparer.OrdinalIgnoreCase).ToList();
+        run.Currency = portfolio?.BaseCurrency ?? analysisCurrency ?? app.DefaultCurrency;
         if (universe.Count > 0)
         {
-            // One currency per analysis (no FX conversion); the benchmark follows the universe's currency.
-            var currency = await UniverseCurrency.ResolveAsync(db, universe, settings.BenchmarkSymbol, ct);
+            // Stocks of any currency are analysed in the portfolio's base currency; the benchmark is converted the same way.
+            var currency = await UniverseCurrency.ResolveAsync(db, universe, settings.BenchmarkSymbol, portfolio?.BaseCurrency ?? analysisCurrency, ct);
             if (currency.Note is not null) diagnostics.Add(currency.Note);
-            if (portfolio is not null && !string.Equals(currency.Currency, portfolio.BaseCurrency, StringComparison.OrdinalIgnoreCase))
-                diagnostics.Add($"The stocks trade in {currency.Currency} but the portfolio \"{portfolio.Name}\" is in {portfolio.BaseCurrency}: the analysis is valid, " +
-                                $"but paper trades need a portfolio in {currency.Currency} (create one under Settings).");
+            run.Currency = currency.Currency;
             settings = settings with { BenchmarkSymbol = currency.Benchmark };
             run.SettingsSnapshot = settings;
         }
         var assets = await db.Assets.AsNoTracking().Where(a => universe.Contains(a.Symbol)).ToDictionaryAsync(a => a.Symbol, ct);
 
-        var series = await prices.GetSeriesAsync(universe, source, null, null, ct, settings.LookbackDays + 1);
+        var conversion = await fx.GetSeriesInCurrencyAsync(universe, source, null, null, run.Currency, ct, settings.LookbackDays + 1);
+        var series = conversion.PriceSeries();
+        run.FxSource = conversion.FxSource;
+        diagnostics.AddRange(conversion.Notes);
         var usable = new List<string>();
         foreach (var symbol in universe)
         {
-            if (!series.TryGetValue(symbol, out var s) || s.Points.Count == 0)
+            if (conversion.Excluded.TryGetValue(symbol, out var why))
+            {
+                excludedForData.Add(symbol);
+                diagnostics.Add($"{symbol}: excluded – {why}");
+            }
+            else if (!series.TryGetValue(symbol, out var s) || s.Points.Count == 0)
             {
                 excludedForData.Add(symbol);
                 diagnostics.Add($"{symbol}: no price data from {source}; excluded. Run a market-data sync.");
@@ -137,7 +148,7 @@ public sealed class OptimizationService(
 
         var est = CovarianceEstimator.Estimate(matrix.Returns, settings.CovarianceMethod.ToOptimization(), conventions);
         var sectors = assets.Values.Where(a => a.Sector is not null).ToDictionary(a => a.Symbol, a => a.Sector!, StringComparer.OrdinalIgnoreCase);
-        var current = portfolio is null ? null : await CurrentWeightsAsync(portfolio, usable, source, app.StalePriceDays, ct);
+        var current = portfolio is null ? null : await CurrentWeightsAsync(portfolio, usable, diagnostics, ct);
         var input = new OptimizationInput(usable, est.ExpectedReturns, est.Covariance, settings.Objective.ToOptimization(),
             settings.ToConstraints(sectors), settings.RiskFreeRate, current);
 
@@ -147,7 +158,7 @@ public sealed class OptimizationService(
         run.SolverCalls = result.SolverCalls;
 
         var analytics = BuildAnalytics(input, est, matrix, series, settings, result, excludedForData,
-            await BenchmarkSeriesAsync(settings.BenchmarkSymbol, source, matrix.PriceDates, ct), frontierPoints);
+            await BenchmarkSeriesAsync(settings.BenchmarkSymbol, source, matrix.PriceDates, run.Currency, diagnostics, ct), frontierPoints);
         run.AnalyticsJson = JsonSerializer.Serialize(analytics, Json);
 
         if (!result.Succeeded)
@@ -160,6 +171,13 @@ public sealed class OptimizationService(
             };
             return (Fail(run, status, result.Message, diagnostics, excludedForData, sw, keepAnalytics: true), assets);
         }
+
+        // Independent check of the solver's answer against the user's hard constraints; a violation fails the run (nothing is relaxed).
+        var validation = AllocationValidator.Validate(usable, result.Weights!, input.Constraints, result.Statistics!.ExpectedReturn, result.Statistics.Volatility, current);
+        if (!validation.IsValid)
+            return (Fail(run, OptimizationRunStatus.Failed, $"The solver's allocation failed independent validation: {string.Join(" ", validation.Violations)}",
+                diagnostics, excludedForData, sw, keepAnalytics: true), assets);
+        diagnostics.Add($"Independent validation passed ({string.Join(", ", validation.Checks)}).");
 
         run.Status = OptimizationRunStatus.Succeeded;
         run.Message = result.Message;
@@ -210,10 +228,10 @@ public sealed class OptimizationService(
     {
         var total = await q.CountAsync(ct);
         var runs = await q.OrderByDescending(r => r.CreatedAtUtc).Skip((page - 1) * pageSize).Take(pageSize)
-            .Select(r => new { r.Id, r.PortfolioId, r.CreatedAtUtc, r.Objective, r.Status, r.Message, r.ExpectedReturn, r.Volatility, r.SharpeRatio, r.Symbols, r.PeriodStart, r.PeriodEnd, r.PriceSource, r.UsesSimulatedData })
+            .Select(r => new { r.Id, r.PortfolioId, r.CreatedAtUtc, r.Objective, r.Status, r.Message, r.ExpectedReturn, r.Volatility, r.SharpeRatio, r.Symbols, r.PeriodStart, r.PeriodEnd, r.PriceSource, r.UsesSimulatedData, r.Currency })
             .ToListAsync(ct);
         var items = runs.Select(r => new OptimizationRunSummaryDto(r.Id, r.PortfolioId, r.CreatedAtUtc, r.Objective, r.Status, r.Message,
-            r.ExpectedReturn, r.Volatility, r.SharpeRatio, r.Symbols.Count, r.PeriodStart, r.PeriodEnd, r.PriceSource, r.UsesSimulatedData)).ToList();
+            r.ExpectedReturn, r.Volatility, r.SharpeRatio, r.Symbols.Count, r.PeriodStart, r.PeriodEnd, r.PriceSource, r.UsesSimulatedData, r.Currency)).ToList();
         return new PagedResult<OptimizationRunSummaryDto>(items, page, pageSize, total);
     }
 
@@ -236,23 +254,34 @@ public sealed class OptimizationService(
 
     // ------------------------------------------------------------------ helpers
 
-    private async Task<double[]?> CurrentWeightsAsync(Portfolio portfolio, IReadOnlyList<string> symbols, string source, int staleDays, CancellationToken ct)
+    /// <summary>Current weights in the portfolio currency (foreign positions converted at the rate of their price date).</summary>
+    private async Task<double[]?> CurrentWeightsAsync(Portfolio portfolio, IReadOnlyList<string> symbols, List<string> diagnostics, CancellationToken ct)
     {
-        var held = portfolio.Holdings.Where(h => h.Quantity > 0).ToList();
-        if (held.Count == 0) return null;
-        var latest = await prices.GetLatestPricesAsync(held.Select(h => h.AssetId).ToList(), source, staleDays, ct);
-        var values = held.ToDictionary(h => h.Symbol, h => latest.TryGetValue(h.AssetId, out var lp) ? h.Quantity * lp.Price : 0m);
-        var total = portfolio.CashBalance + values.Values.Sum();
-        if (total <= 0) return null;
+        if (!portfolio.Holdings.Any(h => h.Quantity > 0)) return null;
+        var valuation = await valuations.ValueAsync(portfolio, null, ct);
+        if (valuation.TotalValue is not { } total || total <= 0)
+        {
+            diagnostics.AddRange(valuation.Problems);
+            diagnostics.Add("Current holdings could not be valued, so turnover against them is not considered.");
+            return null;
+        }
+        var values = valuation.Positions.Values.Where(v => v.Value is not null).ToDictionary(v => v.Symbol, v => v.Value!.Value, StringComparer.OrdinalIgnoreCase);
         return symbols.Select(s => values.TryGetValue(s, out var v) ? (double)(v / total) : 0d).ToArray();
     }
 
-    private async Task<Dictionary<DateOnly, double>?> BenchmarkSeriesAsync(string symbol, string source, IReadOnlyList<DateOnly> dates, CancellationToken ct)
+    private async Task<Dictionary<DateOnly, double>?> BenchmarkSeriesAsync(string symbol, string source, IReadOnlyList<DateOnly> dates, string currency,
+        List<string> diagnostics, CancellationToken ct)
     {
         if (dates.Count == 0) return null;
-        var s = await prices.GetSeriesAsync([symbol], source, dates[0], dates[^1], ct);
-        if (!s.TryGetValue(symbol, out var series) || series.Points.Count == 0) return null;
-        return series.Points.ToDictionary(p => p.Date, p => p.Price);
+        var c = await fx.GetSeriesInCurrencyAsync([symbol], source, dates[0], dates[^1], currency, ct);
+        if (c.Excluded.TryGetValue(symbol, out var why))
+        {
+            diagnostics.Add($"Benchmark {symbol} not shown – {why}");
+            return null;
+        }
+        if (!c.Series.TryGetValue(symbol, out var series) || series.Series.Points.Count == 0) return null;
+        if (series.NativeCurrency != currency) diagnostics.Add($"Benchmark {symbol} ({series.NativeCurrency}) converted to {currency} like the stocks.");
+        return series.Series.Points.ToDictionary(p => p.Date, p => p.Price);
     }
 
     private RunAnalyticsDto BuildAnalytics(
@@ -347,11 +376,13 @@ public sealed class OptimizationService(
         var allocation = r.Weights.OrderByDescending(w => w.Weight).Select(w =>
         {
             assets.TryGetValue(w.Symbol, out var a);
-            return new AllocationDto(w.Symbol, a?.Name, a?.Sector, w.Weight, w.ExpectedReturn, w.Volatility, w.RiskContribution);
+            return new AllocationDto(w.Symbol, a?.Name, a?.Sector, w.Weight, w.ExpectedReturn, w.Volatility, w.RiskContribution, a?.Currency);
         }).ToList();
+        var exposure = allocation.Where(x => x.Weight > 1e-9 && x.Currency is not null).GroupBy(x => x.Currency!)
+            .Select(g => new CurrencyExposureDto(g.Key, g.Sum(x => x.Weight), g.Count())).OrderByDescending(e => e.Weight).ToList();
         return new OptimizationRunDto(r.Id, r.PortfolioId, r.CreatedAtUtc, r.Objective, r.Status, r.Message, r.Symbols,
             r.PeriodStart, r.PeriodEnd, r.Observations, r.PriceSource, r.UsesSimulatedData, r.DataSnapshotHash, r.SettingsSnapshot.ToDto(),
             r.ExpectedReturn, r.Volatility, r.SharpeRatio, r.SolverIterations, r.SolverCalls, r.DurationMs, r.Diagnostics,
-            allocation, analytics, Methodology);
+            allocation, analytics, Methodology, r.Currency, r.FxSource, exposure);
     }
 }

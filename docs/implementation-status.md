@@ -1,5 +1,28 @@
 # Implementation status
 
+## 2026-10-16: multi-currency portfolios (FX service, dated conversion, independent validation)
+
+* **Root causes** ([currency-audit.md](currency-audit.md)): no FX capability existed, so analyses rejected mixed selections
+  and only default-currency portfolios could be created; the run → proposal → execution path and backtests had no currency
+  check at all (EUR prices could be spent as USD cash); silent `?? "USD"` / first-asset defaults; the admin "add asset"
+  dialog hard-coded USD; native prices were formatted with the portfolio currency in holdings, proposals and trades.
+* **Implemented and tested:** `FxRates` + ECB and simulated providers; `FxService` (one convention, inverse/cross, 4-day
+  carry-forward, typed unavailability, upsert, throttle); conversion in optimizer, reality check, backtests, ML, strategy
+  comparison and research hypotheses; `PortfolioValuationService`; portfolios in any supported currency; simulated exchange
+  on trades with stored rate/date/source; reporting currency for holdings and performance; FX API; listing currency from
+  the venue; `AllocationValidator` before any run is accepted; UI for all of it; migration with backfill.
+* **Verified:** see [testing.md](testing.md#results-2026-10-16-multi-currency-portfolios); migration on a copy of the real
+  database; live ECB call. The user's existing data has no mixed-currency trades (read-only check: 9 USD executions in a
+  USD portfolio; one EUR run on the USD portfolio without trades).
+* **Mission phases 4–5 mapped to existing components** (no new agents): orchestrator = `ResearchAgent` (state machine,
+  budgets, bounded steps); research = `search_investable_universe` / company context; risk = reality-check review + flags;
+  optimization = deterministic `OptimizationService`; validation = `AllocationValidator` + reality check (sensitivity,
+  out-of-sample) + `NarrativeValidator`; reporting = `InterpretationService`. Infeasible results are not retried by relaxing
+  constraints; the user confirms suggested changes. Execution stays paper-only behind confirmation, idempotency keys and
+  audit; there is no broker integration.
+* **Not implemented:** scheduled portfolio reviews / alerts (monitoring), multi-currency cash, hedging, FX costs, changing a
+  portfolio's currency, a Swiss market in the catalogue, live ECB use in the running app (verified only by the live test).
+
 ## 2026-10-15 (3): AI research assistant (agentic workflow, first vertical slice)
 
 * **Delivered:** `/research` start page and workspace; `ResearchAgent` state machine with five typed tools through

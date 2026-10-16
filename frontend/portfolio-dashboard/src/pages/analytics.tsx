@@ -126,7 +126,7 @@ export function AnalyticsPage() {
               <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                 <MetricCard label="Volatility (ex-ante)" value={<MetricValue metric={risk.data.annualizedVolatility} format={(v) => pct(v)} />} sub={`${risk.data.observations} days`} />
                 <MetricCard label={`1-day VaR ${pct(risk.data.confidenceLevel, 0)}`} value={<MetricValue metric={risk.data.valueAtRisk} format={(v) => pct(v)} />}
-                  sub={risk.data.valueAtRisk.value !== null && holdings.data ? `≈ ${money(risk.data.valueAtRisk.value * holdings.data.summary.totalValue, ccy, { decimals: 0 })}` : undefined}
+                  sub={risk.data.valueAtRisk.value !== null && holdings.data?.summary.totalValue != null ? `≈ ${money(risk.data.valueAtRisk.value * holdings.data.summary.totalValue, ccy, { decimals: 0 })}` : undefined}
                   hint="Historical one-day loss not exceeded with the stated confidence, using the current weights on past returns." />
                 <MetricCard label={`1-day CVaR ${pct(risk.data.confidenceLevel, 0)}`} value={<MetricValue metric={risk.data.conditionalValueAtRisk} format={(v) => pct(v)} />} hint="Expected shortfall: average loss on the days beyond the VaR threshold." />
                 <MetricCard label="Beta vs benchmark" value={<MetricValue metric={risk.data.beta} format={(v) => num(v)} />} hint="Covariance with benchmark returns / benchmark variance." />
@@ -160,7 +160,7 @@ export function AnalyticsPage() {
               {holdings.data ? (
                 <AllocationDonut items={[
                   ...holdings.data.holdings.filter((h) => (h.weight ?? 0) > 0).map((h) => ({ name: h.symbol, value: h.weight! })),
-                  { name: 'Cash', value: holdings.data.summary.totalValue > 0 ? holdings.data.summary.cashBalance / holdings.data.summary.totalValue : 1 },
+                  { name: 'Cash', value: (holdings.data.summary.totalValue ?? 0) > 0 ? holdings.data.summary.cashBalance / holdings.data.summary.totalValue! : 1 },
                 ]} />
               ) : <LoadingBlock />}
             </CardContent>

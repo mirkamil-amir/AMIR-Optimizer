@@ -97,7 +97,10 @@ limits, least-privilege database role, audit trail.
   recorded in `QuoteRefreshRuns`.
 * **Symbols and units:** canonical Yahoo-style symbols, translated per provider by `SymbolMapper`; minor currency
   units converted by `CurrencyUnits` at the provider boundary.
-* **Analyses:** `UniverseCurrency` enforces single-currency universes and a matching benchmark;
+* **Currencies:** `FxService` (ECB reference rates / simulated rates, stored in `FxRates`) converts native price series into
+  the analysis currency with the rate of each date; `PortfolioValuationService` values holdings; see [currency.md](currency.md).
+  `UniverseCurrency` resolves the analysis currency and benchmark (no longer rejects mixed universes);
+  `AllocationValidator` independently re-checks every optimizer result against the hard constraints;
   `MarketDataService.EnsureHistoryAsync` queues missing history before ML experiments and comparisons (the worker runs
   jobs in order).
 

@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using PortfolioOptimizer.Application.Abstractions;
 using PortfolioOptimizer.Application.Common;
+using PortfolioOptimizer.Application.Fx;
 using PortfolioOptimizer.Application.Dtos;
 using PortfolioOptimizer.Application.MarketData;
 using PortfolioOptimizer.Application.Portfolios;
@@ -13,7 +14,7 @@ namespace PortfolioOptimizer.Application.Trading;
 public sealed class TradingService(
     IApplicationDbContext db,
     PortfolioService portfolios,
-    PriceQueryService prices,
+    PortfolioValuationService valuations,
     ICurrentUser currentUser,
     IAuditLog audit,
     TimeProvider clock,
@@ -118,10 +119,10 @@ public sealed class TradingService(
         if (portfolio.Version != proposal.PortfolioVersion)
             throw new ConflictException("Holdings or cash changed after this proposal was created. Create a new proposal before executing.");
 
-        var app = await prices.SettingsAsync(ct);
         var assetIds = proposal.Lines.Select(l => l.AssetId).ToList();
         var assets = await db.Assets.Where(a => assetIds.Contains(a.Id)).ToDictionaryAsync(a => a.Id, ct);
-        var latest = await prices.GetLatestPricesAsync(assetIds, app.ActiveProvider, app.StalePriceDays, ct);
+        // Execution-time prices and exchange rates (the proposal's estimates may be older).
+        var valuation = await valuations.ValueAsync(portfolio, null, ct, assetIds);
         var settings = portfolio.Settings;
         var now = clock.GetUtcNow().UtcDateTime;
 
@@ -153,12 +154,23 @@ public sealed class TradingService(
             };
             batch.Orders.Add(order);
 
-            if (!latest.TryGetValue(line.AssetId, out var lp))
+            var position = valuation.Positions.GetValueOrDefault(line.AssetId);
+            order.Currency = assets[line.AssetId].Currency;
+            if (position?.Price is not { } lp)
             {
                 order.Status = OrderStatus.Rejected;
                 order.Message = "No price available at execution time.";
                 continue;
             }
+            if (position.UnitValue is not { } basePrice)
+            {
+                order.Status = OrderStatus.Rejected;
+                order.Message = $"No exchange rate at execution time: {position.Problem}.";
+                continue;
+            }
+            // Rounded to the stored precision first, so that quantity × price × stored rate reproduces the booked amount exactly.
+            var fx = position.Fx is { } q ? new TradeFx(FxPrecision.Round(q.Rate), q.ObservationDate, q.Source) : TradeFx.SameCurrency;
+            if (position.Fx is not null) basePrice = lp.Price * fx.Rate;
 
             var qty = line.OrderQuantity;
             if (side == OrderSide.Sell)
@@ -168,7 +180,7 @@ public sealed class TradingService(
             }
             else
             {
-                var affordable = AffordableQuantity(portfolio.CashBalance, lp.Price, settings);
+                var affordable = AffordableQuantity(portfolio.CashBalance, basePrice, settings);
                 qty = Math.Min(qty, affordable);
             }
 
@@ -179,16 +191,18 @@ public sealed class TradingService(
                 continue;
             }
 
-            var fee = TransactionCostModel.Estimate(qty * lp.Price, settings.TransactionCostBps, settings.MinimumFee);
+            var fee = TransactionCostModel.Estimate(qty * basePrice, settings.TransactionCostBps, settings.MinimumFee);
             var asset = assets[line.AssetId];
             var execution = side == OrderSide.Buy
-                ? portfolio.Buy(asset, qty, lp.Price, lp.PriceDate, fee, order.Id, now)
-                : portfolio.Sell(asset, qty, lp.Price, lp.PriceDate, fee, order.Id, now);
+                ? portfolio.Buy(asset, qty, lp.Price, lp.PriceDate, fx, fee, order.Id, now)
+                : portfolio.Sell(asset, qty, lp.Price, lp.PriceDate, fx, fee, order.Id, now);
 
             order.FilledQuantity = qty;
             order.ExecutionPrice = lp.Price;
+            order.FxRate = fx.Rate;
             order.Status = qty < line.OrderQuantity ? OrderStatus.PartiallyFilled : OrderStatus.Filled;
-            order.Message = $"Simulated fill at {lp.Price} ({lp.Origin.ToLowerInvariant()} of {lp.PriceDate:yyyy-MM-dd}).";
+            order.Message = $"Simulated fill at {lp.Price} {asset.Currency} ({lp.Origin.ToLowerInvariant()} of {lp.PriceDate:yyyy-MM-dd})" +
+                            (asset.Currency == portfolio.BaseCurrency ? "." : $"; simulated exchange at {fx.Rate:0.######} {portfolio.BaseCurrency}/{asset.Currency} ({fx.Source}, {fx.RateDate:yyyy-MM-dd}) – no real currency was exchanged.");
             if (line.Price is { } est && est != lp.Price)
                 batch.Notes.Add($"{line.Symbol}: executed at {lp.Price} instead of the proposal estimate {est} (newer price available).");
             if (qty < line.OrderQuantity)
@@ -227,15 +241,21 @@ public sealed class TradingService(
     private async Task<TradeProposalDto> CreateProposalAsync(Guid portfolioId, Guid? runId, Dictionary<int, double> targets, PortfolioSettings settings, CancellationToken ct)
     {
         var portfolio = await portfolios.LoadAsync(portfolioId, ct);
-        var app = await prices.SettingsAsync(ct);
         var held = portfolio.Holdings.Where(h => h.Quantity > 0).ToDictionary(h => h.AssetId, h => h.Quantity);
         var ids = targets.Keys.Union(held.Keys).ToList();
         var assets = await db.Assets.AsNoTracking().Where(a => ids.Contains(a.Id)).ToDictionaryAsync(a => a.Id, ct);
-        var latest = await prices.GetLatestPricesAsync(ids, app.ActiveProvider, app.StalePriceDays, ct);
+        // Prices in each stock's own currency, converted to the portfolio currency at the rate of the price date.
+        var valuation = await valuations.ValueAsync(portfolio, null, ct, ids);
 
         var computation = TradeProposalCalculator.Compute(new ProposalParameters(
             portfolio.CashBalance,
-            ids.Select(id => new ProposalAsset(id, assets[id].Symbol, assets[id].Name, held.GetValueOrDefault(id), latest.GetValueOrDefault(id))).ToList(),
+            ids.Select(id =>
+            {
+                var v = valuation.Positions.GetValueOrDefault(id);
+                var rate = v?.Fx is { } q ? FxPrecision.Round(q.Rate) : 1m;
+                return new ProposalAsset(id, assets[id].Symbol, assets[id].Name, held.GetValueOrDefault(id), v?.Price, assets[id].Currency, rate,
+                    v?.Fx?.ObservationDate, v?.Price is not null && v.UnitValue is null ? v.Problem : null);
+            }).ToList(),
             targets,
             settings.AllowFractionalShares,
             settings.TransactionCostBps,
@@ -259,7 +279,11 @@ public sealed class TradingService(
             Notes = [.. computation.Notes],
             Lines = computation.Lines.OrderByDescending(l => l.TargetWeight).ThenBy(l => l.Symbol).ToList(),
         };
-        if (latest.Values.Any(l => l.IsSimulated))
+        var foreign = valuation.Positions.Values.Where(v => v.Fx is not null).Select(v => v.Currency).Distinct().Order().ToList();
+        if (foreign.Count > 0)
+            proposal.Notes.Insert(0, $"Prices in {string.Join(", ", foreign)} are converted to {portfolio.BaseCurrency} with the {valuation.FxSource} rate of each price date. " +
+                                     "Executing buys or sells them through a SIMULATED currency exchange of the portfolio cash; no real money is converted.");
+        if (valuation.Positions.Values.Any(v => v.Price?.IsSimulated == true))
             proposal.Notes.Insert(0, "Prices are SIMULATED (mock data provider) and do not reflect real markets.");
 
         await db.TradeProposals.Where(p => p.PortfolioId == portfolioId && p.Status == ProposalStatus.Pending)
@@ -279,7 +303,7 @@ public sealed class TradingService(
             p.Notes,
             p.Lines.Select(l => new TradeProposalLineDto(l.Symbol, l.CompanyName, l.Price, l.PriceDate, l.PriceIsStale, l.TargetWeight,
                 l.CurrentWeight, l.ResultingWeight, l.CurrentQuantity, l.TargetValue, l.TargetQuantity, l.OrderQuantity, l.Action,
-                l.EstimatedTradeValue, l.EstimatedCost, l.Note)).ToList());
+                l.EstimatedTradeValue, l.EstimatedCost, l.Note, l.Currency, l.FxRate, l.FxRateDate)).ToList());
     }
 
     private static PaperTradeResultDto ToDto(PaperTradeBatch b, bool replay) =>

@@ -20,6 +20,10 @@ public class OptimizationRun
     public int Observations { get; set; }
     public required string PriceSource { get; set; }
     public bool UsesSimulatedData { get; set; }
+    /// <summary>ISO currency of all values (analysis/base currency); prices in other currencies were converted into it.</summary>
+    public string Currency { get; set; } = "USD";
+    /// <summary>FX source used for the conversion (null when every input was already in <see cref="Currency"/>).</summary>
+    public string? FxSource { get; set; }
     public string DataSnapshotHash { get; set; } = "";
     public PortfolioSettings SettingsSnapshot { get; set; } = new();
     public double? ExpectedReturn { get; set; }
@@ -73,9 +77,15 @@ public class TradeProposalLine
     public int AssetId { get; set; }
     public required string Symbol { get; set; }
     public string? CompanyName { get; set; }
+    /// <summary>Latest price in the instrument's own currency (<see cref="Currency"/>).</summary>
     public decimal? Price { get; set; }
     public DateOnly? PriceDate { get; set; }
     public bool PriceIsStale { get; set; }
+    /// <summary>Trading currency of the instrument.</summary>
+    public string Currency { get; set; } = "USD";
+    /// <summary>Portfolio-currency units per unit of <see cref="Currency"/> used for the estimate (1 for the same currency).</summary>
+    public decimal? FxRate { get; set; }
+    public DateOnly? FxRateDate { get; set; }
     public double TargetWeight { get; set; }
     public double CurrentWeight { get; set; }
     public decimal CurrentQuantity { get; set; }
@@ -115,7 +125,11 @@ public class SimulatedOrder
     public decimal RequestedQuantity { get; set; }
     public decimal FilledQuantity { get; set; }
     public OrderStatus Status { get; set; }
+    /// <summary>Execution price in the instrument's own currency (<see cref="Currency"/>).</summary>
     public decimal? ExecutionPrice { get; set; }
+    public string Currency { get; set; } = "USD";
+    /// <summary>Portfolio-currency units per unit of <see cref="Currency"/> of the simulated currency exchange.</summary>
+    public decimal? FxRate { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public string? Message { get; set; }
 }
@@ -134,4 +148,8 @@ public class BacktestRun
     public string? Error { get; set; }
     public required string PriceSource { get; set; }
     public bool UsesSimulatedData { get; set; }
+    /// <summary>ISO currency of all values (analysis/base currency); prices in other currencies were converted into it.</summary>
+    public string Currency { get; set; } = "USD";
+    /// <summary>FX source used for the conversion (null when every input was already in <see cref="Currency"/>).</summary>
+    public string? FxSource { get; set; }
 }

@@ -119,7 +119,7 @@ function BacktestForm() {
         name: v.name || undefined, universe: v.universe, startDate: v.startDate, endDate: v.endDate, initialCapital: v.initialCapital,
         rebalanceFrequency: v.rebalanceFrequency, objective: v.objective, covarianceMethod: 'LedoitWolf', lookbackDays: v.lookbackDays,
         transactionCostBps: v.transactionCostBps, riskFreeRate: v.riskFreeRate / 100, benchmarkSymbol: v.benchmarkSymbol || null,
-        minWeight: 0, maxWeight: v.maxWeight / 100, cashReserve: 0, maxHoldings: null,
+        minWeight: 0, maxWeight: v.maxWeight / 100, cashReserve: 0, maxHoldings: null, currency: portfolio.data?.baseCurrency ?? null,
         targetReturn: v.targetReturn !== undefined ? v.targetReturn / 100 : null, maxVolatility: v.maxVolatility !== undefined ? v.maxVolatility / 100 : null,
       })
       toast.success('Backtest queued', { description: 'It runs in the background; results appear automatically.' })

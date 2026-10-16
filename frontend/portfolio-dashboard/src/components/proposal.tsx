@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DataTable, type Column } from '@/components/data-table'
 import { MetricCard } from '@/components/common'
+import { FxNote } from '@/components/currency'
 import { errorMessage } from '@/lib/api'
 import { useExecuteProposal } from '@/lib/queries'
 import type { ProposalLine, TradeProposal } from '@/lib/types'
@@ -52,8 +53,9 @@ export function TradeProposalView({ proposal, currency, allowExecute = true }: {
       key: 'price', header: 'Price', align: 'right', sortValue: (l) => l.price,
       cell: (l) => (
         <div>
-          <div>{money(l.price, currency)}</div>
+          <div>{money(l.price, l.currency || currency)}</div>
           <div className={cn('text-xs', l.priceIsStale ? 'text-warn' : 'text-muted-foreground')}>{l.priceDate ? date(l.priceDate) : ''}{l.priceIsStale ? ' · stale' : ''}</div>
+          {l.fxRate !== null && l.fxRate !== 1 && <div><FxNote rate={l.fxRate} from={l.currency} to={currency} on={l.fxRateDate} /></div>}
         </div>
       ),
     },
@@ -143,7 +145,7 @@ export function TradeProposalView({ proposal, currency, allowExecute = true }: {
                   <tr key={l.symbol} className="border-b last:border-0">
                     <td className="px-3 py-1.5"><Badge variant="outline" className={actionStyle[l.action]}>{l.action}</Badge></td>
                     <td className="px-3 py-1.5 font-medium">{l.symbol}</td>
-                    <td className="px-3 py-1.5 text-right">{qty(l.orderQuantity)} × {money(l.price, currency)}</td>
+                    <td className="px-3 py-1.5 text-right">{qty(l.orderQuantity)} × {money(l.price, l.currency || currency)}{l.fxRate !== null && l.fxRate !== 1 && <> × {l.fxRate.toPrecision(5)}</>}</td>
                     <td className="px-3 py-1.5 text-right">{money(l.estimatedTradeValue, currency)}</td>
                   </tr>
                 ))}

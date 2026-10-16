@@ -214,7 +214,7 @@ function AddAssetDialog({ open, onOpenChange, onAdded }: { open: boolean; onOpen
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<AssetForm>({ resolver: zodResolver(assetSchema), defaultValues: { assetType: 'Equity' } })
   const onSubmit = handleSubmit(async (v) => {
     try {
-      const a = await create.mutateAsync({ symbol: v.symbol.toUpperCase(), name: v.name || undefined, sector: v.sector || undefined, assetType: v.assetType, currency: 'USD' })
+      const a = await create.mutateAsync({ symbol: v.symbol.toUpperCase(), name: v.name || undefined, sector: v.sector || undefined, assetType: v.assetType })
       toast.success(`${a.symbol} added`, { description: 'Downloading its price history…' })
       reset()
       onOpenChange(false)
@@ -228,7 +228,7 @@ function AddAssetDialog({ open, onOpenChange, onAdded }: { open: boolean; onOpen
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Add asset to the universe</DialogTitle>
-          <DialogDescription>USD-denominated listings only (no FX conversion). Prices are downloaded right after adding.</DialogDescription>
+          <DialogDescription>Listings in any supported currency; prices stay in that currency and are converted for analyses. Prices are downloaded right after adding.</DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-3" noValidate id="add-asset">
           <div className="space-y-1.5">

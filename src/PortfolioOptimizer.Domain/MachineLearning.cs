@@ -24,6 +24,10 @@ public class MlExperiment
     public List<string> Symbols { get; set; } = [];
     public required string BenchmarkSymbol { get; set; }
     public required string PriceSource { get; set; }
+    /// <summary>ISO currency of all values (analysis/base currency); prices in other currencies were converted into it.</summary>
+    public string Currency { get; set; } = "USD";
+    /// <summary>FX source used for the conversion (null when every input was already in <see cref="Currency"/>).</summary>
+    public string? FxSource { get; set; }
     public bool UsesSimulatedData { get; set; }
     public DateOnly HistoryStart { get; set; }
     public DateOnly HistoryEnd { get; set; }
@@ -129,6 +133,10 @@ public class StrategyComparison
     public DateOnly EvaluationEnd { get; set; }
     public required string BenchmarkSymbol { get; set; }
     public required string PriceSource { get; set; }
+    /// <summary>ISO currency of all values (analysis/base currency); prices in other currencies were converted into it.</summary>
+    public string Currency { get; set; } = "USD";
+    /// <summary>FX source used for the conversion (null when every input was already in <see cref="Currency"/>).</summary>
+    public string? FxSource { get; set; }
     public bool UsesSimulatedData { get; set; }
     public string? DataSnapshotHash { get; set; }
     public bool? IsFair { get; set; }

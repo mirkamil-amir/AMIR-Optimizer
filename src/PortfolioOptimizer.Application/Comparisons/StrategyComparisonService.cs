@@ -46,8 +46,8 @@ public sealed class StrategyComparisonService(
 
         var benchmark = Asset.NormalizeSymbol(request.BenchmarkSymbol);
         if (!await db.Assets.AnyAsync(a => a.Symbol == benchmark, ct)) throw new ValidationException("benchmarkSymbol", $"Unknown benchmark {benchmark}.");
-        // Both strategies and the benchmark must be in one currency (no FX conversion).
-        var currency = await UniverseCurrency.ResolveAsync(db, run.Symbols.Union(experiment.Symbols).ToList(), benchmark, ct);
+        // Both strategies and the benchmark are evaluated in the optimization run's currency (prices converted with dated FX rates).
+        var currency = await UniverseCurrency.ResolveAsync(db, run.Symbols.Union(experiment.Symbols).ToList(), benchmark, run.Currency, ct);
         benchmark = currency.Benchmark;
         var active = await db.StrategyComparisons.CountAsync(c => c.OwnerId == owner && (c.Status == JobStatus.Queued || c.Status == JobStatus.Running), ct);
         if (active >= options.Value.MaxActiveExperimentsPerUser)
@@ -89,8 +89,11 @@ public sealed class StrategyComparisonService(
             EvaluationEnd = end,
             BenchmarkSymbol = benchmark,
             PriceSource = settings.ActiveProvider,
+            Currency = currency.Currency,
             ConfigJson = JsonSerializer.Serialize(config, MlJson.Options),
         };
+        if (experiment.Currency != currency.Currency)
+            comparison.Warnings.Add($"The ML experiment was trained on {experiment.Currency} returns; in the comparison both strategies are re-evaluated on {currency.Currency} returns.");
         if (currency.Note is not null) comparison.Warnings.Add(currency.Note);
         // The benchmark (and any stock) without enough history is downloaded first; jobs run in order.
         var queued = await marketData.EnsureHistoryAsync([.. run.Symbols.Union(experiment.Symbols), benchmark], start.AddYears(-3), 60, ct);
@@ -140,7 +143,7 @@ public sealed class StrategyComparisonService(
         c.DataSnapshotHash,
         c.Warnings,
         c.ResultJson is null ? null : JsonSerializer.Deserialize<StrategyComparisonResultDto>(c.ResultJson, MlJson.Options),
-        Disclaimer);
+        Disclaimer, c.Currency);
 }
 
 /// <summary>Background execution of a queued comparison (inputs were frozen at submission).</summary>
@@ -188,7 +191,8 @@ public sealed class StrategyComparisonRunner(
 
             // ---- Data: enough history before the start for the ML training window and the optimizer's lookback.
             var historyYears = Math.Max(config.MlConfiguration.HistoryYears, (int)Math.Ceiling(config.OptimizationSettings.LookbackDays / 252.0) + 1);
-            var data = await loader.LoadAsync(universe, comparison.BenchmarkSymbol, comparison.PriceSource, start.AddYears(-historyYears), end, timeout.Token);
+            var data = await loader.LoadAsync(universe, comparison.BenchmarkSymbol, comparison.PriceSource, start.AddYears(-historyYears), end, comparison.Currency, timeout.Token);
+            comparison.FxSource = data.FxSource;
             notes.AddRange(data.ExcludedSymbols.Select(s => $"{s}: insufficient stored history; excluded for all strategies."));
             comparison.UsesSimulatedData = data.UsesSimulatedData;
             comparison.DataSnapshotHash = data.Panel.SnapshotHash;

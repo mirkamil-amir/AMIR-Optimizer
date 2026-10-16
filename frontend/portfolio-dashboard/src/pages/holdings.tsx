@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { DataTable, type Column } from '@/components/data-table'
 import { TimeSeriesChart } from '@/components/charts'
 import { DataBadge, EmptyState, ErrorState, LoadingBlock, MetricCard, PageHeader, Signed, Warnings } from '@/components/common'
+import { CurrencyExposureList, FxNote, ReportingCurrencySelect, ReportingNote, ValuationProblems } from '@/components/currency'
 import { usePortfolioContext } from '@/lib/portfolio-context'
 import { useHoldings, usePrices, useRisk, useTransactions } from '@/lib/queries'
 import type { Holding } from '@/lib/types'
@@ -17,12 +18,14 @@ import { NoPortfolio } from './shared'
 
 export function HoldingsPage() {
   const { portfolioId, portfolio, isLoading } = usePortfolioContext()
-  const { data, error, refetch, isLoading: loading } = useHoldings(portfolioId)
+  const [reporting, setReporting] = useState<string>()
+  const { data, error, refetch, isLoading: loading } = useHoldings(portfolioId, reporting)
   const [search, setSearch] = useState('')
   const [sector, setSector] = useState<string>('all')
   const [showClosed, setShowClosed] = useState(false)
   const [selected, setSelected] = useState<Holding | null>(null)
-  const ccy = portfolio?.baseCurrency ?? 'USD'
+  const account = portfolio?.baseCurrency ?? 'USD'
+  const ccy = data?.summary.currency ?? reporting ?? account
 
   const sectors = useMemo(() => [...new Set((data?.holdings ?? []).map((h) => h.sector ?? 'Unclassified'))].sort(), [data])
   const rows = useMemo(() => (data?.holdings ?? []).filter((h) =>
@@ -45,8 +48,21 @@ export function HoldingsPage() {
       ),
     },
     { key: 'qty', header: 'Quantity', align: 'right', sortValue: (h) => h.quantity, cell: (h) => qty(h.quantity) },
-    { key: 'price', header: 'Price', align: 'right', sortValue: (h) => h.latestPrice, cell: (h) => <span title={h.priceDate ? `Close of ${date(h.priceDate)}` : undefined}>{money(h.latestPrice, ccy)}</span> },
-    { key: 'mv', header: 'Market value', align: 'right', sortValue: (h) => h.marketValue, cell: (h) => money(h.marketValue, ccy) },
+    {
+      key: 'price', header: 'Price (own currency)', align: 'right', sortValue: (h) => h.latestPrice,
+      cell: (h) => (
+        <div>
+          <span title={h.priceDate ? `Close of ${date(h.priceDate)}` : undefined}>{money(h.latestPrice, h.currency)}</span>
+          {h.fxRate !== null && <div><FxNote rate={h.fxRate} from={h.currency} to={ccy} on={h.fxRateDate} /></div>}
+        </div>
+      ),
+    },
+    {
+      key: 'mv', header: `Market value (${ccy})`, align: 'right', sortValue: (h) => h.marketValue,
+      cell: (h) => h.valuationProblem && h.quantity > 0
+        ? <span className="text-xs text-warn" title={h.valuationProblem}>Cannot be valued</span>
+        : money(h.marketValue, ccy),
+    },
     { key: 'w', header: 'Weight', align: 'right', sortValue: (h) => h.weight, cell: (h) => pct(h.weight) },
     { key: 'cost', header: 'Avg cost', align: 'right', sortValue: (h) => h.averageCost, cell: (h) => <span title={`Cost basis ${money(h.costBasis, ccy)}`}>{h.quantity > 0 ? money(h.averageCost, ccy) : '—'}</span> },
     {
@@ -72,19 +88,35 @@ export function HoldingsPage() {
     <>
       <PageHeader
         title="Holdings"
-        description="Positions in the simulated portfolio, valued at the latest stored price."
-        actions={s && (s.usesSimulatedData ? <DataBadge kind="simulated" /> : <DataBadge kind="cached" label={`${s.priceSource} · ${date(s.valuationDate)}`} />)}
+        description={`Positions in the simulated portfolio, valued at the latest stored price in ${ccy}. Prices stay in each stock's own currency.`}
+        actions={
+          <>
+            <ReportingCurrencySelect value={reporting} accountCurrency={account} onChange={setReporting} />
+            {s && (s.usesSimulatedData ? <DataBadge kind="simulated" /> : <DataBadge kind="cached" label={`${s.priceSource} · ${date(s.valuationDate)}`} />)}
+          </>
+        }
       />
       {error && <ErrorState error={error} onRetry={() => refetch()} />}
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-        <MetricCard label="Market value" loading={!s} value={money(s?.marketValue, ccy)} />
-        <MetricCard label="Cash" loading={!s} value={money(s?.cashBalance, ccy)} sub={`${pct(1 - (s?.investedFraction ?? 0), 1)} of total`} />
-        <MetricCard label="Total value" loading={!s} value={money(s?.totalValue, ccy)} />
+        <MetricCard label="Market value" loading={!s} value={s?.marketValue === null ? 'Not available' : money(s?.marketValue, ccy)} />
+        <MetricCard label="Cash" loading={!s} value={money(s?.cashBalance, ccy)} sub={s?.totalValue === null ? `${account} account` : `${pct(1 - (s?.investedFraction ?? 0), 1)} of total`} />
+        <MetricCard label="Total value" loading={!s} value={s?.totalValue === null ? 'Not available' : money(s?.totalValue, ccy)} />
         <MetricCard label="Cost basis" loading={!s} value={money(s?.totalCostBasis, ccy)} hint="Weighted-average cost of open positions including buy commissions." />
         <MetricCard label="Unrealized P&L" loading={!s} tone="signed" numeric={s?.unrealizedPnl} value={money(s?.unrealizedPnl, ccy, { signed: true })} />
       </div>
-      <div className="mt-4"><Warnings items={s?.warnings} /></div>
+      <div className="mt-4 space-y-3">
+        <ValuationProblems problems={s?.valuationProblems} />
+        {s && <ReportingNote currency={s.currency} accountCurrency={s.accountCurrency} rate={s.accountToReportingRate} />}
+        <Warnings items={s?.warnings.filter((w) => !s.valuationProblems?.includes(w) && !w.startsWith('Reporting view'))} />
+        {s?.currencyExposure && s.currencyExposure.length > 1 && (
+          <div className="rounded-xl border p-4">
+            <h2 className="mb-2 text-sm font-semibold">Currency exposure</h2>
+            <CurrencyExposureList items={s.currencyExposure} />
+            <p className="mt-2 text-xs text-muted-foreground">Share of total value by the currency the holdings trade in. Positions are unhedged: their value in {ccy} moves with the exchange rate.</p>
+          </div>
+        )}
+      </div>
 
       <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative sm:w-72">
@@ -118,12 +150,12 @@ export function HoldingsPage() {
         )}
       </div>
 
-      <HoldingSheet holding={selected} onClose={() => setSelected(null)} currency={ccy} portfolioId={portfolioId} />
+      <HoldingSheet holding={selected} onClose={() => setSelected(null)} currency={ccy} account={account} portfolioId={portfolioId} />
     </>
   )
 }
 
-function HoldingSheet({ holding, onClose, currency, portfolioId }: { holding: Holding | null; onClose: () => void; currency: string; portfolioId?: string }) {
+function HoldingSheet({ holding, onClose, currency, account, portfolioId }: { holding: Holding | null; onClose: () => void; currency: string; account: string; portfolioId?: string }) {
   const oneYearAgo = useMemo(() => new Date(Date.now() - 365 * 864e5).toISOString().slice(0, 10), [])
   const prices = usePrices(holding?.symbol, oneYearAgo)
   const tx = useTransactions(holding ? portfolioId : undefined, 1, holding?.symbol, 20)
@@ -144,7 +176,7 @@ function HoldingSheet({ holding, onClose, currency, portfolioId }: { holding: Ho
                 <Stat label="Quantity" value={qty(holding.quantity)} />
                 <Stat label="Market value" value={money(holding.marketValue, currency)} />
                 <Stat label="Average cost" value={money(holding.averageCost, currency)} />
-                <Stat label="Latest price" value={`${money(holding.latestPrice, currency)} (${date(holding.priceDate)})`} />
+                <Stat label="Latest price" value={<>{money(holding.latestPrice, holding.currency)} ({date(holding.priceDate)}){holding.fxRate !== null && <div><FxNote rate={holding.fxRate} from={holding.currency} to={currency} on={holding.fxRateDate} /></div>}</>} />
                 <Stat label="Weight / target" value={`${pct(holding.weight)} / ${pct(holding.targetWeight)}`} />
                 <Stat label="Unrealized P&L" value={<Signed value={holding.unrealizedPnl}>{money(holding.unrealizedPnl, currency, { signed: true })} ({pct(holding.unrealizedReturn, 2, true)})</Signed>} />
                 <Stat label="Contribution to risk" value={contribution?.riskContribution !== undefined && contribution?.riskContribution !== null ? pct(contribution.riskContribution) : '—'} />
@@ -152,12 +184,12 @@ function HoldingSheet({ holding, onClose, currency, portfolioId }: { holding: Ho
               </div>
 
               <div>
-                <h3 className="mb-2 text-sm font-semibold">Price, last 12 months <span className="font-normal text-muted-foreground">(raw close, {currency})</span></h3>
+                <h3 className="mb-2 text-sm font-semibold">Price, last 12 months <span className="font-normal text-muted-foreground">(raw close, {holding.currency})</span></h3>
                 {prices.isLoading ? <LoadingBlock height="h-48" /> : prices.data && prices.data.items.length > 1 ? (
                   <TimeSeriesChart
                     dates={prices.data.items.map((p) => p.date)}
                     series={[{ name: holding.symbol, values: prices.data.items.map((p) => p.close) }]}
-                    format={(v) => money(v, currency, { decimals: 0 })}
+                    format={(v) => money(v, holding.currency, { decimals: 0 })}
                     height={200}
                   />
                 ) : <p className="text-sm text-muted-foreground">No price history.</p>}
@@ -172,7 +204,7 @@ function HoldingSheet({ holding, onClose, currency, portfolioId }: { holding: Ho
                     <li key={t.id} className="flex items-center justify-between py-1.5 tabular">
                       <span className="flex items-center gap-2">
                         <Badge variant="outline" className={t.side === 'Buy' ? 'text-gain' : 'text-loss'}>{t.side}</Badge>
-                        {qty(t.quantity)} @ {money(t.price, currency)}
+                        {qty(t.quantity)} @ {money(t.price, t.currency)}{t.fxRate !== 1 && <FxNote rate={t.fxRate} from={t.currency} to={account} on={t.fxRateDate} />}
                       </span>
                       <span className="text-xs text-muted-foreground">{dateTime(t.executedAtUtc)}</span>
                     </li>

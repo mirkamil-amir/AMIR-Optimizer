@@ -24,6 +24,13 @@ public sealed class ApiExceptionHandler(IProblemDetailsService problemDetails, I
             AuthenticationFailedException => new ProblemDetails { Status = StatusCodes.Status401Unauthorized, Title = "Sign-in failed", Detail = exception.Message },
             ForbiddenException => new ProblemDetails { Status = StatusCodes.Status403Forbidden, Title = "Forbidden", Detail = exception.Message },
             ConflictException => new ProblemDetails { Status = StatusCodes.Status409Conflict, Title = "Conflict", Detail = exception.Message },
+            Application.Fx.FxRateUnavailableException fx => new ProblemDetails
+            {
+                Status = StatusCodes.Status422UnprocessableEntity,
+                Title = "Exchange rate unavailable",
+                Detail = fx.Message,
+                Extensions = { ["from"] = fx.From, ["to"] = fx.To, ["date"] = fx.Date.ToString("yyyy-MM-dd") },
+            },
             ToolException t => new ProblemDetails
             {
                 Status = t.Code switch

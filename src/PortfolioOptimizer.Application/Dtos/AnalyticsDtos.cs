@@ -29,7 +29,9 @@ public sealed record PerformanceDto(
     string Methodology,
     string PriceSource,
     bool UsesSimulatedData,
-    IReadOnlyList<string> Warnings);
+    IReadOnlyList<string> Warnings,
+    /// <summary>Currency of the values and returns (stocks converted with the FX rate of each date).</summary>
+    string Currency = "USD");
 
 public sealed record PeriodReturnDto(int Year, int Month, double? Portfolio, double? Benchmark);
 
@@ -54,7 +56,8 @@ public sealed record RiskDto(
     IReadOnlyList<string> CorrelationSymbols,
     double[][] Correlation,
     string Methodology,
-    IReadOnlyList<string> Warnings);
+    IReadOnlyList<string> Warnings,
+    string Currency = "USD");
 
 public sealed record CreateBacktestRequest : IValidatableObject
 {
@@ -70,6 +73,8 @@ public sealed record CreateBacktestRequest : IValidatableObject
     [Range(0, 500)] public double TransactionCostBps { get; init; } = 5;
     [Range(-0.05, 0.25)] public double RiskFreeRate { get; init; } = 0.04;
     [StringLength(15)] public string? BenchmarkSymbol { get; init; } = "SPY";
+    /// <summary>Analysis currency (ISO 4217); stocks in other currencies are converted with dated FX rates. Default: the selection's own currency, or the application default when it mixes currencies.</summary>
+    [RegularExpression("^[A-Z]{3}$")] public string? Currency { get; init; }
     [Range(0, 1)] public double MinWeight { get; init; }
     [Range(0.01, 1)] public double MaxWeight { get; init; } = 0.35;
     [Range(0, 0.99)] public double CashReserve { get; init; }

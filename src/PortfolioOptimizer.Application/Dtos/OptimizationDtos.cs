@@ -22,7 +22,12 @@ public sealed record AllocationDto(
     double Weight,
     double ExpectedReturn,
     double Volatility,
-    double? RiskContribution);
+    double? RiskContribution,
+    /// <summary>Trading currency of the stock (its returns were converted into the run currency).</summary>
+    string? Currency = null);
+
+/// <summary>Share of the allocation whose prices are in <paramref name="Currency"/> (unhedged currency exposure).</summary>
+public sealed record CurrencyExposureDto(string Currency, double Weight, int Holdings);
 
 public sealed record OptimizationRunSummaryDto(
     Guid Id,
@@ -38,7 +43,8 @@ public sealed record OptimizationRunSummaryDto(
     DateOnly? PeriodStart,
     DateOnly? PeriodEnd,
     string PriceSource,
-    bool UsesSimulatedData);
+    bool UsesSimulatedData,
+    string Currency = "USD");
 
 public sealed record FrontierPointDto(double ExpectedReturn, double Volatility, double? SharpeRatio, IReadOnlyDictionary<string, double> Weights);
 
@@ -89,7 +95,12 @@ public sealed record OptimizationRunDto(
     IReadOnlyList<string> Diagnostics,
     IReadOnlyList<AllocationDto> Allocation,
     RunAnalyticsDto Analytics,
-    string Methodology);
+    string Methodology,
+    /// <summary>Currency of every value of the run (prices in other currencies were converted into it).</summary>
+    string Currency = "USD",
+    /// <summary>FX source of the conversion, null when no conversion was needed.</summary>
+    string? FxSource = null,
+    IReadOnlyList<CurrencyExposureDto>? CurrencyExposure = null);
 
 public sealed record TradeProposalLineDto(
     string Symbol,
@@ -107,7 +118,12 @@ public sealed record TradeProposalLineDto(
     ProposalAction Action,
     decimal EstimatedTradeValue,
     decimal EstimatedCost,
-    string? Note);
+    string? Note,
+    /// <summary>Currency of <see cref="Price"/>; values and costs are in the portfolio currency.</summary>
+    string Currency = "USD",
+    /// <summary>Portfolio-currency units per unit of <see cref="Currency"/> used for the estimate.</summary>
+    decimal? FxRate = null,
+    DateOnly? FxRateDate = null);
 
 public sealed record TradeProposalDto(
     Guid Id,
