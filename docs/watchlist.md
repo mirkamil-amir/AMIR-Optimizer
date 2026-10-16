@@ -12,7 +12,7 @@ orders, never changes a portfolio, optimization run or the temporary stock selec
 | Refresh one | refresh icon per row / on the stock page | `POST /api/v1/stocks/{symbol}/quote/refresh` (30 s cooldown per stock). |
 | Refresh all | "Refresh prices" | `POST /api/v1/watchlist/quotes/refresh`: the caller's symbols only; quotes retrieved within the cache window (15 min) are reused, the rest are batched through the provider. Rate limited (`quotes` policy). |
 | Remove | trash icon | `DELETE /api/v1/watchlist/{symbol}`; shared prices and news are kept. |
-| Details | symbol link | `/stocks/{symbol}`: price and provenance, history chart, company news, event comparison per article. |
+| Details | click anywhere on a row (or the symbol link; the row's buttons keep their own function) | `/stocks/{symbol}`: price and provenance, history chart, company news, event comparison per article. When the stock is on the watchlist, Previous / Next buttons with "n of m" step through the watchlist in its order (disabled at the ends). |
 
 There is no background refresh per watchlist: quotes are refreshed by the existing sign-in/scheduled cycle and by the
 explicit actions above, so opening the page never triggers uncontrolled provider requests.

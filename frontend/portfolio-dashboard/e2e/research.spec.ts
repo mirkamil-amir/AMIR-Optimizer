@@ -62,6 +62,42 @@ test('watchlist: add, inspect history and news, persist across sign-in, remove',
   await expect(page.getByText('Your watchlist is empty')).toBeVisible()
 })
 
+test('watchlist: a row opens the stock; previous/next step through the watchlist', async ({ page }) => {
+  test.setTimeout(120_000)
+  await newStudent(page)
+  await page.getByRole('link', { name: 'Watchlist' }).click()
+  for (const [term, symbol] of [['Apple', 'AAPL'], ['Microsoft', 'MSFT']]) {
+    await page.getByLabel('Search stocks to add').fill(term)
+    await page.getByRole('listitem').filter({ hasText: symbol }).getByRole('button', { name: 'Add' }).click()
+    await expect(page.getByText(`${symbol} added to your watchlist`)).toBeVisible()
+  }
+  await expect(page.getByRole('button', { name: 'Details', exact: true })).toHaveCount(0)
+  const rows = page.locator('[data-testid^="watch-row-"]')
+  await expect(rows).toHaveCount(2)
+  const order = await rows.evaluateAll((els) => els.map((r) => r.getAttribute('data-testid')!.replace('watch-row-', '')))
+  const [first, second] = order
+
+  // The row's own controls keep their function and do not open the page.
+  await page.getByRole('button', { name: `Refresh price of ${first}` }).click()
+  await expect(page).toHaveURL(/\/watchlist$/)
+
+  // A click on the row itself (its exchange/currency line) opens the stock page.
+  await page.getByTestId(`watch-row-${first}`).getByText(/ · USD$/).first().click()
+  await expect(page).toHaveURL(new RegExp(`/stocks/${first}$`))
+  const nav = page.getByRole('navigation', { name: 'Watchlist navigation' })
+  await expect(nav.getByText('1 of 2')).toBeVisible()
+  await expect(nav.getByRole('button', { name: 'Previous stock' })).toBeDisabled()
+
+  await nav.getByRole('link', { name: `Next stock: ${second}` }).click()
+  await expect(page).toHaveURL(new RegExp(`/stocks/${second}$`))
+  await expect(page.getByRole('heading', { name: new RegExp(`^${second} ·`) })).toBeVisible()
+  await expect(nav.getByText('2 of 2')).toBeVisible()
+  await expect(nav.getByRole('button', { name: 'Next stock' })).toBeDisabled()
+
+  await nav.getByRole('link', { name: `Previous stock: ${first}` }).click()
+  await expect(page).toHaveURL(new RegExp(`/stocks/${first}$`))
+})
+
 test('financial news: views, filters, official sources and attribution', async ({ page }) => {
   await newStudent(page)
   await page.getByRole('link', { name: 'Financial news' }).click()

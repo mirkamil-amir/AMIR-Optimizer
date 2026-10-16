@@ -1,5 +1,5 @@
 import { useDeferredValue, useState } from 'react'
-import { Link } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { Eye, Loader2, Plus, RefreshCw, Search, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
@@ -74,6 +74,7 @@ export function WatchlistPage() {
 function WatchRow({ item, range }: { item: WatchlistItem; range: HistoryRange }) {
   const s = item.stock
   const remove = useRemoveFromWatchlist()
+  const navigate = useNavigate()
   const p = item.period
   const removeNow = async () => {
     try {
@@ -83,8 +84,15 @@ function WatchRow({ item, range }: { item: WatchlistItem; range: HistoryRange })
       toast.error('Could not remove', { description: errorMessage(e) })
     }
   }
+  // A click anywhere on the row opens the stock page, except on the row's own controls (symbol link, refresh, remove,
+  // info). Keyboard and screen-reader users open it through the symbol link.
+  const openDetail = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement
+    if (!e.currentTarget.contains(target) || target.closest('a, button, input, [role="button"]')) return
+    navigate(`/stocks/${encodeURIComponent(s.symbol)}`)
+  }
   return (
-    <Card className="py-3">
+    <Card className="cursor-pointer py-3 transition-colors hover:bg-muted/40" onClick={openDetail} data-testid={`watch-row-${s.symbol}`} title={`Open ${s.symbol}`}>
       <CardContent className="grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-2 px-4 md:grid-cols-[minmax(12rem,1.4fr)_minmax(7rem,auto)_minmax(8rem,auto)_auto_auto]">
         <div className="min-w-0">
           <Link to={`/stocks/${encodeURIComponent(s.symbol)}`} className="font-medium hover:underline">
@@ -119,7 +127,6 @@ function WatchRow({ item, range }: { item: WatchlistItem; range: HistoryRange })
 
         <div className="col-span-2 flex items-center justify-end gap-1 md:col-span-1">
           <RefreshQuoteButton symbol={s.symbol} />
-          <Button size="sm" variant="ghost" render={<Link to={`/stocks/${encodeURIComponent(s.symbol)}`} />}>Details</Button>
           <Button size="icon-xs" variant="ghost" onClick={removeNow} disabled={remove.isPending} aria-label={`Remove ${s.symbol} from watchlist`} title="Remove">
             {remove.isPending ? <Loader2 className="animate-spin" /> : <Trash2 />}
           </Button>

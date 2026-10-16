@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router'
-import { ArrowLeft, Minus, Plus } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, Minus, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { ErrorState, LoadingBlock, PageHeader } from '@/components/common'
@@ -9,7 +9,7 @@ import { ChangeText, PriceHistoryCard, WatchToggle } from '@/components/watchlis
 import { CompanyNews } from '@/components/news'
 import { CompanyOverview } from '@/components/company-overview'
 import { date, dateTime, money, num } from '@/lib/format'
-import { useStock } from '@/lib/queries'
+import { useStock, useWatchlist } from '@/lib/queries'
 import { useSelection } from '@/lib/selection'
 import type { HistoryRange } from '@/lib/types'
 
@@ -26,7 +26,10 @@ export function StockPage() {
 
   return (
     <div className="space-y-5">
-      <Button variant="ghost" size="sm" render={<Link to="/watchlist" />} className="-ml-2"><ArrowLeft /> Watchlist</Button>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Button variant="ghost" size="sm" render={<Link to="/watchlist" />} className="-ml-2"><ArrowLeft /> Watchlist</Button>
+        <WatchlistStepper symbol={s.symbol} />
+      </div>
       <PageHeader
         title={`${s.symbol} · ${s.name ?? ''}`}
         description={[s.sector ?? 'Unclassified', s.industry, s.exchange, s.currency].filter(Boolean).join(' · ')}
@@ -86,5 +89,27 @@ function Item({ label, value }: { label: string; value: string }) {
       <dt className="text-xs text-muted-foreground">{label}</dt>
       <dd className="tabular">{value}</dd>
     </div>
+  )
+}
+
+/** Previous / next stock in watchlist order; shown only when this stock is on the watchlist. */
+function WatchlistStepper({ symbol }: { symbol: string }) {
+  const list = useWatchlist('1M')
+  const symbols = list.data?.items.map((i) => i.stock.symbol) ?? []
+  const index = symbols.indexOf(symbol)
+  if (index < 0 || symbols.length < 2) return null
+  const previous = index > 0 ? symbols[index - 1] : null
+  const next = index < symbols.length - 1 ? symbols[index + 1] : null
+  const to = (sym: string) => `/stocks/${encodeURIComponent(sym)}`
+  return (
+    <nav aria-label="Watchlist navigation" className="flex items-center gap-1.5">
+      {previous
+        ? <Button variant="outline" size="sm" render={<Link to={to(previous)} />} aria-label={`Previous stock: ${previous}`}><ChevronLeft /> {previous}</Button>
+        : <Button variant="outline" size="sm" disabled aria-label="Previous stock"><ChevronLeft /> Previous</Button>}
+      <span className="px-1 text-xs text-muted-foreground tabular" aria-live="polite">{index + 1} of {symbols.length}</span>
+      {next
+        ? <Button variant="outline" size="sm" render={<Link to={to(next)} />} aria-label={`Next stock: ${next}`}>{next} <ChevronRight /></Button>
+        : <Button variant="outline" size="sm" disabled aria-label="Next stock">Next <ChevronRight /></Button>}
+    </nav>
   )
 }
