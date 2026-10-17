@@ -1,9 +1,6 @@
-import { Suspense, useState } from 'react'
-import { Link, NavLink, Outlet, useNavigate } from 'react-router'
-import {
-  Activity, BarChart3, Eye, Newspaper, BookOpen, BrainCircuit, GraduationCap, Briefcase, Database, FlaskConical, Gauge, GitCompareArrows, History, LayoutDashboard, ListChecks, LogOut, Menu,
-  Palette, ScrollText, Search, Settings, ShieldCheck, Sigma, Sparkles, UserRound, Users,
-} from 'lucide-react'
+import { Suspense, useEffect, useRef, useState } from 'react'
+import { Link, Outlet, useLocation, useNavigate } from 'react-router'
+import { FlaskConical, ListChecks, LogOut, Menu, Palette, ScrollText, Settings, ShieldCheck, Sigma, UserRound } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -15,6 +12,9 @@ import { DataBadge, LoadingBlock } from '@/components/common'
 import { AmirWordmark } from '@/components/brand'
 import { ThemeQuickToggle } from '@/components/theme-controls'
 import { useAuth } from '@/lib/auth'
+import {
+  adminSection, optimizerSections, primaryForPath, primaryNav, sidebarEntryForPath, type NavEntry, type NavSection,
+} from '@/lib/navigation'
 import { identityLabel } from '@/lib/identity'
 import { usePortfolioContext } from '@/lib/portfolio-context'
 import { useMarketStatus } from '@/lib/queries'
@@ -22,84 +22,90 @@ import { useSelection } from '@/lib/selection'
 import { money, relativeTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
-interface NavEntry { to: string; label: string; icon: typeof Search; end?: boolean }
-
-const sections: { title: string; items: NavEntry[] }[] = [
-  {
-    title: 'Research',
-    items: [
-      { to: '/research', label: 'AI research', icon: Sparkles },
-      { to: '/', label: 'Overview', icon: LayoutDashboard, end: true },
-      { to: '/watchlist', label: 'Watchlist', icon: Eye },
-      { to: '/news', label: 'Financial news', icon: Newspaper },
-      { to: '/stocks', label: 'Stock selection', icon: Search, end: true },
-      { to: '/optimize', label: 'Optimize', icon: Sigma },
-      { to: '/machine-learning', label: 'Machine learning', icon: BrainCircuit },
-      { to: '/strategy-comparison', label: 'Strategy comparison', icon: GitCompareArrows },
-      { to: '/history', label: 'Optimization history', icon: ListChecks },
-      { to: '/backtest', label: 'Backtest', icon: Gauge },
-    ],
-  },
-  {
-    title: 'Learn',
-    items: [
-      { to: '/learn', label: 'Strategy guide', icon: GraduationCap, end: true },
-      { to: '/learn/glossary', label: 'Glossary', icon: BookOpen },
-    ],
-  },
-  {
-    title: 'Paper portfolio',
-    items: [
-      { to: '/holdings', label: 'Holdings', icon: Briefcase },
-      { to: '/trades', label: 'Trades & ledger', icon: History },
-      { to: '/analytics', label: 'Analytics', icon: BarChart3 },
-    ],
-  },
-  {
-    title: 'Data',
-    items: [
-      { to: '/market-data', label: 'Market data', icon: Database },
-      { to: '/settings', label: 'Settings', icon: Settings },
-    ],
-  },
-]
-
-const adminSection: { title: string; items: NavEntry[] } = {
-  title: 'Administration',
-  items: [
-    { to: '/admin', label: 'Admin overview', icon: Activity, end: true },
-    { to: '/admin/users', label: 'Users', icon: Users },
-    { to: '/admin/settings', label: 'Admin settings', icon: ShieldCheck },
-  ],
+function SidebarLink({ entry, active, onNavigate }: { entry: NavEntry; active: boolean; onNavigate?: () => void }) {
+  return (
+    <Link
+      to={entry.to}
+      onClick={onNavigate}
+      aria-current={active ? 'page' : undefined}
+      className={cn(
+        'flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
+        active && 'bg-muted font-medium text-foreground shadow-[inset_2px_0_0_var(--sidebar-primary)]',
+      )}
+    >
+      <entry.icon className="size-4" aria-hidden />
+      {entry.label}
+    </Link>
+  )
 }
 
-function NavItems({ onNavigate }: { onNavigate?: () => void }) {
+function SidebarGroups({ sections, activeTo, onNavigate }: { sections: NavSection[]; activeTo?: string; onNavigate?: () => void }) {
+  return sections.map((section) => (
+    <div key={section.title} className="flex flex-col gap-0.5">
+      <div className="px-2.5 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">{section.title}</div>
+      {section.items.map((n) => <SidebarLink key={n.to} entry={n} active={n.to === activeTo} onNavigate={onNavigate} />)}
+    </div>
+  ))
+}
+
+/** Left sidebar: the Optimizer workspace's sections and, for administrators, the administration area. */
+function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const { isAdministrator } = useAuth()
-  const all = isAdministrator ? [...sections, adminSection] : sections
+  const { pathname } = useLocation()
+  const activeTo = sidebarEntryForPath(pathname, isAdministrator)?.to
   return (
-    <nav className="flex flex-col gap-4" aria-label="Main">
-      {all.map((section) => (
-        <div key={section.title} className="flex flex-col gap-0.5">
-          <div className="px-2.5 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">{section.title}</div>
-          {section.items.map((n) => (
-        <NavLink
-          key={n.to}
-          to={n.to}
-          end={n.end}
-          onClick={onNavigate}
-          className={({ isActive }) =>
-            cn(
-              'flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
-              isActive && 'bg-muted font-medium text-foreground shadow-[inset_2px_0_0_var(--sidebar-primary)]',
-            )
-          }
-        >
-          <n.icon className="size-4" aria-hidden />
-          {n.label}
-        </NavLink>
-          ))}
+    <div className="flex flex-col gap-4">
+      <nav className="flex flex-col gap-4" aria-label="Optimizer sections">
+        <div className="flex items-center gap-2 px-2.5 text-xs font-semibold text-foreground">
+          <Sigma className="size-3.5" aria-hidden /> Optimizer workspace
         </div>
-      ))}
+        <SidebarGroups sections={optimizerSections} activeTo={activeTo} onNavigate={onNavigate} />
+      </nav>
+      {isAdministrator && (
+        <nav className="flex flex-col gap-4 border-t pt-4" aria-label="Administration">
+          <SidebarGroups sections={[adminSection]} activeTo={activeTo} onNavigate={onNavigate} />
+        </nav>
+      )}
+    </div>
+  )
+}
+
+/** Top navigation: the six primary areas. Scrolls horizontally when the viewport is too narrow. */
+export function PrimaryNav() {
+  const { pathname } = useLocation()
+  const current = primaryForPath(pathname)
+  const activeRef = useRef<HTMLAnchorElement>(null)
+  useEffect(() => {
+    activeRef.current?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
+  }, [current?.id])
+  return (
+    <nav aria-label="Primary" className="nav-scroll overflow-x-auto px-2 lg:px-6">
+      <ul className="flex min-w-max items-stretch gap-0.5">
+        {primaryNav.map((p) => {
+          const active = current?.id === p.id
+          return (
+            <li key={p.id} className="flex">
+              <Link
+                ref={active ? activeRef : undefined}
+                to={p.to}
+                // "page" on the destination itself, "true" on a child route of that area (e.g. Optimizer › Backtest).
+                aria-current={active ? (pathname === p.to ? 'page' : 'true') : undefined}
+                // Inside the Optimizer workspace the item does nothing, so the open section and its inputs are kept.
+                onClick={(e) => { if (active && p.id === 'optimizer') e.preventDefault() }}
+                className={cn(
+                  'inline-flex items-center gap-2 border-b-2 px-3 py-2.5 text-sm whitespace-nowrap transition-colors focus-visible:rounded-t-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset',
+                  active
+                    ? 'border-primary font-semibold text-foreground'
+                    : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground',
+                )}
+              >
+                <p.icon className="size-4" aria-hidden />
+                {p.label}
+              </Link>
+            </li>
+          )
+        })}
+      </ul>
     </nav>
   )
 }
@@ -222,6 +228,8 @@ function UserMenu() {
 
 export function AppShell() {
   const [open, setOpen] = useState(false)
+  const { isAdministrator } = useAuth()
+  const menuLabel = isAdministrator ? 'Optimizer and administration menu' : 'Optimizer menu'
   return (
     <div className="min-h-svh bg-muted/30">
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:bg-background focus:px-3 focus:py-2">
@@ -229,7 +237,7 @@ export function AppShell() {
       </a>
       <aside className="sidebar-surface fixed inset-y-0 left-0 hidden w-60 flex-col gap-6 overflow-y-auto border-r bg-sidebar px-3 py-4 text-sidebar-foreground lg:flex">
         <Brand />
-        <NavItems />
+        <SidebarNav />
         <div className="mt-auto space-y-2">
           <DataStatus />
           <p className="px-1 text-[11px] leading-snug text-muted-foreground">Simulated trading only. No real orders are placed. Not investment advice.</p>
@@ -238,26 +246,29 @@ export function AppShell() {
 
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="left" className="sidebar-surface w-64 gap-6 bg-sidebar p-4 text-sidebar-foreground">
-          <SheetTitle className="sr-only">Navigation</SheetTitle>
+          <SheetTitle className="sr-only">{menuLabel}</SheetTitle>
           <Brand />
-          <NavItems onNavigate={() => setOpen(false)} />
+          <SidebarNav onNavigate={() => setOpen(false)} />
           <DataStatus />
         </SheetContent>
       </Sheet>
 
       <div className="lg:pl-60">
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-background/90 px-4 backdrop-blur lg:px-8">
-          <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Open navigation" onClick={() => setOpen(true)}>
-            <Menu />
-          </Button>
-          <IdentityBadge />
-          <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="hidden items-center gap-1 2xl:flex"><FlaskConical className="size-3.5" aria-hidden /> Simulated trading only</span>
-            <div className="hidden md:block"><PortfolioSelector /></div>
-            <SelectionIndicator />
-            <ThemeQuickToggle />
-            <UserMenu />
+        <header className="sticky top-0 z-30 border-b bg-background/90 backdrop-blur">
+          <div className="flex h-14 items-center gap-3 px-4 lg:px-8">
+            <Button variant="ghost" size="icon" className="lg:hidden" aria-label={`Open ${menuLabel}`} aria-expanded={open} onClick={() => setOpen(true)}>
+              <Menu />
+            </Button>
+            <IdentityBadge />
+            <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="hidden items-center gap-1 2xl:flex"><FlaskConical className="size-3.5" aria-hidden /> Simulated trading only</span>
+              <div className="hidden md:block"><PortfolioSelector /></div>
+              <SelectionIndicator />
+              <ThemeQuickToggle />
+              <UserMenu />
+            </div>
           </div>
+          <PrimaryNav />
         </header>
         <main id="main" className="mx-auto max-w-7xl px-4 py-6 lg:px-8">
           <Suspense fallback={<LoadingBlock height="h-96" />}>

@@ -5,7 +5,7 @@ test.use({ storageState: ADMIN_STATE })
 
 test('stock discovery: search, select across sectors, selection is temporary', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Stock selection' }).click()
+  await page.getByRole('navigation', { name: 'Optimizer sections' }).getByRole('link', { name: 'Stock selection' }).click()
   await expect(page.getByRole('heading', { name: 'Stock selection' })).toBeVisible()
 
   const search = page.getByLabel('Search company name or ticker')
@@ -18,7 +18,7 @@ test('stock discovery: search, select across sectors, selection is temporary', a
   await expect(tray.getByRole('list', { name: 'Selected tickers' }).getByRole('listitem')).toHaveCount(2)
 
   // The selection survives client-side navigation …
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Overview', exact: true }).click()
+  await page.getByRole('navigation', { name: 'Optimizer sections' }).getByRole('link', { name: 'Overview', exact: true }).click()
   await expect(page.getByRole('link', { name: 'Stock selection: 2 selected' })).toBeVisible()
 
   // … is never written to browser storage …

@@ -18,7 +18,7 @@ test('watchlist: add, inspect history and news, persist across sign-in, remove',
   test.setTimeout(120_000)
   const email = await newStudent(page)
 
-  await page.getByRole('link', { name: 'Watchlist' }).click()
+  await page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Watchlist' }).click()
   await expect(page.getByText('Your watchlist is empty')).toBeVisible()
   await page.getByLabel('Search stocks to add').fill('Apple')
   await page.getByRole('listitem').filter({ hasText: 'AAPL' }).getByRole('button', { name: 'Add' }).click()
@@ -65,7 +65,7 @@ test('watchlist: add, inspect history and news, persist across sign-in, remove',
 test('watchlist: a row opens the stock; previous/next step through the watchlist', async ({ page }) => {
   test.setTimeout(120_000)
   await newStudent(page)
-  await page.getByRole('link', { name: 'Watchlist' }).click()
+  await page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Watchlist' }).click()
   for (const [term, symbol] of [['Apple', 'AAPL'], ['Microsoft', 'MSFT']]) {
     await page.getByLabel('Search stocks to add').fill(term)
     await page.getByRole('listitem').filter({ hasText: symbol }).getByRole('button', { name: 'Add' }).click()
@@ -100,7 +100,7 @@ test('watchlist: a row opens the stock; previous/next step through the watchlist
 
 test('financial news: views, filters, official sources and attribution', async ({ page }) => {
   await newStudent(page)
-  await page.getByRole('link', { name: 'Financial news' }).click()
+  await page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Financial News' }).click()
   await expect(page.getByRole('heading', { name: 'Financial news' })).toBeVisible()
 
   await page.getByRole('tab', { name: 'Macroeconomic' }).click()
