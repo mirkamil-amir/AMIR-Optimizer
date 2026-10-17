@@ -92,7 +92,12 @@ Offline demo: start with `MarketData__DefaultProvider=Mock` on a new database, o
 
 ## Using the platform
 
-0. **AI research** (`/research`, first in the navigation). Write an objective ("low-risk US stocks without energy,
+Navigation: the top bar holds the six areas **Optimizer · AI Research · Financial News · Watchlist · Market Data ·
+Settings**; the left sidebar lists the Optimizer's sections (overview, stock selection, optimize, history, backtest,
+strategy comparison, machine learning, paper portfolio, learn) and, for administrators, **Administration** with
+**Admin settings**.
+
+0. **AI research** (`/research`, in the top bar). Write an objective ("low-risk US stocks without energy,
    at most 20 % per stock"). The brief separates what you said from what was assumed (badges) and asks only for what
    blocks the research (the market). The shortlist shows the criterion and the evidence for every inclusion and
    exclusion. "Run analysis" calculates your method and an equal-weight baseline with the real optimizer, reviews them

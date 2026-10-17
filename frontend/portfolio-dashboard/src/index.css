@@ -126,6 +126,8 @@
     }
   html {
     @apply font-sans;
+    /* Anchored sections (e.g. /settings#appearance) land below the sticky two-row header. */
+    scroll-padding-top: 7rem;
     }
 }
 /* ------------------------------------------------------------------ data-viz tokens
@@ -326,3 +328,6 @@
 
 /* Wordmark: a classic serif for the name (system fonts; no download). */
 .font-brand { font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif; }
+
+/* Primary navigation scrolls horizontally on narrow screens; a thin scrollbar shows that more items follow. */
+.nav-scroll { scrollbar-width: thin; }

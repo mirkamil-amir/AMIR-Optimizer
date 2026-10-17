@@ -2,6 +2,17 @@
 
 Short records of decisions that are not obvious from the code. Newest first. Format: context → decision → consequences.
 
+## D-31 Primary areas in a top bar, Optimizer sections and administration in the sidebar (2026-10-17)
+**Context:** the single sidebar mixed research tools, optimizer tools, data and settings. **Decision:** the header's second
+row is the primary navigation, in this order: Optimizer, AI Research, Financial News, Watchlist, Market Data, Settings.
+The left sidebar (a menu sheet below 1024 px) holds the Optimizer workspace – Workspace (overview, stock selection),
+Optimize (optimize, history incl. reality checks), Test & compare (backtest, strategy comparison, machine learning),
+Paper portfolio, Learn – and, for administrators only, the unchanged Administration group with Admin settings. One typed
+model (`lib/navigation.ts`) drives both bars and the active state (most specific prefix wins). **Consequences:** no URL
+changed; Optimizer links to the overview from other areas and does nothing inside its own workspace, so an open section
+keeps its inputs; stock pages (`/stocks/:symbol`) count as Optimizer even when opened from the watchlist; the
+administration area has no primary item. Visibility stays cosmetic – the API enforces the `Administrator` policy.
+
 ## D-30 Data-provider names are shown to administrators only (2026-10-16)
 Users see what kind of price they look at (delayed quote, last close, adjusted/raw, as-of and retrieval time,
 SIMULATED) but not which vendor delivered it; administrators keep the full provenance. Backend texts are worded

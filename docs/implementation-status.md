@@ -1,5 +1,18 @@
 # Implementation status
 
+## 2026-10-17: primary top navigation (D-31)
+
+* Top bar: Optimizer · AI Research · Financial News · Watchlist · Market Data · Settings; the sidebar holds the Optimizer
+  sections (Workspace, Optimize, Test & compare, Paper portfolio, Learn) and, unchanged, Administration with Admin settings.
+  One model in `lib/navigation.ts`; no route changed; active state follows the URL (stock pages, reality checks and
+  strategy guides now highlight their section). Narrow screens: the bar scrolls horizontally, the sidebar is a menu sheet.
+* Fix: the theme pre-paint script moved from inline to `public/theme-init.js` – the container CSP (`script-src 'self'`)
+  had blocked it, so saved themes were applied only after React started.
+* Verified: Vitest 117 (incl. `navigation.test.ts`, `app-shell.test.tsx`), e2e 30 on the disposable stack (incl.
+  `navigation.spec.ts`: order, every area, sidebar sections, back/forward, reloads, 1440/820/390 px, keyboard, regular
+  user without admin area and HTTP 403 from admin APIs, no console errors), screenshots at 1440/1024/820/390 px.
+* Limitation: a stock page opened from the watchlist shows Optimizer as the active area.
+
 ## 2026-10-16 (3): brand v2, ten skins, converter base selection
 
 * Converter only on the overview; its base ("1 USD =") is selectable among all published currencies – board, chart and the

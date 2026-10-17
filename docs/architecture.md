@@ -109,6 +109,8 @@ limits, least-privilege database role, audit trail.
 * `pages/` – one route each (`stocks`, `stock` (security page), `watchlist`, `news`, `optimize`, `reality-check`,
   `machine-learning`, `strategy-comparison`, `learn`, `admin`, `admin-overview`, …); `components/` – shared UI (`universe-nav`, `stock-selection`, `strategy-insights`, charts,
   tables, shadcn/Base UI primitives).
+* Navigation: `components/app-shell.tsx` renders the primary top bar and the sidebar from `lib/navigation.ts`
+  (primary areas, Optimizer sections, administration; route-to-area matching) – see D-31.
 * `lib/` – pure, unit-tested logic: `api.ts` (fetch + antiforgery), `auth.tsx`, `selection.tsx` (memory only),
   `queries.ts` (TanStack Query hooks), `identity.ts` (header labels), `quote-status.ts`, `interpretation.ts`
   (result explanations), `strategy-guide.ts` + `worked-examples.ts` (12-part strategy explanations), `glossary.ts`,
