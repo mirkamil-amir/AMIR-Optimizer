@@ -34,6 +34,7 @@ public static class DependencyInjection
         services.AddScoped<MarketDataService>();
         services.AddScoped<SettingsService>();
         services.AddScoped<PortfolioService>();
+        services.AddScoped<PortfolioTransactionService>();
         services.AddScoped<PortfolioValuationService>();
         services.AddScoped<OptimizationService>();
         services.AddScoped<TradingService>();

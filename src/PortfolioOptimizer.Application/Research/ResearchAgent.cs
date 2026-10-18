@@ -47,11 +47,11 @@ public sealed class ResearchAgent(
     {
         var owner = currentUser.RequireUserId();
         var rows = await db.ResearchSessions.AsNoTracking().Where(s => s.OwnerId == owner).OrderByDescending(s => s.UpdatedAtUtc).Take(100)
-            .Select(s => new { s.Id, s.Title, s.State, s.CreatedAtUtc, s.UpdatedAtUtc, s.HypothesesJson }).ToListAsync(ct);
+            .Select(s => new { s.Id, s.Title, s.State, s.CreatedAtUtc, s.UpdatedAtUtc, s.HypothesesJson, s.PortfolioId }).ToListAsync(ct);
         return rows.Select(r =>
         {
             var h = JsonSerializer.Deserialize<List<HypothesisDto>>(r.HypothesesJson, Json) ?? [];
-            return new ResearchSessionSummaryDto(r.Id, r.Title, r.State.ToString(), r.CreatedAtUtc, r.UpdatedAtUtc, h.Count, h.Any(x => x.SavedRunId is not null));
+            return new ResearchSessionSummaryDto(r.Id, r.Title, r.State.ToString(), r.CreatedAtUtc, r.UpdatedAtUtc, h.Count, h.Any(x => x.SavedRunId is not null), r.PortfolioId);
         }).ToList();
     }
 
@@ -66,6 +66,14 @@ public sealed class ResearchAgent(
             throw new ConflictException($"You have {MaxSessionsPerUser} research sessions. Delete old ones before starting another.");
         var now = clock.GetUtcNow().UtcDateTime;
         var session = new ResearchSession { Id = Guid.NewGuid(), OwnerId = owner, Title = "New research", CreatedAtUtc = now, UpdatedAtUtc = now };
+        if (request.PortfolioId is { } pid)
+        {
+            // Owner-checked: another user's portfolio is reported as not found.
+            var portfolio = await db.Portfolios.AsNoTracking().Where(p => p.Id == pid && p.OwnerId == owner)
+                .Select(p => new { p.Name, p.BaseCurrency }).SingleOrDefaultAsync(ct) ?? throw new NotFoundException("Portfolio", pid);
+            session.PortfolioId = pid;
+            Event(session, "user", "portfolio_context", "ok", $"Research for portfolio “{portfolio.Name}” (analysis currency {portfolio.BaseCurrency}).");
+        }
         db.ResearchSessions.Add(session);
 
         var interpreted = await briefInterpreter.InterpretAsync(request, ct);
@@ -188,9 +196,12 @@ public sealed class ResearchAgent(
         var brief = Brief(session);
         var set = Candidates(session) ?? throw new ConflictException("Research the universe first.");
         if (set.SelectedSymbols.Count < 2) throw new ConflictException("Choose at least two stocks for the universe.");
-        // Analysed in the currency of the user's (first) portfolio, so a saved run matches the hypothesis; otherwise in the market's own currency.
-        var portfolioCurrency = await db.Portfolios.AsNoTracking().Where(p => p.OwnerId == session.OwnerId).OrderBy(p => p.CreatedAtUtc)
-            .Select(p => p.BaseCurrency).FirstOrDefaultAsync(ct);
+        // Analysed in the currency of the research's portfolio (or, without one, the user's first portfolio) so a saved run matches
+        // the hypothesis; otherwise in the market's own currency.
+        var mine = db.Portfolios.AsNoTracking().Where(p => p.OwnerId == session.OwnerId);
+        var portfolioCurrency = session.PortfolioId is { } pid
+            ? await mine.Where(p => p.Id == pid).Select(p => p.BaseCurrency).FirstOrDefaultAsync(ct)
+            : await mine.OrderBy(p => p.CreatedAtUtc).Select(p => p.BaseCurrency).FirstOrDefaultAsync(ct);
         var baseConfig = new HypothesisConfig(brief.Objective, brief.MaxWeight, set.SelectedSymbols, [], new Dictionary<string, double>(),
             "LedoitWolf", brief.LookbackDays, 10, portfolioCurrency ?? "");
         var hypotheses = Hypotheses(session);
@@ -353,7 +364,7 @@ public sealed class ResearchAgent(
         if (h.Result.Status != OptimizationRunStatus.Succeeded) throw new ConflictException("Only a successful calculation can be saved.");
         SaveRunResult? result = null;
         await Guarded(session, async () => result = await tools.RunAsync(saveHypothesis, Context(session, confirmed: request.Confirm),
-            new SaveRunArgs(h.Config, request.PortfolioId, h.Result.DataSnapshotHash), ct), ct);
+            new SaveRunArgs(h.Config, request.PortfolioId ?? session.PortfolioId, h.Result.DataSnapshotHash), ct), ct);
         hypotheses[hypotheses.IndexOf(h)] = h with { SavedRunId = result!.RunId };
         session.HypothesesJson = JsonSerializer.Serialize(hypotheses, Json);
         await PersistAsync(session, ct);
@@ -444,6 +455,9 @@ public sealed class ResearchAgent(
         var hypotheses = Hypotheses(s);
         var pending = s.PendingRefinementJson is { } pj ? JsonSerializer.Deserialize<RefinementProposalDto>(pj, Json) : null;
         var brief = Brief(s);
+        var portfolio = s.PortfolioId is { } pid
+            ? await db.Portfolios.AsNoTracking().Where(p => p.Id == pid && p.OwnerId == s.OwnerId).Select(p => new { p.Name, p.BaseCurrency }).SingleOrDefaultAsync(ct)
+            : null;
         return new ResearchSessionDto(s.Id, s.Title, s.State.ToString(), s.CreatedAtUtc, s.UpdatedAtUtc, brief, brief.Question, Steps(s, hypotheses),
             Candidates(s), hypotheses, pending,
             all.TakeLast(200).Select(e => new ResearchEventDto(e.AtUtc, e.Kind, e.Name, e.Status, e.DurationMs, e.Summary)).ToList(),
@@ -451,7 +465,7 @@ public sealed class ResearchAgent(
             new AssistantStatusDto(model.Provider, model.IsAvailable ? model.Model : null, model.IsAvailable,
                 model.IsAvailable ? "A language model drafts briefs, interprets refinements and writes explanations; every proposal is validated against the calculations."
                     : "No language model is configured: briefs, refinements and explanations come from deterministic rules over the calculations. All analyses work."),
-            Disclaimer);
+            Disclaimer, portfolio is null ? null : s.PortfolioId, portfolio?.Name, portfolio?.BaseCurrency);
     }
 
     private static List<WorkflowStepDto> Steps(ResearchSession s, List<HypothesisDto> h)

@@ -8,6 +8,7 @@ import type {
   MlPredictionSet, StrategyComparison, StrategyComparisonRequest, StrategyComparisonSummary, Market, QuoteRefreshRun, QuoteRefreshResult,
   AdminOverview, HistoryRange, PriceHistory, Watchlist, WatchlistAddResult, NewsFeed, NewsFilters, EventComparison, RealityCheck, CompanyProfile,
   FxInfo, FxRate, FxHistory, FxBoard, ResearchSession, ResearchSessionSummary, UpdateBriefRequest, HypothesisComparison, CompanyContext, RefinementChange,
+  PortfolioOverview, PortfolioTransaction, RecordTransactionRequest,
 } from './types'
 
 const V1 = '/api/v1'
@@ -15,6 +16,8 @@ const V1 = '/api/v1'
 export const keys = {
   portfolios: ['portfolios'] as const,
   portfolio: (id: string) => ['portfolio', id] as const,
+  overview: (currency?: string) => ['portfolios', 'overview', currency ?? ''] as const,
+  journal: (id: string, page: number) => ['journal', id, page] as const,
   holdings: (id: string, currency?: string) => ['holdings', id, currency ?? ''] as const,
   transactions: (id: string, page: number, symbol?: string) => ['transactions', id, page, symbol ?? ''] as const,
   orders: (id: string, page: number) => ['orders', id, page] as const,
@@ -102,12 +105,80 @@ export const usePerformance = (id?: string, from?: string, currency?: string) =>
 export const useRisk = (id?: string) =>
   useQuery({ queryKey: keys.risk(id ?? ''), queryFn: () => api.get<Risk>(`${V1}/portfolios/${id}/risk`), enabled: !!id })
 
+/** All of the user's portfolios with a total over the active ones in `currency` (default: application currency). */
+export const usePortfolioOverview = (currency?: string) =>
+  useQuery({
+    queryKey: keys.overview(currency),
+    queryFn: () => api.get<PortfolioOverview>(`${V1}/portfolios/overview${currency ? `?currency=${currency}` : ''}`),
+    placeholderData: keepPreviousData,
+  })
+
+export interface CreatePortfolioBody {
+  name: string
+  description?: string
+  initialInvestment: number
+  baseCurrency: string
+  settings?: PortfolioSettings
+  /** Working universe for the optimizer (not holdings). */
+  universe?: string[]
+  maxWeight?: number
+}
+
 export function useCreatePortfolio() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: { name: string; initialInvestment: number; baseCurrency: string; settings?: PortfolioSettings }) =>
-      api.post<Portfolio>(`${V1}/portfolios`, body),
+    mutationFn: (body: CreatePortfolioBody) => api.post<Portfolio>(`${V1}/portfolios`, body),
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.portfolios }),
+  })
+}
+
+/** Everything that depends on one portfolio's state – refreshed after a booking or lifecycle change. */
+function invalidatePortfolio(qc: ReturnType<typeof useQueryClient>, id: string) {
+  qc.invalidateQueries({ queryKey: keys.portfolios })
+  for (const k of ['portfolio', 'holdings', 'transactions', 'orders', 'cash', 'proposals', 'performance', 'risk', 'journal']) {
+    qc.invalidateQueries({ queryKey: [k, id] })
+  }
+}
+
+export function useUpdatePortfolioDetails(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { name: string; description?: string | null }) => api.put<Portfolio>(`${V1}/portfolios/${id}/details`, body),
+    onSuccess: () => invalidatePortfolio(qc, id),
+  })
+}
+
+export function useArchivePortfolio() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, archive }: { id: string; archive: boolean }) => api.post<Portfolio>(`${V1}/portfolios/${id}/${archive ? 'archive' : 'restore'}`),
+    onSuccess: (p) => invalidatePortfolio(qc, p.id),
+  })
+}
+
+export const useJournal = (id?: string, page = 1, pageSize = 50) =>
+  useQuery({
+    queryKey: [...keys.journal(id ?? '', page), pageSize],
+    queryFn: () => api.get<PagedResult<PortfolioTransaction>>(`${V1}/portfolios/${id}/journal?page=${page}&pageSize=${pageSize}`),
+    enabled: !!id,
+  })
+
+/** Books a manual transaction. One idempotency key per submitted form, so a double click books once. */
+export function useRecordTransaction(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ body, idempotencyKey }: { body: RecordTransactionRequest; idempotencyKey: string }) =>
+      api.post<PortfolioTransaction>(`${V1}/portfolios/${id}/journal`, body, { 'Idempotency-Key': idempotencyKey }),
+    onSuccess: () => invalidatePortfolio(qc, id),
+  })
+}
+
+export function useReverseTransaction(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ transactionId, idempotencyKey }: { transactionId: string; idempotencyKey: string }) =>
+      api.post<PortfolioTransaction>(`${V1}/portfolios/${id}/journal/${transactionId}/reverse`, {}, { 'Idempotency-Key': idempotencyKey }),
+    onSuccess: () => invalidatePortfolio(qc, id),
   })
 }
 
@@ -671,7 +742,7 @@ function useResearchAction<TArgs>(call: (args: TArgs) => Promise<ResearchSession
 }
 
 export const useStartResearch = () =>
-  useResearchAction((body: { objective?: string; market?: string; riskPreference?: string; horizonYears?: number }) => api.post<ResearchSession>(`${V1}/research`, body))
+  useResearchAction((body: { objective?: string; market?: string; riskPreference?: string; horizonYears?: number; portfolioId?: string }) => api.post<ResearchSession>(`${V1}/research`, body))
 export const useUpdateBrief = (id: string) => useResearchAction((body: UpdateBriefRequest) => api.put<ResearchSession>(`${V1}/research/${id}/brief`, body))
 export const useSetUniverse = (id: string) => useResearchAction((symbols: string[]) => api.put<ResearchSession>(`${V1}/research/${id}/universe`, { symbols }))
 export const useEvaluateResearch = (id: string) => useResearchAction(() => api.post<ResearchSession>(`${V1}/research/${id}/evaluate`))

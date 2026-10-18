@@ -1,12 +1,11 @@
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router'
-import { FlaskConical, ListChecks, LogOut, Menu, Palette, ScrollText, Settings, ShieldCheck, Sigma, UserRound } from 'lucide-react'
+import { Briefcase, FlaskConical, ListChecks, LogOut, Menu, Palette, ScrollText, Settings, ShieldCheck, Sigma, UserRound } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { DataBadge, LoadingBlock } from '@/components/common'
 import { AmirWordmark } from '@/components/brand'
@@ -16,10 +15,9 @@ import {
   adminSection, optimizerSections, primaryForPath, primaryNav, sidebarEntryForPath, type NavEntry, type NavSection,
 } from '@/lib/navigation'
 import { identityLabel } from '@/lib/identity'
-import { usePortfolioContext } from '@/lib/portfolio-context'
 import { useMarketStatus } from '@/lib/queries'
 import { useSelection } from '@/lib/selection'
-import { money, relativeTime } from '@/lib/format'
+import { relativeTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 function SidebarLink({ entry, active, onNavigate }: { entry: NavEntry; active: boolean; onNavigate?: () => void }) {
@@ -70,7 +68,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   )
 }
 
-/** Top navigation: the six primary areas. Scrolls horizontally when the viewport is too narrow. */
+/** Top navigation: the primary areas. Scrolls horizontally when the viewport is too narrow. */
 export function PrimaryNav() {
   const { pathname } = useLocation()
   const current = primaryForPath(pathname)
@@ -138,32 +136,11 @@ function DataStatus() {
   )
 }
 
-function PortfolioSelector() {
-  const { portfolios, portfolioId, select } = usePortfolioContext()
-  if (portfolios.length === 0) return null
-  return (
-    <Select value={portfolioId ?? null} onValueChange={(v) => v && select(String(v))} items={portfolios.map((p) => ({ value: p.id, label: p.name }))}>
-      <SelectTrigger className="w-56" aria-label="Selected portfolio">
-        <SelectValue placeholder="Select portfolio" />
-      </SelectTrigger>
-      <SelectContent>
-        {portfolios.map((p) => (
-          <SelectItem key={p.id} value={p.id}>
-            <span className="flex w-full items-center justify-between gap-3">
-              <span>{p.name}</span>
-              <span className="tabular text-xs text-muted-foreground">{money(p.totalValue, p.baseCurrency, { compact: true })}</span>
-            </span>
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  )
-}
 
 function SelectionIndicator() {
   const { count } = useSelection()
   return (
-    <Button variant="outline" size="sm" render={<Link to="/stocks" />} aria-label={`Stock selection: ${count} selected`}>
+    <Button variant="outline" size="sm" render={<Link to="/stocks" />} aria-label={`Portfolio Creation: ${count} stock${count === 1 ? '' : 's'} selected`}>
       <ListChecks /> <span className="hidden sm:inline">Selection</span>
       <Badge variant="secondary" className="tabular">{count}</Badge>
     </Button>
@@ -216,7 +193,8 @@ function UserMenu() {
           </DropdownMenuLabel>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => navigate('/settings')}><Settings /> Account &amp; portfolios</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => navigate('/')}><Briefcase /> My portfolios</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => navigate('/settings')}><Settings /> Account settings</DropdownMenuItem>
         <DropdownMenuItem onClick={() => navigate('/settings#appearance')}><Palette /> Appearance &amp; themes</DropdownMenuItem>
         {user.isAdministrator && <DropdownMenuItem onClick={() => navigate('/admin')}><ScrollText /> Administration</DropdownMenuItem>}
         <DropdownMenuSeparator />
@@ -262,8 +240,7 @@ export function AppShell() {
             <IdentityBadge />
             <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
               <span className="hidden items-center gap-1 2xl:flex"><FlaskConical className="size-3.5" aria-hidden /> Simulated trading only</span>
-              <div className="hidden md:block"><PortfolioSelector /></div>
-              <SelectionIndicator />
+                <SelectionIndicator />
               <ThemeQuickToggle />
               <UserMenu />
             </div>

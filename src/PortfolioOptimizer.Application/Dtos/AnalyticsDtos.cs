@@ -10,7 +10,9 @@ public sealed record MetricDto(double? Value, string? UnavailableReason)
     public static MetricDto From(MetricValue m) => new(m.Value, m.UnavailableReason);
 }
 
-public sealed record PerformancePointDto(DateOnly Date, double Value, double CumulativeReturn, double? BenchmarkCumulativeReturn, double Drawdown);
+/// <param name="Value">Total value (cash + positions) in the reporting currency.</param>
+/// <param name="Cash">Cash part of <paramref name="Value"/>; invested value = Value − Cash.</param>
+public sealed record PerformancePointDto(DateOnly Date, double Value, double CumulativeReturn, double? BenchmarkCumulativeReturn, double Drawdown, double? Cash = null);
 
 public sealed record PerformanceDto(
     Guid PortfolioId,

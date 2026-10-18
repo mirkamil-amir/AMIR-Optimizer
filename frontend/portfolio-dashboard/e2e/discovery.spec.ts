@@ -5,8 +5,8 @@ test.use({ storageState: ADMIN_STATE })
 
 test('stock discovery: search, select across sectors, selection is temporary', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('navigation', { name: 'Optimizer sections' }).getByRole('link', { name: 'Stock selection' }).click()
-  await expect(page.getByRole('heading', { name: 'Stock selection' })).toBeVisible()
+  await page.getByRole('navigation', { name: 'Optimizer sections' }).getByRole('link', { name: 'Portfolio Creation' }).click()
+  await expect(page.getByRole('heading', { name: 'Portfolio Creation' })).toBeVisible()
 
   const search = page.getByLabel('Search company name or ticker')
   await search.fill('AAPL')
@@ -19,7 +19,7 @@ test('stock discovery: search, select across sectors, selection is temporary', a
 
   // The selection survives client-side navigation …
   await page.getByRole('navigation', { name: 'Optimizer sections' }).getByRole('link', { name: 'Overview', exact: true }).click()
-  await expect(page.getByRole('link', { name: 'Stock selection: 2 selected' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Portfolio Creation: 2 stocks selected' })).toBeVisible()
 
   // … is never written to browser storage …
   const stored = await page.evaluate(() => JSON.stringify({ ...localStorage }) + JSON.stringify({ ...sessionStorage }))
@@ -27,7 +27,7 @@ test('stock discovery: search, select across sectors, selection is temporary', a
 
   // … and is gone after a reload.
   await page.reload()
-  await expect(page.getByRole('link', { name: 'Stock selection: 0 selected' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Portfolio Creation: 0 stocks selected' })).toBeVisible()
 })
 
 test('the selection hands its universe to the optimizer', async ({ page }) => {
@@ -37,8 +37,9 @@ test('the selection hands its universe to the optimizer', async ({ page }) => {
     await search.fill(symbol)
     await page.getByRole('checkbox', { name: `Select ${symbol}` }).check()
   }
-  await page.getByRole('region', { name: 'Selected stocks' }).getByRole('link', { name: 'Optimize' }).click()
-  await expect(page).toHaveURL(/\/optimize\?from=selection/)
+  // The tray names the portfolio whose optimizer receives the selection.
+  await page.getByRole('region', { name: 'Selected stocks' }).getByRole('link', { name: /^Optimize in “/ }).click()
+  await expect(page).toHaveURL(/\/portfolios\/[0-9a-f-]{36}\/optimize\?from=selection/)
   await expect(page.getByText('AAPL').first()).toBeVisible()
   await expect(page.getByText('MSFT').first()).toBeVisible()
 })
@@ -60,10 +61,10 @@ test.describe('own session', () => {
     await page.goto('/stocks')
     await page.getByLabel('Search company name or ticker').fill('AAPL')
     await page.getByRole('checkbox', { name: 'Select AAPL' }).check()
-    await expect(page.getByRole('link', { name: 'Stock selection: 1 selected' })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Portfolio Creation: 1 stock selected' })).toBeVisible()
     await signOut(page)
     expect(await page.evaluate(() => (history.state as { usr?: { from?: string } } | null)?.usr?.from)).toBeUndefined()
-    await expect(page.getByRole('link', { name: /Stock selection/ })).toHaveCount(0)
+    await expect(page.getByRole('link', { name: /stocks? selected/ })).toHaveCount(0)
   })
 })
 

@@ -79,7 +79,7 @@ export function TradeProposalView({ proposal, currency, allowExecute = true }: {
       })
       result.notes.forEach((n) => toast.info(n))
       setConfirmOpen(false)
-      navigate('/holdings')
+      navigate(`/portfolios/${proposal.portfolioId}/holdings`)
     } catch (e) {
       toast.error('Simulated execution failed', { description: errorMessage(e) })
       setConfirmOpen(false)

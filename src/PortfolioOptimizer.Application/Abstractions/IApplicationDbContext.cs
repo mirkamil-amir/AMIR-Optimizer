@@ -21,6 +21,7 @@ public interface IApplicationDbContext
     DbSet<Holding> Holdings { get; }
     DbSet<CashLedgerEntry> CashLedger { get; }
     DbSet<TradeExecution> Executions { get; }
+    DbSet<PortfolioTransaction> PortfolioTransactions { get; }
     DbSet<OptimizationRun> OptimizationRuns { get; }
     DbSet<TradeProposal> TradeProposals { get; }
     DbSet<PaperTradeBatch> PaperTradeBatches { get; }

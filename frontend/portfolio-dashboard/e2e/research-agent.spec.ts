@@ -84,7 +84,7 @@ test('research assistant: from objective to a saved, reproducible run', async ({
 
   // 17: reopen – the session is listed and the saved run opens in the existing optimizer view.
   await page.getByRole('tabpanel').getByRole('link', { name: 'Open saved run' }).click()
-  await expect(page).toHaveURL(/\/optimize\/[0-9a-f-]{36}$/)
+  await expect(page).toHaveURL(/\/portfolios\/[0-9a-f-]{36}\/optimize\/[0-9a-f-]{36}$/)
   await expect(page.getByText('What your result means')).toBeVisible({ timeout: 30_000 })
   await page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'AI Research' }).click()
   const row = page.getByRole('row').filter({ hasText: 'saved run' }).first()

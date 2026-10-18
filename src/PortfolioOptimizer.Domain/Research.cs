@@ -22,6 +22,11 @@ public class ResearchSession
 {
     public Guid Id { get; set; }
     public Guid OwnerId { get; set; }
+    /// <summary>
+    /// Portfolio the research was started from (owner-checked when set): its currency is the analysis currency and a saved
+    /// run is attached to it by default. Null for portfolio-independent research.
+    /// </summary>
+    public Guid? PortfolioId { get; set; }
     public required string Title { get; set; }
     public ResearchState State { get; set; }
     public DateTime CreatedAtUtc { get; set; }

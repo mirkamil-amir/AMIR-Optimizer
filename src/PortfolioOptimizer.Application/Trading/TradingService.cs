@@ -34,6 +34,7 @@ public sealed class TradingService(
     public async Task<TradeProposalDto> RebalancePreviewAsync(Guid portfolioId, RebalancePreviewRequest request, CancellationToken ct)
     {
         var portfolio = await portfolios.LoadAsync(portfolioId, ct);
+        portfolio.EnsureActive();
         if (request.TargetWeights is { Count: > 0 } explicitWeights)
         {
             var symbols = explicitWeights.Keys.Select(Asset.NormalizeSymbol).ToList();
@@ -101,6 +102,7 @@ public sealed class TradingService(
 
         // Ownership first: replaying a stored result must not leak another user's execution.
         var portfolio = await portfolios.LoadAsync(portfolioId, ct, tracking: true);
+        portfolio.EnsureActive();
         var previous = await db.PaperTradeBatches.AsNoTracking().Include(b => b.Orders)
             .SingleOrDefaultAsync(b => b.PortfolioId == portfolioId && b.IdempotencyKey == idempotencyKey, ct);
         if (previous is not null)
@@ -241,6 +243,7 @@ public sealed class TradingService(
     private async Task<TradeProposalDto> CreateProposalAsync(Guid portfolioId, Guid? runId, Dictionary<int, double> targets, PortfolioSettings settings, CancellationToken ct)
     {
         var portfolio = await portfolios.LoadAsync(portfolioId, ct);
+        portfolio.EnsureActive();
         var held = portfolio.Holdings.Where(h => h.Quantity > 0).ToDictionary(h => h.AssetId, h => h.Quantity);
         var ids = targets.Keys.Union(held.Keys).ToList();
         var assets = await db.Assets.AsNoTracking().Where(a => ids.Contains(a.Id)).ToDictionaryAsync(a => a.Id, ct);

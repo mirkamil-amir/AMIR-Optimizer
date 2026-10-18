@@ -30,7 +30,8 @@ public sealed record PortfolioSettings
 
 /// <summary>
 /// A simulated (paper) portfolio. Cash and holdings change only through <see cref="Buy"/> / <see cref="Sell"/> /
-/// <see cref="Deposit"/>, which also append immutable ledger records.
+/// <see cref="Deposit"/> / <see cref="Withdraw"/> / <see cref="ReceiveDividend"/> / <see cref="ChargeFee"/>, which also append
+/// immutable ledger records. A user owns any number of independent portfolios.
 /// </summary>
 public class Portfolio
 {
@@ -38,7 +39,15 @@ public class Portfolio
     /// <summary>The user who owns this portfolio; only the owner can read or change it.</summary>
     public Guid OwnerId { get; set; }
     public required string Name { get; set; }
+    /// <summary>Optional purpose of the portfolio ("Low-volatility experiment"), shown on the overview.</summary>
+    public string? Description { get; set; }
     public string BaseCurrency { get; set; } = "USD";
+    /// <summary>
+    /// Set when the portfolio is archived: it stays readable with its full history but accepts no transactions, runs or
+    /// proposals until it is restored. Only an archived portfolio can be deleted.
+    /// </summary>
+    public DateTime? ArchivedAtUtc { get; set; }
+    public bool IsArchived => ArchivedAtUtc is not null;
     public decimal InitialInvestment { get; set; }
     public decimal CashBalance { get; private set; }
     public PortfolioSettings Settings { get; set; } = new();
@@ -54,12 +63,94 @@ public class Portfolio
     /// <summary>Money columns store 6 decimals; amounts are rounded to that before they change cash, so the ledger reconciles exactly.</summary>
     public const int MoneyDecimals = 6;
 
-    public CashLedgerEntry Deposit(decimal amount, DateTime timestampUtc, string description)
+    public CashLedgerEntry Deposit(decimal amount, DateTime timestampUtc, string description, Guid? reference = null)
     {
         if (amount <= 0) throw new DomainException("Deposit amount must be positive.");
+        amount = Money(amount);
         CashBalance += amount;
-        return AddCash(CashEntryType.Deposit, amount, timestampUtc, null, description);
+        var entry = AddCash(CashEntryType.Deposit, amount, timestampUtc, reference, description);
+        Touch(timestampUtc);
+        return entry;
     }
+
+    /// <summary>External cash outflow (not an investment loss). Cannot exceed the cash balance – no overdraft.</summary>
+    public CashLedgerEntry Withdraw(decimal amount, DateTime timestampUtc, string description, Guid? reference = null)
+    {
+        if (amount <= 0) throw new DomainException("Withdrawal amount must be positive.");
+        amount = Money(amount);
+        if (amount > CashBalance) throw new DomainException($"Insufficient cash to withdraw {amount:N2}: available {CashBalance:N2}.");
+        CashBalance -= amount;
+        var entry = AddCash(CashEntryType.Withdrawal, -amount, timestampUtc, reference, description);
+        Touch(timestampUtc);
+        return entry;
+    }
+
+    /// <summary>
+    /// Cash dividend received for a security the portfolio holds or has held, as the net amount in the portfolio currency.
+    /// Income, not a contribution: it counts towards return. It does not change quantity or cost basis.
+    /// </summary>
+    public CashLedgerEntry ReceiveDividend(Asset asset, decimal amount, DateTime timestampUtc, string description, Guid? reference = null)
+    {
+        if (amount <= 0) throw new DomainException("Dividend amount must be positive.");
+        if (Holdings.All(h => h.AssetId != asset.Id))
+            throw new DomainException($"{asset.Symbol} has never been held in this portfolio; a dividend cannot be recorded for it.");
+        amount = Money(amount);
+        CashBalance += amount;
+        var entry = AddCash(CashEntryType.Dividend, amount, timestampUtc, reference, description);
+        Touch(timestampUtc);
+        return entry;
+    }
+
+    /// <summary>A standalone fee (custody, account) charged to cash; it reduces return. Cannot exceed the cash balance.</summary>
+    public CashLedgerEntry ChargeFee(decimal amount, DateTime timestampUtc, string description, Guid? reference = null)
+    {
+        if (amount <= 0) throw new DomainException("Fee amount must be positive.");
+        amount = Money(amount);
+        if (amount > CashBalance) throw new DomainException($"Insufficient cash to pay a fee of {amount:N2}: available {CashBalance:N2}.");
+        CashBalance -= amount;
+        var entry = AddCash(CashEntryType.Fee, -amount, timestampUtc, reference, description);
+        Touch(timestampUtc);
+        return entry;
+    }
+
+    /// <summary>
+    /// Books the exact opposite of a standalone cash entry (correction of an erroneous deposit, withdrawal, dividend or fee).
+    /// The original stays in the ledger; the correction is a new entry of the same type with the opposite sign.
+    /// </summary>
+    public CashLedgerEntry ReverseCashEntry(CashLedgerEntry original, DateTime timestampUtc, string description, Guid? reference = null)
+    {
+        if (original.PortfolioId != Id) throw new DomainException("The entry belongs to a different portfolio.");
+        if (original.Type is not (CashEntryType.Deposit or CashEntryType.Withdrawal or CashEntryType.Dividend or CashEntryType.Fee))
+            throw new DomainException("Only deposits, withdrawals, dividends and standalone fees can be reversed; record an opposite trade instead.");
+        var amount = -original.Amount;
+        if (CashBalance + amount < 0) throw new DomainException($"Reversing this entry needs {-amount:N2} in cash; available {CashBalance:N2}.");
+        CashBalance += amount;
+        var entry = AddCash(original.Type, amount, timestampUtc, reference, description);
+        Touch(timestampUtc);
+        return entry;
+    }
+
+    /// <summary>Refuses changes to an archived portfolio (it must be restored first).</summary>
+    public void EnsureActive()
+    {
+        if (IsArchived) throw new DomainException($"Portfolio “{Name}” is archived. Restore it before changing it.");
+    }
+
+    public void Archive(DateTime timestampUtc)
+    {
+        if (IsArchived) throw new DomainException("The portfolio is already archived.");
+        ArchivedAtUtc = timestampUtc;
+        UpdatedAtUtc = timestampUtc;
+    }
+
+    public void Restore(DateTime timestampUtc)
+    {
+        if (!IsArchived) throw new DomainException("The portfolio is not archived.");
+        ArchivedAtUtc = null;
+        UpdatedAtUtc = timestampUtc;
+    }
+
+    private static decimal Money(decimal amount) => Math.Round(amount, MoneyDecimals, MidpointRounding.AwayFromZero);
 
     /// <summary>Buy in the portfolio's own currency (the asset must trade in <see cref="BaseCurrency"/>).</summary>
     public TradeExecution Buy(Asset asset, decimal quantity, decimal price, DateOnly priceDate, decimal fee, Guid orderId, DateTime timestampUtc) =>

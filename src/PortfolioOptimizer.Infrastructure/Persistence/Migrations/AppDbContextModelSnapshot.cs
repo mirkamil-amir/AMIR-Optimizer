@@ -1430,6 +1430,9 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTime?>("ArchivedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("BaseCurrency")
                         .IsRequired()
                         .HasMaxLength(3)
@@ -1441,6 +1444,10 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
 
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
 
                     b.Property<decimal>("InitialInvestment")
                         .HasPrecision(18, 6)
@@ -1470,6 +1477,109 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                     b.HasIndex("OwnerId");
 
                     b.ToTable("Portfolios");
+                });
+
+            modelBuilder.Entity("PortfolioOptimizer.Domain.PortfolioTransaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("AssetId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("BookedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("CashAmount")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)");
+
+                    b.Property<Guid?>("CashEntryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<DateOnly>("EffectiveDate")
+                        .HasColumnType("date");
+
+                    b.Property<Guid?>("ExecutionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Fees")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)");
+
+                    b.Property<decimal>("FxRate")
+                        .HasPrecision(20, 10)
+                        .HasColumnType("numeric(20,10)");
+
+                    b.Property<DateOnly?>("FxRateDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("FxSource")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("IdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("PortfolioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("Price")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)");
+
+                    b.Property<decimal?>("Quantity")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)");
+
+                    b.Property<Guid?>("ReversedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ReversesId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Symbol")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssetId");
+
+                    b.HasIndex("ReversesId")
+                        .IsUnique()
+                        .HasFilter("\"ReversesId\" IS NOT NULL");
+
+                    b.HasIndex("PortfolioId", "BookedAtUtc");
+
+                    b.HasIndex("PortfolioId", "IdempotencyKey")
+                        .IsUnique();
+
+                    b.ToTable("PortfolioTransactions", t =>
+                        {
+                            t.HasCheckConstraint("CK_PortfolioTransactions_Fees", "\"Fees\" >= 0");
+
+                            t.HasCheckConstraint("CK_PortfolioTransactions_FxRate", "\"FxRate\" > 0");
+                        });
                 });
 
             modelBuilder.Entity("PortfolioOptimizer.Domain.QuoteRefreshRun", b =>
@@ -1603,6 +1713,9 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                     b.Property<string>("PendingRefinementJson")
                         .HasColumnType("jsonb");
 
+                    b.Property<Guid?>("PortfolioId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("State")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -1624,6 +1737,8 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("PortfolioId");
 
                     b.HasIndex("OwnerId", "UpdatedAtUtc");
 
@@ -2392,6 +2507,20 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("PortfolioOptimizer.Domain.PortfolioTransaction", b =>
+                {
+                    b.HasOne("PortfolioOptimizer.Domain.Asset", null)
+                        .WithMany()
+                        .HasForeignKey("AssetId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("PortfolioOptimizer.Domain.Portfolio", null)
+                        .WithMany()
+                        .HasForeignKey("PortfolioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("PortfolioOptimizer.Domain.ResearchEvent", b =>
                 {
                     b.HasOne("PortfolioOptimizer.Domain.ResearchSession", null)
@@ -2408,6 +2537,11 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                         .HasForeignKey("OwnerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("PortfolioOptimizer.Domain.Portfolio", null)
+                        .WithMany()
+                        .HasForeignKey("PortfolioId")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("PortfolioOptimizer.Domain.SimulatedOrder", b =>

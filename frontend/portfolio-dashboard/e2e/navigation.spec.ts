@@ -1,8 +1,8 @@
 import { expect, test, type Page } from '@playwright/test'
 import { ADMIN_STATE, admin, approve, register, requireAdminCredentials, signIn, signOut, strongPassword, uniqueEmail } from './helpers'
 
-// Application navigation: six primary areas in the top bar, Optimizer sections and administration in the sidebar.
-const PRIMARY = ['Optimizer', 'AI Research', 'Financial News', 'Watchlist', 'Market Data', 'Settings']
+// Application navigation: eight primary areas in the top bar, Optimizer sections and administration in the sidebar.
+const PRIMARY = ['Optimizer', 'AI Research', 'Financial News', 'Watchlist', 'Market Data', 'Strategy Guide', 'Glossary', 'Settings']
 
 const primary = (page: Page) => page.getByRole('navigation', { name: 'Primary' })
 const optimizer = (page: Page) => page.getByRole('navigation', { name: 'Optimizer sections' }).first()
@@ -28,6 +28,8 @@ test.describe('as administrator', () => {
       ['Financial News', 'Financial news', /\/news$/],
       ['Watchlist', 'Watchlist', /\/watchlist$/],
       ['Market Data', 'Market data', /\/market-data$/],
+      ['Strategy Guide', 'Strategy guide', /\/learn$/],
+      ['Glossary', 'Glossary', /\/learn\/glossary$/],
       ['Settings', 'Settings', /\/settings$/],
     ] as const) {
       await primary(page).getByRole('link', { name }).click()
@@ -42,7 +44,7 @@ test.describe('as administrator', () => {
     await primary(page).getByRole('link', { name: 'Optimizer' }).click()
     await expect(page).toHaveURL(/\/$/)
     for (const [name, heading, url] of [
-      ['Stock selection', 'Stock selection', /\/stocks$/],
+      ['Portfolio Creation', 'Portfolio Creation', /\/stocks$/],
       ['Backtest', 'Backtesting', /\/backtest$/],
       ['Optimization history', 'Optimization history', /\/history$/],
       ['Machine learning', 'Machine-learning research', /\/machine-learning$/],
@@ -105,8 +107,8 @@ test.describe('as administrator', () => {
         await expect(optimizer(page)).toBeHidden()
         await page.getByRole('button', { name: 'Open Optimizer and administration menu' }).click()
         const sheet = page.getByRole('dialog')
-        await sheet.getByRole('link', { name: 'Holdings' }).click()
-        await expect(page).toHaveURL(/\/holdings$/)
+        await sheet.getByRole('link', { name: 'Strategy comparison' }).click()
+        await expect(page).toHaveURL(/\/strategy-comparison$/)
         await expect(sheet).toBeHidden()
       } else {
         await expect(optimizer(page)).toBeVisible()

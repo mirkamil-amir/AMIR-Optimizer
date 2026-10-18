@@ -92,10 +92,17 @@ Offline demo: start with `MarketData__DefaultProvider=Mock` on a new database, o
 
 ## Using the platform
 
-Navigation: the top bar holds the six areas **Optimizer · AI Research · Financial News · Watchlist · Market Data ·
-Settings**; the left sidebar lists the Optimizer's sections (overview, stock selection, optimize, history, backtest,
-strategy comparison, machine learning, paper portfolio, learn) and, for administrators, **Administration** with
+Navigation: the top bar holds **Optimizer · AI Research · Financial News · Watchlist · Market Data · Strategy Guide ·
+Glossary · Settings**; the left sidebar lists the Optimizer's sections (Overview, Portfolio Creation, Optimize,
+Optimization history, Backtest, Strategy comparison, Machine learning) and, for administrators, **Administration** with
 **Admin settings**.
+
+**Portfolios.** You can keep several independent portfolios. **Overview** (`/`) lists all of yours with value, cash,
+invested amount, P/L (against net contributions), last optimization and activity, plus an honest total. **Portfolio
+Creation** (`/stocks`) asks for a name, description, currency and starting cash, lets you choose the stocks it may invest
+in and creates it only when you confirm. Each portfolio opens in its own workspace (`/portfolios/<id>`: Overview, Optimize,
+Holdings, Transactions, Performance, Optimization runs) where you can record buys, sells, deposits, withdrawals,
+dividends and fees, archive or restore it. Details: [portfolios.md](docs/portfolios.md).
 
 0. **AI research** (`/research`, in the top bar). Write an objective ("low-risk US stocks without energy,
    at most 20 % per stock"). The brief separates what you said from what was assumed (badges) and asks only for what
@@ -105,8 +112,8 @@ strategy comparison, machine learning, paper portfolio, learn) and, for administ
    large?") are answered from the computed values; changes ("cap at 15 %", "exclude JPM") are shown as an exact proposal
    and only recalculated after you confirm. Compare any two hypotheses; "Save as optimization run" (with confirmation)
    creates a normal run you can reopen, trade on paper or check further. Every tool call is in the activity log.
-0c. **Currency converter and themes.** The overview has a currency converter: reference rates of the major currencies against
-   a selectable base (“1 USD =”, any published currency, default the portfolio currency) with 1-day changes, a 1M–5Y chart of
+0c. **Currency converter and themes.** The overview (My portfolios) has a currency converter: reference rates of the major currencies against
+   a selectable base (“1 USD =”, any published currency, default the currency of the totals) with 1-day changes, a 1M–5Y chart of
    the selected pair and a calculator (ECB daily reference rates, dated, never “live”; simulated with simulated prices).
    Appearance: light / dark / system and ten skins – Navy & Gold (default), Midnight, Graphite, Slate, Ocean, Teal, Emerald,
    Burgundy, Bronze, Violet – in Settings → Appearance or with the header toggle; kept per browser.
@@ -117,7 +124,7 @@ strategy comparison, machine learning, paper portfolio, learn) and, for administ
    and say "cannot be valued" instead of showing a guessed total when a rate is missing. See [currencies](docs/currency.md).
 1. **Sign in / apply.** New users apply on `/register`; their account stays *Pending* until an administrator
    approves it under **Users**. Pending, rejected and suspended accounts can sign in but only see their status page.
-2. **Stock selection.** Navigate market → index → sector, search by company or ticker, sort. Every sign-in starts a
+2. **Portfolio Creation (stock selection).** Navigate market → index → sector, search by company or ticker, sort. Every sign-in starts a
    shared background price refresh for all markets; the page shows cached prices immediately and refreshes the visible
    ones. Each price shows its currency, kind (*Delayed quote* / *Last close*, never "live"), when it applies, when it was
    retrieved and whether it is cached, stale or SIMULATED; a refresh icon updates a single stock. Select stocks across
@@ -133,8 +140,9 @@ strategy comparison, machine learning, paper portfolio, learn) and, for administ
 5. **Strategy comparison.** Pick an optimization run and an ML experiment. Both are re-run walk-forward with their
    stored settings on identical dates, universe, capital, costs and rebalancing next to equal weight and the
    benchmark (optionally a hybrid). Saved comparisons are immutable.
-6. **Paper portfolio.** Proposals never change holdings; executing requires an explicit confirmation. Holdings,
-   ledger, analytics and backtests work as before, but every portfolio, run and backtest now belongs to its owner.
+6. **Paper portfolio.** Proposals never change holdings; executing requires an explicit confirmation. Each portfolio's
+   Holdings, Transactions (recorded transactions, proposals, orders, executions, cash ledger) and Performance (value,
+   cash and time-weighted return since the first booking) are tabs of its workspace; every portfolio belongs to its owner.
 7. **Learn.** The strategy guide explains every optimization objective, every ML model, ML portfolio construction and
    strategy comparison in 12 sections (theory, mathematics, worked example, caveats …); a glossary covers the terms.
    Result pages show "What your result means", labelled as calculated facts, estimates, interpretations and cautions.

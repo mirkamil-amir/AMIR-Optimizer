@@ -18,7 +18,7 @@ const user = (isAdministrator: boolean): CurrentUser => ({
   isAdministrator, createdAtUtc: '2026-01-01T00:00:00Z',
 })
 
-const PAGES = ['/', '/research', '/news', '/watchlist', '/market-data', '/settings', '/stocks', '/stocks/:symbol', '/backtest', '/optimize', '/admin/settings']
+const PAGES = ['/', '/learn', '/learn/glossary', '/learn/:strategyId', '/research', '/news', '/watchlist', '/market-data', '/settings', '/stocks', '/stocks/:symbol', '/backtest', '/optimize', '/admin/settings']
 
 function renderAt(path: string) {
   const router = createMemoryRouter(
@@ -38,10 +38,10 @@ describe('application shell navigation', () => {
     auth.current = { user: user(false), isAdministrator: false, logout: async () => {} }
   })
 
-  it('shows the six primary destinations in order and marks the current one', () => {
+  it('shows the eight primary destinations in order and marks the current one', () => {
     renderAt('/')
     expect(within(primary()).getAllByRole('link').map((a) => a.textContent)).toEqual(
-      ['Optimizer', 'AI Research', 'Financial News', 'Watchlist', 'Market Data', 'Settings'],
+      ['Optimizer', 'AI Research', 'Financial News', 'Watchlist', 'Market Data', 'Strategy Guide', 'Glossary', 'Settings'],
     )
     expect(link(primary(), 'Optimizer')).toHaveAttribute('aria-current', 'page')
     expect(link(optimizerNav(), 'Overview')).toHaveAttribute('aria-current', 'page')
@@ -50,13 +50,13 @@ describe('application shell navigation', () => {
   it('marks Optimizer as the area of a child section and highlights that section', () => {
     renderAt('/stocks/AAPL')
     expect(link(primary(), 'Optimizer')).toHaveAttribute('aria-current', 'true')
-    expect(link(optimizerNav(), 'Stock selection')).toHaveAttribute('aria-current', 'page')
+    expect(link(optimizerNav(), 'Portfolio Creation')).toHaveAttribute('aria-current', 'page')
     expect(link(primary(), 'Watchlist')).not.toHaveAttribute('aria-current')
   })
 
   it('opens each primary destination, and back/forward keep the active item in step', async () => {
     const router = renderAt('/backtest')
-    for (const [name, path] of [['AI Research', '/research'], ['Financial News', '/news'], ['Watchlist', '/watchlist'], ['Market Data', '/market-data'], ['Settings', '/settings']]) {
+    for (const [name, path] of [['AI Research', '/research'], ['Financial News', '/news'], ['Watchlist', '/watchlist'], ['Market Data', '/market-data'], ['Strategy Guide', '/learn'], ['Glossary', '/learn/glossary'], ['Settings', '/settings']]) {
       await userEvent.click(link(primary(), name))
       expect(screen.getByText(`page ${path}`)).toBeInTheDocument()
       expect(link(primary(), name)).toHaveAttribute('aria-current', 'page')
@@ -79,9 +79,15 @@ describe('application shell navigation', () => {
     expect(screen.getByText('page /backtest')).toBeInTheDocument()
   })
 
+  it('marks the strategy guide as the area of a single strategy page', () => {
+    renderAt('/learn/max-sharpe')
+    expect(link(primary(), 'Strategy Guide')).toHaveAttribute('aria-current', 'true')
+    expect(link(primary(), 'Glossary')).not.toHaveAttribute('aria-current')
+  })
+
   it('does not list the moved destinations in the sidebar', () => {
     renderAt('/')
-    for (const name of [/AI research/i, /Financial news/i, /Watchlist/i, /Market data/i, /^Settings$/i]) {
+    for (const name of [/AI research/i, /Financial news/i, /Watchlist/i, /Market data/i, /Strategy guide/i, /Glossary/i, /^Settings$/i]) {
       expect(within(optimizerNav()).queryByRole('link', { name })).toBeNull()
     }
   })

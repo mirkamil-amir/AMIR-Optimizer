@@ -55,11 +55,27 @@ public sealed record CreatePortfolioRequest
 {
     /// <example>Core US Equity</example>
     [Required, StringLength(100, MinimumLength = 1)] public string Name { get; init; } = "";
+    /// <example>Long-term diversified core holdings</example>
+    [StringLength(500)] public string? Description { get; init; }
     /// <example>100000</example>
     [Range(typeof(decimal), "100", "1000000000")] public decimal InitialInvestment { get; init; } = 100_000m;
     [Required, RegularExpression("^[A-Z]{3}$")] public string BaseCurrency { get; init; } = "USD";
     /// <summary>Optional settings; defaults are used when omitted.</summary>
     public PortfolioSettingsDto? Settings { get; init; }
+    /// <summary>
+    /// Working universe chosen in Portfolio Creation (used with default settings when <see cref="Settings"/> is omitted).
+    /// It is the set the optimizer may use – not holdings: nothing is bought until a proposal is confirmed.
+    /// </summary>
+    [MaxLength(500)] public List<string>? Universe { get; init; }
+    /// <summary>Optional maximum weight per stock (0–1) with default settings.</summary>
+    [Range(0.01, 1.0)] public double? MaxWeight { get; init; }
+}
+
+/// <summary>Renames a portfolio or changes its description (no effect on holdings, settings or history).</summary>
+public sealed record UpdatePortfolioDetailsRequest
+{
+    [Required, StringLength(100, MinimumLength = 1)] public string Name { get; init; } = "";
+    [StringLength(500)] public string? Description { get; init; }
 }
 
 public sealed record UpdatePortfolioRequest
@@ -80,7 +96,37 @@ public sealed record PortfolioSummaryDto(
     int Holdings,
     DateTime CreatedAtUtc,
     DateTime UpdatedAtUtc,
-    IReadOnlyList<string>? ValuationProblems = null);
+    IReadOnlyList<string>? ValuationProblems = null,
+    string? Description = null,
+    /// <summary>"Active" or "Archived".</summary>
+    string Status = "Active",
+    DateTime? ArchivedAtUtc = null,
+    /// <summary>Deposits − withdrawals (external cash flows), in the base currency.</summary>
+    decimal NetContributions = 0,
+    /// <summary>Total value − net contributions (includes fees, dividends, realized and unrealized P&amp;L); null when not valued.</summary>
+    decimal? ProfitLoss = null,
+    /// <summary>Latest stored price date among the held positions (null without holdings).</summary>
+    DateOnly? ValuationDate = null,
+    /// <summary>Held positions whose latest price is older than the stale threshold.</summary>
+    int StalePositions = 0,
+    bool UsesSimulatedData = false,
+    DateTime? LatestOptimizationAtUtc = null,
+    /// <summary>Latest ledger booking (trade, deposit, dividend …).</summary>
+    DateTime? LastActivityAtUtc = null);
+
+/// <summary>
+/// The user's portfolios plus totals over the active ones in <paramref name="Currency"/>. The total is null – never a partial
+/// sum – when any active portfolio cannot be valued or converted (see <paramref name="TotalProblems"/>).
+/// </summary>
+public sealed record PortfolioOverviewDto(
+    IReadOnlyList<PortfolioSummaryDto> Portfolios,
+    string Currency,
+    decimal? TotalValue,
+    decimal? TotalNetContributions,
+    int ActivePortfolios,
+    int ArchivedPortfolios,
+    IReadOnlyList<string> TotalProblems,
+    string Methodology);
 
 public sealed record PortfolioDto(
     Guid Id,
@@ -91,7 +137,57 @@ public sealed record PortfolioDto(
     PortfolioSettingsDto Settings,
     DateTime CreatedAtUtc,
     DateTime UpdatedAtUtc,
-    int Version);
+    int Version,
+    string? Description = null,
+    string Status = "Active",
+    DateTime? ArchivedAtUtc = null);
+
+/// <summary>
+/// A manual transaction. Buy/sell need <see cref="Symbol"/>, <see cref="Quantity"/> and <see cref="Price"/> (in the security's
+/// trading currency); deposit, withdrawal and fee need <see cref="Amount"/> in the portfolio currency; a dividend needs
+/// <see cref="Symbol"/> and the net <see cref="Amount"/> received in the portfolio currency.
+/// </summary>
+public sealed record RecordTransactionRequest
+{
+    [Required] public PortfolioTransactionType Type { get; init; }
+    [StringLength(32)] public string? Symbol { get; init; }
+    [Range(typeof(decimal), "0.000001", "1000000000")] public decimal? Quantity { get; init; }
+    [Range(typeof(decimal), "0.000001", "1000000000")] public decimal? Price { get; init; }
+    [Range(typeof(decimal), "0.01", "1000000000")] public decimal? Amount { get; init; }
+    /// <summary>Commission of a trade in the portfolio currency (default 0).</summary>
+    [Range(typeof(decimal), "0", "1000000")] public decimal? Fee { get; init; }
+    /// <summary>Effective date (default today, UTC). Not in the future and not before the portfolio's latest booking.</summary>
+    public DateOnly? Date { get; init; }
+    [StringLength(500)] public string? Note { get; init; }
+}
+
+public sealed record ReverseTransactionRequest
+{
+    [StringLength(500)] public string? Note { get; init; }
+}
+
+public sealed record PortfolioTransactionDto(
+    Guid Id,
+    Guid PortfolioId,
+    PortfolioTransactionType Type,
+    string? Symbol,
+    decimal? Quantity,
+    decimal? Price,
+    string Currency,
+    decimal FxRate,
+    DateOnly? FxRateDate,
+    string? FxSource,
+    decimal Fees,
+    decimal CashAmount,
+    DateOnly EffectiveDate,
+    DateTime BookedAtUtc,
+    string? Note,
+    Guid? ExecutionId,
+    Guid? ReversesId,
+    Guid? ReversedById,
+    decimal? RealizedPnl,
+    decimal CashBalanceAfter,
+    bool IdempotentReplay = false);
 
 public sealed record HoldingDto(
     int AssetId,

@@ -87,6 +87,7 @@ export function HoldingsPage() {
   return (
     <>
       <PageHeader
+        level={2}
         title="Holdings"
         description={`Positions in the simulated portfolio, valued at the latest stored price in ${ccy}. Prices stay in each stock's own currency.`}
         actions={

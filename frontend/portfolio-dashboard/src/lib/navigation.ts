@@ -1,6 +1,6 @@
 import {
-  Activity, BarChart3, BookOpen, Briefcase, BrainCircuit, Database, Eye, Gauge, GitCompareArrows, GraduationCap, History,
-  LayoutDashboard, ListChecks, Newspaper, Search, Settings, ShieldCheck, Sigma, Sparkles, Users,
+  Activity, BookOpen, BrainCircuit, Database, Eye, Gauge, GitCompareArrows, GraduationCap, LayoutDashboard, ListChecks, Newspaper,
+  Plus, Search, Settings, ShieldCheck, Sigma, Sparkles, Users,
 } from 'lucide-react'
 
 /**
@@ -15,29 +15,31 @@ export interface NavEntry {
   icon: typeof Search
   /** `to` matches only the exact path (needed for `/`); `match` prefixes still apply. */
   end?: boolean
-  /** Further path prefixes that belong to this entry (e.g. detail pages reached from it). */
+  /** Further path prefixes that belong to this entry (e.g. detail pages reached from it); `*` matches one path segment. */
   match?: string[]
 }
 
 export interface NavSection { title: string; items: NavEntry[] }
 
-export type PrimaryId = 'optimizer' | 'research' | 'news' | 'watchlist' | 'market-data' | 'settings'
+export type PrimaryId = 'optimizer' | 'research' | 'news' | 'watchlist' | 'market-data' | 'strategy-guide' | 'glossary' | 'settings'
 
 export interface PrimaryEntry extends NavEntry { id: PrimaryId }
 
 /** Sections of the Optimizer workspace, shown in the left sidebar. */
 export const optimizerSections: NavSection[] = [
   {
-    title: 'Workspace',
+    title: 'Portfolios',
     items: [
-      { to: '/', label: 'Overview', icon: LayoutDashboard, end: true },
-      { to: '/stocks', label: 'Stock selection', icon: Search },
+      // The overview lists all of the user's portfolios; each portfolio's workspace (/portfolios/:id/…) belongs to it.
+      { to: '/', label: 'Overview', icon: LayoutDashboard, end: true, match: ['/portfolios'] },
+      { to: '/stocks', label: 'Portfolio Creation', icon: Plus },
     ],
   },
   {
     title: 'Optimize',
     items: [
-      { to: '/optimize', label: 'Optimize', icon: Sigma },
+      // Opens the optimizer of the most recently opened portfolio; inside a workspace its own optimizer is highlighted.
+      { to: '/optimize', label: 'Optimize', icon: Sigma, match: ['/portfolios/*/optimize'] },
       { to: '/history', label: 'Optimization history', icon: ListChecks, match: ['/reality-check'] },
     ],
   },
@@ -47,21 +49,6 @@ export const optimizerSections: NavSection[] = [
       { to: '/backtest', label: 'Backtest', icon: Gauge },
       { to: '/strategy-comparison', label: 'Strategy comparison', icon: GitCompareArrows },
       { to: '/machine-learning', label: 'Machine learning', icon: BrainCircuit },
-    ],
-  },
-  {
-    title: 'Paper portfolio',
-    items: [
-      { to: '/holdings', label: 'Holdings', icon: Briefcase },
-      { to: '/trades', label: 'Trades & ledger', icon: History },
-      { to: '/analytics', label: 'Analytics', icon: BarChart3 },
-    ],
-  },
-  {
-    title: 'Learn',
-    items: [
-      { to: '/learn', label: 'Strategy guide', icon: GraduationCap },
-      { to: '/learn/glossary', label: 'Glossary', icon: BookOpen },
     ],
   },
 ]
@@ -80,11 +67,18 @@ const optimizerEntries = optimizerSections.flatMap((s) => s.items)
 
 /** Top navigation, in this order. Optimizer owns every route of its sidebar sections. */
 export const primaryNav: PrimaryEntry[] = [
-  { id: 'optimizer', to: '/', label: 'Optimizer', icon: Sigma, end: true, match: optimizerEntries.flatMap((e) => (e.end ? [] : [e.to, ...(e.match ?? [])])) },
+  {
+    id: 'optimizer', to: '/', label: 'Optimizer', icon: Sigma, end: true,
+    // Earlier portfolio-less URLs (/holdings, /trades, /analytics) redirect into a portfolio workspace.
+    match: [...optimizerEntries.flatMap((e) => [...(e.end ? [] : [e.to]), ...(e.match ?? [])]), '/holdings', '/trades', '/analytics'],
+  },
   { id: 'research', to: '/research', label: 'AI Research', icon: Sparkles },
   { id: 'news', to: '/news', label: 'Financial News', icon: Newspaper },
   { id: 'watchlist', to: '/watchlist', label: 'Watchlist', icon: Eye },
   { id: 'market-data', to: '/market-data', label: 'Market Data', icon: Database },
+  // Strategy pages (/learn/:strategyId) belong to the guide; the longer /learn/glossary wins for the glossary.
+  { id: 'strategy-guide', to: '/learn', label: 'Strategy Guide', icon: GraduationCap },
+  { id: 'glossary', to: '/learn/glossary', label: 'Glossary', icon: BookOpen },
   { id: 'settings', to: '/settings', label: 'Settings', icon: Settings },
 ]
 
@@ -99,9 +93,17 @@ function matchLength(pathname: string, entry: NavEntry): number {
   if (path === entry.to) return entry.to.length
   let best = -1
   for (const prefix of [...(entry.end ? [] : [entry.to]), ...(entry.match ?? [])]) {
-    if ((path === prefix || path.startsWith(prefix + '/')) && prefix.length > best) best = prefix.length
+    if (prefixMatches(path, prefix) && prefix.length > best) best = prefix.length
   }
   return best
+}
+
+/** Whether `prefix` (segments, `*` = any one segment) is the start of `path` at a segment boundary. */
+function prefixMatches(path: string, prefix: string): boolean {
+  const p = path.split('/')
+  const q = prefix.split('/')
+  if (q.length > p.length) return false
+  return q.every((seg, i) => seg === '*' ? p[i] !== '' : seg === p[i])
 }
 
 /** The entry that owns `pathname` (most specific match wins), or undefined. */

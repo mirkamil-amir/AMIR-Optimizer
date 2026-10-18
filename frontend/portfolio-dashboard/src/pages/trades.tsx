@@ -6,12 +6,13 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DataTable, Pager } from '@/components/data-table'
-import { EmptyState, ErrorState, LoadingBlock, PageHeader, Signed } from '@/components/common'
+import { EmptyState, ErrorState, LoadingBlock, Signed } from '@/components/common'
 import { FxNote } from '@/components/currency'
 import { ProposalStatusBadge, TradeProposalView } from '@/components/proposal'
 import { errorMessage } from '@/lib/api'
 import { usePortfolioContext } from '@/lib/portfolio-context'
-import { useCashLedger, useOrders, useProposals, useRebalancePreview, useTransactions } from '@/lib/queries'
+import { useCashLedger, useJournal, useOrders, useProposals, useRebalancePreview, useReverseTransaction, useTransactions } from '@/lib/queries'
+import type { PortfolioTransaction } from '@/lib/types'
 import { date, dateTime, money, qty } from '@/lib/format'
 import { NoPortfolio } from './shared'
 
@@ -19,7 +20,8 @@ export function TradesPage() {
   const { portfolioId, portfolio, isLoading } = usePortfolioContext()
   const ccy = portfolio?.baseCurrency ?? 'USD'
   const rebalance = useRebalancePreview(portfolioId ?? '')
-  const [tab, setTab] = useState('proposals')
+  const [tab, setTab] = useState('journal')
+  const archived = portfolio?.status === 'Archived'
 
   if (!isLoading && !portfolioId) return <NoPortfolio />
 
@@ -35,18 +37,24 @@ export function TradesPage() {
 
   return (
     <>
-      <PageHeader
-        title="Trades & ledger"
-        description="Trade proposals, simulated orders, executions and the cash ledger. History is append-only."
-        actions={<Button variant="outline" onClick={onRebalance} disabled={rebalance.isPending}><RefreshCcw /> Rebalance to latest run</Button>}
-      />
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h2 className="text-lg font-semibold">Transactions</h2>
+          <p className="text-sm text-muted-foreground">
+            Recorded transactions, trade proposals, simulated orders, executions and the cash ledger. Append-only: corrections are new entries.
+          </p>
+        </div>
+        {!archived && <Button variant="outline" onClick={onRebalance} disabled={rebalance.isPending}><RefreshCcw /> Rebalance to latest run</Button>}
+      </div>
       <Tabs value={tab} onValueChange={(v) => setTab(String(v))}>
-        <TabsList>
+        <TabsList className="nav-scroll max-w-full overflow-x-auto">
+          <TabsTrigger value="journal">Recorded</TabsTrigger>
           <TabsTrigger value="proposals">Proposals</TabsTrigger>
           <TabsTrigger value="transactions">Executions</TabsTrigger>
           <TabsTrigger value="orders">Orders</TabsTrigger>
           <TabsTrigger value="cash">Cash ledger</TabsTrigger>
         </TabsList>
+        <TabsContent value="journal" className="mt-4"><Journal currency={ccy} readOnly={archived} /></TabsContent>
         <TabsContent value="proposals" className="mt-4"><Proposals currency={ccy} /></TabsContent>
         <TabsContent value="transactions" className="mt-4"><Transactions currency={ccy} /></TabsContent>
         <TabsContent value="orders" className="mt-4"><Orders currency={ccy} /></TabsContent>
@@ -181,5 +189,72 @@ function Cash({ currency }: { currency: string }) {
       />
       {data && <Pager page={page} totalPages={data.totalPages} onChange={setPage} />}
     </>
+  )
+}
+
+const REVERSIBLE = new Set(['Deposit', 'Withdrawal', 'Dividend', 'Fee'])
+
+/** Manually recorded transactions of this portfolio, newest first, with an audit-safe reversal for cash events. */
+function Journal({ currency, readOnly }: { currency: string; readOnly: boolean }) {
+  const { portfolioId } = usePortfolioContext()
+  const [page, setPage] = useState(1)
+  const journal = useJournal(portfolioId, page)
+  const reverse = useReverseTransaction(portfolioId ?? '')
+  const [pending, setPending] = useState<string | null>(null)
+
+  async function onReverse(t: PortfolioTransaction) {
+    setPending(t.id)
+    try {
+      // One key per click on this row: a repeated click replays instead of reversing twice.
+      await reverse.mutateAsync({ transactionId: t.id, idempotencyKey: `reverse-${t.id}` })
+      toast.success('Reversal recorded', { description: 'The original stays in the history; an opposite entry was added.' })
+    } catch (e) {
+      toast.error('Could not reverse', { description: errorMessage(e) })
+    }
+    setPending(null)
+  }
+
+  if (journal.error) return <ErrorState error={journal.error} />
+  if (!journal.data) return <LoadingBlock />
+  return (
+    <Card className="py-4">
+      <CardContent className="space-y-3 px-4">
+        <p className="text-xs text-muted-foreground">
+          Transactions you recorded with “Record transaction” (simulated bookkeeping, not proof of a real trade). Simulated fills from confirmed
+          proposals appear under Executions. Trades are corrected by recording the opposite trade.
+        </p>
+        <DataTable
+          rows={journal.data.items}
+          rowKey={(t) => t.id}
+          caption="Recorded transactions"
+          columns={[
+            { key: 'date', header: 'Date', sortValue: (t) => t.bookedAtUtc, cell: (t) => <span className="text-xs tabular">{date(t.effectiveDate)}</span> },
+            {
+              key: 'type', header: 'Type', cell: (t) => (
+                <span className="flex flex-wrap items-center gap-1">
+                  <Badge variant="outline">{t.type}</Badge>
+                  {t.reversesId && <Badge variant="secondary">Reversal</Badge>}
+                  {t.reversedById && <Badge variant="secondary">Reversed</Badge>}
+                </span>
+              ),
+            },
+            { key: 'symbol', header: 'Stock', cell: (t) => t.symbol ?? '—' },
+            { key: 'qty', header: 'Shares', align: 'right', cell: (t) => (t.quantity == null ? '—' : qty(t.quantity)) },
+            { key: 'price', header: 'Price', align: 'right', cell: (t) => (t.price == null ? '—' : <span title={t.fxSource ? `Exchange rate ${t.fxRate} (${t.fxSource}, ${t.fxRateDate})` : undefined}>{money(t.price, t.currency)}</span>) },
+            { key: 'fees', header: 'Fees', align: 'right', cell: (t) => (t.fees ? money(t.fees, currency) : '—') },
+            { key: 'cash', header: 'Cash effect', align: 'right', sortValue: (t) => t.cashAmount, cell: (t) => <Signed value={t.cashAmount}>{money(t.cashAmount, currency, { signed: true })}</Signed> },
+            { key: 'pnl', header: 'Realized P&L', align: 'right', cell: (t) => (t.realizedPnl == null ? '—' : <Signed value={t.realizedPnl}>{money(t.realizedPnl, currency, { signed: true })}</Signed>) },
+            { key: 'note', header: 'Note', cell: (t) => <span className="text-xs text-muted-foreground">{t.note ?? ''}</span>, className: 'hidden lg:table-cell' },
+            {
+              key: 'actions', header: '', cell: (t) => !readOnly && REVERSIBLE.has(t.type) && !t.reversesId && !t.reversedById ? (
+                <Button size="xs" variant="ghost" disabled={pending === t.id} onClick={() => void onReverse(t)} aria-label={`Reverse the ${t.type.toLowerCase()} of ${date(t.effectiveDate)}`}>Reverse</Button>
+              ) : null,
+            },
+          ]}
+          empty={<EmptyState title="Nothing recorded yet" description="Use “Record transaction” to book a buy, sell, deposit, withdrawal, dividend or fee." />}
+        />
+        <Pager page={page} totalPages={journal.data.totalPages} onChange={setPage} />
+      </CardContent>
+    </Card>
   )
 }
