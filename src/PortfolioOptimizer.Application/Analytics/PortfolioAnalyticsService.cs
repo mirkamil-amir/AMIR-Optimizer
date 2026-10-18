@@ -23,8 +23,10 @@ public sealed class PortfolioAnalyticsService(
     public const string PerformanceMethodology =
         "Daily portfolio value = cash + Σ quantity × raw close × FX rate of that day (local currency → account currency; the same price " +
         "convention used for simulated fills). For another reporting currency the daily value and flows are converted with that day's rate. " +
-        "Trades are dated at the close of the price used for execution. Returns are time-weighted (external cash flows removed). " +
-        "Dividends are not credited to the paper portfolio. Benchmark returns use adjusted closes (total return).";
+        "Trades are dated at the close of the price used for execution. Returns are time-weighted: deposits and withdrawals are " +
+        "external cash flows and are removed, so they are never counted as gains or losses. Dividends you record and standalone fees " +
+        "are part of the return; dividends are not credited automatically. A booking on a non-trading day takes effect on the next " +
+        "trading day. Benchmark returns use adjusted closes (total return).";
 
     public const string RiskMethodology =
         "Ex-ante risk of current weights (market value / total value, cash at zero risk) applied to the trailing window of daily " +
@@ -172,9 +174,15 @@ public sealed class PortfolioAnalyticsService(
         var metrics = new PerformanceMetrics(conventions);
 
         var executions = await db.Executions.AsNoTracking().Where(e => e.PortfolioId == portfolioId).OrderBy(e => e.ExecutedAtUtc).ToListAsync(ct);
-        var deposits = await db.CashLedger.AsNoTracking()
-            .Where(c => c.PortfolioId == portfolioId && (c.Type == CashEntryType.Deposit || c.Type == CashEntryType.Withdrawal))
-            .ToListAsync(ct);
+        // Cash entries not belonging to a trade: deposits and withdrawals (external flows), dividends and standalone fees (part of
+        // the return). A trade's settlement and commission are already in its execution's net cash flow.
+        var executionIds = executions.Select(e => e.Id).ToHashSet();
+        var standalone = (await db.CashLedger.AsNoTracking()
+                .Where(c => c.PortfolioId == portfolioId && c.Type != CashEntryType.BuySettlement && c.Type != CashEntryType.SellSettlement)
+                .ToListAsync(ct))
+            .Where(c => c.Type != CashEntryType.Fee || c.ReferenceId is not { } r || !executionIds.Contains(r))
+            .OrderBy(c => c.TimestampUtc).ToList();
+        static bool IsExternal(CashLedgerEntry c) => c.Type is CashEntryType.Deposit or CashEntryType.Withdrawal;
 
         PerformanceDto Empty(string reason)
         {
@@ -201,17 +209,19 @@ public sealed class PortfolioAnalyticsService(
         if (to is { } t) calendar = calendar.Where(d => d <= t).ToList();
         if (calendar.Count == 0) return Empty("No price data in the selected range.");
 
-        // Deposits made before the first trade form the starting capital; later deposits are external flows.
+        // Cash booked before the first trade forms the starting capital; later deposits and withdrawals are external flows.
         var firstExecution = executions.Min(e => e.ExecutedAtUtc);
-        var initialCash = deposits.Where(d => d.TimestampUtc <= firstExecution).Sum(d => d.Amount);
+        var initialCash = standalone.Where(c => c.TimestampUtc <= firstExecution).Sum(c => c.Amount);
         var values = new List<double>();
         var flows = new List<double>();
+        var cashSeries = new List<double>();
         var execIdx = 0;
         var qty = new Dictionary<int, decimal>();
         var cash = initialCash;
         var ordered = executions.OrderBy(e => e.PriceDate).ThenBy(e => e.ExecutedAtUtc).ToList();
         var lastPx = new Dictionary<int, decimal>();
-        var depositsAfter = deposits.Where(d => d.TimestampUtc > firstExecution).ToList();
+        var cashAfter = standalone.Where(c => c.TimestampUtc > firstExecution).ToList();
+        var cashIdx = 0;
 
         // Replay all executions dated before the visible window so the first visible value is correct.
         foreach (var d in closes.Values.SelectMany(c => c.Keys).Where(d => d >= start && d < calendar[0]).Distinct().OrderBy(d => d))
@@ -250,6 +260,7 @@ public sealed class PortfolioAnalyticsService(
             valued.Add(d);
             values.Add((double)((cash + mv.Value) * toReporting));
             flows.Add((double)(flow * toReporting));
+            cashSeries.Add((double)(cash * toReporting));
         }
         if (skipped > 0)
             warnings.Add($"{skipped} day(s) left out: no exchange rate within {FxTable.DefaultMaxCarryForwardDays} days for a held position or for {account}→{ccy}.");
@@ -268,8 +279,14 @@ public sealed class PortfolioAnalyticsService(
                 qty[e.AssetId] = qty.GetValueOrDefault(e.AssetId) + (e.Side == OrderSide.Buy ? e.Quantity : -e.Quantity);
                 cash += e.NetCashFlow;
             }
-            var flow = depositsAfter.Where(x => DateOnly.FromDateTime(x.TimestampUtc) == d).Sum(x => x.Amount);
-            cash += flow;
+            // Every entry up to this day is applied – also one booked on a weekend or holiday (it takes effect on the next valued day).
+            var flow = 0m;
+            while (cashIdx < cashAfter.Count && DateOnly.FromDateTime(cashAfter[cashIdx].TimestampUtc) <= d)
+            {
+                var c = cashAfter[cashIdx++];
+                cash += c.Amount;
+                if (IsExternal(c)) flow += c.Amount;
+            }
             return flow;
         }
 
@@ -296,7 +313,7 @@ public sealed class PortfolioAnalyticsService(
                 if (bmap.TryGetValue(calendar[i], out var bp)) lastBench = bp;
                 bcum = lastBench / bmap[calendar[0]] - 1;
             }
-            series.Add(new PerformancePointDto(calendar[i], values[i], wealth[i] - 1, bcum, drawdowns[i]));
+            series.Add(new PerformancePointDto(calendar[i], values[i], wealth[i] - 1, bcum, drawdowns[i], cashSeries[i]));
         }
 
         if (returns.Count < 20)

@@ -15,17 +15,12 @@ test('mixed-currency portfolio: EUR base with US, German, Japanese and UK stocks
   test.setTimeout(240_000)
   const name = `Mixed EUR ${Date.now()}`
 
-  // 1. A portfolio in EUR (previously only the default currency was allowed).
-  await page.goto('/settings')
-  await page.getByLabel('Name').fill(name)
+  // 1. Portfolio Creation: a portfolio in EUR with stocks from four markets; the review explains the conversion.
+  await page.goto('/stocks')
+  await page.getByLabel('Name', { exact: true }).fill(name)
   await page.getByRole('combobox', { name: 'Portfolio currency' }).click()
   await page.getByRole('option', { name: 'EUR', exact: true }).click()
-  await expect(page.getByText('Investment (EUR)')).toBeVisible()
-  await page.getByRole('button', { name: 'Create' }).click()
-  await expect(page.getByText(`Portfolio “${name}” created`)).toBeVisible()
-
-  // 2. Stocks from four markets; the tray explains the conversion instead of refusing the mix.
-  await page.goto('/stocks')
+  await expect(page.getByText('Starting cash (EUR)')).toBeVisible()
   await page.getByRole('button', { name: 'All markets' }).click()
   await pick(page, 'AAPL', 'AAPL')
   await pick(page, 'SAP.DE', 'SAP.DE')
@@ -33,7 +28,7 @@ test('mixed-currency portfolio: EUR base with US, German, Japanese and UK stocks
   await pick(page, 'AZN.L', 'AZN.L')
   const tray = page.getByRole('region', { name: 'Selected stocks' })
   await expect(tray.getByLabel('Currency conversion')).toContainText(/trades in .*EUR.*GBP.*JPY.*USD/)
-  await expect(tray.getByLabel('Currency conversion')).toContainText('computed in EUR')
+  await expect(page.getByText(/Stocks in .*GBP.*JPY.*USD are valued in EUR with dated reference rates/)).toBeVisible()
   // Stocks without stored history are downloaded first (on a fresh stack most non-US listings have none yet).
   const fetch = tray.getByRole('button', { name: /Fetch prices/ })
   for (let round = 0; round < 3 && await fetch.waitFor({ timeout: 10_000 }).then(() => true, () => false); round++) {
@@ -44,8 +39,13 @@ test('mixed-currency portfolio: EUR base with US, German, Japanese and UK stocks
   }
   await expect(fetch).toBeHidden({ timeout: 15_000 })
 
+  await page.getByRole('button', { name: 'Create portfolio' }).click()
+  await expect(page.getByText(`Portfolio “${name}” created`)).toBeVisible()
+  await expect(page).toHaveURL(/\/portfolios\/[0-9a-f-]{36}\?created=1$/)
+  await expect(page.getByRole('heading', { level: 1, name })).toBeVisible()
+
   // 3. Optimization in EUR with converted returns, native currency per stock and the currency exposure.
-  await tray.getByRole('link', { name: 'Optimize' }).click()
+  await page.getByRole('navigation', { name: 'Portfolio sections' }).getByRole('link', { name: 'Optimize' }).click()
   await page.getByRole('combobox', { name: 'Optimization method' }).click()
   await page.getByRole('option', { name: 'Minimum variance' }).click()
   await page.getByRole('button', { name: 'Run optimization' }).click()
@@ -64,7 +64,8 @@ test('mixed-currency portfolio: EUR base with US, German, Japanese and UK stocks
   await expect(page.getByRole('alertdialog')).toBeHidden({ timeout: 30_000 })
 
   // 5. Holdings in EUR: native price, rate and EUR value per position; then a USD reporting view that changes nothing.
-  await page.goto('/holdings')
+  await expect(page).toHaveURL(/\/portfolios\/[0-9a-f-]{36}\/holdings$/)
+  await expect(page.getByRole('heading', { level: 1, name })).toBeVisible()
   await expect(page.getByRole('columnheader', { name: /Market value \(EUR\)/ })).toBeVisible()
   const toyota = page.getByRole('row', { name: /7203\.T/ })
   await expect(toyota).toContainText('¥')

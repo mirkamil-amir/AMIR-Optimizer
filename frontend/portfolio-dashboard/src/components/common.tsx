@@ -10,11 +10,13 @@ import { errorMessage } from '@/lib/api'
 import type { Metric } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
-export function PageHeader({ title, description, actions }: { title: string; description?: ReactNode; actions?: ReactNode }) {
+/** Page title. Inside a portfolio workspace (whose name is the page's h1) sections pass `level={2}`. */
+export function PageHeader({ title, description, actions, level = 1 }: { title: string; description?: ReactNode; actions?: ReactNode; level?: 1 | 2 }) {
+  const Heading = level === 1 ? 'h1' : 'h2'
   return (
     <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+        <Heading className={level === 1 ? 'text-2xl font-semibold tracking-tight' : 'text-lg font-semibold'}>{title}</Heading>
         {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}

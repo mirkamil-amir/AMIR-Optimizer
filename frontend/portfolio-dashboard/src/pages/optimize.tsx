@@ -1,5 +1,5 @@
 import { useMemo, useState, type ComponentProps, type ReactNode } from 'react'
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
+import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -26,7 +26,7 @@ import { StrategyInsights } from '@/components/strategy-insights'
 import { interpretOptimization } from '@/lib/interpretation'
 import { guideForObjective } from '@/lib/strategy-guide'
 import { errorMessage } from '@/lib/api'
-import { usePortfolioContext } from '@/lib/portfolio-context'
+import { portfolioPath, usePortfolioContext } from '@/lib/portfolio-context'
 import { useAssets, useCreateProposal, useFetchPrices, useHoldings, useMarketStatus, usePortfolio, useRun, useRunOptimization, useRuns, useStocks } from '@/lib/queries'
 import { useSelection } from '@/lib/selection'
 import { CurrencyExposureList } from '@/components/currency'
@@ -138,12 +138,15 @@ export function OptimizePage() {
   const run = useRun(activeRunId)
 
   if (!isLoading && !portfolioId) return <NoPortfolio />
+  // A run always opens inside its own portfolio (a link with another portfolio's id must not mix the two).
+  if (portfolioId && run.data && run.data.portfolioId !== portfolioId) return <Navigate to={portfolioPath(run.data.portfolioId, `optimize/${run.data.id}`)} replace />
 
   return (
     <>
       <PageHeader
-        title="Optimization workspace"
-        description="Configure the universe and constraints, run a mean-variance optimization, then review and confirm a simulated trade proposal."
+        level={2}
+        title="Optimize"
+        description="Configure the universe and constraints of this portfolio, run a mean-variance optimization, then review and confirm a simulated trade proposal. A result never changes holdings by itself."
       />
       <div className="grid gap-6 xl:grid-cols-[400px_minmax(0,1fr)]">
         <div className="space-y-4">
@@ -213,7 +216,7 @@ function ConfigFormInner({ portfolio: portfolioData, assets: assetList }: { port
       })
       if (result.status === 'Succeeded') toast.success('Optimization succeeded', { description: `Expected return ${pct(result.expectedReturn)} · volatility ${pct(result.volatility)}` })
       else toast.warning(`Optimization ${result.status.toLowerCase()}`, { description: result.message })
-      navigate(`/optimize/${result.id}`)
+      navigate(portfolioPath(portfolioId, `optimize/${result.id}`))
     } catch (e) {
       toast.error('Optimization request failed', { description: errorMessage(e) })
     }
@@ -432,7 +435,7 @@ function RunHistory({ activeId }: { activeId?: string }) {
       <CardHeader><CardTitle className="text-sm">Run history</CardTitle></CardHeader>
       <CardContent className="max-h-72 space-y-1 overflow-y-auto">
         {runs.data.items.map((r) => (
-          <Link key={r.id} to={`/optimize/${r.id}`}
+          <Link key={r.id} to={portfolioPath(r.portfolioId, `optimize/${r.id}`)}
             className={`block rounded-md px-2.5 py-1.5 text-sm hover:bg-muted ${r.id === activeId ? 'bg-muted' : ''}`} aria-current={r.id === activeId ? 'true' : undefined}>
             <div className="flex items-center justify-between">
               <span className="font-medium">{objectiveLabels[r.objective]}</span>
@@ -451,8 +454,8 @@ function RunHistory({ activeId }: { activeId?: string }) {
 // ------------------------------------------------------------------ results
 
 function RunResults({ run }: { run: OptimizationRun }) {
-  const { portfolio } = usePortfolioContext()
-  const ccy = portfolio?.baseCurrency ?? 'USD'
+  // The run's own analysis currency (its portfolio's base currency at the time) – never another portfolio's.
+  const ccy = run.currency
   const createProposal = useCreateProposal()
   // Proposal is tied to the run it was created for; switching runs hides it without an effect.
   const [created, setCreated] = useState<{ runId: string; proposal: TradeProposal } | null>(null)

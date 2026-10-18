@@ -49,6 +49,10 @@ public static class AuditActions
     public const string CatalogueImported = "admin.catalogue_imported";
     public const string PaperTradesExecuted = "trading.paper_trades_executed";
     public const string PortfolioDeleted = "portfolio.deleted";
+    public const string PortfolioArchived = "portfolio.archived";
+    public const string PortfolioRestored = "portfolio.restored";
+    public const string TransactionRecorded = "portfolio.transaction_recorded";
+    public const string TransactionReversed = "portfolio.transaction_reversed";
     public const string TestDataPurged = "admin.test_data_purged";
     public const string ResearchRunSaved = "research.run_saved";
 }

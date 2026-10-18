@@ -19,6 +19,6 @@ public enum ProposalAction { Buy, Sell, Hold, NoPrice }
 
 public enum OrderStatus { Filled, PartiallyFilled, Rejected }
 
-public enum CashEntryType { Deposit, Withdrawal, BuySettlement, SellSettlement, Fee }
+public enum CashEntryType { Deposit, Withdrawal, BuySettlement, SellSettlement, Fee, Dividend }
 
 public enum JobStatus { Queued, Running, Succeeded, PartiallySucceeded, Failed, Cancelled }

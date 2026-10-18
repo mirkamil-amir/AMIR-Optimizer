@@ -6,7 +6,7 @@ test.use({ storageState: ADMIN_STATE })
 
 test('currency converter (overview only) shows dated reference rates, a chart and a calculator', async ({ page }) => {
   await page.goto('/stocks')
-  await expect(page.getByRole('heading', { name: 'Stock selection' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Portfolio Creation' })).toBeVisible()
   await expect(page.getByRole('region', { name: 'Currency converter' })).toHaveCount(0)
   for (const path of ['/']) {
     await page.goto(path)

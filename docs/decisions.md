@@ -2,12 +2,25 @@
 
 Short records of decisions that are not obvious from the code. Newest first. Format: context → decision → consequences.
 
+## D-32 Portfolios are independent workspaces addressed by URL (2026-10-17)
+**Context:** the backend already kept portfolios per user, but the UI worked on one remembered portfolio, could show a run
+of portfolio A under B, created portfolios only in Settings, had no manual transactions and deleted history in one step.
+**Decision:** Overview lists all of the user's portfolios; each opens a workspace `/portfolios/:id/…` whose URL decides the
+portfolio (remounted on switch); old URLs redirect. "Stock selection" became **Portfolio Creation** (details + universe +
+review; nothing stored before Create). A typed, idempotent, append-only journal records buys, sells, deposits,
+withdrawals, dividends and fees in time order; cash events are corrected by reversals, trades by opposite trades.
+Portfolios are archived before they can be deleted. History is not snapshotted but rebuilt from ledger + stored prices
+(deterministic, nothing redundant); deposits/withdrawals are external flows in the time-weighted return. Research sessions
+may carry an owner-checked portfolio context. **Consequences:** additive migration only; no back-dated imports, no trade
+reversal, no money-weighted or combined return; backtests/ML/comparisons stay per user. Details: [portfolios.md](portfolios.md).
+
 ## D-31 Primary areas in a top bar, Optimizer sections and administration in the sidebar (2026-10-17)
 **Context:** the single sidebar mixed research tools, optimizer tools, data and settings. **Decision:** the header's second
-row is the primary navigation, in this order: Optimizer, AI Research, Financial News, Watchlist, Market Data, Settings.
+row is the primary navigation, in this order: Optimizer, AI Research, Financial News, Watchlist, Market Data,
+Strategy Guide, Glossary, Settings (the two learning pages moved up from the sidebar's Learn group the same day).
 The left sidebar (a menu sheet below 1024 px) holds the Optimizer workspace – Workspace (overview, stock selection),
 Optimize (optimize, history incl. reality checks), Test & compare (backtest, strategy comparison, machine learning),
-Paper portfolio, Learn – and, for administrators only, the unchanged Administration group with Admin settings. One typed
+Paper portfolio – and, for administrators only, the unchanged Administration group with Admin settings. One typed
 model (`lib/navigation.ts`) drives both bars and the active state (most specific prefix wins). **Consequences:** no URL
 changed; Optimizer links to the overview from other areas and does nothing inside its own workspace, so an open section
 keeps its inputs; stock pages (`/stocks/:symbol`) count as Optimizer even when opened from the watchlist; the

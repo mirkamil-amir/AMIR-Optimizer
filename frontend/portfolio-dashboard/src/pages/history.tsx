@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useNavigate, useSearchParams } from 'react-router'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -18,10 +18,12 @@ const statusOptions = [
   { value: 'Failed', label: 'Failed' },
 ]
 
-/** Every stored mathematical optimization run of the signed-in user, across portfolios. */
+/** Every stored mathematical optimization run of the signed-in user, across portfolios (filterable by portfolio). */
 export function HistoryPage() {
   const { portfolios } = usePortfolioContext()
-  const [portfolioId, setPortfolioId] = useState('all')
+  // `?portfolio=<id>` (from a portfolio's "Optimization runs") preselects that portfolio.
+  const [params] = useSearchParams()
+  const [portfolioId, setPortfolioId] = useState(() => params.get('portfolio') ?? 'all')
   const [status, setStatus] = useState('all')
   const [page, setPage] = useState(1)
   const history = useOptimizationHistory(page, portfolioId === 'all' ? undefined : portfolioId, status === 'all' ? undefined : status as RunStatus)
@@ -80,7 +82,7 @@ export function HistoryPage() {
                 rows={history.data?.items ?? []}
                 columns={columns}
                 rowKey={(r) => r.id}
-                onRowClick={(r) => navigate(`/optimize/${r.id}`)}
+                onRowClick={(r) => navigate(`/portfolios/${r.portfolioId}/optimize/${r.id}`)}
                 caption="Optimization runs"
                 empty={<EmptyState title="No optimization runs yet" description="Select stocks and run an optimization; completed runs appear here." />}
               />

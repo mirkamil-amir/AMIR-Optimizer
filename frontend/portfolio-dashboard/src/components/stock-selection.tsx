@@ -119,7 +119,7 @@ export function SelectionTray({ className }: { className?: string }) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-sm font-medium">
           Selection <Badge variant="secondary" className="tabular">{selection.count}</Badge>
-          <InfoTip>Your selection is kept in this browser tab only and is not saved. It is stored as part of a run when you start an optimization or ML experiment.</InfoTip>
+          <InfoTip>Your selection is kept in this browser tab only and is not saved. It is stored when you create a portfolio from it, or as part of a run when you start an optimization or ML experiment.</InfoTip>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
           {missing.length > 0 && (
@@ -131,9 +131,13 @@ export function SelectionTray({ className }: { className?: string }) {
           <Button size="sm" variant="ghost" onClick={selection.clear}>
             <Trash2 /> Clear all
           </Button>
-          <Button size="sm" variant="outline" render={<Link to="/optimize?from=selection" />}>
-            <Sigma /> Optimize
-          </Button>
+          {portfolio && (
+            // Names the target, so the selection is never applied to a portfolio by accident.
+            <Button size="sm" variant="outline" render={<Link to={`/portfolios/${portfolio.id}/optimize?from=selection`} />}
+              title={`Use this selection as the universe in the optimizer of “${portfolio.name}”`}>
+              <Sigma /> Optimize in “{portfolio.name}”
+            </Button>
+          )}
           <Button size="sm" render={<Link to="/machine-learning?from=selection" />}>
             <BrainCircuit /> ML analysis
           </Button>

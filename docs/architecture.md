@@ -109,6 +109,9 @@ limits, least-privilege database role, audit trail.
 * `pages/` – one route each (`stocks`, `stock` (security page), `watchlist`, `news`, `optimize`, `reality-check`,
   `machine-learning`, `strategy-comparison`, `learn`, `admin`, `admin-overview`, …); `components/` – shared UI (`universe-nav`, `stock-selection`, `strategy-insights`, charts,
   tables, shadcn/Base UI primitives).
+* Portfolios: `/` = `pages/portfolios.tsx` (all of the user's portfolios); `/portfolios/:id/…` = `pages/portfolio-workspace.tsx`
+  with sections (overview, optimize, holdings, transactions, performance); `PortfolioScope` makes the URL's portfolio the
+  context of everything below it; `components/create-portfolio.tsx` and `transaction-form.tsx`. See [portfolios.md](portfolios.md).
 * Navigation: `components/app-shell.tsx` renders the primary top bar and the sidebar from `lib/navigation.ts`
   (primary areas, Optimizer sections, administration; route-to-area matching) – see D-31.
 * `lib/` – pure, unit-tested logic: `api.ts` (fetch + antiforgery), `auth.tsx`, `selection.tsx` (memory only),

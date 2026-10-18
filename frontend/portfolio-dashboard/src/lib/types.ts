@@ -165,6 +165,75 @@ export interface PortfolioSummary {
   createdAtUtc: string
   updatedAtUtc: string
   valuationProblems?: string[] | null
+  description: string | null
+  status: PortfolioStatus
+  archivedAtUtc: string | null
+  /** Deposits − withdrawals, in the base currency. */
+  netContributions: number
+  /** Total value − net contributions; null when the portfolio cannot be valued. */
+  profitLoss: number | null
+  /** Latest stored price date among held positions. */
+  valuationDate: string | null
+  stalePositions: number
+  usesSimulatedData: boolean
+  latestOptimizationAtUtc: string | null
+  lastActivityAtUtc: string | null
+}
+
+export type PortfolioStatus = 'Active' | 'Archived'
+
+/** The user's portfolios plus totals over the active ones (null – never partial – when one cannot be valued or converted). */
+export interface PortfolioOverview {
+  portfolios: PortfolioSummary[]
+  currency: string
+  totalValue: number | null
+  totalNetContributions: number | null
+  activePortfolios: number
+  archivedPortfolios: number
+  totalProblems: string[]
+  methodology: string
+}
+
+export type PortfolioTransactionType = 'Buy' | 'Sell' | 'Deposit' | 'Withdrawal' | 'Dividend' | 'Fee'
+
+export interface RecordTransactionRequest {
+  type: PortfolioTransactionType
+  symbol?: string
+  quantity?: number
+  price?: number
+  amount?: number
+  fee?: number
+  /** yyyy-MM-dd; defaults to today on the server. */
+  date?: string
+  note?: string
+}
+
+/** A manually recorded transaction (simulated bookkeeping – not evidence of a real trade). */
+export interface PortfolioTransaction {
+  id: string
+  portfolioId: string
+  type: PortfolioTransactionType
+  symbol: string | null
+  quantity: number | null
+  /** Per share, in `currency` (the stock's trading currency). */
+  price: number | null
+  currency: string
+  fxRate: number
+  fxRateDate: string | null
+  fxSource: string | null
+  /** In the portfolio currency. */
+  fees: number
+  /** Signed cash effect in the portfolio currency. */
+  cashAmount: number
+  effectiveDate: string
+  bookedAtUtc: string
+  note: string | null
+  executionId: string | null
+  reversesId: string | null
+  reversedById: string | null
+  realizedPnl: number | null
+  cashBalanceAfter: number
+  idempotentReplay: boolean
 }
 
 export interface Portfolio {
@@ -177,6 +246,9 @@ export interface Portfolio {
   createdAtUtc: string
   updatedAtUtc: string
   version: number
+  description: string | null
+  status: PortfolioStatus
+  archivedAtUtc: string | null
 }
 
 export interface Holding {
@@ -444,7 +516,8 @@ export interface Performance {
   benchmarkSymbol: string
   from: string | null
   to: string | null
-  series: { date: string; value: number; cumulativeReturn: number; benchmarkCumulativeReturn: number | null; drawdown: number }[]
+  /** `value` is cash + positions; `cash` its cash part (invested = value − cash). */
+  series: { date: string; value: number; cumulativeReturn: number; benchmarkCumulativeReturn: number | null; drawdown: number; cash: number | null }[]
   totalReturn: Metric
   annualizedReturn: Metric
   annualizedVolatility: Metric
@@ -1411,6 +1484,10 @@ export interface ResearchSession {
   budget: { toolCalls: number; maxToolCalls: number; hypotheses: number; maxHypotheses: number; llmTokens: number; maxLlmTokens: number }
   assistant: { provider: string; model: string | null; available: boolean; note: string }
   disclaimer: string
+  /** Portfolio the research is about (null: portfolio-independent). */
+  portfolioId: string | null
+  portfolioName: string | null
+  portfolioCurrency: string | null
 }
 
 export interface ResearchSessionSummary {
@@ -1421,6 +1498,7 @@ export interface ResearchSessionSummary {
   updatedAtUtc: string
   hypotheses: number
   hasSavedRun: boolean
+  portfolioId: string | null
 }
 
 export interface HypothesisComparison {

@@ -7,6 +7,14 @@
   out-of-sample R²; in the comparisons, equal weight had the best Sharpe ratio. See
   [final-report.md](final-report.md) and [implementation-status.md](implementation-status.md).
 
+## Portfolios
+- Transactions are recorded in time order only: no back-dating before the latest booking and no import of historical
+  transactions; trades cannot be reversed (record the opposite trade).
+- Performance is time-weighted from the first booking; no money-weighted return and no combined return across portfolios
+  (the overview shows value and P/L against net contributions only). Dividends count only when recorded.
+- Backtests, ML experiments and strategy comparisons belong to the user, not to a portfolio.
+- The AI assistant uses a portfolio's currency and save target, not its holdings.
+
 ## Data
 - Yahoo Finance is an unofficial endpoint (personal, non-commercial use; may break or throttle without notice).
   Stooq is blocked by a bot challenge and not supported. Alpha Vantage was verified with the configured free key

@@ -25,14 +25,14 @@ Read this file before changing code; details are in `docs/` (linked below).
 | Path | What | Entry points |
 |---|---|---|
 | `src/PortfolioOptimizer.Api` | controllers, auth policies, antiforgery, rate limits, commands | `Program.cs` (`migrate`, `purge-test-data`), `Controllers/*`, `Security/*` |
-| `src/PortfolioOptimizer.Application` | use cases (owner-scoped), DTOs, validation | `Fx/` (FxService, FxTable, CurrencyConverter), `Portfolios/PortfolioValuationService.cs`, `MarketData/` (quotes, universes, discovery, `Markets.cs`, `PriceHistory.cs`), `Optimization/`, `Analytics/RealityCheckService.cs`, `Watchlists/`, `News/` (rules, service, `EventPriceComparison`), `MachineLearning/`, `Comparisons/`, `Research/` (AI research workflow: orchestrator, tools, validators), `Dtos/` |
-| `src/PortfolioOptimizer.Domain` | entities, rules | `MarketData.cs`, `Portfolio.cs`, `Runs.cs`, `MachineLearning.cs`, `Watchlist.cs`, `News.cs`, `Users.cs` (roles, audit, `TestDataPolicy`) |
+| `src/PortfolioOptimizer.Application` | use cases (owner-scoped), DTOs, validation | `Fx/` (FxService, FxTable, CurrencyConverter), `Portfolios/` (PortfolioService, PortfolioTransactionService, PortfolioValuationService), `MarketData/` (quotes, universes, discovery, `Markets.cs`, `PriceHistory.cs`), `Optimization/`, `Analytics/RealityCheckService.cs`, `Watchlists/`, `News/` (rules, service, `EventPriceComparison`), `MachineLearning/`, `Comparisons/`, `Research/` (AI research workflow: orchestrator, tools, validators), `Dtos/` |
+| `src/PortfolioOptimizer.Domain` | entities, rules | `MarketData.cs`, `Portfolio.cs`, `PortfolioTransactions.cs`, `Runs.cs`, `MachineLearning.cs`, `Watchlist.cs`, `News.cs`, `Users.cs` (roles, audit, `TestDataPolicy`) |
 | `src/PortfolioOptimizer.Optimization` | pure math: QP solver, mean-variance, `PortfolioSimulator`, diversification diagnostics | `Portfolio/MeanVarianceOptimizer.cs`, `Portfolio/DiversificationMath.cs`, `Backtesting/*` |
 | `src/PortfolioOptimizer.MachineLearning` | pure ML (no I/O, no optimizer use) | `Training/ExperimentEngine.cs`, `Features/FeatureCatalog.cs` |
 | `src/PortfolioOptimizer.Infrastructure` | EF Core/Npgsql, Identity, providers, jobs, seeding | `Persistence/AppDbContext.cs`, `MarketData/*Provider.cs`, `News/NewsProviders.cs`, `Jobs/BackgroundJobWorker.cs`, `Persistence/UniverseSeeder.cs`, `Seed/universes/*.csv` |
-| `frontend/portfolio-dashboard/src` | React app | `main.tsx` (routes), `pages/*`, `components/*`, `lib/` (navigation (top bar + sidebar model), api, auth, selection, queries, types, interpretation, strategy-guide, glossary, quote-status, news) |
+| `frontend/portfolio-dashboard/src` | React app | `main.tsx` (routes), `pages/*`, `components/*`, `pages/portfolios.tsx` (overview), `pages/portfolio-workspace.tsx`, `lib/` (navigation (top bar + sidebar model), portfolio-context (URL-scoped portfolio), api, auth, selection, queries, types, interpretation, strategy-guide, glossary, quote-status, news) |
 | `tests/*` | unit, ML, integration (real PostgreSQL) | `IntegrationTests/ApiFactory.cs` |
-| `frontend/.../e2e` | Playwright | `admin.setup.ts` (environment guard), `journeys.spec.ts`, `research.spec.ts` (watchlist, news), `research-agent.spec.ts` (AI research journey), `multi-currency.spec.ts` (EUR portfolio with four markets), `navigation.spec.ts` (top bar, sidebar, admin area, viewports) |
+| `frontend/.../e2e` | Playwright | `admin.setup.ts` (environment guard), `journeys.spec.ts`, `research.spec.ts` (watchlist, news), `research-agent.spec.ts` (AI research journey), `multi-currency.spec.ts` (EUR portfolio with four markets), `navigation.spec.ts` (top bar, sidebar, admin area, viewports), `portfolios.spec.ts` (two portfolios, two users) |
 | `tools/` | `universe-builder` (constituent CSVs), `PortfolioOptimizer.DataMigration` (SQLite import) | |
 
 ## Run and test
@@ -54,6 +54,16 @@ Secrets live in `.env` (gitignored) – load with `set -a; . ./.env; set +a`; ne
   `OwnerId` in every query; another user's id → 404. Add a cross-user test for every new owned entity.
 * **Temporary vs persisted:** the stock selection is browser memory only (`lib/selection.tsx`) – never persist it.
   Runs store their own inputs. Quotes/prices/catalogue are shared.
+* **Portfolios (fundamental):** a user has many independent private portfolios – see [portfolios.md](docs/portfolios.md).
+  Every portfolio-specific operation (reads, bookings, runs, proposals, reports, background work) resolves the portfolio
+  through `PortfolioService.LoadAsync`/`EnsureExistsAsync` with the authenticated user's id; never accept a user id from the
+  request; another user's id → 404. Keep five concepts apart: **holdings** (ledger), **temporary selection** (browser),
+  **working universe** (`Settings.Universe`), **target allocation** (a run) and **transactions** (journal/executions).
+  Optimization never executes trades or mutates holdings; only a confirmed proposal or a recorded transaction does.
+  Bookings are atomic, idempotent, in time order and never edited – corrections are reversing entries. Archived portfolios
+  are read-only; only archived ones can be deleted. Never fabricate history: performance starts at the first booking, is
+  rebuilt from ledger + stored prices, and deposits/withdrawals are flows, not returns. Frontend: portfolio pages live under
+  `/portfolios/:id/…` (the URL decides the portfolio, `PortfolioScope`); never act on a remembered portfolio silently.
 * **Prices:** never fabricate or zero-fill; label kind (Delayed quote / Last close), as-of time, retrieval time,
   cached/stale/SIMULATED. Never say "live". Store prices in ISO major units (`CurrencyUnits`). Never mix sources.
 * **Currencies:** every instrument keeps its trading currency (`Asset.Currency`, derived from the venue) and native prices;
@@ -109,6 +119,8 @@ Secrets live in `.env` (gitignored) – load with `set -a; . ./.env; set +a`; ne
   category, `Validate`, timeout), register it in `DependencyInjection`, call it only through `ToolRunner`, add an
   evaluation case to `ResearchAgentTests` and [agent-evaluation.md](docs/agent-evaluation.md). A tool that writes user
   data must be `ToolCategory.UserDataChange`.
+* **Add a portfolio feature:** take the portfolio id from the route, load it owner-scoped, call `EnsureActive()` before
+  changes, add a cross-user case to `MultiPortfolioTests` and a section/link inside the workspace (`/portfolios/:id/…`).
 * **Add an endpoint:** controller → application service → DTO; mirror types in `lib/types.ts` and hooks in
   `lib/queries.ts`; integration test incl. authorization.
 
@@ -140,6 +152,6 @@ protection (Stooq); force-pushing or committing without being asked.
 [machine learning](docs/machine-learning.md) · [security](docs/security.md) · [testing](docs/testing.md) ·
 [deployment](docs/deployment.md) · [implementation status](docs/implementation-status.md) ·
 [agentic architecture](docs/agentic-architecture.md) · [threat model](docs/threat-model.md) · [agent evaluation](docs/agent-evaluation.md) ·
-[decisions](docs/decisions.md) · [limitations](docs/limitations.md) · [watchlist](docs/watchlist.md) ·
+[portfolios](docs/portfolios.md) · [decisions](docs/decisions.md) · [limitations](docs/limitations.md) · [watchlist](docs/watchlist.md) ·
 [financial news](docs/financial-news.md) · [portfolio reality check](docs/portfolio-reality-check.md) ·
 [roadmap](docs/roadmap.md) · [launch readiness](docs/launch-readiness.md) · [currencies & FX](docs/currency.md) · [currency audit](docs/currency-audit.md)

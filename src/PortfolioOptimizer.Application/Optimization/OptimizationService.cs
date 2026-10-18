@@ -45,6 +45,7 @@ public sealed class OptimizationService(
     public async Task<OptimizationRunDto> RunAsync(Guid portfolioId, RunOptimizationRequest request, CancellationToken ct)
     {
         var portfolio = await portfolios.LoadAsync(portfolioId, ct);
+        portfolio.EnsureActive();
         var settings = request.Settings?.ToDomain() ?? portfolio.Settings;
         if (request.Settings is not null && request.PersistSettings)
             await portfolios.UpdateSettingsAsync(portfolioId, settings, ct);

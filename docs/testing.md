@@ -57,6 +57,20 @@ hidden and purged.
   get Playwright specs with role-based locators.
 * Frontend fixtures: build typed objects; cast partial fixtures with `as unknown as T` only in tests.
 
+## Results (2026-10-17, multi-portfolio workspaces)
+
+* `./scripts/test.sh`: unit 251 passed (8 skipped live smoke tests), ML 40, integration 117 – incl. `MultiPortfolioTests` (several
+  portfolios and the overview, FX-converted totals, isolation of runs/holdings/transactions between portfolios, accounting and
+  rejected bookings leaving no trace, idempotent replay, foreign-currency trade at the dated rate, time-weighted return with a
+  weekend deposit and a withdrawal, dividends as income, archive/restore/delete, every portfolio endpoint for another user,
+  research portfolio context) and `PortfolioCashTests` (domain).
+* Vitest 136 (incl. `portfolio-workspace.test.tsx`: URL decides the portfolio, unknown id, state reset on switch, archived
+  read-only, old-URL redirects; `create-portfolio.test.ts`; navigation model with workspace routes).
+* `./scripts/e2e.sh`: 32 passed in one full run (incl. the setup step),
+  incl. `portfolios.spec.ts`: two portfolios created via Portfolio Creation, optimized, transactions recorded and rejected,
+  switch, reload, back, archive/restore, a second user denied in the UI and by the API (404), 820/390 px without horizontal scroll.
+* Migration `MultiPortfolio` rehearsed twice on a restored copy of the development database: identical counts, idempotent.
+
 ## Results (2026-10-16, currency converter, brand and themes)
 
 | Suite | Result |

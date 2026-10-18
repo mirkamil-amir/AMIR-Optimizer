@@ -13,6 +13,7 @@ import { StockDetailDialog } from '@/components/stock-detail-dialog'
 import { Switch } from '@/components/ui/switch'
 import { DataTable, Pager, type Column } from '@/components/data-table'
 import { EmptyState, ErrorState, InfoTip, LoadingBlock, PageHeader } from '@/components/common'
+import { CreatePortfolioPanel } from '@/components/create-portfolio'
 import { QuoteCell, RefreshQuoteButton, SelectionTray } from '@/components/stock-selection'
 import { UniverseNav, type UniverseScope } from '@/components/universe-nav'
 import { errorMessage } from '@/lib/api'
@@ -152,9 +153,11 @@ export function StocksPage() {
   return (
     <>
       <PageHeader
-        title="Stock selection"
-        description="Browse stocks by market, index and sector, check their latest prices and collect a selection for the optimizer or the ML workspace. Your selection is temporary: it stays in this browser tab and is only stored when you start an analysis."
+        title="Portfolio Creation"
+        description="Create a new portfolio: describe it, choose the stocks it may invest in, and create it. The stock selection is temporary – it stays in this browser tab and is stored only when you create a portfolio or start an analysis."
       />
+      <div className="mb-6"><CreatePortfolioPanel /></div>
+      <h2 className="mb-3 text-base font-semibold">Choose stocks</h2>
 
       <div className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
         <div className="hidden lg:block">

@@ -16,6 +16,10 @@ import './index.css'
 const ResearchHomePage = lazy(() => import('@/pages/research').then((m) => ({ default: m.ResearchHomePage })))
 const ResearchWorkspacePage = lazy(() => import('@/pages/research').then((m) => ({ default: m.ResearchWorkspacePage })))
 const OverviewPage = lazy(() => import('@/pages/overview').then((m) => ({ default: m.OverviewPage })))
+const PortfoliosPage = lazy(() => import('@/pages/portfolios').then((m) => ({ default: m.PortfoliosPage })))
+const PortfolioWorkspace = lazy(() => import('@/pages/portfolio-workspace').then((m) => ({ default: m.PortfolioWorkspace })))
+const ToCurrentPortfolio = lazy(() => import('@/pages/portfolio-workspace').then((m) => ({ default: m.ToCurrentPortfolio })))
+const RunRedirect = lazy(() => import('@/pages/portfolio-workspace').then((m) => ({ default: m.RunRedirect })))
 const HoldingsPage = lazy(() => import('@/pages/holdings').then((m) => ({ default: m.HoldingsPage })))
 const OptimizePage = lazy(() => import('@/pages/optimize').then((m) => ({ default: m.OptimizePage })))
 const TradesPage = lazy(() => import('@/pages/trades').then((m) => ({ default: m.TradesPage })))
@@ -63,24 +67,38 @@ const router = createBrowserRouter([
       {
         element: <AppShell />,
         children: [
-          { path: '/', element: <OverviewPage /> },
+          // Overview: all of the user's portfolios. Each portfolio has its own workspace with its id in the URL.
+          { path: '/', element: <PortfoliosPage /> },
+          {
+            path: '/portfolios/:portfolioId',
+            element: <PortfolioWorkspace />,
+            children: [
+              { index: true, element: <OverviewPage /> },
+              { path: 'optimize', element: <OptimizePage /> },
+              { path: 'optimize/:runId', element: <OptimizePage /> },
+              { path: 'holdings', element: <HoldingsPage /> },
+              { path: 'transactions', element: <TradesPage /> },
+              { path: 'performance', element: <AnalyticsPage /> },
+            ],
+          },
           { path: '/research', element: <ResearchHomePage /> },
           { path: '/research/:sessionId', element: <ResearchWorkspacePage /> },
           { path: '/stocks', element: <StocksPage /> },
           { path: '/stocks/:symbol', element: <StockPage /> },
           { path: '/watchlist', element: <WatchlistPage /> },
           { path: '/news', element: <NewsPage /> },
-          { path: '/holdings', element: <HoldingsPage /> },
-          { path: '/optimize', element: <OptimizePage /> },
-          { path: '/optimize/:runId', element: <OptimizePage /> },
+          // Earlier portfolio-less URLs keep working: they open the section of the right portfolio.
+          { path: '/holdings', element: <ToCurrentPortfolio section="holdings" /> },
+          { path: '/optimize', element: <ToCurrentPortfolio section="optimize" /> },
+          { path: '/optimize/:runId', element: <RunRedirect /> },
           { path: '/history', element: <HistoryPage /> },
           { path: '/reality-check/:runId', element: <RealityCheckPage /> },
           { path: '/machine-learning', element: <MachineLearningPage /> },
           { path: '/machine-learning/:experimentId', element: <MachineLearningPage /> },
           { path: '/strategy-comparison', element: <StrategyComparisonPage /> },
           { path: '/strategy-comparison/:comparisonId', element: <StrategyComparisonPage /> },
-          { path: '/trades', element: <TradesPage /> },
-          { path: '/analytics', element: <AnalyticsPage /> },
+          { path: '/trades', element: <ToCurrentPortfolio section="transactions" /> },
+          { path: '/analytics', element: <ToCurrentPortfolio section="performance" /> },
           { path: '/backtest', element: <BacktestPage /> },
           { path: '/backtest/:backtestId', element: <BacktestPage /> },
           { path: '/market-data', element: <MarketDataPage /> },

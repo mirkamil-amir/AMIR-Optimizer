@@ -1,19 +1,20 @@
-import { Link } from 'react-router'
-import { ArrowRight, Sigma } from 'lucide-react'
+import { Link, useSearchParams } from 'react-router'
+import { ArrowRight, CircleCheck, Sigma } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { AllocationDonut, ChartCard, TimeSeriesChart, timeSeriesTable } from '@/components/charts'
-import { DataBadge, EmptyState, ErrorState, LoadingBlock, MetricCard, MetricValue, PageHeader, Signed, Warnings } from '@/components/common'
+import { DataBadge, EmptyState, ErrorState, LoadingBlock, MetricCard, MetricValue, Signed, Warnings } from '@/components/common'
 import { ValuationProblems } from '@/components/currency'
-import { CurrencyConverterCard } from '@/components/currency-converter'
-import { usePortfolioContext } from '@/lib/portfolio-context'
+import { portfolioPath, usePortfolioContext } from '@/lib/portfolio-context'
 import { useHoldings, useMarketStatus, usePerformance, useRisk, useRuns, useTransactions } from '@/lib/queries'
 import { date, dateTime, money, num, objectiveLabels, pct, qty, relativeTime } from '@/lib/format'
 import { NoPortfolio } from './shared'
 
 export function OverviewPage() {
   const { portfolioId, portfolio, isLoading } = usePortfolioContext()
+  const [params] = useSearchParams()
+  const created = params.get('created') === '1'
   const holdings = useHoldings(portfolioId)
   const perf = usePerformance(portfolioId)
   const risk = useRisk(portfolioId)
@@ -22,24 +23,21 @@ export function OverviewPage() {
   const status = useMarketStatus()
 
   if (!isLoading && !portfolioId) return <NoPortfolio />
+  const id = portfolioId ?? ''
   const s = holdings.data?.summary
   const ccy = portfolio?.baseCurrency ?? 'USD'
   const hasHoldings = (holdings.data?.holdings ?? []).some((h) => h.quantity > 0)
 
   return (
     <>
-      <PageHeader
-        title={portfolio?.name ?? 'Overview'}
-        description={s?.valuationDate ? `Valued at stored prices as of ${date(s.valuationDate)}` : 'Simulated portfolio overview'}
-        actions={
-          <>
-            {s?.usesSimulatedData && <DataBadge kind="simulated" />}
-            <Button render={<Link to="/optimize" />}>
-              <Sigma /> Optimize
-            </Button>
-          </>
-        }
-      />
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-lg font-semibold">Overview</h2>
+        <div className="flex items-center gap-2">
+          {s?.usesSimulatedData && <DataBadge kind="simulated" />}
+          <Button render={<Link to={portfolioPath(id, 'optimize')} />}><Sigma /> Optimize</Button>
+        </div>
+      </div>
+      {created && <NextSteps id={id} />}
 
       {holdings.error && <ErrorState error={holdings.error} onRetry={() => holdings.refetch()} />}
 
@@ -99,8 +97,8 @@ export function OverviewPage() {
                   title={hasHoldings ? 'Performance history is just starting' : 'No simulated trades yet'}
                   description={hasHoldings
                     ? 'Realized performance accumulates with each new daily close after your first simulated execution. Meanwhile, see the in-sample comparison in the optimizer or run a backtest.'
-                    : 'Optimize the portfolio, review the trade proposal and confirm the simulated purchases to start tracking performance.'}
-                  action={<Button variant="outline" render={<Link to={hasHoldings ? '/backtest' : '/optimize'} />}>{hasHoldings ? 'Run a backtest' : 'Go to optimizer'} <ArrowRight /></Button>}
+                    : 'Optimize the portfolio and confirm the simulated purchases, or record your own transactions, to start tracking performance.'}
+                  action={<Button variant="outline" render={<Link to={hasHoldings ? '/backtest' : portfolioPath(id, 'optimize')} />}>{hasHoldings ? 'Run a backtest' : 'Go to optimizer'} <ArrowRight /></Button>}
                 />
               </CardContent>
             </Card>
@@ -128,12 +126,12 @@ export function OverviewPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-sm">Recent optimization runs</CardTitle>
-            <Button variant="link" size="sm" render={<Link to="/optimize" />}>All</Button>
+            <Button variant="link" size="sm" render={<Link to={`/history?portfolio=${id}`} />}>All</Button>
           </CardHeader>
           <CardContent className="space-y-2">
             {runs.data?.items.length === 0 && <p className="text-sm text-muted-foreground">No runs yet.</p>}
             {runs.data?.items.slice(0, 5).map((r) => (
-              <Link key={r.id} to={`/optimize/${r.id}`} className="block rounded-md border px-3 py-2 text-sm hover:bg-muted/60">
+              <Link key={r.id} to={portfolioPath(id, `optimize/${r.id}`)} className="block rounded-md border px-3 py-2 text-sm hover:bg-muted/60">
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-medium">{objectiveLabels[r.objective]}</span>
                   <Badge variant={r.status === 'Succeeded' ? 'secondary' : 'destructive'}>{r.status}</Badge>
@@ -150,7 +148,7 @@ export function OverviewPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-sm">Recent simulated transactions</CardTitle>
-            <Button variant="link" size="sm" render={<Link to="/trades" />}>Ledger</Button>
+            <Button variant="link" size="sm" render={<Link to={portfolioPath(id, 'transactions')} />}>Ledger</Button>
           </CardHeader>
           <CardContent>
             {tx.data?.items.length === 0 && <p className="text-sm text-muted-foreground">No executions yet.</p>}
@@ -202,7 +200,20 @@ export function OverviewPage() {
         </Card>
       </div>
 
-      <CurrencyConverterCard base={ccy} className="mt-6" />
     </>
+  )
+}
+
+/** Shown once after Portfolio Creation: what to do next with the new (still cash-only) portfolio. */
+function NextSteps({ id }: { id: string }) {
+  return (
+    <section aria-label="Next steps" className="mb-6 rounded-xl border border-primary/30 bg-primary/5 p-4">
+      <h3 className="flex items-center gap-2 text-sm font-semibold"><CircleCheck className="size-4 text-gain" /> Portfolio created – it holds only simulated cash so far</h3>
+      <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
+        <li><Link className="underline underline-offset-4" to={portfolioPath(id, 'optimize')}>Run an optimization</Link> on the stocks you chose, then review and confirm the simulated purchases.</li>
+        <li>Or record your own buys, deposits and dividends with <span className="font-medium text-foreground">Record transaction</span> above.</li>
+        <li>Follow its value, cash and returns under <Link className="underline underline-offset-4" to={portfolioPath(id, 'performance')}>Performance</Link>.</li>
+      </ol>
+    </section>
   )
 }

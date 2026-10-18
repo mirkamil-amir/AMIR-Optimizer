@@ -14,13 +14,22 @@ namespace PortfolioOptimizer.Api.Controllers;
 [Route("api/v1/portfolios")]
 public sealed class PortfoliosController(
     PortfolioService portfolios,
+    PortfolioTransactionService transactions,
     OptimizationService optimization,
     TradingService trading,
     PortfolioAnalyticsService analytics) : ControllerBase
 {
-    /// <summary>Lists portfolios with current valuation.</summary>
+    /// <summary>Lists the current user's portfolios (active and archived) with current valuation.</summary>
     [HttpGet]
     public Task<IReadOnlyList<PortfolioSummaryDto>> List(CancellationToken ct) => portfolios.ListAsync(ct);
+
+    /// <summary>
+    /// The current user's portfolios plus totals over the active ones in <paramref name="currency"/> (default: application currency).
+    /// The total is omitted – never partial – when a portfolio cannot be valued or converted.
+    /// </summary>
+    [HttpGet("overview")]
+    public Task<PortfolioOverviewDto> Overview([FromQuery, RegularExpression("^[A-Z]{3}$")] string? currency, CancellationToken ct) =>
+        portfolios.OverviewAsync(currency, ct);
 
     /// <summary>Creates a portfolio funded with simulated cash.</summary>
     /// <response code="201">Created.</response>
@@ -47,10 +56,29 @@ public sealed class PortfoliosController(
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public Task<PortfolioDto> Update(Guid id, UpdatePortfolioRequest request, CancellationToken ct) => portfolios.UpdateAsync(id, request, ct);
 
-    /// <summary>Deletes a portfolio and its entire simulated history.</summary>
+    /// <summary>Renames a portfolio or changes its description. Changes nothing else.</summary>
+    [HttpPut("{id:guid}/details")]
+    [ProducesResponseType<PortfolioDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public Task<PortfolioDto> UpdateDetails(Guid id, UpdatePortfolioDetailsRequest request, CancellationToken ct) =>
+        portfolios.UpdateDetailsAsync(id, request, ct);
+
+    /// <summary>Archives a portfolio: history stays readable; transactions, runs and proposals are refused until it is restored.</summary>
+    [HttpPost("{id:guid}/archive")]
+    [ProducesResponseType<PortfolioDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status422UnprocessableEntity)]
+    public Task<PortfolioDto> Archive(Guid id, CancellationToken ct) => portfolios.ArchiveAsync(id, ct);
+
+    /// <summary>Restores an archived portfolio.</summary>
+    [HttpPost("{id:guid}/restore")]
+    [ProducesResponseType<PortfolioDto>(StatusCodes.Status200OK)]
+    public Task<PortfolioDto> Restore(Guid id, CancellationToken ct) => portfolios.RestoreAsync(id, ct);
+
+    /// <summary>Permanently deletes an ARCHIVED portfolio and its entire simulated history (409 for an active portfolio).</summary>
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         await portfolios.DeleteAsync(id, ct);
@@ -70,7 +98,45 @@ public sealed class PortfoliosController(
     public Task<PagedResult<TransactionDto>> Transactions(Guid id, [FromQuery] string? symbol, CancellationToken ct,
         [FromQuery] int page = 1, [FromQuery] int pageSize = 50) => portfolios.GetTransactionsAsync(id, page, pageSize, symbol, ct);
 
-    /// <summary>Cash ledger (deposits, settlements, fees), newest first.</summary>
+    /// <summary>Manually recorded transactions (journal), newest first.</summary>
+    [HttpGet("{id:guid}/journal")]
+    public Task<PagedResult<PortfolioTransactionDto>> Journal(Guid id, CancellationToken ct, [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
+        transactions.ListAsync(id, page, pageSize, ct);
+
+    /// <summary>Records a buy, sell, deposit, withdrawal, dividend or fee (simulated bookkeeping – no real order or payment).</summary>
+    /// <remarks>
+    /// Requires an <c>Idempotency-Key</c> header: repeating a request with the same key returns the original booking
+    /// (<c>idempotentReplay: true</c>). Validation failures change nothing. Dates cannot be in the future or before the
+    /// portfolio's latest booking.
+    /// </remarks>
+    /// <response code="201">Booked (or idempotent replay).</response>
+    /// <response code="400">Invalid input (missing fields, unknown security, no exchange rate for the date).</response>
+    /// <response code="409">Key reused for another transaction, or a concurrent change.</response>
+    /// <response code="422">Business rule (insufficient cash or shares, archived portfolio).</response>
+    [HttpPost("{id:guid}/journal")]
+    [ProducesResponseType<PortfolioTransactionDto>(StatusCodes.Status201Created)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<ActionResult<PortfolioTransactionDto>> Record(Guid id, RecordTransactionRequest request,
+        [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey, CancellationToken ct)
+    {
+        var t = await transactions.RecordAsync(id, request, idempotencyKey ?? "", ct);
+        return StatusCode(StatusCodes.Status201Created, t);
+    }
+
+    /// <summary>Reverses a recorded deposit, withdrawal, dividend or fee with an opposite booking (the original stays).</summary>
+    [HttpPost("{id:guid}/journal/{transactionId:guid}/reverse")]
+    [ProducesResponseType<PortfolioTransactionDto>(StatusCodes.Status201Created)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<PortfolioTransactionDto>> Reverse(Guid id, Guid transactionId, ReverseTransactionRequest request,
+        [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey, CancellationToken ct)
+    {
+        var t = await transactions.ReverseAsync(id, transactionId, request, idempotencyKey ?? "", ct);
+        return StatusCode(StatusCodes.Status201Created, t);
+    }
+
+    /// <summary>Cash ledger (deposits, withdrawals, dividends, settlements, fees), newest first.</summary>
     [HttpGet("{id:guid}/cash-ledger")]
     public Task<PagedResult<CashEntryDto>> CashLedger(Guid id, CancellationToken ct, [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
         portfolios.GetCashLedgerAsync(id, page, pageSize, ct);

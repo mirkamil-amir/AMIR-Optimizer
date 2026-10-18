@@ -31,6 +31,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<Holding> Holdings => Set<Holding>();
     public DbSet<CashLedgerEntry> CashLedger => Set<CashLedgerEntry>();
     public DbSet<TradeExecution> Executions => Set<TradeExecution>();
+    public DbSet<PortfolioTransaction> PortfolioTransactions => Set<PortfolioTransaction>();
     public DbSet<OptimizationRun> OptimizationRuns => Set<OptimizationRun>();
     public DbSet<TradeProposal> TradeProposals => Set<TradeProposal>();
     public DbSet<PaperTradeBatch> PaperTradeBatches => Set<PaperTradeBatch>();
@@ -157,6 +158,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             e.Property(x => x.PendingRefinementJson).HasColumnType("jsonb");
             e.Property(x => x.Version).IsConcurrencyToken();
             e.HasIndex(x => new { x.OwnerId, x.UpdatedAtUtc });
+            // Deleting a portfolio keeps the research; it just loses its portfolio link.
+            e.HasOne<Portfolio>().WithMany().HasForeignKey(x => x.PortfolioId).OnDelete(DeleteBehavior.SetNull);
             // Private research of the user: removed with the account.
             e.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Cascade);
             e.HasMany(x => x.Events).WithOne().HasForeignKey(x => x.SessionId).OnDelete(DeleteBehavior.Cascade);
@@ -317,6 +320,31 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         b.Entity<MlExperiment>(e => { e.Property(x => x.Currency).HasMaxLength(3); e.Property(x => x.FxSource).HasMaxLength(40); });
         b.Entity<TradeProposalLine>(e => { e.Property(x => x.Currency).HasMaxLength(3); e.Property(x => x.FxRate).HasPrecision(20, 10); });
         b.Entity<SimulatedOrder>(e => { e.Property(x => x.Currency).HasMaxLength(3); e.Property(x => x.FxRate).HasPrecision(20, 10); });
+        b.Entity<PortfolioTransaction>(e =>
+        {
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.Type).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.Symbol).HasMaxLength(32);
+            e.Property(x => x.Currency).HasMaxLength(3);
+            e.Property(x => x.FxSource).HasMaxLength(40);
+            e.Property(x => x.FxRate).HasPrecision(20, 10);
+            e.Property(x => x.Note).HasMaxLength(500);
+            e.Property(x => x.IdempotencyKey).HasMaxLength(100);
+            e.Ignore(x => x.IsTrade);
+            // A repeated submission with the same key cannot book twice, even under concurrency.
+            e.HasIndex(x => new { x.PortfolioId, x.IdempotencyKey }).IsUnique();
+            e.HasIndex(x => new { x.PortfolioId, x.BookedAtUtc });
+            e.HasIndex(x => x.ReversesId).IsUnique().HasFilter("\"ReversesId\" IS NOT NULL");
+            // Part of the portfolio's history: removed only when the (archived) portfolio itself is deleted.
+            e.HasOne<Portfolio>().WithMany().HasForeignKey(x => x.PortfolioId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<Asset>().WithMany().HasForeignKey(x => x.AssetId).OnDelete(DeleteBehavior.Restrict);
+            e.ToTable(t =>
+            {
+                t.HasCheckConstraint("CK_PortfolioTransactions_FxRate", "\"FxRate\" > 0");
+                t.HasCheckConstraint("CK_PortfolioTransactions_Fees", "\"Fees\" >= 0");
+            });
+        });
+
         b.Entity<TradeExecution>(e =>
         {
             e.Property(x => x.Currency).HasMaxLength(3);
@@ -354,6 +382,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         {
             e.Property(x => x.Id).ValueGeneratedNever();
             e.Property(x => x.Name).HasMaxLength(100);
+            e.Property(x => x.Description).HasMaxLength(500);
+            e.Ignore(x => x.IsArchived);
             e.Property(x => x.BaseCurrency).HasMaxLength(3);
             e.Property(x => x.CashBalance);
             e.Property(x => x.Version).IsConcurrencyToken();

@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using PortfolioOptimizer.Application.Abstractions;
 using PortfolioOptimizer.Application.Common;
 using PortfolioOptimizer.Application.Dtos;
+using PortfolioOptimizer.Application.Fx;
 using PortfolioOptimizer.Application.MarketData;
 using PortfolioOptimizer.Domain;
 
@@ -11,17 +12,83 @@ namespace PortfolioOptimizer.Application.Portfolios;
 public sealed class PortfolioService(IApplicationDbContext db, PriceQueryService prices, Fx.FxService fx, PortfolioValuationService valuations,
     ICurrentUser currentUser, IAuditLog audit, TimeProvider clock)
 {
-    public async Task<IReadOnlyList<PortfolioSummaryDto>> ListAsync(CancellationToken ct)
+    public const string OverviewMethodology =
+        "Each portfolio is valued in its own currency at the latest stored prices (positions in other currencies at the reference rate " +
+        "of the price date) plus cash. Profit/loss = total value − net contributions (deposits − withdrawals), so cash moved in or out " +
+        "is never counted as a gain or loss. The total over active portfolios converts each portfolio's value with today's reference " +
+        "rate; it is not a combined return, and it is shown only when every active portfolio can be valued and converted.";
+
+    public async Task<IReadOnlyList<PortfolioSummaryDto>> ListAsync(CancellationToken ct) =>
+        (await SummariesAsync(currentUser.RequireUserId(), ct)).Select(s => s.Summary).ToList();
+
+    /// <summary>All of the user's portfolios with a total over the active ones in <paramref name="currency"/> (default: the application currency).</summary>
+    public async Task<PortfolioOverviewDto> OverviewAsync(string? currency, CancellationToken ct)
     {
         var owner = currentUser.RequireUserId();
+        var app = await prices.SettingsAsync(ct);
+        var target = Currencies.Normalize(currency ?? app.DefaultCurrency);
+        if (!(await fx.SupportedCurrenciesAsync(ct)).Contains(target))
+            throw new ValidationException("currency", $"{target} is not supported: no exchange rates are published for it.");
+        var rows = await SummariesAsync(owner, ct);
+        var active = rows.Where(r => r.Summary.Status == "Active").ToList();
+        var problems = new List<string>();
+        var simulatedRates = await fx.ActiveSourceIsSimulatedAsync(ct);
+        decimal? total = 0, contributions = 0;
+        foreach (var (s, _) in active)
+        {
+            if (s.TotalValue is null)
+            {
+                problems.Add($"“{s.Name}” cannot be valued: {string.Join(" ", s.ValuationProblems ?? [])}".Trim());
+                total = null;
+                continue;
+            }
+            if (s.BaseCurrency == target)
+            {
+                total += s.TotalValue;
+                contributions += s.NetContributions;
+                continue;
+            }
+            try
+            {
+                var rate = FxPrecision.Round((await fx.LatestAsync(s.BaseCurrency, target, simulatedRates, ct)).Rate);
+                total += s.TotalValue * rate;
+                contributions += s.NetContributions * rate;
+            }
+            catch (Exception ex) when (ex is FxRateUnavailableException or ValidationException)
+            {
+                problems.Add($"“{s.Name}” ({s.BaseCurrency}) cannot be converted into {target}: {ex.Message}");
+                total = null;
+            }
+        }
+        if (total is null) contributions = null;
+        return new PortfolioOverviewDto(rows.Select(r => r.Summary).ToList(), target, total is null ? null : Math.Round(total.Value, 2),
+            contributions is null ? null : Math.Round(contributions.Value, 2), active.Count, rows.Count - active.Count, problems, OverviewMethodology);
+    }
+
+    /// <summary>One valuation per portfolio (no history replay), plus one grouped query each for contributions, runs and activity.</summary>
+    private async Task<List<(PortfolioSummaryDto Summary, Portfolio Portfolio)>> SummariesAsync(Guid owner, CancellationToken ct)
+    {
         var portfolios = await db.Portfolios.AsNoTracking().Include(p => p.Holdings).Where(p => p.OwnerId == owner)
             .OrderBy(p => p.CreatedAtUtc).ToListAsync(ct);
-        var result = new List<PortfolioSummaryDto>();
+        var ids = portfolios.Select(p => p.Id).ToList();
+        var contributions = await db.CashLedger.AsNoTracking()
+            .Where(c => ids.Contains(c.PortfolioId) && (c.Type == CashEntryType.Deposit || c.Type == CashEntryType.Withdrawal))
+            .GroupBy(c => c.PortfolioId).Select(g => new { g.Key, Sum = g.Sum(c => c.Amount) }).ToDictionaryAsync(x => x.Key, x => x.Sum, ct);
+        var activity = await db.CashLedger.AsNoTracking().Where(c => ids.Contains(c.PortfolioId))
+            .GroupBy(c => c.PortfolioId).Select(g => new { g.Key, Last = g.Max(c => c.TimestampUtc) }).ToDictionaryAsync(x => x.Key, x => x.Last, ct);
+        var runs = await db.OptimizationRuns.AsNoTracking().Where(r => ids.Contains(r.PortfolioId))
+            .GroupBy(r => r.PortfolioId).Select(g => new { g.Key, Last = g.Max(r => r.CreatedAtUtc) }).ToDictionaryAsync(x => x.Key, x => x.Last, ct);
+        var result = new List<(PortfolioSummaryDto, Portfolio)>();
         foreach (var p in portfolios)
         {
             var v = await valuations.ValueAsync(p, null, ct);
-            result.Add(new PortfolioSummaryDto(p.Id, p.Name, p.BaseCurrency, p.InitialInvestment, p.CashBalance, v.MarketValue, v.TotalValue,
-                p.Holdings.Count(h => h.Quantity > 0), p.CreatedAtUtc, p.UpdatedAtUtc, v.Problems));
+            var net = contributions.GetValueOrDefault(p.Id);
+            var held = v.Positions.Values.Where(x => x.Quantity > 0).ToList();
+            result.Add((new PortfolioSummaryDto(p.Id, p.Name, p.BaseCurrency, p.InitialInvestment, p.CashBalance, v.MarketValue, v.TotalValue,
+                p.Holdings.Count(h => h.Quantity > 0), p.CreatedAtUtc, p.UpdatedAtUtc, v.Problems, p.Description,
+                p.IsArchived ? "Archived" : "Active", p.ArchivedAtUtc, net, v.TotalValue is { } t ? t - net : null,
+                held.Select(x => x.Price?.PriceDate).Max(), held.Count(x => x.Price is { IsStale: true }), v.UsesSimulatedData,
+                runs.TryGetValue(p.Id, out var r) ? r : null, activity.TryGetValue(p.Id, out var a) ? a : null), p));
         }
         return result;
     }
@@ -41,6 +108,14 @@ public sealed class PortfolioService(IApplicationDbContext db, PriceQueryService
             throw new ValidationException("baseCurrency", $"{baseCurrency} is not supported: no exchange rates are published for it.");
 
         var settings = request.Settings?.ToDomain() ?? await DefaultSettingsAsync(appSettings, ct);
+        if (request.Settings is null && request.Universe is { Count: > 0 } universe)
+        {
+            var symbols = universe.Select(Asset.NormalizeSymbol).Distinct().ToList();
+            // A small working universe needs a feasible cap: n stocks can hold at most 1/n each when fully invested.
+            var maxWeight = Math.Max(request.MaxWeight ?? settings.MaxWeight, symbols.Count > 0 ? 1.0 / symbols.Count : 1);
+            settings = settings with { Universe = symbols, MaxWeight = Math.Min(1, Math.Round(maxWeight, 4)) };
+        }
+        else if (request.Settings is null && request.MaxWeight is { } mw) settings = settings with { MaxWeight = mw };
         await ValidateUniverseAsync(settings, request.BaseCurrency, ct);
 
         var now = clock.GetUtcNow().UtcDateTime;
@@ -49,6 +124,7 @@ public sealed class PortfolioService(IApplicationDbContext db, PriceQueryService
             Id = Guid.NewGuid(),
             OwnerId = ownerId,
             Name = request.Name.Trim(),
+            Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
             BaseCurrency = request.BaseCurrency.ToUpperInvariant(),
             InitialInvestment = request.InitialInvestment,
             Settings = settings,
@@ -61,9 +137,42 @@ public sealed class PortfolioService(IApplicationDbContext db, PriceQueryService
         return ToDto(portfolio);
     }
 
+    public async Task<PortfolioDto> UpdateDetailsAsync(Guid id, UpdatePortfolioDetailsRequest request, CancellationToken ct)
+    {
+        var portfolio = await LoadAsync(id, ct, tracking: true);
+        portfolio.Name = request.Name.Trim();
+        portfolio.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
+        portfolio.UpdatedAtUtc = clock.GetUtcNow().UtcDateTime;
+        await db.SaveChangesAsync(ct);
+        return ToDto(portfolio);
+    }
+
+    /// <summary>Archives a portfolio: it keeps its full history and stays readable but cannot be changed until restored.</summary>
+    public async Task<PortfolioDto> ArchiveAsync(Guid id, CancellationToken ct)
+    {
+        var portfolio = await LoadAsync(id, ct, tracking: true);
+        portfolio.Archive(clock.GetUtcNow().UtcDateTime);
+        // Pending proposals of an archived portfolio can no longer be executed.
+        await db.TradeProposals.Where(p => p.PortfolioId == id && p.Status == ProposalStatus.Pending)
+            .ExecuteUpdateAsync(u => u.SetProperty(p => p.Status, ProposalStatus.Cancelled), ct);
+        await db.SaveChangesAsync(ct);
+        await audit.RecordAsync(AuditActions.PortfolioArchived, "Portfolio", id.ToString(), portfolio.Name, ct: ct);
+        return ToDto(portfolio);
+    }
+
+    public async Task<PortfolioDto> RestoreAsync(Guid id, CancellationToken ct)
+    {
+        var portfolio = await LoadAsync(id, ct, tracking: true);
+        portfolio.Restore(clock.GetUtcNow().UtcDateTime);
+        await db.SaveChangesAsync(ct);
+        await audit.RecordAsync(AuditActions.PortfolioRestored, "Portfolio", id.ToString(), portfolio.Name, ct: ct);
+        return ToDto(portfolio);
+    }
+
     public async Task<PortfolioDto> UpdateAsync(Guid id, UpdatePortfolioRequest request, CancellationToken ct)
     {
         var portfolio = await LoadAsync(id, ct, tracking: true);
+        portfolio.EnsureActive();
         var settings = request.Settings.ToDomain();
         await ValidateUniverseAsync(settings, portfolio.BaseCurrency, ct);
         portfolio.Name = request.Name.Trim();
@@ -76,16 +185,22 @@ public sealed class PortfolioService(IApplicationDbContext db, PriceQueryService
     public async Task UpdateSettingsAsync(Guid id, PortfolioSettings settings, CancellationToken ct)
     {
         var portfolio = await LoadAsync(id, ct, tracking: true);
+        portfolio.EnsureActive();
         await ValidateUniverseAsync(settings, portfolio.BaseCurrency, ct);
         portfolio.Settings = settings;
         portfolio.UpdatedAtUtc = clock.GetUtcNow().UtcDateTime;
         await db.SaveChangesAsync(ct);
     }
 
-    /// <summary>Deletes a portfolio and its entire simulated history (runs, proposals, ledger).</summary>
+    /// <summary>
+    /// Permanently deletes an archived portfolio with its entire simulated history (runs, proposals, ledger, transactions).
+    /// Active portfolios must be archived first, so history is never removed by a single accidental action.
+    /// </summary>
     public async Task DeleteAsync(Guid id, CancellationToken ct)
     {
         var portfolio = await LoadAsync(id, ct, tracking: true);
+        if (!portfolio.IsArchived)
+            throw new ConflictException("Archive the portfolio before deleting it. Archiving keeps the history; deleting removes it permanently.");
         await using var tx = await db.Database.BeginTransactionAsync(ct);
         await db.Orders.Where(o => o.PortfolioId == id).ExecuteDeleteAsync(ct);
         await db.PaperTradeBatches.Where(b => b.PortfolioId == id).ExecuteDeleteAsync(ct);
@@ -180,5 +295,6 @@ public sealed class PortfolioService(IApplicationDbContext db, PriceQueryService
     }
 
     private static PortfolioDto ToDto(Portfolio p) =>
-        new(p.Id, p.Name, p.BaseCurrency, p.InitialInvestment, p.CashBalance, p.Settings.ToDto(), p.CreatedAtUtc, p.UpdatedAtUtc, p.Version);
+        new(p.Id, p.Name, p.BaseCurrency, p.InitialInvestment, p.CashBalance, p.Settings.ToDto(), p.CreatedAtUtc, p.UpdatedAtUtc, p.Version,
+            p.Description, p.IsArchived ? "Archived" : "Active", p.ArchivedAtUtc);
 }

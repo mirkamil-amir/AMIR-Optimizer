@@ -45,7 +45,9 @@ podman compose up --build -d     # migrate runs before the new API starts; the A
 ```
 
 Back up first (below). Migrations are forward-only; rolling back code to a version with fewer migrations needs the
-backup taken before the upgrade.
+backup taken before the upgrade. Example: `MultiPortfolio` (2026-10-17) only adds columns and a table and was rehearsed on
+a copy of the development database ([portfolios.md](portfolios.md#migration-20261017113808_multiportfolio)); rolling it back
+discards recorded transactions, descriptions and archive states made after the upgrade, so restore the backup instead.
 
 ## Production checklist
 

@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { Link, useNavigate, useParams } from 'react-router'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 import {
   ArrowLeft, Bot, Check, CircleDashed, CircleDot, ClipboardList, Cpu, ExternalLink, GitCompareArrows, Loader2, MessageSquareText, Play,
@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { DataBadge, EmptyState, ErrorState, InfoTip, LoadingBlock, PageHeader, Warnings } from '@/components/common'
 import { errorMessage } from '@/lib/api'
+import { usePortfolioContext } from '@/lib/portfolio-context'
 import { date, dateTime, pct, relativeTime } from '@/lib/format'
 import {
   useApplyRefinement, useCompanyContext, useCompareHypotheses, useDeleteResearch, useDiscardRefinement, useEvaluateResearch, useProposeRefinement,
@@ -51,9 +52,16 @@ export function ResearchHomePage() {
   const remove = useDeleteResearch()
   const [objective, setObjective] = useState('')
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  // Research can be about one of the user's portfolios (its currency is used; a saved run is attached to it) or independent.
+  const { portfolios } = usePortfolioContext()
+  const [params] = useSearchParams()
+  const activePortfolios = portfolios.filter((p) => p.status === 'Active')
+  const [context, setContext] = useState(() => params.get('portfolio') ?? 'none')
+  const contextId = activePortfolios.some((p) => p.id === context) ? context : 'none'
+  const contextOptions = [{ value: 'none', label: 'No portfolio (independent research)' }, ...activePortfolios.map((p) => ({ value: p.id, label: `${p.name} (${p.baseCurrency})` }))]
 
   const submit = () =>
-    start.mutate({ objective }, {
+    start.mutate({ objective, portfolioId: contextId === 'none' ? undefined : contextId }, {
       onSuccess: (s) => navigate(`/research/${s.id}`),
       onError: (e) => toast.error(errorMessage(e)),
     })
@@ -83,6 +91,16 @@ export function ResearchHomePage() {
                 {ex}
               </Button>
             ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Label htmlFor="research-context" className="text-sm">Research context</Label>
+            <Select value={contextId} onValueChange={(v) => v && setContext(String(v))} items={contextOptions}>
+              <SelectTrigger id="research-context" className="w-72" aria-label="Research context"><SelectValue /></SelectTrigger>
+              <SelectContent>{contextOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+            </Select>
+            <InfoTip label="Research context">
+              With a portfolio, the analysis uses its currency and a run you save is attached to it. Its holdings are not sent to a language model.
+            </InfoTip>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <Button onClick={submit} disabled={objective.trim().length < 3 || start.isPending}>
@@ -156,7 +174,10 @@ function Workspace({ session: s }: { session: ResearchSession }) {
       <Button variant="ghost" size="sm" className="-ml-2" render={<Link to="/research" />}><ArrowLeft /> All research</Button>
       <PageHeader
         title={s.title}
-        description={<>Started {dateTime(s.createdAtUtc)} · {stateLabel[s.state] ?? s.state}</>}
+        description={<>
+          Started {dateTime(s.createdAtUtc)} · {stateLabel[s.state] ?? s.state}
+          {s.portfolioId ? <> · For portfolio <Link className="underline underline-offset-4" to={`/portfolios/${s.portfolioId}`}>{s.portfolioName}</Link> ({s.portfolioCurrency})</> : ' · Independent research'}
+        </>}
         actions={<AssistantBadge session={s} />}
       />
       <Steps session={s} />

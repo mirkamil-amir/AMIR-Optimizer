@@ -1,13 +1,10 @@
-import { useEffect, useState } from 'react'
-import { useLocation } from 'react-router'
+import { useEffect } from 'react'
+import { Link, useLocation } from 'react-router'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { Plus, Trash2 } from 'lucide-react'
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+import { Plus } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -19,9 +16,8 @@ import { AppearanceCard } from '@/components/theme-controls'
 import { errorMessage } from '@/lib/api'
 import { usePortfolioContext } from '@/lib/portfolio-context'
 import { useAuth } from '@/lib/auth'
-import { useAssets, useChangePassword, useCreatePortfolio, useDeletePortfolio, useFxInfo, useSettings, useUpdateSettings } from '@/lib/queries'
-import type { AppSettings, Asset, PortfolioSummary } from '@/lib/types'
-import { dateTime, money } from '@/lib/format'
+import { useAssets, useChangePassword, useSettings, useUpdateSettings } from '@/lib/queries'
+import type { AppSettings, Asset } from '@/lib/types'
 
 const settingsSchema = z.object({
   activeProvider: z.string().min(1),
@@ -30,12 +26,6 @@ const settingsSchema = z.object({
   stalePriceDays: z.number().int().min(1).max(60),
 })
 type SettingsForm = z.infer<typeof settingsSchema>
-
-const portfolioSchema = z.object({
-  name: z.string().trim().min(1, 'Required').max(100),
-  initialInvestment: z.number({ error: 'Enter an amount' }).min(100, 'At least 100').max(1_000_000_000),
-})
-type PortfolioForm = z.infer<typeof portfolioSchema>
 
 const asNum = { setValueAs: (v: unknown) => (v === '' || v === null || v === undefined ? undefined : Number(v)) }
 
@@ -46,7 +36,7 @@ export function SettingsPage() {
   }, [hash])
   return (
     <>
-      <PageHeader title="Settings" description="Your simulated portfolios, account and appearance. Data-provider settings are managed by administrators." />
+      <PageHeader title="Settings" description="Your account and appearance. Portfolios are managed under My portfolios; data-provider settings are managed by administrators." />
       <div className="grid gap-6 lg:grid-cols-2">
         <PortfoliosCard />
         <AccountCard />
@@ -203,99 +193,23 @@ function AppSettingsForm({ data, assets: assetList }: { data: AppSettings; asset
   )
 }
 
+/** Portfolios are created and managed on the overview (My portfolios); Settings only points there. */
 function PortfoliosCard() {
-  const { portfolios, select } = usePortfolioContext()
-  const create = useCreatePortfolio()
-  const remove = useDeletePortfolio()
-  const settings = useSettings()
-  const fx = useFxInfo()
-  const [toDelete, setToDelete] = useState<PortfolioSummary | null>(null)
-  const [currency, setCurrency] = useState<string>()
-  const baseCurrency = currency ?? settings.data?.defaultCurrency ?? 'USD'
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<PortfolioForm>({ resolver: zodResolver(portfolioSchema), defaultValues: { initialInvestment: 100000 } })
-
-  const onCreate = handleSubmit(async (v) => {
-    try {
-      const p = await create.mutateAsync({ name: v.name, initialInvestment: v.initialInvestment, baseCurrency })
-      select(p.id)
-      reset({ name: '', initialInvestment: 100000 })
-      toast.success(`Portfolio “${p.name}” created`, { description: `${money(p.cashBalance, p.baseCurrency)} simulated cash` })
-    } catch (e) {
-      toast.error('Could not create portfolio', { description: errorMessage(e) })
-    }
-  })
-
-  async function onDelete() {
-    if (!toDelete) return
-    try {
-      await remove.mutateAsync(toDelete.id)
-      toast.success(`Deleted “${toDelete.name}”`)
-    } catch (e) {
-      toast.error('Delete failed', { description: errorMessage(e) })
-    }
-    setToDelete(null)
-  }
-
+  const { portfolios } = usePortfolioContext()
+  const active = portfolios.filter((p) => p.status === 'Active').length
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-sm">Portfolios</CardTitle>
         <CardDescription className="text-xs">
-          Each portfolio starts with simulated cash in its currency. It can hold stocks from any market: their prices stay in their own
-          currency and are converted into the portfolio currency with dated reference exchange rates. The portfolio currency cannot be changed later.
-          Optimization settings are edited in the Optimize workspace.
+          You have {active} active portfolio{active === 1 ? '' : 's'}{portfolios.length > active ? ` and ${portfolios.length - active} archived` : ''}.
+          Create, rename, archive and delete portfolios on the overview.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-5">
-        <form onSubmit={onCreate} className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_8rem_10rem_auto] sm:items-end" noValidate>
-          <div className="space-y-1.5">
-            <Label htmlFor="pname">Name</Label>
-            <Input id="pname" placeholder="e.g. Core US equities" aria-invalid={!!errors.name} {...register('name')} />
-            {errors.name && <p role="alert" className="text-xs text-destructive">{errors.name.message}</p>}
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="pccy">Currency</Label>
-            <Select value={baseCurrency} onValueChange={(v) => setCurrency(v as string)} items={(fx.data?.currencies ?? [baseCurrency]).map((c) => ({ value: c, label: c }))}>
-              <SelectTrigger id="pccy" className="w-full" aria-label="Portfolio currency"><SelectValue /></SelectTrigger>
-              <SelectContent>{(fx.data?.currencies ?? [baseCurrency]).map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="pamt">Investment ({baseCurrency})</Label>
-            <Input id="pamt" type="number" step="1000" aria-invalid={!!errors.initialInvestment} {...register('initialInvestment', asNum)} />
-            {errors.initialInvestment && <p role="alert" className="text-xs text-destructive">{errors.initialInvestment.message}</p>}
-          </div>
-          <Button type="submit" disabled={create.isPending}><Plus /> Create</Button>
-        </form>
-
-        <ul className="divide-y rounded-md border">
-          {portfolios.map((p) => (
-            <li key={p.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
-              <div>
-                <div className="font-medium">{p.name}</div>
-                <div className="text-xs text-muted-foreground tabular">
-                  {p.totalValue === null ? 'Cannot be valued (exchange rate missing)' : money(p.totalValue, p.baseCurrency)} · {p.baseCurrency} · {p.holdings} holding{p.holdings === 1 ? '' : 's'} · created {dateTime(p.createdAtUtc)}
-                </div>
-              </div>
-              <Button variant="ghost" size="icon-sm" aria-label={`Delete ${p.name}`} onClick={() => setToDelete(p)}><Trash2 /></Button>
-            </li>
-          ))}
-          {portfolios.length === 0 && <li className="px-3 py-4 text-sm text-muted-foreground">No portfolios yet.</li>}
-        </ul>
+      <CardContent className="flex flex-wrap gap-2">
+        <Button render={<Link to="/" />}>My portfolios</Button>
+        <Button variant="outline" render={<Link to="/stocks" />}><Plus /> Portfolio Creation</Button>
       </CardContent>
-
-      <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete “{toDelete?.name}”?</AlertDialogTitle>
-            <AlertDialogDescription>This permanently removes the simulated portfolio with its holdings, ledger, proposals and optimization runs.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onClick={onDelete}>Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </Card>
   )
 }

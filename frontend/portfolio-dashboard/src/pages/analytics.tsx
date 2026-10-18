@@ -55,8 +55,9 @@ export function AnalyticsPage() {
   return (
     <>
       <PageHeader
-        title="Portfolio analytics"
-        description="Realized performance of the simulated portfolio and ex-ante risk of its current holdings."
+        level={2}
+        title="Performance"
+        description="Recorded history of this portfolio – value, cash and time-weighted return since its first trade – and ex-ante risk of its current holdings. Not a backtest."
         actions={
           <div className="flex items-center gap-1 rounded-lg border p-0.5" role="group" aria-label="Date range">
             {ranges.map((r) => (
@@ -97,9 +98,14 @@ export function AnalyticsPage() {
           ) : (
             <>
               <div className="grid gap-4 lg:grid-cols-2">
-                <ChartCard title="Portfolio value" description={`${ccy}, daily close, ${date(p!.from)} – ${date(p!.to)}`}
-                  table={timeSeriesTable(p!.series.map((x) => x.date), [{ name: 'Value', values: p!.series.map((x) => x.value) }], (v) => money(v, ccy))}>
-                  <TimeSeriesChart dates={p!.series.map((x) => x.date)} series={[{ name: 'Portfolio value', values: p!.series.map((x) => x.value) }]} format={(v) => money(v, ccy, { compact: true })} area />
+                <ChartCard title="Portfolio value and cash" description={`${ccy}, daily close, ${date(p!.from)} – ${date(p!.to)}. Invested = value − cash. Deposits and withdrawals move the value but are not returns.`}
+                  legend={[{ name: 'Total value', color: 'var(--series-1)' }, { name: 'Cash', color: 'var(--series-2)', dashed: true }]}
+                  table={timeSeriesTable(p!.series.map((x) => x.date), [
+                    { name: 'Total value', values: p!.series.map((x) => x.value) },
+                    { name: 'Cash', values: p!.series.map((x) => x.cash) },
+                  ], (v) => money(v, ccy))}>
+                  <TimeSeriesChart dates={p!.series.map((x) => x.date)} format={(v) => money(v, ccy, { compact: true })}
+                    series={[{ name: 'Total value', values: p!.series.map((x) => x.value) }, { name: 'Cash', values: p!.series.map((x) => x.cash), dashed: true }]} />
                 </ChartCard>
                 <ChartCard title={`Cumulative return vs ${p!.benchmarkSymbol}`} description="Time-weighted, %"
                   legend={[{ name: 'Portfolio', color: 'var(--series-1)' }, { name: p!.benchmarkSymbol, color: 'var(--series-2)', dashed: true }]}
@@ -179,13 +185,13 @@ export function AnalyticsPage() {
           {run.data ? (
             <ChartCard title="Efficient frontier (latest successful run)" description={`Estimation window ${date(run.data.periodStart)} – ${date(run.data.periodEnd)}`}
               legend={[{ name: 'Efficient frontier', color: 'var(--series-1)' }, { name: 'Selected portfolio', color: 'var(--series-2)' }, { name: 'Reference portfolios', color: 'var(--series-3)' }, { name: 'Individual assets', color: 'var(--chart-axis)' }]}
-              actions={<Button variant="link" size="sm" render={<Link to={`/optimize/${run.data.id}`} />}>Open run</Button>}>
+              actions={<Button variant="link" size="sm" render={<Link to={`/portfolios/${run.data.portfolioId}/optimize/${run.data.id}`} />}>Open run</Button>}>
               <FrontierChart frontier={run.data.analytics.frontier}
                 assets={run.data.analytics.assetStatistics.map((s) => ({ symbol: s.symbol, volatility: s.volatility, expectedReturn: s.expectedReturn }))}
                 selected={{ volatility: run.data.volatility!, expectedReturn: run.data.expectedReturn!, sharpeRatio: run.data.sharpeRatio }}
                 references={run.data.analytics.references} />
             </ChartCard>
-          ) : <EmptyState title="No successful optimization run" action={<Button render={<Link to="/optimize" />}>Optimize</Button>} />}
+          ) : <EmptyState title="No successful optimization run" action={<Button render={<Link to={`/portfolios/${portfolioId}/optimize`} />}>Optimize</Button>} />}
         </TabsContent>
       </Tabs>
     </>

@@ -1,9 +1,23 @@
 # Implementation status
 
+## 2026-10-17 (2): multi-portfolio workspaces (D-32)
+
+* Overview = My portfolios (all of the user's portfolios, totals only when every one can be valued); Portfolio Creation
+  replaces Stock selection; per-portfolio workspace `/portfolios/:id/…` with header, switcher and sections; old URLs redirect.
+* Manual transactions (journal): buy, sell, deposit, withdrawal, dividend, fee – atomic, idempotent, in time order, with
+  reversal of cash events; archive/restore, delete only when archived; research sessions with a portfolio context.
+* Fixes: deposits/withdrawals on non-trading days are no longer dropped from performance; a run opened under another
+  portfolio's URL now opens in its own portfolio (it showed the other portfolio's currency and run list).
+* Verified: backend unit 251 (+8 skipped), ML 40, integration 117 (incl. `MultiPortfolioTests`, 10); Vitest 136; e2e 32 on the
+  disposable stack (incl. `portfolios.spec.ts`); migration rehearsed twice on a copy of the development database.
+* Open: no trade reversal or imports, no money-weighted/combined return, backtests/ML/comparisons not portfolio-bound,
+  AI questions about holdings – see [portfolios.md](portfolios.md#status).
+
 ## 2026-10-17: primary top navigation (D-31)
 
-* Top bar: Optimizer · AI Research · Financial News · Watchlist · Market Data · Settings; the sidebar holds the Optimizer
-  sections (Workspace, Optimize, Test & compare, Paper portfolio, Learn) and, unchanged, Administration with Admin settings.
+* Top bar: Optimizer · AI Research · Financial News · Watchlist · Market Data · Strategy Guide · Glossary · Settings
+  (Strategy Guide and Glossary moved up in a follow-up; single strategy pages keep Strategy Guide active); the sidebar
+  holds the Optimizer sections (Workspace, Optimize, Test & compare, Paper portfolio) and, unchanged, Administration with Admin settings.
   One model in `lib/navigation.ts`; no route changed; active state follows the URL (stock pages, reality checks and
   strategy guides now highlight their section). Narrow screens: the bar scrolls horizontally, the sidebar is a menu sheet.
 * Fix: the theme pre-paint script moved from inline to `public/theme-init.js` – the container CSP (`script-src 'self'`)

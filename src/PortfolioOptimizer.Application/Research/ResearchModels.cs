@@ -64,6 +64,11 @@ public sealed record StartResearchRequest
     [StringLength(2, MinimumLength = 2)] public string? Market { get; init; }
     [RegularExpression("^(low|medium|high)$")] public string? RiskPreference { get; init; }
     [Range(1, 50)] public int? HorizonYears { get; init; }
+    /// <summary>
+    /// Portfolio the research is about (must be the caller's): its currency is used for the analysis and a saved run is
+    /// attached to it by default. Only its id and currency are used – no portfolio data is sent to a language model.
+    /// </summary>
+    public Guid? PortfolioId { get; init; }
 }
 
 /// <summary>A security considered for the research universe with the evidence for including or excluding it.</summary>
@@ -177,7 +182,8 @@ public sealed record ResearchEventDto(DateTime AtUtc, string Kind, string Name, 
 
 public sealed record WorkflowStepDto(string Key, string Title, string Status);
 
-public sealed record ResearchSessionSummaryDto(Guid Id, string Title, string State, DateTime CreatedAtUtc, DateTime UpdatedAtUtc, int Hypotheses, bool HasSavedRun);
+public sealed record ResearchSessionSummaryDto(Guid Id, string Title, string State, DateTime CreatedAtUtc, DateTime UpdatedAtUtc, int Hypotheses, bool HasSavedRun,
+    Guid? PortfolioId = null);
 
 public sealed record ResearchSessionDto(
     Guid Id,
@@ -194,7 +200,11 @@ public sealed record ResearchSessionDto(
     IReadOnlyList<ResearchEventDto> Events,
     ResearchBudgetDto Budget,
     AssistantStatusDto Assistant,
-    string Disclaimer);
+    string Disclaimer,
+    /// <summary>Portfolio context of the research (null: portfolio-independent).</summary>
+    Guid? PortfolioId = null,
+    string? PortfolioName = null,
+    string? PortfolioCurrency = null);
 
 public sealed record ResearchBudgetDto(int ToolCalls, int MaxToolCalls, int Hypotheses, int MaxHypotheses, int LlmTokens, int MaxLlmTokens);
 
