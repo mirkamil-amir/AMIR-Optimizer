@@ -2,6 +2,18 @@
 
 Short records of decisions that are not obvious from the code. Newest first. Format: context → decision → consequences.
 
+## D-34 Exchange rates: fetch the rate set, not single currencies; BGN history-only (2026-10-19)
+**Context:** adding a currency in the converter took 6–7 s and up to 72 s in the development stack's logs: each added row
+waited for a new board request that called the ECB inside the request (30 s attempt timeout, 3 retries); BGN (ECB series
+ended 2025-12-31, Bulgaria in the euro since 2026-01-01) was "missing" forever and refetched with every other currency; a
+range starting on a weekend was never "covered" and refetched hourly. **Decision:** the converter loads one board with every
+currency per base; `FxService` fetches all published currencies for ranges ≤ 400 days in one request (0.2–1.2 s), per gap
+otherwise, single-flight per provider, at most 25 s per request; coverage tolerates closures at the start; discontinued
+currencies are provider metadata (`DiscontinuedCurrencies`) with history only, never a current rate, never EUR substituted.
+Still no Redis (D-33): the bottleneck was provider calls inside requests, and PostgreSQL already stores the fetched rates.
+**Consequences:** adding a currency makes no request (measured: row immediately; chart 6–21 ms, 0 ECB calls, vs. 2 ECB calls
+per add before); the first board of a day costs one ECB request of ~1 s. Details in [currency.md](currency.md).
+
 ## D-33 Fix query shapes and blocking work before caching; no Redis (2026-10-19)
 **Context:** a performance audit found every page waiting 2.4 s for the navigation's data status, news views blocked by
 provider fetches (10 s) and per-stock queries (N+1). **Decision:** fix causes, not symptoms: one set-based query for

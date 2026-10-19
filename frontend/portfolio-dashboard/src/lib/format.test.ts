@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { date, money, num, pct, qty, signClass } from './format'
+import { axisDate, date, money, num, pct, qty, signClass } from './format'
 
 describe('format', () => {
   it('formats fractions as percentages', () => {
@@ -32,5 +32,10 @@ describe('format', () => {
     expect(signClass(1)).toBe('text-gain')
     expect(signClass(-1)).toBe('text-loss')
     expect(signClass(0)).toBe('text-foreground')
+  })
+
+  it('labels chart axes with the day on short spans, so a three-month chart does not repeat "Aug 26"', () => {
+    expect(axisDate('2026-08-12', 92)).toBe('Aug 12')
+    expect(axisDate('2026-08-12', 366)).toBe('Aug 26')
   })
 })

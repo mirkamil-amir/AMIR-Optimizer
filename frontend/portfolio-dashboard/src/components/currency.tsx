@@ -20,13 +20,17 @@ export function FxNote({ rate, from, to, on }: { rate: number | null | undefined
  * Currency drop-down over every supported currency: `first` and the majors, then all others, each with its English name.
  * The trigger shows the code only so it stays narrow; `firstNote` marks `first` in both ("EUR (portfolio)").
  */
-export function CurrencySelect({ value, onChange, supported, first, firstNote, exclude, label, id, size, className, placeholder }: {
-  value: string | null; onChange: (c: string) => void; supported: string[] | undefined; first?: string; firstNote?: string; exclude?: string
+export function CurrencySelect({ value, onChange, supported, historical, first, firstNote, exclude, label, id, size, className, placeholder }: {
+  value: string | null; onChange: (c: string) => void; supported: string[] | undefined
+  /** Discontinued currencies (history only, e.g. BGN), listed last in their own group. */
+  historical?: string[]
+  first?: string; firstNote?: string; exclude?: string
   label: string; id?: string; size?: 'sm' | 'default'; className?: string; placeholder?: string
 }) {
   const { major, more } = currencyGroups(supported, first, exclude)
   const note = (c: string) => (firstNote && c === first ? ` (${firstNote})` : '')
-  const items = [...major, ...more].map((c) => ({ value: c, label: c + note(c) }))
+  const past = (historical ?? []).filter((c) => c !== exclude && !major.includes(c) && !more.includes(c))
+  const items = [...major, ...more, ...past].map((c) => ({ value: c, label: c + note(c) }))
   const option = (c: string) => (
     <SelectItem key={c} value={c}>
       <span className="w-9 font-medium">{c}</span><span className="text-muted-foreground">{currencyName(c)}{note(c)}</span>
@@ -35,9 +39,12 @@ export function CurrencySelect({ value, onChange, supported, first, firstNote, e
   return (
     <Select value={value} onValueChange={(v) => v && onChange(String(v))} items={items}>
       <SelectTrigger id={id} size={size} className={className} aria-label={label}><SelectValue placeholder={placeholder} /></SelectTrigger>
-      <SelectContent className="max-h-80 min-w-56">
-        <SelectGroup><SelectLabel>Major currencies</SelectLabel>{major.map(option)}</SelectGroup>
-        {more.length > 0 && <><SelectSeparator /><SelectGroup><SelectLabel>More currencies</SelectLabel>{more.map(option)}</SelectGroup></>}
+      {/* A plain drop-down (flips above when there is no room below): aligning the chosen item with the trigger pushed long
+          lists off-screen near the bottom of the page. */}
+      <SelectContent className="max-h-80 min-w-56" alignItemWithTrigger={false}>
+        {major.length > 0 && <SelectGroup><SelectLabel>Major currencies</SelectLabel>{major.map(option)}</SelectGroup>}
+        {more.length > 0 && <>{major.length > 0 && <SelectSeparator />}<SelectGroup><SelectLabel>More currencies</SelectLabel>{more.map(option)}</SelectGroup></>}
+        {past.length > 0 && <><SelectSeparator /><SelectGroup><SelectLabel>History only (no current rate)</SelectLabel>{past.map(option)}</SelectGroup></>}
       </SelectContent>
     </Select>
   )

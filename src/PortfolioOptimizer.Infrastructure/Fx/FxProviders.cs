@@ -11,7 +11,8 @@ public sealed class EcbFxOptions
 {
     public const string Section = "Fx:Ecb";
     public string BaseUrl { get; set; } = "https://data-api.ecb.europa.eu/service/";
-    public int TimeoutSeconds { get; set; } = 30;
+    /// <summary>Per attempt; FxService additionally bounds the whole wait (FxService.ProviderWait), so a retry fits in it.</summary>
+    public int TimeoutSeconds { get; set; } = 10;
     public int MinRequestIntervalMs { get; set; } = 250;
 }
 
@@ -22,21 +23,25 @@ public sealed class EcbFxOptions
 /// </summary>
 public sealed class EcbFxProvider(HttpClient http, IOptions<EcbFxOptions> options) : IFxRateProvider
 {
-    /// <summary>Currencies with an ECB daily reference rate (2026).</summary>
+    /// <summary>Currencies with an ECB daily reference rate (29, checked on the ECB reference-rate page 2026-10-19).</summary>
     public static readonly IReadOnlySet<string> Currencies = new HashSet<string>
     {
-        "USD", "JPY", "BGN", "CZK", "DKK", "GBP", "HUF", "PLN", "RON", "SEK", "CHF", "ISK", "NOK", "TRY", "AUD", "BRL", "CAD", "CNY",
+        "USD", "JPY", "CZK", "DKK", "GBP", "HUF", "PLN", "RON", "SEK", "CHF", "ISK", "NOK", "TRY", "AUD", "BRL", "CAD", "CNY",
         "HKD", "IDR", "ILS", "INR", "KRW", "MXN", "MYR", "NZD", "PHP", "SGD", "THB", "ZAR",
     };
 
     public string Name => FxSources.Ecb;
     public bool IsSimulated => false;
     public string Description => "Euro foreign exchange reference rates (daily, ~16:00 CET; reference rates, not transaction rates)";
+    /// <summary>No longer published: BGN since Bulgaria adopted the euro (last ECB rate 2025-12-31, series EXR.D.BGN.EUR.SP00.A).</summary>
+    public static readonly IReadOnlyDictionary<string, DateOnly> Discontinued = new Dictionary<string, DateOnly> { ["BGN"] = new(2025, 12, 31) };
+
     public IReadOnlySet<string> SupportedCurrencies => Currencies;
+    public IReadOnlyDictionary<string, DateOnly> DiscontinuedCurrencies => Discontinued;
 
     public async Task<IReadOnlyList<FxObservation>> GetRatesAsync(IReadOnlyCollection<string> currencies, DateOnly from, DateOnly to, CancellationToken ct)
     {
-        var codes = currencies.Where(Currencies.Contains).Distinct().Order().ToList();
+        var codes = currencies.Where(c => Currencies.Contains(c) || Discontinued.ContainsKey(c)).Distinct().Order().ToList();
         if (codes.Count == 0 || to < from) return [];
         var url = $"{options.Value.BaseUrl.TrimEnd('/')}/data/EXR/D.{string.Join('+', codes)}.EUR.SP00.A" +
                   $"?startPeriod={from:yyyy-MM-dd}&endPeriod={to:yyyy-MM-dd}&format=csvdata&detail=dataonly";
@@ -101,16 +106,19 @@ public sealed class MockFxProvider(TimeProvider clock) : IFxRateProvider
     public bool IsSimulated => true;
     public string Description => "Simulated exchange rates – NOT real rates";
     public IReadOnlySet<string> SupportedCurrencies => EcbFxProvider.Currencies;
+    public IReadOnlyDictionary<string, DateOnly> DiscontinuedCurrencies => EcbFxProvider.Discontinued;
 
     public Task<IReadOnlyList<FxObservation>> GetRatesAsync(IReadOnlyCollection<string> currencies, DateOnly from, DateOnly to, CancellationToken ct)
     {
         var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
         var result = new List<FxObservation>();
-        foreach (var c in currencies.Where(SupportedCurrencies.Contains).Distinct())
+        foreach (var c in currencies.Where(c => SupportedCurrencies.Contains(c) || DiscontinuedCurrencies.ContainsKey(c)).Distinct())
         {
             var (_, dates, values) = Series(c, today);
+            // Like the real source: no simulated rate after a currency's last publication.
+            var last = DiscontinuedCurrencies.TryGetValue(c, out var until) && until < to ? until : to;
             for (var i = 0; i < dates.Length; i++)
-                if (dates[i] >= from && dates[i] <= to)
+                if (dates[i] >= from && dates[i] <= last)
                     result.Add(new FxObservation(c, dates[i], Math.Round((decimal)values[i], 6)));
         }
         return Task.FromResult<IReadOnlyList<FxObservation>>(result);

@@ -814,21 +814,21 @@ export const useFxRate = (from: string | undefined, to: string | undefined) =>
     retry: false,
   })
 
-/** Published daily rates of a pair for charts. */
+/** Published daily rates of a pair for charts; the previous pair stays visible while the next loads (superseded requests are aborted). */
 export const useFxHistory = (from: string | undefined, to: string | undefined, days = 365) =>
   useQuery({
     queryKey: ['fx-history', from ?? '', to ?? '', days] as const,
-    queryFn: () => api.get<FxHistory>(`${V1}/fx/history?from=${from}&to=${to}&days=${days}`),
+    queryFn: ({ signal }) => api.get<FxHistory>(`${V1}/fx/history?from=${from}&to=${to}&days=${days}`, signal),
     enabled: !!from && !!to && from !== to,
     staleTime: 30 * 60_000,
     placeholderData: keepPreviousData,
   })
 
-/** Latest reference rates of several currencies against `base`, with 1-day and 1-month changes. */
+/** Latest reference rates of several currencies against `base`, with 1-day and 1-month changes (superseded requests are aborted). */
 export const useFxBoard = (base: string | undefined, quotes: string[]) =>
   useQuery({
     queryKey: ['fx-board', base ?? '', quotes.join(',')] as const,
-    queryFn: () => api.get<FxBoard>(`${V1}/fx/board?base=${base}&quotes=${quotes.join(',')}`),
+    queryFn: ({ signal }) => api.get<FxBoard>(`${V1}/fx/board?base=${base}&quotes=${quotes.join(',')}`, signal),
     enabled: !!base && quotes.length > 0,
     staleTime: 30 * 60_000,
   })

@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
+using PortfolioOptimizer.Application.Abstractions;
 using PortfolioOptimizer.Application.Dtos;
 using PortfolioOptimizer.Application.Fx;
 
@@ -18,7 +19,8 @@ public sealed class FxController(FxService fx) : ControllerBase
         var provider = fx.ProviderFor(simulated);
         return new FxInfoDto(provider.Name, provider.Description, provider.IsSimulated, fx.SupportedCurrencies(simulated).Order().ToList(),
             "rate = units of the target currency per one unit of the source currency; converted amount = amount × rate. Cross rates via EUR.",
-            FxTable.DefaultMaxCarryForwardDays);
+            FxTable.DefaultMaxCarryForwardDays,
+            provider.DiscontinuedCurrencies.OrderBy(d => d.Key).Select(d => new FxDiscontinuedDto(d.Key, d.Value, FxDiscontinued.Reason(d.Key, d.Value))).ToList());
     }
 
     /// <summary>Published daily rates of a pair for charts (business days only, nothing carried forward).</summary>

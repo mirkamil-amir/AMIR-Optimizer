@@ -211,6 +211,22 @@ public sealed class FxProviderTests
         Assert.All(a.Where(r => r.Currency == "JPY"), r => Assert.InRange(r.UnitsPerEur, 80m, 300m));
     }
 
+    [Fact]
+    public async Task Bgn_IsDiscontinued_HistoryOnly_UntilTheEuroChangeover()
+    {
+        // Bulgaria adopted the euro on 2026-01-01; the ECB's last BGN reference rate is dated 2025-12-31.
+        Assert.DoesNotContain("BGN", EcbFxProvider.Currencies);
+        Assert.Equal(29, EcbFxProvider.Currencies.Count);
+        Assert.Equal(new DateOnly(2025, 12, 31), EcbFxProvider.Discontinued["BGN"]);
+        var clock = new FixedClock(new DateTimeOffset(2026, 10, 15, 12, 0, 0, TimeSpan.Zero));
+        var mock = new MockFxProvider(clock);
+        Assert.Equal(EcbFxProvider.Discontinued, mock.DiscontinuedCurrencies);
+        var rows = await mock.GetRatesAsync(["BGN"], new DateOnly(2025, 12, 1), new DateOnly(2026, 2, 1), CancellationToken.None);
+        Assert.NotEmpty(rows);
+        Assert.Equal(new DateOnly(2025, 12, 31), rows.Max(r => r.Date));     // simulated rates end like the real ones
+        Assert.Contains("1.95583", PortfolioOptimizer.Application.Abstractions.FxDiscontinued.Reason("BGN", new DateOnly(2025, 12, 31)));
+    }
+
     private sealed class FixedClock(DateTimeOffset now) : TimeProvider
     {
         public override DateTimeOffset GetUtcNow() => now;
@@ -232,5 +248,16 @@ public sealed class LiveEcbSmokeTests
         Assert.All(rows.Where(r => r.Currency == "USD"), r => Assert.InRange(r.UnitsPerEur, 0.7m, 2m));
         Assert.All(rows.Where(r => r.Currency == "JPY"), r => Assert.InRange(r.UnitsPerEur, 80m, 300m));
         Assert.All(rows, r => Assert.True(r.Date.DayOfWeek is not DayOfWeek.Saturday and not DayOfWeek.Sunday));
+    }
+
+    [PortfolioOptimizer.UnitTests.MarketData.LiveSmokeFact]
+    public async Task Ecb_PublishesEveryListedCurrency_AndNoBgnAfter2025()
+    {
+        var provider = new EcbFxProvider(new HttpClient { Timeout = TimeSpan.FromSeconds(30) }, Microsoft.Extensions.Options.Options.Create(new EcbFxOptions()));
+        var to = DateOnly.FromDateTime(DateTime.UtcNow);
+        var rows = await provider.GetRatesAsync(EcbFxProvider.Currencies, to.AddDays(-14), to, CancellationToken.None);
+        Assert.Equal(EcbFxProvider.Currencies.Order(), rows.Select(r => r.Currency).Distinct().Order());
+        var bgn = await provider.GetRatesAsync(["BGN"], new DateOnly(2025, 12, 1), to, CancellationToken.None);
+        Assert.Equal(EcbFxProvider.Discontinued["BGN"], bgn.Max(r => r.Date));
     }
 }

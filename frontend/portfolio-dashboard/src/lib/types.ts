@@ -1527,6 +1527,14 @@ export interface FxInfo {
   currencies: string[]
   convention: string
   maxCarryForwardDays: number
+  /** No longer published (e.g. BGN since the euro changeover): history up to lastRateDate only, no current rate. */
+  discontinued: FxDiscontinued[]
+}
+
+export interface FxDiscontinued {
+  currency: string
+  lastRateDate: string
+  note: string
 }
 
 export interface FxRate {
