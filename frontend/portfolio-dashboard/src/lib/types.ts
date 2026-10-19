@@ -1180,6 +1180,8 @@ export interface NewsFeed {
   sources: NewsSourceStatus[]
   imagesEnabled: boolean
   notes: string[]
+  /** Due sources are being refreshed in the background; the stored articles are shown meanwhile. */
+  refreshing: boolean
 }
 
 export interface NewsFilters {
@@ -1565,4 +1567,18 @@ export interface FxBoard {
   isSimulated: boolean
   rows: FxBoardRow[]
   note: string
+}
+
+/** Compact data status for the navigation (see MarketDataStatus for the per-instrument detail). */
+export interface MarketDataSummary {
+  activeProvider: string
+  activeProviderIsSimulated: boolean
+  /** Tracked instruments by freshness of their last stored close. */
+  fresh: number
+  stale: number
+  missing: number
+  lastRetrievedAtUtc: string | null
+  syncRunning: boolean
+  stalePriceDays: number
+  asOfUtc: string
 }

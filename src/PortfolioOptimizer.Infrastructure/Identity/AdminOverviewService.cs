@@ -18,6 +18,7 @@ public sealed class AdminOverviewService(
     IMarketDataProviderRegistry providers,
     AlphaVantageQuota alphaVantageQuota,
     QuoteRefreshService quoteRefresh,
+    PriceQueryService prices,
     TimeProvider clock) : IAdminOverviewService
 {
     public async Task<AdminOverviewDto> GetAsync(CancellationToken ct)
@@ -70,13 +71,17 @@ public sealed class AdminOverviewService(
             p.Name == AlphaVantageProvider.Name && p.IsConfigured ? alphaVantageQuota.Remaining : null)).ToList();
 
         var today = now.Date;
-        var indices = await db.MarketIndices.AsNoTracking().OrderBy(i => i.IsHistorical).ThenBy(i => i.Name)
-            .Select(i => new IndexHealthDto(i.Code, i.Name, i.Members.Count,
-                i.Members.Count(m => db.LatestQuotes.Any(q => q.AssetId == m.AssetId && q.Source == active)),
-                i.Members.Count(m => db.LatestQuotes.Any(q => q.AssetId == m.AssetId && q.Source == active && q.RetrievedAtUtc >= today)),
-                i.Members.Count(m => db.HistoricalPrices.Any(p => p.AssetId == m.AssetId && p.Source == active)),
+        // Counted in memory from set queries: per-member EXISTS subqueries can degrade to a table scan per member.
+        var withPrices = await prices.AssetIdsWithPricesAsync(active, ct);
+        var quotes = await db.LatestQuotes.AsNoTracking().Where(q => q.Source == active).Select(q => new { q.AssetId, q.RetrievedAtUtc }).ToListAsync(ct);
+        var withQuotes = quotes.Select(q => q.AssetId).ToHashSet();
+        var quotedToday = quotes.Where(q => q.RetrievedAtUtc >= today).Select(q => q.AssetId).ToHashSet();
+        var members = (await db.IndexMemberships.AsNoTracking().Select(m => new { m.IndexCode, m.AssetId }).ToListAsync(ct)).ToLookup(m => m.IndexCode, m => m.AssetId);
+        var indices = (await db.MarketIndices.AsNoTracking().OrderBy(i => i.IsHistorical).ThenBy(i => i.Name).ToListAsync(ct))
+            .Select(i => new IndexHealthDto(i.Code, i.Name, members[i.Code].Count(),
+                members[i.Code].Count(withQuotes.Contains), members[i.Code].Count(quotedToday.Contains), members[i.Code].Count(withPrices.Contains),
                 i.VerifiedOn))
-            .ToListAsync(ct);
+            .ToList();
         var lastSync = await db.SyncJobs.AsNoTracking().OrderByDescending(j => j.RequestedAtUtc)
             .Select(j => new SyncJobSummaryDto(j.Id, j.Status.ToString(), j.RequestedAtUtc, j.CompletedAtUtc, j.AssetsTotal, j.AssetsFailed, j.Message))
             .FirstOrDefaultAsync(ct);

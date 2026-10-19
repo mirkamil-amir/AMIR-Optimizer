@@ -15,7 +15,7 @@ import {
   adminSection, optimizerSections, primaryForPath, primaryNav, sidebarEntryForPath, type NavEntry, type NavSection,
 } from '@/lib/navigation'
 import { identityLabel } from '@/lib/identity'
-import { useMarketStatus } from '@/lib/queries'
+import { useMarketSummary } from '@/lib/queries'
 import { useSelection } from '@/lib/selection'
 import { relativeTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
@@ -117,14 +117,13 @@ function Brand() {
 }
 
 function DataStatus() {
-  const { data } = useMarketStatus()
+  const { data } = useMarketSummary()
   // Data-source names are operational details: only administrators see them.
   const { isAdministrator } = useAuth()
   if (!data) return null
-  const enabled = data.coverage.filter((c) => c.isEnabled)
-  const stale = enabled.filter((c) => c.freshness !== 'Fresh').length
-  const lastRetrieved = enabled.map((c) => c.lastRetrievedAtUtc).filter(Boolean).sort().at(-1) ?? null
-  const running = data.recentJobs.some((j) => j.status === 'Queued' || j.status === 'Running')
+  const stale = data.stale + data.missing
+  const lastRetrieved = data.lastRetrievedAtUtc
+  const running = data.syncRunning
   return (
     <div className="space-y-1.5 rounded-lg border p-2.5 text-xs">
       <div className="flex items-center justify-between">

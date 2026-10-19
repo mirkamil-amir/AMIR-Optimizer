@@ -391,8 +391,9 @@ public sealed class MarketDataService(
         var settings = await prices.SettingsAsync(ct);
         var source = settings.ActiveProvider;
         // Tracked instruments plus any catalogue instrument with stored prices (the full catalogue is browsed via /stocks).
+        var withPrices = (await prices.AssetIdsWithPricesAsync(source, ct)).ToList();
         var assets = await db.Assets.AsNoTracking()
-            .Where(a => a.IsEnabled || db.HistoricalPrices.Any(p => p.AssetId == a.Id && p.Source == source))
+            .Where(a => a.IsEnabled || withPrices.Contains(a.Id))
             .OrderBy(a => a.Symbol).ToListAsync(ct);
         var stats = await db.HistoricalPrices.AsNoTracking()
             .Where(p => p.Source == source)
@@ -419,9 +420,7 @@ public sealed class MarketDataService(
             stats.TryGetValue(a.Id, out var s);
             lastLogs.TryGetValue(a.Id, out var log);
             latest.TryGetValue(a.Id, out var lp);
-            var freshness = s is null ? DataFreshness.Missing
-                : PriceQueryService.BusinessDaysBetween(s.Last, today) > settings.StalePriceDays ? DataFreshness.Stale
-                : DataFreshness.Fresh;
+            var freshness = Freshness(s?.Last, today, settings.StalePriceDays);
             return new AssetCoverageDto(a.Id, a.Symbol, a.Name, a.IsEnabled, source, providers.Providers.Any(p => p.Name == source && p.IsSimulated),
                 s?.Count ?? 0, s?.First, s?.Last, s is not null && s.AdjCount == s.Count, s?.Retrieved, freshness,
                 lp?.Price, lp?.AsOfUtc, log?.Message, log?.Success);
@@ -437,6 +436,35 @@ public sealed class MarketDataService(
             jobs.Select(j => j.ToDto()).ToList(),
             settings.StalePriceDays,
             clock.GetUtcNow().UtcDateTime);
+    }
+
+    /// <summary>Fresh / stale / missing by the date of the last stored close (the one rule for status and summary).</summary>
+    public static DataFreshness Freshness(DateOnly? lastClose, DateOnly today, int stalePriceDays) =>
+        lastClose is not { } last ? DataFreshness.Missing
+        : PriceQueryService.BusinessDaysBetween(last, today) > stalePriceDays ? DataFreshness.Stale
+        : DataFreshness.Fresh;
+
+    /// <summary>
+    /// Compact status for the navigation shown on every page: one aggregate over the tracked instruments' prices instead of the
+    /// full per-instrument status (coverage, sync logs, latest prices, jobs).
+    /// </summary>
+    public async Task<MarketDataSummaryDto> GetSummaryAsync(CancellationToken ct)
+    {
+        var settings = await prices.SettingsAsync(ct);
+        var source = settings.ActiveProvider;
+        var enabled = await db.Assets.AsNoTracking().Where(a => a.IsEnabled).Select(a => a.Id).ToListAsync(ct);
+        var stats = await db.HistoricalPrices.AsNoTracking()
+            .Where(p => p.Source == source && enabled.Contains(p.AssetId))
+            .GroupBy(p => p.AssetId)
+            .Select(g => new { g.Key, Last = g.Max(p => p.Date), Retrieved = g.Max(p => p.RetrievedAtUtc) })
+            .ToDictionaryAsync(x => x.Key, ct);
+        var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
+        var counts = enabled.Select(id => Freshness(stats.TryGetValue(id, out var s) ? s.Last : null, today, settings.StalePriceDays))
+            .GroupBy(f => f).ToDictionary(g => g.Key, g => g.Count());
+        var running = await db.SyncJobs.AsNoTracking().AnyAsync(j => j.Status == JobStatus.Queued || j.Status == JobStatus.Running, ct);
+        return new MarketDataSummaryDto(source, providers.Providers.FirstOrDefault(p => p.Name == source)?.IsSimulated ?? false,
+            counts.GetValueOrDefault(DataFreshness.Fresh), counts.GetValueOrDefault(DataFreshness.Stale), counts.GetValueOrDefault(DataFreshness.Missing),
+            stats.Count == 0 ? null : stats.Values.Max(s => s.Retrieved), running, settings.StalePriceDays, clock.GetUtcNow().UtcDateTime);
     }
 
     public static ProviderStatusDto ToDto(ProviderDescriptor p) =>

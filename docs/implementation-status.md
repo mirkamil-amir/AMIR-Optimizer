@@ -1,5 +1,21 @@
 # Implementation status
 
+## 2026-10-19: performance (D-33)
+
+* Navigation data status and Portfolio Creation's markets/sectors: 2.4 s → 11–25 ms (set-based query instead of a per-instrument
+  `EXISTS`); compact `/market-data/summary` for the sidebar; pages settle in 0.6–1.1 s instead of 3.1–4.1 s.
+* News: stored articles first, due sources refreshed in the background (first view after the refresh window 10.1 s → 0.2 s).
+* Batched price queries (risk 45 → 24 SQL commands, holdings 30 → 16, reality check 30 → 12, optimization 26 → 17).
+* No Redis (decision matrix in [performance.md](performance.md)); parallel efficient frontier tried and reverted.
+* Fix found by the e2e run: "Record transaction" sent the browser's date by default; with the Podman VM clock ~3 h behind
+  the host, deposits were refused as "in the future". The form now sends a date only when the user picks one (Vitest).
+* Verified: unit 251 (+8 skipped), ML 40, integration 122 (incl. `DataAccessEfficiencyTests`: batched = per-asset reference,
+  summary = status, unchanged coverage counts, background news refresh once for concurrent viewers, failures recorded not served),
+  Vitest 138, e2e 32; before/after on the development stack (read-only).
+* Open: optimization analytics (efficient frontier) is ~95 % of a run.
+* Test stalls of ~16 min (one integration run, two e2e runs) were the Mac entering "Maintenance Sleep" (pmset log: 990–1046 s);
+  unattended runs now use `caffeinate -ims` (see testing.md).
+
 ## 2026-10-17 (2): multi-portfolio workspaces (D-32)
 
 * Overview = My portfolios (all of the user's portfolios, totals only when every one can be valued); Portfolio Creation

@@ -66,6 +66,9 @@ function TransactionForm({ portfolioId, portfolioName, currency, symbols, initia
   const [amount, setAmount] = useState('')
   const [fee, setFee] = useState('')
   const [day, setDay] = useState(today())
+  // Only a date the user chose is sent; otherwise the server books "today" by its own clock (a skewed browser clock
+  // must not make a default booking look like a future one).
+  const [dayChanged, setDayChanged] = useState(false)
   const [note, setNote] = useState('')
   const [error, setError] = useState<string | null>(null)
 
@@ -82,7 +85,7 @@ function TransactionForm({ portfolioId, portfolioName, currency, symbols, initia
     setError(null)
     const body: RecordTransactionRequest = {
       type,
-      date: day || undefined,
+      date: dayChanged && day ? day : undefined,
       note: note.trim() || undefined,
       ...(needsSymbol ? { symbol: sym || undefined } : {}),
       ...(isTrade ? { quantity: num(quantity), price: num(price), fee: num(fee) ?? 0 } : { amount: num(amount) }),
@@ -158,7 +161,7 @@ function TransactionForm({ portfolioId, portfolioName, currency, symbols, initia
 
         <div className="space-y-1.5">
           <Label htmlFor="tx-date">Date</Label>
-          <Input id="tx-date" type="date" max={today()} value={day} onChange={(e) => setDay(e.target.value)} aria-describedby="tx-date-help" />
+          <Input id="tx-date" type="date" max={today()} value={day} onChange={(e) => { setDay(e.target.value); setDayChanged(true) }} aria-describedby="tx-date-help" />
           <p id="tx-date-help" className="text-[11px] text-muted-foreground">Not before the portfolio’s latest booking.</p>
         </div>
         <div className="space-y-1.5 sm:col-span-2">

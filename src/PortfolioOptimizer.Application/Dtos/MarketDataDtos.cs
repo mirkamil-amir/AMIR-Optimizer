@@ -127,6 +127,21 @@ public sealed record AssetCoverageDto(
     string? LastSyncMessage,
     bool? LastSyncSuccess);
 
+/// <summary>
+/// Compact data status for the navigation (every page): freshness counts of the tracked instruments, the latest retrieval
+/// and whether a download is running. The full per-instrument list is <see cref="MarketDataStatusDto"/>.
+/// </summary>
+public sealed record MarketDataSummaryDto(
+    string ActiveProvider,
+    bool ActiveProviderIsSimulated,
+    int Fresh,
+    int Stale,
+    int Missing,
+    DateTime? LastRetrievedAtUtc,
+    bool SyncRunning,
+    int StalePriceDays,
+    DateTime AsOfUtc);
+
 public sealed record MarketDataStatusDto(
     string ActiveProvider,
     bool ActiveProviderIsSimulated,

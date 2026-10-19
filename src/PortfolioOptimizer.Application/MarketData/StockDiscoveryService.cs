@@ -47,14 +47,11 @@ public sealed class StockDiscoveryService(
     public async Task<IReadOnlyList<SectorDto>> GetSectorsAsync(string? country, string? index, CancellationToken ct)
     {
         var settings = await prices.SettingsAsync(ct);
+        var withPrices = await prices.AssetIdsWithPricesAsync(settings.ActiveProvider, ct);
         var q = Filter(db.Assets.AsNoTracking().Where(a => a.AssetType != AssetType.Index), new StockQuery(country, index));
-        var rows = await q.Select(a => new
-        {
-            a.Sector,
-            HasData = db.HistoricalPrices.Any(p => p.AssetId == a.Id && p.Source == settings.ActiveProvider),
-        }).ToListAsync(ct);
+        var rows = await q.Select(a => new { a.Id, a.Sector }).ToListAsync(ct);
         return rows.GroupBy(a => a.Sector ?? UnclassifiedSector)
-            .Select(g => new SectorDto(g.Key, g.Count(), g.Count(a => a.HasData)))
+            .Select(g => new SectorDto(g.Key, g.Count(), g.Count(a => withPrices.Contains(a.Id))))
             .OrderBy(s => s.Name == UnclassifiedSector ? 1 : 0).ThenBy(s => s.Name)
             .ToList();
     }
@@ -70,8 +67,10 @@ public sealed class StockDiscoveryService(
         var q = Filter(db.Assets.AsNoTracking(), query);
         if (query.Symbols is not { Count: > 0 }) q = q.Where(a => a.AssetType != AssetType.Index);
         if (query.WithPrices is { } w)
-            q = w ? q.Where(a => db.HistoricalPrices.Any(p => p.AssetId == a.Id && p.Source == source))
-                  : q.Where(a => !db.HistoricalPrices.Any(p => p.AssetId == a.Id && p.Source == source));
+        {
+            var withPrices = (await prices.AssetIdsWithPricesAsync(source, ct)).ToList();
+            q = w ? q.Where(a => withPrices.Contains(a.Id)) : q.Where(a => !withPrices.Contains(a.Id));
+        }
 
         var total = await q.CountAsync(ct);
         var exact = query.Search?.Trim().ToUpperInvariant() ?? "";

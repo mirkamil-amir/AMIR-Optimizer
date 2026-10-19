@@ -1,6 +1,6 @@
 import { useDeferredValue } from 'react'
 import { useSearchParams } from 'react-router'
-import { Newspaper, Search, X } from 'lucide-react'
+import { Newspaper, Search, X, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -127,6 +127,11 @@ export function NewsPage() {
 
       {news.error ? <ErrorState error={news.error} onRetry={() => news.refetch()} /> : !data ? <LoadingBlock /> : (
         <div className="space-y-2" aria-live="polite" aria-busy={news.isFetching}>
+          {data?.refreshing && (
+            <p role="status" className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Loader2 className="size-3.5 animate-spin" aria-hidden /> Updating news sources… The articles below were stored earlier; their publication times are shown on each.
+            </p>
+          )}
           {failing.length > 0 && <SourceProblems sources={failing} />}
           {configured.length === 0 && (
             <EmptyState icon={<Newspaper className="size-8" />} title="No news source is configured"
