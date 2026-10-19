@@ -57,6 +57,16 @@ export function shortDate(iso: string): string {
   return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-US', { year: '2-digit', month: 'short', timeZone: 'UTC' })
 }
 
+/**
+ * Axis label for a date in a series spanning `spanDays`: day and month for short spans ("Aug 12"), month and year otherwise
+ * ("Aug 26") – month-only labels repeat on a three-month chart.
+ */
+export function axisDate(iso: string, spanDays: number): string {
+  if (spanDays > 120) return shortDate(iso)
+  const [y, m, d] = iso.slice(0, 10).split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+}
+
 /** UTC timestamp → local date-time. */
 export function dateTime(iso: string | null | undefined): string {
   if (!iso) return '—'

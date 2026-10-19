@@ -51,6 +51,8 @@
 * One cash balance per portfolio in its currency; no multi-currency cash, hedging or forwards; the portfolio currency is
   fixed after creation (a reporting currency can be chosen per view).
 * Rates older than 4 days are not used: around long market closures values can be "not available" until new rates arrive.
+* BGN is history-only (ECB rates until 2025-12-31; Bulgaria uses the euro since 2026-01-01): no current BGN conversions or BGN portfolios.
+* A provider failure or timeout blocks re-fetching the same range for an hour; until then stored rates are used.
 * No Swiss market in the catalogue yet (CHF portfolios work; CHF stocks cannot be selected).
 * Monitoring (scheduled reviews, alerts) is not implemented; review and rebalance are user-triggered.
 

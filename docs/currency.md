@@ -29,12 +29,32 @@ provider quoting the other direction must be normalized before storage (the ECB 
 
 | Source | Used with | Notes |
 |---|---|---|
-| **ECB** euro foreign exchange reference rates (`data-api.ecb.europa.eu`, dataset EXR, daily) | real prices (Yahoo, Alpha Vantage) | ~30 currencies incl. USD, GBP, JPY, CHF, SEK, NOK, DKK, CAD, AUD, CNY, INR; history since 1999; published ≈16:00 CET on TARGET days; free, no key; reference rates for information, not transaction rates |
+| **ECB** euro foreign exchange reference rates (`data-api.ecb.europa.eu`, dataset EXR, daily) | real prices (Yahoo, Alpha Vantage) | 29 currencies (`EcbFxProvider.Currencies`, checked against the ECB page 2026-10-19) incl. USD, GBP, JPY, CHF, SEK, NOK, DKK, CAD, AUD, CNY, INR, TRY; BGN discontinued (below); history since 1999; published ≈16:00 CET on TARGET days; free, no key; reference rates for information, not transaction rates |
 | **MockFx** (deterministic simulated walk per currency) | simulated prices (Mock provider: tests, e2e, demos) | NOT real rates; labelled simulated |
 
 Simulated prices are always converted with simulated rates and real prices with ECB rates – sources are never mixed.
 Rates are fetched on demand for the needed currencies and dates, upserted into `FxRates` (source, retrieval time,
-simulated flag) and reused; a range the source has no data for yet is not re-requested for an hour.
+simulated flag) and reused; a range the source has no data for yet is not re-requested for an hour. How fetching avoids
+waiting on the provider (`FxService.EnsureAsync`):
+
+* **Whole rate set for short ranges:** when any currency is missing for a range of ≤ 400 days, all 29 published currencies are
+  fetched in the same request (one ECB request: 0.2–0.4 s for 52 days, 0.3–1.2 s for a year, measured 2026-10-19); longer
+  ranges fetch only what is missing, and each distinct gap separately (a currency missing a few days is not re-downloaded for years).
+* **Coverage with closures:** a stored series covers a range when its first rate is within the 4-day carry-forward window
+  after the start (weekends, Good Friday–Easter Monday) and it reaches the previous weekday at the end.
+* **Single flight:** one fetch per provider at a time; waiting requests re-check what is stored afterwards.
+* **Bounded wait:** at most 25 s per request (`FxFetchThrottle.ProviderWait`, ECB attempt timeout 10 s); after that the stored
+  rates are used and a missing rate is reported as such, never filled.
+
+### Discontinued currencies: BGN
+
+Bulgaria adopted the euro on 1 Jan 2026 at the irrevocable rate 1 EUR = 1.95583 BGN; the ECB's last BGN reference rate is
+dated 2025-12-31 (verified against the ECB data API and reference-rate page, 2026-10-19). BGN is therefore **history only**
+(`IFxRateProvider.DiscontinuedCurrencies`, `/fx/currencies` → `discontinued`): its published rates stay usable for dates up to
+2025-12-31 (charts, historical conversions); there is no current BGN rate, so it is not offered for new portfolios, the
+calculator or the rate board (the board explains why), and a current conversion fails with the reason. EUR is never
+substituted for BGN and the fixed conversion rate is not used as a market rate. No stored portfolio, transaction or asset
+used BGN when this policy was introduced.
 
 **Alternatives** (not integrated): central-bank feeds of other base currencies (Fed H.10 for USD, BoE for GBP), commercial
 intraday providers (e.g. Refinitiv, Bloomberg, Open Exchange Rates paid tiers) for valuation at each market's close or for
@@ -106,19 +126,28 @@ per quote with 1-day and 1-month change; a quote without a recent rate shows its
 
 ## Currency converter (UI)
 
-`components/currency-converter.tsx` on the overview page. Every currency the FX source publishes (ECB: 30 + EUR, incl. TRY) is
+`components/currency-converter.tsx` on the overview page. Every currency the FX source publishes (ECB: 29 + EUR, incl. TRY) is
 available in grouped drop-downs (`CurrencySelect` in `components/currency.tsx`: portfolio currency and majors first, then
 "More currencies", each with its English name). The same drop-down is used for the portfolio currency (Portfolio Creation),
 the currency of the overview totals and the reporting currency on holdings ("EUR (portfolio)" marks the base currency):
 
 * **Rate board** against a selectable base: the majors (`majorCurrencies` in `lib/currency.ts`: USD, EUR, GBP, JPY, CHF, CAD,
-  AUD, CNY, SEK, NOK, TRY) plus any currency added with "+ Add currency" (removable; kept for the visit only).
-  `/fx/board` accepts up to 32 quotes, so all published currencies fit on one board.
-* **Chart** of any pair (1M/3M/1Y/5Y): choose the currency in the chart's drop-down or click a board row.
-* **Calculator** between any two supported currencies (amount × rate, cross rate via the board's base, own `/fx/board` request). Every number is labelled with the source and rate date; it states that reference rates are not exchange offers.
+  AUD, CNY, SEK, NOK, TRY) plus any currency added with "+ Add currency" (removable; kept for the visit only). One
+  `/fx/board` request per base loads **every** supported currency (≤ 32 quotes); visible rows, "Add currency" and the
+  calculator read from it, so adding or removing a currency makes no request. The list is capped at 12 rows and then scrolls
+  (with a hint).
+* **Chart** of any pair (1M/3M/1Y/5Y): choose the currency in the chart's drop-down (incl. "History only" currencies such as
+  BGN) or click a board row. Beside the list it takes the list's height (min 15rem, follows the capped list); stacked on small
+  screens it is 15rem high. The previous chart stays (dimmed, "Updating…") while another range loads; superseded requests are
+  aborted; a failed request shows a retry without hiding the list.
+* **Calculator** between any two supported currencies (amount × rate, cross rate via the board's base, no extra request). Every number is labelled with the source and rate date; it states that reference rates are not exchange offers.
 
 ## Limitations
 
+* BGN: published rates until 2025-12-31 only. The 4-day carry-forward applies at the end of its series as everywhere, so
+  1–4 Jan 2026 can still use the 31 Dec rate (equal to the fixed conversion rate within the ECB's 4-digit precision).
+* After a provider failure or timeout the same range is not re-requested for an hour (`FxFetchThrottle`); stored rates are
+  used meanwhile.
 * Daily reference rates only: no intraday FX, no bid/ask spread, no FX transaction costs in the paper portfolio.
 * One cash balance per portfolio (in its currency); no multi-currency cash accounts, no hedging, no currency forwards.
 * The portfolio currency cannot be changed after creation (it would require converting cash and cost basis – a modelled

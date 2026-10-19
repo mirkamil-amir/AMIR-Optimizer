@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import {
   Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ReferenceLine,
   ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis,
@@ -7,7 +7,7 @@ import { Table2, LineChart as LineIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { InfoTip } from '@/components/common'
-import { monthNames, pct, shortDate, date as fmtDate } from '@/lib/format'
+import { axisDate, monthNames, pct, shortDate, date as fmtDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 // Categorical slots in fixed order (validated palette); never cycled. Past 8 series → fold into "Other".
@@ -153,7 +153,8 @@ export function TimeSeriesChart({
   dates: string[]
   series: Series[]
   format: (v: number) => string
-  height?: number
+  /** Pixels, or a CSS height such as "100%" to fill a container with a definite height. */
+  height?: number | string
   area?: boolean
   zeroLine?: boolean
   yDomain?: [number | 'auto' | 'dataMin', number | 'auto' | 'dataMax']
@@ -168,13 +169,15 @@ export function TimeSeriesChart({
   )
   const colors = series.map((s, i) => s.color ?? seriesColor(i))
   const Chart = area ? AreaChart : LineChart
+  const span = dates.length > 1 ? (Date.parse(dates[dates.length - 1]) - Date.parse(dates[0])) / 86_400_000 : 0
+  const tick = useCallback((d: string) => axisDate(d, span), [span])
 
   return (
     <div style={{ height }} role="img" aria-label={`Chart of ${series.map((s) => s.name).join(', ')} from ${fmtDate(dates[0])} to ${fmtDate(dates[dates.length - 1])}`}>
       <ResponsiveContainer width="100%" height="100%">
         <Chart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
           <CartesianGrid vertical={false} stroke="var(--chart-grid)" strokeWidth={1} />
-          <XAxis dataKey="date" {...axisProps} tickFormatter={shortDate} minTickGap={48} />
+          <XAxis dataKey="date" {...axisProps} tickFormatter={tick} minTickGap={48} />
           <YAxis {...axisProps} tickFormatter={format} width={64} domain={yDomain ?? ['auto', 'auto']} />
           {zeroLine && <ReferenceLine y={0} stroke="var(--chart-baseline)" />}
           <Tooltip

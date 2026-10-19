@@ -112,7 +112,7 @@ dividends and fees, archive or restore it. Details: [portfolios.md](docs/portfol
    large?") are answered from the computed values; changes ("cap at 15 %", "exclude JPM") are shown as an exact proposal
    and only recalculated after you confirm. Compare any two hypotheses; "Save as optimization run" (with confirmation)
    creates a normal run you can reopen, trade on paper or check further. Every tool call is in the activity log.
-0c. **Currency converter and themes.** The overview (My portfolios) has a currency converter: reference rates of the major currencies against
+0c. **Currency converter and themes.** The overview (My portfolios) has a currency converter: reference rates of the major currencies (plus any of the 29 published ones you add; BGN as history only since the euro changeover) against
    a selectable base (“1 USD =”, any published currency, default the currency of the totals) with 1-day changes, a 1M–5Y chart of
    the selected pair and a calculator (ECB daily reference rates, dated, never “live”; simulated with simulated prices).
    Appearance: light / dark / system and ten skins – Navy & Gold (default), Midnight, Graphite, Slate, Ocean, Teal, Emerald,

@@ -41,6 +41,7 @@ The application runs one API instance (compose); rate limits, news single-flight
 | Market/sector/coverage counts | **Do not implement** | Were 2.4 s because of the query shape; now 11–25 ms. Caching would have hidden the defect. |
 | Optimization / reality-check results | **Do not implement** | Saved runs are persisted (PostgreSQL); an identical recomputation needs the same settings, universe, data snapshot hash, currency and code version – rare in this workload, and a cache would add invalidation risk to financial results. |
 | AI research / ML | **Do not implement** | Sessions and experiments are durable rows; the deterministic path has no external model latency to cache; caching model output would need prompt/model/user-scoped keys for little gain. |
+| Exchange rates (converter, conversions) | **Do not implement** (D-34) | The 6–72 s were ECB calls inside requests (per added currency, endless BGN refetch, weekend-start ranges); fixed by fetching the whole rate set per request, closure-tolerant coverage, single-flight and a 25 s bound. Rates are stored in `FxRates`; reads are 6–21 ms. A provider cache in Redis would sit in front of the same stored rows. |
 | Rate limiting, job coordination | **Defer** | Only needed with several API instances; then move rate limits, the news single-flight and the job queue together. |
 | Session state | **Do not implement** | Cookie authentication; data-protection keys are already persisted. |
 

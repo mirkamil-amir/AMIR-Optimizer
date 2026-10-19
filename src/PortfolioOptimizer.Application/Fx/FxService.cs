@@ -76,6 +76,14 @@ public sealed class FxFetchThrottle
 {
     public static readonly TimeSpan Interval = TimeSpan.FromHours(1);
     private readonly ConcurrentDictionary<string, DateTime> _attempts = new();
+    private readonly ConcurrentDictionary<string, SemaphoreSlim> _gates = new();
+
+    /// <summary>One fetch per provider at a time: concurrent requests for the same missing rates wait for it instead of
+    /// each calling the provider (single flight; one API instance, see decision D-33).</summary>
+    public SemaphoreSlim Gate(string provider) => _gates.GetOrAdd(provider, _ => new SemaphoreSlim(1, 1));
+
+    /// <summary>Longest wait for the provider inside one request (incl. waiting for a concurrent fetch); stored rates are used after it.</summary>
+    public TimeSpan ProviderWait { get; init; } = TimeSpan.FromSeconds(25);
 
     /// <summary>True when the range may be fetched now (and records the attempt).</summary>
     public bool TryBegin(string key, DateTime now)
@@ -112,12 +120,24 @@ public sealed class FxService(IApplicationDbContext db, IEnumerable<IFxRateProvi
     public IReadOnlySet<string> SupportedCurrencies(bool simulatedPrices) =>
         new HashSet<string>(ProviderFor(simulatedPrices).SupportedCurrencies.Append(FxTable.Pivot));
 
+    /// <summary>Currently published or discontinued with stored history (historical conversions only).</summary>
+    private static bool HasRates(IFxRateProvider provider, string currency) =>
+        currency == FxTable.Pivot || provider.SupportedCurrencies.Contains(currency) || provider.DiscontinuedCurrencies.ContainsKey(currency);
+
+    /// <summary>
+    /// A missing currency is fetched together with every other published currency when the range is at most this long: one
+    /// ECB request for all 29 currencies took 0.2–0.4 s for 52 days and 0.3–1.2 s for a year (measured 2026-10-19), so the
+    /// rate board and further currencies need no provider call afterwards. Longer ranges fetch only what is missing.
+    /// </summary>
+    public const int FetchAllCurrenciesMaxDays = 400;
+
+
     /// <summary>Observations for <paramref name="currencies"/> covering [from − carry-forward window, to], fetched if missing.</summary>
     public async Task<FxTable> GetTableAsync(IEnumerable<string> currencies, DateOnly from, DateOnly to, bool simulatedPrices, CancellationToken ct)
     {
         var provider = ProviderFor(simulatedPrices);
         var needed = currencies.Select(Domain.Currencies.Normalize).Where(c => c != FxTable.Pivot).Distinct().ToList();
-        var unsupported = needed.Where(c => !provider.SupportedCurrencies.Contains(c)).ToList();
+        var unsupported = needed.Where(c => !HasRates(provider, c)).ToList();
         if (unsupported.Count > 0)
             throw new ValidationException("currency", $"No reference rates are published for {string.Join(", ", unsupported)}; such assets cannot be converted.");
         var start = from.AddDays(-(FxTable.DefaultMaxCarryForwardDays + 3));
@@ -153,7 +173,7 @@ public sealed class FxService(IApplicationDbContext db, IEnumerable<IFxRateProvi
         {
             var provider = ProviderFor(simulated);
             var currencies = foreign.Select(kv => nativeCurrencyBySymbol[kv.Key]).Append(baseCurrency).Distinct().ToList();
-            var unsupported = currencies.Where(c => c != FxTable.Pivot && !provider.SupportedCurrencies.Contains(c)).ToHashSet();
+            var unsupported = currencies.Where(c => !HasRates(provider, c)).ToHashSet();
             foreach (var (symbol, _) in foreign.Where(kv => unsupported.Contains(nativeCurrencyBySymbol[kv.Key])))
                 excluded[symbol] = $"No {nativeCurrencyBySymbol[symbol]} reference rates are published, so its prices cannot be converted to {baseCurrency}.";
             if (unsupported.Contains(baseCurrency))
@@ -228,12 +248,20 @@ public sealed class FxService(IApplicationDbContext db, IEnumerable<IFxRateProvi
         var list = quotes.Select(Domain.Currencies.Normalize).Where(q => q != baseCurrency).Distinct().Take(32).ToList();
         var simulated = await ActiveSourceIsSimulatedAsync(ct);
         var provider = ProviderFor(simulated);
-        var unsupported = list.Where(q => q != FxTable.Pivot && !provider.SupportedCurrencies.Contains(q)).ToHashSet();
         var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
+        if (provider.DiscontinuedCurrencies.TryGetValue(baseCurrency, out var baseUntil))
+            throw new ValidationException("base", FxDiscontinued.Reason(baseCurrency, baseUntil));
+        // Discontinued currencies have no current rate: explained, never fetched (their series ended).
+        var unsupported = list.Where(q => q != FxTable.Pivot && !provider.SupportedCurrencies.Contains(q)).ToHashSet();
         var table = await GetTableAsync(list.Where(q => !unsupported.Contains(q)).Append(baseCurrency), today.AddDays(-45), today, simulated, ct);
         var rows = new List<Dtos.FxBoardRowDto>();
         foreach (var q in list)
         {
+            if (provider.DiscontinuedCurrencies.TryGetValue(q, out var until))
+            {
+                rows.Add(new(q, null, null, null, null, FxDiscontinued.Reason(q, until)));
+                continue;
+            }
             if (unsupported.Contains(q))
             {
                 rows.Add(new(q, null, null, null, null, $"No {q} reference rates are published."));
@@ -268,47 +296,104 @@ public sealed class FxService(IApplicationDbContext db, IEnumerable<IFxRateProvi
 
     private async Task EnsureAsync(IFxRateProvider provider, List<string> currencies, DateOnly start, DateOnly end, DateOnly today, CancellationToken ct)
     {
+        if ((await GapsAsync(provider, currencies, start, end, ct)).Count == 0) return;
+
+        // Bounded wait: a slow provider never holds a request longer than ProviderWait; stored rates are used instead.
+        using var wait = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        wait.CancelAfter(throttle.ProviderWait);
+        var gate = throttle.Gate(provider.Name);
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        try
+        {
+            await gate.WaitAsync(wait.Token);
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            logger.LogWarning("FX fetch from {Provider} for {Currencies} skipped: another fetch was still running after {Seconds:0} s; stored rates used",
+                provider.Name, string.Join(",", currencies), throttle.ProviderWait.TotalSeconds);
+            return;
+        }
+        try
+        {
+            // Re-check after the wait: a concurrent request may just have stored the same rates.
+            var gaps = await GapsAsync(provider, currencies, start, end, ct);
+            if (gaps.Count == 0)
+            {
+                logger.LogInformation("FX rates for {Currencies} stored by a concurrent request (waited {Ms} ms)", string.Join(",", currencies), stopwatch.ElapsedMilliseconds);
+                return;
+            }
+            // One request per distinct range – a currency missing only its last days is not downloaded again for years.
+            foreach (var group in gaps.GroupBy(g => (g.From, g.End)))
+            {
+                var (from, to) = group.Key;
+                var missing = group.Select(g => g.Currency).ToList();
+                var key = $"{provider.Name}:{string.Join(",", missing.Order())}:{from}:{to}";
+                var now = clock.GetUtcNow().UtcDateTime;
+                if (!throttle.TryBegin(key, now)) continue;
+                var codes = to.DayNumber - from.DayNumber <= FetchAllCurrenciesMaxDays
+                    ? missing.Union(provider.SupportedCurrencies).ToList()
+                    : missing;
+                var fetch = System.Diagnostics.Stopwatch.StartNew();
+                IReadOnlyList<FxObservation> observations;
+                try
+                {
+                    observations = await provider.GetRatesAsync(codes, from, to, wait.Token);
+                }
+                catch (FxProviderException ex)
+                {
+                    // Stored rates (if any) are still used; lookups beyond them fail explicitly.
+                    logger.LogWarning("FX provider {Provider} failed for {Currencies} after {Ms} ms: {Message}", provider.Name, string.Join(",", missing), fetch.ElapsedMilliseconds, ex.Message);
+                    continue;
+                }
+                catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+                {
+                    logger.LogWarning("FX provider {Provider} did not answer within {Seconds:0} s for {Currencies}; stored rates used", provider.Name, throttle.ProviderWait.TotalSeconds, string.Join(",", missing));
+                    return;
+                }
+                var wanted = codes.ToHashSet();
+                var rows = observations.Where(o => o.UnitsPerEur > 0 && wanted.Contains(o.Currency))
+                    .Select(o => new FxRate
+                    {
+                        Source = provider.Name, Currency = o.Currency, Date = o.Date, UnitsPerEur = o.UnitsPerEur,
+                        IsSimulated = provider.IsSimulated, RetrievedAtUtc = now,
+                    })
+                    .ToList();
+                await db.UpsertFxRatesAsync(rows, ct);
+                logger.LogInformation("Stored {Count} {Provider} FX observations for {Currencies} ({From}–{To}) in {Ms} ms; missing were {Missing}",
+                    rows.Count, provider.Name, codes.Count == missing.Count ? string.Join(",", codes) : $"{codes.Count} currencies", from, to, fetch.ElapsedMilliseconds, string.Join(",", missing));
+            }
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
+    /// <summary>
+    /// Per currency, the part of [start, end] not yet stored. Covered when stored data reaches back to the start and forward to
+    /// the end. Nothing is published on weekends and TARGET holidays: the first stored rate may lie up to the carry-forward
+    /// window after the start (longest closure: Good Friday–Easter Monday), and data up to the previous weekday counts as
+    /// complete at the end. Without that tolerance a range starting on a Saturday was never "covered" and refetched every
+    /// hour. A discontinued currency is only expected up to its last publication, so its ended series is never requested again.
+    /// </summary>
+    private async Task<List<(string Currency, DateOnly From, DateOnly End)>> GapsAsync(IFxRateProvider provider, List<string> currencies, DateOnly start, DateOnly end, CancellationToken ct)
+    {
         var coverage = await db.FxRates.AsNoTracking()
             .Where(r => r.Source == provider.Name && currencies.Contains(r.Currency))
             .GroupBy(r => r.Currency)
             .Select(g => new { Currency = g.Key, Min = g.Min(r => r.Date), Max = g.Max(r => r.Date) })
             .ToListAsync(ct);
-        var missing = currencies.Where(c =>
+        var gaps = new List<(string, DateOnly, DateOnly)>();
+        foreach (var c in currencies)
         {
+            var last = provider.DiscontinuedCurrencies.TryGetValue(c, out var until) && until < end ? until : end;
+            if (last < start) continue;
             var cov = coverage.FirstOrDefault(x => x.Currency == c);
-            // Covered when stored data reaches back to the start and forward to the end (or to yesterday's publication).
-            // Rates are published on weekdays (the day's rate in the afternoon): data up to the previous weekday counts as complete.
-            return cov is null || cov.Min > start || cov.Max < PreviousWeekday(end);
-        }).ToList();
-        if (missing.Count == 0) return;
-
-        var key = $"{provider.Name}:{string.Join(",", missing.Order())}:{start}:{end}";
-        var now = clock.GetUtcNow().UtcDateTime;
-        if (!throttle.TryBegin(key, now)) return;
-
-        // Fetch only the uncovered part per currency (one request for the union of ranges).
-        var fetchFrom = missing.Select(c => coverage.FirstOrDefault(x => x.Currency == c) is { } cov && cov.Min <= start ? cov.Max.AddDays(1) : start).Min();
-        IReadOnlyList<FxObservation> observations;
-        try
-        {
-            observations = await provider.GetRatesAsync(missing, fetchFrom, end, ct);
+            var reachesStart = cov is not null && cov.Min <= start.AddDays(FxTable.DefaultMaxCarryForwardDays);
+            if (reachesStart && cov!.Max >= (last < end ? last : PreviousWeekday(last))) continue;
+            gaps.Add((c, reachesStart ? cov!.Max.AddDays(1) : start, last));
         }
-        catch (FxProviderException ex)
-        {
-            // Stored rates (if any) are still used; lookups beyond them fail explicitly.
-            logger.LogWarning("FX provider {Provider} failed for {Currencies}: {Message}", provider.Name, string.Join(",", missing), ex.Message);
-            return;
-        }
-
-        var rows = observations.Where(o => o.UnitsPerEur > 0 && missing.Contains(o.Currency))
-            .Select(o => new FxRate
-            {
-                Source = provider.Name, Currency = o.Currency, Date = o.Date, UnitsPerEur = o.UnitsPerEur,
-                IsSimulated = provider.IsSimulated, RetrievedAtUtc = now,
-            })
-            .ToList();
-        await db.UpsertFxRatesAsync(rows, ct);
-        logger.LogInformation("Stored {Count} {Provider} FX observations for {Currencies} ({From}–{To})", rows.Count, provider.Name, string.Join(",", missing), fetchFrom, end);
+        return gaps;
     }
 
     private static DateOnly PreviousWeekday(DateOnly d)

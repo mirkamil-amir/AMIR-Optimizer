@@ -1,13 +1,18 @@
 namespace PortfolioOptimizer.Application.Dtos;
 
 /// <summary>The FX source used with the active price source, its convention and the currencies it can convert.</summary>
+/// <param name="Currencies">Currencies with current rates (EUR included).</param>
+/// <param name="Discontinued">Currencies no longer published: history up to <see cref="FxDiscontinuedDto.LastRateDate"/> only.</param>
 public sealed record FxInfoDto(
     string Source,
     string Description,
     bool IsSimulated,
     IReadOnlyList<string> Currencies,
     string Convention,
-    int MaxCarryForwardDays);
+    int MaxCarryForwardDays,
+    IReadOnlyList<FxDiscontinuedDto> Discontinued);
+
+public sealed record FxDiscontinuedDto(string Currency, DateOnly LastRateDate, string Note);
 
 /// <summary>A rate in the internal convention: <paramref name="Rate"/> units of <paramref name="To"/> per one unit of <paramref name="From"/>.</summary>
 public sealed record FxRateDto(

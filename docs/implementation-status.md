@@ -1,5 +1,17 @@
 # Implementation status
 
+## 2026-10-19 (2): currency converter speed, layout and BGN (D-34)
+
+* Root causes (from the API logs): every added currency waited for a new `/fx/board` request that called the ECB inside the
+  request (6–7 s; 20–72 s with ECB timeouts and retries); BGN's ended series was refetched with every addition; ranges starting
+  on a weekend never counted as stored. No Redis exists (D-33) – it was not involved.
+* Fixes: one board per base with every currency (adding/removing is local state), full rate set per ECB request for ranges
+  ≤ 400 days, single-flight fetch, 25 s bound, closure-tolerant coverage, BGN history-only with an explanation.
+* Chart follows the list height (capped list scrolls, with a hint), stays visible while updating, error/retry state, day labels on
+  short ranges; currency drop-downs open as plain lists (no off-screen options near the page bottom).
+* Measured (real ECB, empty database, replaying each version's requests): per added currency 2 ECB calls → 0; chart of an
+  added currency 24–789 ms → 6–21 ms; e2e at 1440/1100/768/390 px: 1 board request per page, no overflow, no console errors.
+
 ## 2026-10-19: performance (D-33)
 
 * Navigation data status and Portfolio Creation's markets/sectors: 2.4 s → 11–25 ms (set-based query instead of a per-instrument
