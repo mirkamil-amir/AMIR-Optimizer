@@ -106,9 +106,16 @@ per quote with 1-day and 1-month change; a quote without a recent rate shows its
 
 ## Currency converter (UI)
 
-`components/currency-converter.tsx` on the overview and stock-selection pages: rates of the major currencies against the
-portfolio currency, a chart of the selected pair (1M/3M/1Y/5Y) and a calculator (amount × rate, cross rates via the board's
-base). Every number is labelled with the source and rate date; it states that reference rates are not exchange offers.
+`components/currency-converter.tsx` on the overview page. Every currency the FX source publishes (ECB: 30 + EUR, incl. TRY) is
+available in grouped drop-downs (`CurrencySelect` in `components/currency.tsx`: portfolio currency and majors first, then
+"More currencies", each with its English name). The same drop-down is used for the portfolio currency (Portfolio Creation),
+the currency of the overview totals and the reporting currency on holdings ("EUR (portfolio)" marks the base currency):
+
+* **Rate board** against a selectable base: the majors (`majorCurrencies` in `lib/currency.ts`: USD, EUR, GBP, JPY, CHF, CAD,
+  AUD, CNY, SEK, NOK, TRY) plus any currency added with "+ Add currency" (removable; kept for the visit only).
+  `/fx/board` accepts up to 32 quotes, so all published currencies fit on one board.
+* **Chart** of any pair (1M/3M/1Y/5Y): choose the currency in the chart's drop-down or click a board row.
+* **Calculator** between any two supported currencies (amount × rate, cross rate via the board's base, own `/fx/board` request). Every number is labelled with the source and rate date; it states that reference rates are not exchange offers.
 
 ## Limitations
 

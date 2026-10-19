@@ -1,7 +1,7 @@
 import { AlertTriangle, Coins } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { exposureRows, fxPhrase } from '@/lib/currency'
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { currencyGroups, currencyName, exposureRows, fxPhrase } from '@/lib/currency'
 import { date, pct } from '@/lib/format'
 import { useFxInfo } from '@/lib/queries'
 import type { CurrencyExposure } from '@/lib/types'
@@ -16,16 +16,39 @@ export function FxNote({ rate, from, to, on }: { rate: number | null | undefined
   )
 }
 
+/**
+ * Currency drop-down over every supported currency: `first` and the majors, then all others, each with its English name.
+ * The trigger shows the code only so it stays narrow; `firstNote` marks `first` in both ("EUR (portfolio)").
+ */
+export function CurrencySelect({ value, onChange, supported, first, firstNote, exclude, label, id, size, className, placeholder }: {
+  value: string | null; onChange: (c: string) => void; supported: string[] | undefined; first?: string; firstNote?: string; exclude?: string
+  label: string; id?: string; size?: 'sm' | 'default'; className?: string; placeholder?: string
+}) {
+  const { major, more } = currencyGroups(supported, first, exclude)
+  const note = (c: string) => (firstNote && c === first ? ` (${firstNote})` : '')
+  const items = [...major, ...more].map((c) => ({ value: c, label: c + note(c) }))
+  const option = (c: string) => (
+    <SelectItem key={c} value={c}>
+      <span className="w-9 font-medium">{c}</span><span className="text-muted-foreground">{currencyName(c)}{note(c)}</span>
+    </SelectItem>
+  )
+  return (
+    <Select value={value} onValueChange={(v) => v && onChange(String(v))} items={items}>
+      <SelectTrigger id={id} size={size} className={className} aria-label={label}><SelectValue placeholder={placeholder} /></SelectTrigger>
+      <SelectContent className="max-h-80 min-w-56">
+        <SelectGroup><SelectLabel>Major currencies</SelectLabel>{major.map(option)}</SelectGroup>
+        {more.length > 0 && <><SelectSeparator /><SelectGroup><SelectLabel>More currencies</SelectLabel>{more.map(option)}</SelectGroup></>}
+      </SelectContent>
+    </Select>
+  )
+}
+
 /** Choose the currency values are shown in; the portfolio itself is unchanged. */
 export function ReportingCurrencySelect({ value, accountCurrency, onChange }: { value: string | undefined; accountCurrency: string; onChange: (c: string | undefined) => void }) {
   const fx = useFxInfo()
-  const options = [accountCurrency, ...(fx.data?.currencies ?? []).filter((c) => c !== accountCurrency)]
   return (
-    <Select value={value ?? accountCurrency} onValueChange={(v) => onChange(v === accountCurrency ? undefined : (v as string))}
-      items={options.map((c) => ({ value: c, label: c === accountCurrency ? `${c} (portfolio)` : c }))}>
-      <SelectTrigger className="w-40" aria-label="Show values in currency"><SelectValue /></SelectTrigger>
-      <SelectContent>{options.map((c) => <SelectItem key={c} value={c}>{c === accountCurrency ? `${c} (portfolio)` : c}</SelectItem>)}</SelectContent>
-    </Select>
+    <CurrencySelect value={value ?? accountCurrency} onChange={(c) => onChange(c === accountCurrency ? undefined : c)} supported={fx.data?.currencies}
+      first={accountCurrency} firstNote="portfolio" label="Show values in currency" className="w-40" />
   )
 }
 

@@ -25,9 +25,20 @@ test('currency converter (overview only) shows dated reference rates, a chart an
   await expect(card.getByText(/3M change:/)).toBeVisible()
   // The base of the board ("1 USD =") is selectable; the list and the chart follow it.
   await card.getByRole('combobox', { name: 'Base currency of the rates' }).click()
-  await page.getByRole('option', { name: 'JPY', exact: true }).click()
+  await page.getByRole('option', { name: /^JPY/ }).click()
   await expect(card.getByRole('list', { name: 'Exchange rates against JPY' })).toBeVisible()
   await expect(card.getByText(/per JPY/)).toBeVisible()
+  // Turkish lira is on the board by default; any other supported currency can be added, charted and converted.
+  const list = card.getByRole('list', { name: 'Exchange rates against JPY' })
+  await expect(list.getByRole('button', { name: /^TRY/ })).toHaveText(/\d/)
+  await card.getByRole('combobox', { name: 'Add a currency to the rates' }).click()
+  await page.getByRole('option', { name: /^ZAR.*South African Rand/ }).click()
+  await expect(list.getByRole('button', { name: /^ZAR/ })).toHaveText(/\d/)
+  await expect(card.getByRole('combobox', { name: 'Currency shown in the chart' })).toHaveText(/ZAR/)
+  await card.getByRole('combobox', { name: 'Convert from' }).click()
+  await page.getByRole('option', { name: /^TRY.*Turkish Lira/ }).click()
+  await expect(card.getByLabel('Converted amount')).toHaveText(/\d/)
+  await expect(card.getByText(/1 TRY = /)).toBeVisible()
 })
 
 test('AMIR brand and themes: logo in the shell, dark mode and skins persist', async ({ page }) => {

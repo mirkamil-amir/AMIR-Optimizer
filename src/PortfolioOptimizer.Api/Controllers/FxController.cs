@@ -27,10 +27,10 @@ public sealed class FxController(FxService fx) : ControllerBase
         [FromQuery, Required, RegularExpression("^[A-Z]{3}$")] string to, [FromQuery, Range(7, 3700)] int? days, CancellationToken ct) =>
         fx.HistoryAsync(from, to, days ?? 365, ct);
 
-    /// <summary>Latest reference rates of up to 12 currencies against <paramref name="base"/>, with 1-day and 1-month changes.</summary>
+    /// <summary>Latest reference rates of up to 32 currencies against <paramref name="base"/>, with 1-day and 1-month changes.</summary>
     [HttpGet("board")]
     public Task<FxBoardDto> Board([FromQuery(Name = "base"), Required, RegularExpression("^[A-Z]{3}$")] string @base,
-        [FromQuery, Required, RegularExpression("^[A-Z]{3}(,[A-Z]{3}){0,11}$")] string quotes, CancellationToken ct) =>
+        [FromQuery, Required, RegularExpression("^[A-Z]{3}(,[A-Z]{3}){0,31}$")] string quotes, CancellationToken ct) =>
         fx.BoardAsync(@base, quotes.Split(','), ct);
 
     /// <summary>The latest usable rate from <paramref name="from"/> to <paramref name="to"/> (422 with the reason when none is available).</summary>

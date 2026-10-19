@@ -92,7 +92,9 @@ public sealed class MockFxProvider(TimeProvider clock) : IFxRateProvider
     private static readonly Dictionary<string, double> Levels = new()
     {
         ["USD"] = 1.10, ["GBP"] = 0.86, ["JPY"] = 158.0, ["CHF"] = 0.95, ["SEK"] = 11.3, ["NOK"] = 11.6, ["DKK"] = 7.46,
-        ["PLN"] = 4.30, ["CAD"] = 1.50, ["AUD"] = 1.65, ["HKD"] = 8.6, ["SGD"] = 1.45, ["CNY"] = 7.8, ["INR"] = 92.0,
+        ["PLN"] = 4.30, ["CAD"] = 1.50, ["AUD"] = 1.65, ["HKD"] = 8.6, ["SGD"] = 1.45, ["CNY"] = 7.8, ["INR"] = 92.0, ["TRY"] = 45.0,
+        ["ZAR"] = 20.5, ["BRL"] = 6.3, ["MXN"] = 21.5, ["KRW"] = 1550.0, ["IDR"] = 18000.0, ["THB"] = 38.0, ["PHP"] = 64.0, ["MYR"] = 4.9,
+        ["NZD"] = 1.85, ["ILS"] = 4.1, ["CZK"] = 25.0, ["HUF"] = 395.0, ["RON"] = 5.0, ["BGN"] = 1.96, ["ISK"] = 150.0,
     };
 
     public string Name => FxSources.Mock;
