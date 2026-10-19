@@ -225,7 +225,7 @@ public sealed class FxService(IApplicationDbContext db, IEnumerable<IFxRateProvi
     public async Task<Dtos.FxBoardDto> BoardAsync(string baseCurrency, IReadOnlyCollection<string> quotes, CancellationToken ct)
     {
         baseCurrency = Domain.Currencies.Normalize(baseCurrency);
-        var list = quotes.Select(Domain.Currencies.Normalize).Where(q => q != baseCurrency).Distinct().Take(12).ToList();
+        var list = quotes.Select(Domain.Currencies.Normalize).Where(q => q != baseCurrency).Distinct().Take(32).ToList();
         var simulated = await ActiveSourceIsSimulatedAsync(ct);
         var provider = ProviderFor(simulated);
         var unsupported = list.Where(q => q != FxTable.Pivot && !provider.SupportedCurrencies.Contains(q)).ToHashSet();

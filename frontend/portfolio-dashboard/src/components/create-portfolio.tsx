@@ -7,12 +7,12 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { errorMessage } from '@/lib/api'
 import { money } from '@/lib/format'
 import { portfolioPath } from '@/lib/portfolio-context'
 import { useCreatePortfolio, useFxInfo, useSettings } from '@/lib/queries'
 import { useSelection } from '@/lib/selection'
+import { CurrencySelect } from '@/components/currency'
 
 export interface PortfolioDraft {
   name: string
@@ -54,7 +54,6 @@ export function CreatePortfolioPanel() {
   const [draft, setDraft] = useState<PortfolioDraft>({ name: '', description: '', currency: '', capital: '100000', maxWeight: '' })
   const [touched, setTouched] = useState(false)
   const currency = draft.currency || settings.data?.defaultCurrency || 'USD'
-  const currencies = fx.data?.currencies ?? [currency]
   const errors = validateDraft(draft)
   const show = (k: keyof PortfolioDraft) => (touched ? errors[k] : undefined)
   const set = (k: keyof PortfolioDraft) => (e: React.ChangeEvent<HTMLInputElement>) => setDraft({ ...draft, [k]: e.target.value })
@@ -106,10 +105,8 @@ export function CreatePortfolioPanel() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="np-ccy">Currency</Label>
-              <Select value={currency} onValueChange={(v) => v && setDraft({ ...draft, currency: String(v) })} items={currencies.map((c) => ({ value: c, label: c }))}>
-                <SelectTrigger id="np-ccy" className="w-full" aria-label="Portfolio currency"><SelectValue /></SelectTrigger>
-                <SelectContent>{currencies.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-              </Select>
+              <CurrencySelect id="np-ccy" value={currency} onChange={(c) => setDraft({ ...draft, currency: c })} supported={fx.data?.currencies}
+                first={settings.data?.defaultCurrency} label="Portfolio currency" className="w-full" />
               <p className="text-[11px] text-muted-foreground">Holds the cash; fixed after creation.</p>
             </div>
             <div className="space-y-1.5">

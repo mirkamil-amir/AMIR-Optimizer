@@ -8,7 +8,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CurrencyConverterCard } from '@/components/currency-converter'
 import { DataBadge, EmptyState, ErrorState, InfoTip, LoadingBlock, MetricCard, PageHeader, Signed } from '@/components/common'
 import { errorMessage } from '@/lib/api'
@@ -16,6 +15,7 @@ import { date, money, relativeTime } from '@/lib/format'
 import { portfolioPath } from '@/lib/portfolio-context'
 import { useArchivePortfolio, useDeletePortfolio, useFxInfo, usePortfolioOverview } from '@/lib/queries'
 import type { PortfolioSummary } from '@/lib/types'
+import { CurrencySelect } from '@/components/currency'
 
 /**
  * Overview: every portfolio of the signed-in user (the server returns only the caller's), with a total over the active
@@ -29,7 +29,6 @@ export function PortfoliosPage() {
   const ccy = data?.currency ?? currency ?? 'USD'
   const active = data?.portfolios.filter((p) => p.status === 'Active') ?? []
   const archived = data?.portfolios.filter((p) => p.status === 'Archived') ?? []
-  const currencies = fx.data?.currencies ?? [ccy]
   const profit = data?.totalValue != null && data.totalNetContributions != null ? data.totalValue - data.totalNetContributions : null
 
   return (
@@ -55,10 +54,7 @@ export function PortfoliosPage() {
                 Across {data.activePortfolios} active portfolio{data.activePortfolios === 1 ? '' : 's'}
                 <InfoTip label="How totals are calculated">{data.methodology}</InfoTip>
               </h2>
-              <Select value={ccy} onValueChange={(v) => v && setCurrency(String(v))} items={currencies.map((c) => ({ value: c, label: c }))}>
-                <SelectTrigger className="w-28" aria-label="Currency of the totals"><SelectValue /></SelectTrigger>
-                <SelectContent>{currencies.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-              </Select>
+              <CurrencySelect value={ccy} onChange={setCurrency} supported={fx.data?.currencies} label="Currency of the totals" className="w-28" />
             </div>
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
               <MetricCard label={`Total value (${ccy})`} value={data.totalValue == null ? 'Not available' : money(data.totalValue, ccy)}

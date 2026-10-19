@@ -101,6 +101,13 @@ public sealed class MultiCurrencyTests : IAsyncLifetime
         Assert.NotNull(usd.Change1M);
         Assert.Contains("not live", board.Note);
         Assert.Equal(HttpStatusCode.BadRequest, (await _client.GetAsync("/api/v1/fx/board?base=EUR&quotes=usd")).StatusCode);
+
+        // Every supported currency (incl. TRY) fits on one board.
+        var info = await (await _client.GetAsync("/api/v1/fx/currencies")).ReadAsync<FxInfoDto>();
+        Assert.Contains("TRY", info.Currencies);
+        var all = await (await _client.GetAsync($"/api/v1/fx/board?base=EUR&quotes={string.Join(',', info.Currencies)}")).ReadAsync<FxBoardDto>();
+        Assert.Equal(info.Currencies.Count - 1, all.Rows.Count);
+        Assert.NotNull(all.Rows.Single(r => r.Quote == "TRY").Rate);
     }
 
     [Fact]

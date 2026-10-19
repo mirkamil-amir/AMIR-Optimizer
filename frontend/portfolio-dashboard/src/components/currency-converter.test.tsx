@@ -12,7 +12,7 @@ beforeEach(() => {
   vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
   vi.stubGlobal('fetch', vi.fn((url: string) => {
     calls.push(String(url))
-    if (url.includes('/fx/currencies')) return Promise.resolve(ok({ source: 'ECB', description: '', isSimulated: false, currencies: ['EUR', 'USD', 'GBP', 'JPY', 'CHF'], convention: '', maxCarryForwardDays: 4 }))
+    if (url.includes('/fx/currencies')) return Promise.resolve(ok({ source: 'ECB', description: '', isSimulated: false, currencies: ['EUR', 'USD', 'GBP', 'JPY', 'CHF', 'TRY', 'ZAR'], convention: '', maxCarryForwardDays: 4 }))
     if (url.includes('/fx/board')) return Promise.resolve(ok({
       base: 'EUR', source: 'ECB', isSimulated: false, note: 'Reference rates, units per one EUR; published once per business day (not live).',
       rows: [
@@ -20,6 +20,8 @@ beforeEach(() => {
         { quote: 'GBP', rate: 0.85, observationDate: '2026-10-15', change1D: -0.001, change1M: 0.004, problem: null },
         { quote: 'JPY', rate: 160, observationDate: '2026-10-15', change1D: 0, change1M: 0.02, problem: null },
         { quote: 'CHF', rate: null, observationDate: null, change1D: null, change1M: null, problem: 'No recent rate.' },
+        { quote: 'TRY', rate: 45, observationDate: '2026-10-15', change1D: 0.001, change1M: 0.03, problem: null },
+        { quote: 'ZAR', rate: 20, observationDate: '2026-10-15', change1D: 0, change1M: 0, problem: null },
       ],
     }))
     if (url.includes('/fx/history')) {
@@ -69,12 +71,36 @@ describe('CurrencyConverterCard', () => {
     renderCard()
     await screen.findByRole('list', { name: 'Exchange rates against EUR' })
     await user.click(screen.getByRole('combobox', { name: 'Base currency of the rates' }))
-    await user.click(await screen.findByRole('option', { name: 'GBP' }))
+    await user.click(await screen.findByRole('option', { name: /^GBP/ }))
     await waitFor(() => expect(calls.some((c) => c.includes('/fx/board?base=GBP'))).toBe(true))
     await waitFor(() => expect(calls.some((c) => c.includes('/fx/history?from=GBP&to='))).toBe(true))
     expect(screen.getByText(/per GBP/)).toBeInTheDocument()
     // The calculator now converts from the chosen base into the portfolio currency.
     expect(screen.getByRole('combobox', { name: 'Convert from' })).toHaveTextContent('GBP')
     expect(screen.getByRole('combobox', { name: 'Convert to' })).toHaveTextContent('EUR')
+  })
+
+  it('offers every supported currency with its name, incl. Turkish lira, and converts any pair', async () => {
+    const user = userEvent.setup()
+    renderCard()
+    await waitFor(() => expect(screen.getByLabelText('Converted amount')).toHaveTextContent('€909.09'))
+    await user.click(screen.getByRole('combobox', { name: 'Convert from' }))
+    expect(await screen.findByRole('option', { name: /TRY.*Turkish Lira/ })).toBeInTheDocument()
+    await user.click(screen.getByRole('option', { name: /^ZAR/ }))           // not a major: listed under "More currencies"
+    await waitFor(() => expect(screen.getByLabelText('Converted amount')).toHaveTextContent('€50.00'))
+    expect(calls.some((c) => c.includes('/fx/board?base=EUR&quotes=ZAR'))).toBe(true)
+  })
+
+  it('shows TRY on the board by default and lets the user add other currencies', async () => {
+    const user = userEvent.setup()
+    renderCard()
+    await screen.findByRole('list', { name: 'Exchange rates against EUR' })
+    expect(calls.some((c) => /fx\/board\?base=EUR&quotes=[A-Z,]*TRY/.test(c))).toBe(true)
+    await user.click(screen.getByRole('combobox', { name: 'Add a currency to the rates' }))
+    await user.click(await screen.findByRole('option', { name: /^ZAR/ }))
+    await waitFor(() => expect(calls.some((c) => /fx\/board\?base=EUR&quotes=[A-Z,]*TRY,ZAR$/.test(c))).toBe(true))
+    await waitFor(() => expect(calls.some((c) => c.includes('/fx/history?from=EUR&to=ZAR'))).toBe(true))
+    await user.click(await screen.findByRole('button', { name: 'Remove ZAR' }))
+    expect(screen.queryByRole('button', { name: 'Remove ZAR' })).toBeNull()
   })
 })

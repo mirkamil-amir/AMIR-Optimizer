@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { converterCurrencies, convertAmount, crossFromBoard, exposureRows, foreignCurrencies, fxPhrase } from './currency'
+import { converterCurrencies, convertAmount, crossFromBoard, currencyGroups, currencyName, exposureRows, foreignCurrencies, fxPhrase } from './currency'
 
 describe('currency helpers', () => {
   it('states rates in the app convention, readable for small rates', () => {
@@ -46,5 +46,17 @@ describe('currency helpers', () => {
 
   it('offers the portfolio currency first, then supported majors', () => {
     expect(converterCurrencies('CHF', ['EUR', 'USD', 'CHF', 'JPY']).slice(0, 4)).toEqual(['CHF', 'USD', 'EUR', 'JPY'])
+  })
+
+  it('groups all supported currencies: first and majors (incl. TRY), then the rest alphabetically', () => {
+    const g = currencyGroups(['EUR', 'USD', 'TRY', 'ZAR', 'BRL', 'JPY'], 'CHF')
+    expect(g.major).toEqual(['CHF', 'USD', 'EUR', 'JPY', 'TRY'])
+    expect(g.more).toEqual(['BRL', 'ZAR'])
+    expect(currencyGroups(['EUR', 'USD', 'TRY'], 'EUR', 'EUR')).toEqual({ major: ['USD', 'TRY'], more: [] })
+  })
+
+  it('names currencies in English', () => {
+    expect(currencyName('TRY')).toBe('Turkish Lira')
+    expect(currencyName('ZZZ')).toBe('ZZZ')
   })
 })

@@ -43,10 +43,29 @@ export function crossFromBoard(rates: Record<string, number | null | undefined>,
   return t / f
 }
 
-/** Currencies offered in the converter: the portfolio currency first, then the majors. */
-export const majorCurrencies = ['USD', 'EUR', 'GBP', 'JPY', 'CHF', 'CAD', 'AUD', 'CNY', 'SEK', 'NOK']
+/** Currencies shown by default on the rate board and listed first in the drop-downs. */
+export const majorCurrencies = ['USD', 'EUR', 'GBP', 'JPY', 'CHF', 'CAD', 'AUD', 'CNY', 'SEK', 'NOK', 'TRY']
 
 export function converterCurrencies(base: string, supported: string[] | undefined): string[] {
   const set = new Set(supported ?? majorCurrencies)
   return [base, ...majorCurrencies.filter((c) => c !== base && set.has(c))]
+}
+
+/**
+ * Drop-down groups: `first` (e.g. the portfolio currency) and the supported majors, then every other supported currency
+ * alphabetically. `exclude` is left out (e.g. the board's own base).
+ */
+export function currencyGroups(supported: string[] | undefined, first?: string, exclude?: string): { major: string[]; more: string[] } {
+  const all = [...new Set([...(first ? [first] : []), ...(supported ?? [])])].filter((c) => c !== exclude)
+  const major = [...(first ? [first] : []), ...majorCurrencies].filter((c, i, a) => all.includes(c) && a.indexOf(c) === i)
+  return { major, more: all.filter((c) => !major.includes(c)).sort() }
+}
+
+let names: Intl.DisplayNames | null | undefined
+/** English currency name ("Turkish Lira"); the code itself when the runtime has no name for it. */
+export function currencyName(code: string): string {
+  if (names === undefined) {
+    try { names = new Intl.DisplayNames(['en'], { type: 'currency' }) } catch { names = null }
+  }
+  try { return names?.of(code) ?? code } catch { return code }
 }
