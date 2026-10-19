@@ -38,6 +38,7 @@ public sealed class NewsService(
     PriceQueryService prices,
     MarketDataService marketData,
     IOptions<NewsOptions> options,
+    INewsRefreshScheduler refresher,
     TimeProvider clock,
     ILogger<NewsService> logger)
 {
@@ -77,11 +78,13 @@ public sealed class NewsService(
             symbolAsset = await db.Assets.AsNoTracking().SingleOrDefaultAsync(a => a.Symbol == sym, ct) ?? throw new NotFoundException("Stock", sym);
         }
 
+        var refreshing = false;
         if (Options.Enabled)
         {
-            await RefreshFeedsAsync(ct);
-            if (symbolAsset is not null) await RefreshCompanyAsync(symbolAsset.Symbol, symbolAsset.Name, ct);
-            else await RefreshWatchlistAsync(watchlist.Select(w => (w.Symbol, w.Name)).ToList(), ct);
+            var companies = symbolAsset is not null
+                ? [(symbolAsset.Symbol, symbolAsset.Name)]
+                : watchlist.Select(w => (w.Symbol, w.Name)).ToList();
+            refreshing = await RefreshOrScheduleAsync(companies, stalestOnly: symbolAsset is null, ct);
         }
 
         var q = db.NewsArticles.AsNoTracking().AsQueryable();
@@ -125,7 +128,7 @@ public sealed class NewsService(
         var watched = watchlist.Select(w => w.AssetId).ToHashSet();
         var items = keys.Select(k => ToDto(articles.Where(a => a.HeadlineKey == k.Key).ToList(), watched)).ToList();
 
-        return new NewsFeedDto(items, query.Page, query.PageSize, total, await SourcesAsync(ct), Options.ShowImages, Notes());
+        return new NewsFeedDto(items, query.Page, query.PageSize, total, await SourcesAsync(ct), Options.ShowImages, Notes(), refreshing);
     }
 
     public async Task<IReadOnlyList<NewsSourceStatusDto>> SourcesAsync(CancellationToken ct)
@@ -220,6 +223,40 @@ public sealed class NewsService(
 
     private static string FeedKey(INewsFeedProvider p, NewsFeed feed) => $"{p.Descriptor.Name}:{feed.Key}";
 
+    /// <summary>
+    /// Sources never fetched before are fetched now (there is nothing stored to show yet); sources that are merely due are
+    /// refreshed in the background while the stored articles are served. Returns whether a background refresh is pending.
+    /// All fetch states are read in one query.
+    /// </summary>
+    private async Task<bool> RefreshOrScheduleAsync(IReadOnlyList<(string Symbol, string? Name)> companies, bool stalestOnly, CancellationToken ct)
+    {
+        var states = (await db.NewsFetchStates.AsNoTracking().ToListAsync(ct)).ToDictionary(s => s.Key);
+        var feedKeys = feedProviders.Where(p => p.Descriptor.IsConfigured).SelectMany(p => p.Feeds.Select(f => FeedKey(p, f))).ToList();
+        var configuredCompanyProviders = companyProviders.Where(p => p.Descriptor.IsConfigured).ToList();
+        string CompanyKey(ICompanyNewsProvider p, string symbol) => $"{p.Descriptor.Name}:company:{symbol}";
+        DateTime LastAttempt(string symbol) => configuredCompanyProviders.Select(p => states.GetValueOrDefault(CompanyKey(p, symbol))?.LastAttemptUtc ?? DateTime.MinValue)
+            .DefaultIfEmpty(DateTime.MinValue).Min();
+        // A large watchlist refreshes only its stalest few per request, so it never causes request bursts.
+        var chosen = stalestOnly ? companies.OrderBy(c => LastAttempt(c.Symbol)).Take(Options.WatchlistRefreshLimit).ToList() : companies.ToList();
+
+        if (feedKeys.Any(k => !states.ContainsKey(k))) await RefreshFeedsAsync(ct);
+        foreach (var c in chosen.Where(c => configuredCompanyProviders.Any(p => !states.ContainsKey(CompanyKey(p, c.Symbol)))))
+            await RefreshCompanyAsync(c.Symbol, c.Name, ct);
+
+        var feedsDue = feedKeys.Any(k => states.TryGetValue(k, out var s) && IsDue(s));
+        var companiesDue = chosen.Where(c => configuredCompanyProviders.Any(p => states.TryGetValue(CompanyKey(p, c.Symbol), out var s) && IsDue(s))).ToList();
+        if (feedsDue || companiesDue.Count > 0) refresher.Schedule(new NewsRefreshRequest(feedsDue, companiesDue));
+        return refresher.IsBusy;
+    }
+
+    /// <summary>Refreshes the requested sources that are (still) due; called by the background refresher.</summary>
+    public async Task RefreshDueAsync(NewsRefreshRequest request, CancellationToken ct)
+    {
+        if (!Options.Enabled) return;
+        if (request.Feeds) await RefreshFeedsAsync(ct);
+        foreach (var (symbol, name) in request.Companies) await RefreshCompanyAsync(symbol, name, ct);
+    }
+
     private async Task RefreshFeedsAsync(CancellationToken ct)
     {
         foreach (var p in feedProviders.Where(p => p.Descriptor.IsConfigured))
@@ -231,18 +268,6 @@ public sealed class NewsService(
     {
         foreach (var p in companyProviders.Where(p => p.Descriptor.IsConfigured))
             await RefreshKeyAsync($"{p.Descriptor.Name}:company:{symbol}", p.Descriptor.Name, t => p.GetCompanyNewsAsync(symbol, name, t), ct);
-    }
-
-    /// <summary>Refreshes the stalest few watched companies per request so large watchlists never cause request bursts.</summary>
-    private async Task RefreshWatchlistAsync(IReadOnlyList<(string Symbol, string? Name)> watchlist, CancellationToken ct)
-    {
-        if (watchlist.Count == 0) return;
-        var keys = watchlist.Select(w => w.Symbol).ToList();
-        var states = await db.NewsFetchStates.AsNoTracking().Where(s => s.Key.Contains(":company:")).ToListAsync(ct);
-        DateTime LastAttempt(string symbol) => states.Where(s => s.Key.EndsWith(":company:" + symbol)).Select(s => s.LastAttemptUtc ?? DateTime.MinValue)
-            .DefaultIfEmpty(DateTime.MinValue).Min();
-        foreach (var w in watchlist.OrderBy(w => LastAttempt(w.Symbol)).Take(Options.WatchlistRefreshLimit))
-            await RefreshCompanyAsync(w.Symbol, w.Name, ct);
     }
 
     private async Task RefreshKeyAsync(string key, string provider, Func<CancellationToken, Task<IReadOnlyList<ProviderArticle>>> fetch, CancellationToken ct)

@@ -57,6 +57,17 @@ hidden and purged.
   get Playwright specs with role-based locators.
 * Frontend fixtures: build typed objects; cast partial fixtures with `as unknown as T` only in tests.
 
+## Results (2026-10-19, performance)
+
+* `./scripts/test.sh`: unit 251 passed (8 skipped), ML 40, integration 122 (incl. `DataAccessEfficiencyTests`, 4).
+* Stalls of ~16 minutes (once in the integration tests, twice in e2e) were macOS "Maintenance Sleep" during unattended runs
+  (`pmset -g log`: sleeps of 990–1046 s); timeouts fired late and the Podman VM clock fell ~3 h behind. Run long suites as
+  `caffeinate -ims ./scripts/e2e.sh` (or `./scripts/test.sh`) on a laptop.
+* Vitest 138, build, lint (no errors); `./scripts/e2e.sh` 32 passed (final run with the Podman VM clock ~3 h behind the host,
+  after the transaction-date fix; the run before the fix failed exactly there).
+* `PerformanceBenchmarkTests` is opt-in (`PERF_BENCH=1`) and reports latency and SQL commands per request; see
+  [performance.md](performance.md).
+
 ## Results (2026-10-17, multi-portfolio workspaces)
 
 * `./scripts/test.sh`: unit 251 passed (8 skipped live smoke tests), ML 40, integration 117 – incl. `MultiPortfolioTests` (several

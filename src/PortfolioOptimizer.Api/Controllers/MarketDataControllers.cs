@@ -84,6 +84,10 @@ public sealed class MarketDataController(MarketDataService marketData) : Control
     /// <summary>Data coverage and freshness per asset, provider status and recent jobs.</summary>
     [HttpGet("status")]
     public Task<MarketDataStatusDto> Status(CancellationToken ct) => marketData.GetStatusAsync(ct);
+
+    /// <summary>Compact data status (freshness counts, latest retrieval, running download) for the navigation.</summary>
+    [HttpGet("summary")]
+    public Task<MarketDataSummaryDto> Summary(CancellationToken ct) => marketData.GetSummaryAsync(ct);
 }
 
 /// <summary>Global application settings (provider, defaults). API keys are configured server-side only.</summary>

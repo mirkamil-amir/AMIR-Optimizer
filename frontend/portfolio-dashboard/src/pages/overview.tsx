@@ -7,7 +7,7 @@ import { AllocationDonut, ChartCard, TimeSeriesChart, timeSeriesTable } from '@/
 import { DataBadge, EmptyState, ErrorState, LoadingBlock, MetricCard, MetricValue, Signed, Warnings } from '@/components/common'
 import { ValuationProblems } from '@/components/currency'
 import { portfolioPath, usePortfolioContext } from '@/lib/portfolio-context'
-import { useHoldings, useMarketStatus, usePerformance, useRisk, useRuns, useTransactions } from '@/lib/queries'
+import { useHoldings, useMarketSummary, usePerformance, useRisk, useRuns, useTransactions } from '@/lib/queries'
 import { date, dateTime, money, num, objectiveLabels, pct, qty, relativeTime } from '@/lib/format'
 import { NoPortfolio } from './shared'
 
@@ -20,7 +20,7 @@ export function OverviewPage() {
   const risk = useRisk(portfolioId)
   const runs = useRuns(portfolioId)
   const tx = useTransactions(portfolioId, 1, undefined, 6)
-  const status = useMarketStatus()
+  const status = useMarketSummary()
 
   if (!isLoading && !portfolioId) return <NoPortfolio />
   const id = portfolioId ?? ''
@@ -182,7 +182,7 @@ export function OverviewPage() {
                   </div>
                 )}
                 {(['Fresh', 'Stale', 'Missing'] as const).map((f) => {
-                  const n = status.data.coverage.filter((c) => c.isEnabled && c.freshness === f).length
+                  const n = { Fresh: status.data.fresh, Stale: status.data.stale, Missing: status.data.missing }[f]
                   return (
                     <div key={f} className="flex items-center justify-between">
                       <span className="text-muted-foreground">{f}</span>
@@ -192,7 +192,7 @@ export function OverviewPage() {
                 })}
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Last download</span>
-                  <span>{relativeTime(status.data.coverage.map((c) => c.lastRetrievedAtUtc).filter(Boolean).sort().at(-1))}</span>
+                  <span>{relativeTime(status.data.lastRetrievedAtUtc)}</span>
                 </div>
               </>
             )}

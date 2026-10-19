@@ -25,12 +25,19 @@ terms, fetch status) and the names of failing sources are shown to administrator
 
 ## Fetching
 
-Fetches happen on demand when a feed or stock page is requested, never in the browser:
+Fetches are triggered when a feed or stock page is requested, never in the browser:
 
 * Each source/query has a `NewsFetchStates` row; it is fetched again only after `RefreshMinutes` (after a failure:
-  `FailureBackoffMinutes`), shared by all users. One fetch per source at a time (single-flight lock; concurrent requests
-  serve stored articles). 20 s timeout plus the resilience pipeline of the market-data clients (throttling, retries on
-  429/5xx, circuit breaker).
+  `FailureBackoffMinutes`), shared by all users. One fetch per source at a time (single-flight lock). 20 s timeout plus
+  the resilience pipeline of the market-data clients (throttling, retries on 429/5xx, circuit breaker).
+* **Stored articles first (2026-10-19):** a source that has never been fetched is fetched in the request (there is
+  nothing to show yet). A source that is merely *due* is refreshed in the background by `NewsRefreshWorker` while the
+  stored articles are served; the response says `refreshing: true` and the page shows "Updating news sources…" and checks
+  again every 3 s until the refresh is done. Concurrent viewers are merged into one refresh. Before, the first viewer
+  after each refresh window waited for all due sources in sequence (measured: 10.1 s). All fetch states are read in one
+  query. Nothing is lost on restart: due-ness lives in `NewsFetchStates`, so the next page view schedules it again. The
+  worker does not use the shared job queue, which runs long backtests and ML experiments one at a time. See
+  [performance.md](performance.md).
 * Feed requests also refresh the stalest five watched companies of the caller.
 * A failure is stored as `LastError` and shown on the page ("Some sources could not be reached; stored articles are
   shown"); it never produces substitute articles. Tested with a failing provider (`NewsProviderFailureTests`).

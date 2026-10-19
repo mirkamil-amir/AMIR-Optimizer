@@ -8,7 +8,7 @@ import type {
   MlPredictionSet, StrategyComparison, StrategyComparisonRequest, StrategyComparisonSummary, Market, QuoteRefreshRun, QuoteRefreshResult,
   AdminOverview, HistoryRange, PriceHistory, Watchlist, WatchlistAddResult, NewsFeed, NewsFilters, EventComparison, RealityCheck, CompanyProfile,
   FxInfo, FxRate, FxHistory, FxBoard, ResearchSession, ResearchSessionSummary, UpdateBriefRequest, HypothesisComparison, CompanyContext, RefinementChange,
-  PortfolioOverview, PortfolioTransaction, RecordTransactionRequest,
+  PortfolioOverview, PortfolioTransaction, RecordTransactionRequest, MarketDataSummary,
 } from './types'
 
 const V1 = '/api/v1'
@@ -28,6 +28,8 @@ export const keys = {
   performance: (id: string, from?: string, currency?: string) => ['performance', id, from ?? '', currency ?? ''] as const,
   risk: (id: string) => ['risk', id] as const,
   status: ['market-status'] as const,
+  // Under the status key, so every invalidation of the status also refreshes the summary.
+  summary: ['market-status', 'summary'] as const,
   assets: ['assets'] as const,
   prices: (symbol: string, from?: string) => ['prices', symbol, from ?? ''] as const,
   settings: ['settings'] as const,
@@ -275,6 +277,14 @@ export const useMarketStatus = (poll = false) =>
     queryKey: keys.status,
     queryFn: () => api.get<MarketDataStatus>(`${V1}/market-data/status`),
     refetchInterval: (q) => (poll || q.state.data?.recentJobs.some((j) => j.status === 'Queued' || j.status === 'Running') ? 2000 : 60_000),
+  })
+
+/** Compact data status (counts, latest retrieval, running download) for the navigation and dashboards. */
+export const useMarketSummary = () =>
+  useQuery({
+    queryKey: keys.summary,
+    queryFn: () => api.get<MarketDataSummary>(`${V1}/market-data/summary`),
+    refetchInterval: (q) => (q.state.data?.syncRunning ? 2000 : 60_000),
   })
 
 export const useAssets = () => useQuery({ queryKey: keys.assets, queryFn: () => api.get<Asset[]>(`${V1}/assets`) })
@@ -693,6 +703,8 @@ export const useNews = (filters: NewsFilters, enabled = true) => {
     queryFn: ({ signal }) => api.get<NewsFeed>(`${V1}/news?${params}`, signal),
     placeholderData: keepPreviousData,
     staleTime: 5 * 60_000,
+    // While the server refreshes due sources in the background, check again shortly to show the new articles.
+    refetchInterval: (q) => (q.state.data?.refreshing ? 3000 : false),
     enabled,
   })
 }

@@ -425,10 +425,13 @@ public sealed class PortfolioAnalyticsService(
     private async Task<Dictionary<int, (DateOnly LastDate, decimal Last, decimal? Prev, DateOnly? PrevDate)>> LastTwoClosesAsync(List<int> ids, string source, CancellationToken ct)
     {
         var result = new Dictionary<int, (DateOnly, decimal, decimal?, DateOnly?)>();
+        // Last two closes of every asset in one statement (index lookup per asset), not one query per asset.
+        var rows = (await db.LatestPricesPerAsset(ids, source, 2, DateOnly.MinValue, DateOnly.MaxValue)
+                .Select(p => new { p.AssetId, p.Date, p.Close }).ToListAsync(ct))
+            .ToLookup(r => r.AssetId);
         foreach (var id in ids)
         {
-            var two = await db.HistoricalPrices.AsNoTracking().Where(p => p.AssetId == id && p.Source == source)
-                .OrderByDescending(p => p.Date).Take(2).Select(p => new { p.Date, p.Close }).ToListAsync(ct);
+            var two = rows[id].OrderByDescending(r => r.Date).ToList();
             if (two.Count > 0) result[id] = (two[0].Date, two[0].Close, two.Count > 1 ? two[1].Close : null, two.Count > 1 ? two[1].Date : null);
         }
         return result;

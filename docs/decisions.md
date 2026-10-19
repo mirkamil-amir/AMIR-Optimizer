@@ -2,6 +2,18 @@
 
 Short records of decisions that are not obvious from the code. Newest first. Format: context → decision → consequences.
 
+## D-33 Fix query shapes and blocking work before caching; no Redis (2026-10-19)
+**Context:** a performance audit found every page waiting 2.4 s for the navigation's data status, news views blocked by
+provider fetches (10 s) and per-stock queries (N+1). **Decision:** fix causes, not symptoms: one set-based query for
+"instruments with prices" (`PriceQueryService.AssetIdsWithPricesAsync`; correlated `EXISTS` per instrument degraded to a
+table scan per instrument), a compact `/market-data/summary` for the navigation, batched price queries with an
+index-friendly LATERAL "latest N per asset" in Infrastructure (`IApplicationDbContext.LatestPricesPerAsset`), and
+stored-articles-first news with a coalescing background refresher (`NewsRefreshWorker`, separate from the job queue so long
+ML/backtest jobs cannot delay news). No Redis or other cache: one API instance, PostgreSQL already stores prices/news with
+provenance, and every remaining read is 3–30 ms. A parallel efficient frontier was measured and reverted (median slower).
+**Consequences:** measurements and how to repeat them in [performance.md](performance.md); revisit Redis together with
+multi-instance deployment.
+
 ## D-32 Portfolios are independent workspaces addressed by URL (2026-10-17)
 **Context:** the backend already kept portfolios per user, but the UI worked on one remembered portfolio, could show a run
 of portfolio A under B, created portfolios only in Settings, had no manual transactions and deleted history in one step.

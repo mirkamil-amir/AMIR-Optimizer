@@ -133,12 +133,22 @@ protection (Stooq); force-pushing or committing without being asked.
 
 ## Known pitfalls
 
+* **Query shape (performance, see [performance.md](docs/performance.md)):** never filter or count catalogue rows with a
+  per-row `HistoricalPrices.Any(...)` – PostgreSQL may scan the whole price table once per instrument (2.4 s on every page
+  before 2026-10-19); use `PriceQueryService.AssetIdsWithPricesAsync`. Never query prices in a loop per asset; use the batched
+  `PriceQueryService` methods, and `IApplicationDbContext.LatestPricesPerAsset` for "latest N per asset" (a LINQ
+  group-then-take becomes a window over every price). Measure with `PERF_BENCH=1` (`PerformanceBenchmarkTests`, SQL count per
+  request) before and after; `scripts/bench/api_bench.py` measures a running stack. No cache layer exists by design – fix
+  the query first.
+
 * Repo in iCloud-synced `~/Desktop`: `node_modules` is a symlink to `node_modules.nosync`; after `npm ci` restore it
   (docs/testing.md). Prefer `./node_modules/.bin/<tool>` over `npx`. Use `git grep` – `grep -r` over `bin/obj` can hang.
 * A local API on :5080 blocks the container API; the Vite dev server proxies to whichever owns :5080.
 * Sign-in is rate limited (10/min/IP; e2e stack raises it). Max 2 active ML experiments per user (409).
 * Yahoo spark: ≤ 20 symbols; occasional HTTP 400 handled by retry/fallback. Alpha Vantage free: 25 requests/day.
 * zsh does not word-split `$var` in scripts.
+* The Podman VM clock can drift hours behind the host after sleep (`podman machine ssh date -u` vs `date -u`): timestamps,
+  "stale" flags and date checks then disagree with the browser. Resync with `podman machine ssh sudo chronyc makestep` or restart the VM.
 * Container commands default to Production: `purge-test-data` refuses there unless `--allow-production`.
 * `docker-compose` (used by `podman compose`) hangs on `--build` when `~/.docker/config.json` has `"credsStore": "desktop"`
   and Docker Desktop is not running (the credential helper blocks). Run with `DOCKER_CONFIG=<dir with {"auths":{}}>`.
@@ -152,6 +162,6 @@ protection (Stooq); force-pushing or committing without being asked.
 [machine learning](docs/machine-learning.md) · [security](docs/security.md) · [testing](docs/testing.md) ·
 [deployment](docs/deployment.md) · [implementation status](docs/implementation-status.md) ·
 [agentic architecture](docs/agentic-architecture.md) · [threat model](docs/threat-model.md) · [agent evaluation](docs/agent-evaluation.md) ·
-[portfolios](docs/portfolios.md) · [decisions](docs/decisions.md) · [limitations](docs/limitations.md) · [watchlist](docs/watchlist.md) ·
+[portfolios](docs/portfolios.md) · [performance](docs/performance.md) · [decisions](docs/decisions.md) · [limitations](docs/limitations.md) · [watchlist](docs/watchlist.md) ·
 [financial news](docs/financial-news.md) · [portfolio reality check](docs/portfolio-reality-check.md) ·
 [roadmap](docs/roadmap.md) · [launch readiness](docs/launch-readiness.md) · [currencies & FX](docs/currency.md) · [currency audit](docs/currency-audit.md)

@@ -23,47 +23,64 @@ public sealed class PriceQueryService(IApplicationDbContext db, TimeProvider clo
     public async Task<ApplicationSettings> SettingsAsync(CancellationToken ct) =>
         await db.Settings.AsNoTracking().SingleAsync(s => s.Id == 1, ct);
 
+    /// <summary>
+    /// Ids of the instruments that have stored daily prices from <paramref name="source"/> – one grouped query. Use it instead of
+    /// a per-instrument <c>EXISTS</c> subquery: PostgreSQL may plan that as one full table scan per instrument (observed: 2.4 s
+    /// for 912 instruments on 55k prices, versus 9 ms for this query).
+    /// </summary>
+    public async Task<HashSet<int>> AssetIdsWithPricesAsync(string source, CancellationToken ct) =>
+        (await db.HistoricalPrices.AsNoTracking().Where(p => p.Source == source).GroupBy(p => p.AssetId).Select(g => g.Key).ToListAsync(ct)).ToHashSet();
+
     /// <summary>Adjusted-close series (falls back to raw close only if the source never provides adjusted data).</summary>
+    /// <remarks>One query for all symbols; with <paramref name="lastN"/> the last N observations per symbol (window function).</remarks>
     public async Task<Dictionary<string, PriceSeries>> GetSeriesAsync(
         IReadOnlyCollection<string> symbols, string source, DateOnly? from, DateOnly? to, CancellationToken ct, int? lastN = null)
     {
         var result = new Dictionary<string, PriceSeries>(StringComparer.OrdinalIgnoreCase);
-        var assets = await db.Assets.AsNoTracking().Where(a => symbols.Contains(a.Symbol)).ToListAsync(ct);
+        var assets = await db.Assets.AsNoTracking().Where(a => symbols.Contains(a.Symbol)).Select(a => new { a.Id, a.Symbol }).ToListAsync(ct);
+        if (assets.Count == 0) return result;
+        var ids = assets.Select(a => a.Id).ToList();
+        var lo = from ?? DateOnly.MinValue;
+        var hi = to ?? DateOnly.MaxValue;
+        // Last N per asset with an index lookup per asset; otherwise one range query for all assets.
+        var q = lastN is { } n
+            ? db.LatestPricesPerAsset(ids, source, n, lo, hi)
+            : db.HistoricalPrices.AsNoTracking().Where(p => ids.Contains(p.AssetId) && p.Source == source && p.Date >= lo && p.Date <= hi);
+        var rows = (await q.Select(p => new { p.AssetId, p.Date, p.Close, p.AdjustedClose, p.IsSimulated }).ToListAsync(ct))
+            .ToLookup(r => r.AssetId);
         foreach (var asset in assets)
         {
-            var q = db.HistoricalPrices.AsNoTracking().Where(p => p.AssetId == asset.Id && p.Source == source);
-            if (from is { } f) q = q.Where(p => p.Date >= f);
-            if (to is { } t) q = q.Where(p => p.Date <= t);
-            if (lastN is { } n) q = q.OrderByDescending(p => p.Date).Take(n);
-            var rows = await q.Select(p => new { p.Date, p.Close, p.AdjustedClose, p.IsSimulated }).ToListAsync(ct);
-            rows = rows.OrderBy(r => r.Date).ToList();
-            var adjusted = rows.Count > 0 && rows.All(r => r.AdjustedClose.HasValue);
-            var points = rows.Select(r => new PricePoint(r.Date, (double)(adjusted ? r.AdjustedClose!.Value : r.Close))).ToList();
-            result[asset.Symbol] = new PriceSeries(asset.Symbol, asset.Id, points, adjusted, rows.Any(r => r.IsSimulated));
+            var own = rows[asset.Id].OrderBy(r => r.Date).ToList();
+            var adjusted = own.Count > 0 && own.All(r => r.AdjustedClose.HasValue);
+            var points = own.Select(r => new PricePoint(r.Date, (double)(adjusted ? r.AdjustedClose!.Value : r.Close))).ToList();
+            result[asset.Symbol] = new PriceSeries(asset.Symbol, asset.Id, points, adjusted, own.Any(r => r.IsSimulated));
         }
         return result;
     }
 
     /// <summary>
     /// Daily adjusted closes with volume (for ML features). Falls back to raw closes for a symbol only when the source never
-    /// provides adjusted data for it; one series never mixes adjusted and raw prices.
+    /// provides adjusted data for it; one series never mixes adjusted and raw prices. One query for all symbols.
     /// </summary>
     public async Task<Dictionary<string, DailySeries>> GetDailyObservationsAsync(
         IReadOnlyCollection<string> symbols, string source, DateOnly from, DateOnly to, CancellationToken ct)
     {
         var result = new Dictionary<string, DailySeries>(StringComparer.OrdinalIgnoreCase);
-        var assets = await db.Assets.AsNoTracking().Where(a => symbols.Contains(a.Symbol)).ToListAsync(ct);
+        var assets = await db.Assets.AsNoTracking().Where(a => symbols.Contains(a.Symbol)).Select(a => new { a.Id, a.Symbol, a.Sector }).ToListAsync(ct);
+        if (assets.Count == 0) return result;
+        var ids = assets.Select(a => a.Id).ToList();
+        var rows = (await db.HistoricalPrices.AsNoTracking()
+                .Where(p => ids.Contains(p.AssetId) && p.Source == source && p.Date >= from && p.Date <= to)
+                .Select(p => new { p.AssetId, p.Date, p.Close, p.AdjustedClose, p.Volume, p.IsSimulated, p.RetrievedAtUtc })
+                .ToListAsync(ct))
+            .ToLookup(r => r.AssetId);
         foreach (var asset in assets)
         {
-            var rows = await db.HistoricalPrices.AsNoTracking()
-                .Where(p => p.AssetId == asset.Id && p.Source == source && p.Date >= from && p.Date <= to)
-                .OrderBy(p => p.Date)
-                .Select(p => new { p.Date, p.Close, p.AdjustedClose, p.Volume, p.IsSimulated, p.RetrievedAtUtc })
-                .ToListAsync(ct);
-            var adjusted = rows.Count > 0 && rows.All(r => r.AdjustedClose.HasValue);
+            var own = rows[asset.Id].OrderBy(r => r.Date).ToList();
+            var adjusted = own.Count > 0 && own.All(r => r.AdjustedClose.HasValue);
             result[asset.Symbol] = new DailySeries(asset.Symbol, asset.Sector,
-                rows.Select(r => new DailyBar(r.Date, (double)(adjusted ? r.AdjustedClose!.Value : r.Close), r.Volume)).ToList(),
-                adjusted, rows.Any(r => r.IsSimulated), rows.Count == 0 ? null : rows.Max(r => r.RetrievedAtUtc));
+                own.Select(r => new DailyBar(r.Date, (double)(adjusted ? r.AdjustedClose!.Value : r.Close), r.Volume)).ToList(),
+                adjusted, own.Any(r => r.IsSimulated), own.Count == 0 ? null : own.Max(r => r.RetrievedAtUtc));
         }
         return result;
     }
@@ -89,17 +106,19 @@ public sealed class PriceQueryService(IApplicationDbContext db, TimeProvider clo
         var result = new Dictionary<int, LatestPrice>();
         if (assetIds.Count == 0) return result;
         var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
-        var assets = await db.Assets.AsNoTracking().Where(a => assetIds.Contains(a.Id)).ToDictionaryAsync(a => a.Id, ct);
+        var assets = await db.Assets.AsNoTracking().Where(a => assetIds.Contains(a.Id)).Select(a => new { a.Id, a.Symbol }).ToDictionaryAsync(a => a.Id, ct);
         var quotes = await db.LatestQuotes.AsNoTracking().Where(q => assetIds.Contains(q.AssetId) && q.Source == source).ToListAsync(ct);
+
+        // The last stored close of every asset in one statement (index lookup per asset), instead of one query per asset.
+        var closes = (await db.LatestPricesPerAsset(assetIds, source, 1, DateOnly.MinValue, DateOnly.MaxValue)
+                .Select(p => new { p.AssetId, p.Date, p.Close, p.RetrievedAtUtc, p.IsSimulated })
+                .ToListAsync(ct))
+            .ToDictionary(c => c.AssetId);
 
         foreach (var id in assetIds)
         {
             if (!assets.TryGetValue(id, out var asset)) continue;
-            var close = await db.HistoricalPrices.AsNoTracking()
-                .Where(p => p.AssetId == id && p.Source == source)
-                .OrderByDescending(p => p.Date)
-                .Select(p => new { p.Date, p.Close, p.RetrievedAtUtc, p.IsSimulated })
-                .FirstOrDefaultAsync(ct);
+            var close = closes.GetValueOrDefault(id);
             var quote = quotes.FirstOrDefault(q => q.AssetId == id);
 
             LatestPrice? lp = null;

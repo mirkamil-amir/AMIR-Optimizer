@@ -52,7 +52,9 @@ public sealed record NewsFeedDto(
     int TotalCount,
     IReadOnlyList<NewsSourceStatusDto> Sources,
     bool ImagesEnabled,
-    IReadOnlyList<string> Notes);
+    IReadOnlyList<string> Notes,
+    /// <summary>True while due sources are being refreshed in the background; the stored articles are shown meanwhile.</summary>
+    bool Refreshing = false);
 
 public sealed record EventHorizonDto(int TradingDays, DateOnly? Date, double? StockChange, double? BenchmarkChange, double? Difference, string? Limitation);
 

@@ -60,6 +60,8 @@ Endpoint `POST /api/v1/portfolios/{id}/journal` (header `Idempotency-Key` requir
   key for a different transaction → 409; a unique index (portfolio, key) also catches races.
 * **In time order:** a booking cannot be in the future or dated before the portfolio's latest booking, so the cash and
   quantity checks at booking time are valid for the effective date. Back-dated history (imports) is not supported.
+  The form sends a date only when the user changes it; otherwise the server books "today" by its own clock (a browser
+  clock ahead of the server's must not make a default booking look like a future one – found 2026-10-19 with a drifted VM clock).
 * **Corrections, never edits:** deposits, withdrawals, dividends and fees can be reversed (`POST …/journal/{id}/reverse`):
   an opposite entry is appended, the original stays and is marked reversed; a reversal cannot be reversed or repeated.
   Trades are corrected by recording the opposite trade (reversing a fill would rewrite cost basis after later activity).

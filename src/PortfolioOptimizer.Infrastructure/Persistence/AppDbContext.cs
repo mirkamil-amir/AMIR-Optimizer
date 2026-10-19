@@ -492,6 +492,16 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         v => JsonSerializer.Serialize(v, Json).GetHashCode(),
         v => JsonSerializer.Deserialize<T>(JsonSerializer.Serialize(v, Json), Json)!);
 
+    public IQueryable<HistoricalPrice> LatestPricesPerAsset(IReadOnlyCollection<int> assetIds, string source, int count, DateOnly from, DateOnly to) =>
+        // Parameterized (interpolation becomes parameters, never string concatenation); LATERAL + LIMIT = backward index scan per asset.
+        HistoricalPrices.FromSql($"""
+            SELECT h.* FROM unnest({assetIds.ToArray()}) AS a(id)
+            CROSS JOIN LATERAL (
+                SELECT * FROM "HistoricalPrices" p
+                WHERE p."AssetId" = a.id AND p."Source" = {source} AND p."Date" >= {from} AND p."Date" <= {to}
+                ORDER BY p."Date" DESC LIMIT {count}) h
+            """).AsNoTracking();
+
     public bool IsUniqueConstraintViolation(DbUpdateException exception) =>
         exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
 

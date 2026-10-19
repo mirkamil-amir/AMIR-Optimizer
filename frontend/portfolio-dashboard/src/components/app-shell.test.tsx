@@ -10,7 +10,7 @@ import { AppShell } from './app-shell'
 const auth = vi.hoisted(() => ({ current: { user: null as CurrentUser | null, isAdministrator: false, logout: async () => {} } }))
 vi.mock('@/lib/auth', () => ({ useAuth: () => auth.current }))
 vi.mock('@/lib/portfolio-context', () => ({ usePortfolioContext: () => ({ portfolios: [], portfolioId: null, select: () => {} }) }))
-vi.mock('@/lib/queries', () => ({ useMarketStatus: () => ({ data: undefined }) }))
+vi.mock('@/lib/queries', () => ({ useMarketSummary: () => ({ data: undefined }) }))
 vi.mock('@/components/theme-controls', () => ({ ThemeQuickToggle: () => null }))
 
 const user = (isAdministrator: boolean): CurrentUser => ({

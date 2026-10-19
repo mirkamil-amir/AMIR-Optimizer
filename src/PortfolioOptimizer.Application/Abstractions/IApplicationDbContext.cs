@@ -47,6 +47,13 @@ public interface IApplicationDbContext
     /// <summary>True when the save failed because a unique index/constraint was violated (provider-specific error code).</summary>
     bool IsUniqueConstraintViolation(DbUpdateException exception);
 
+    /// <summary>
+    /// The latest <paramref name="count"/> daily prices of each asset from <paramref name="source"/> within [from, to], newest first,
+    /// in one statement that uses the (AssetId, Source, Date) index per asset. (A LINQ "take N per group" becomes a window function
+    /// over every price of the source – 25.8 ms instead of 0.4 ms on 55k prices.)
+    /// </summary>
+    IQueryable<HistoricalPrice> LatestPricesPerAsset(IReadOnlyCollection<int> assetIds, string source, int count, DateOnly from, DateOnly to);
+
     /// <summary>Inserts or updates FX observations (keyed by source, currency, date) without using the change tracker.</summary>
     Task UpsertFxRatesAsync(IReadOnlyCollection<FxRate> rates, CancellationToken ct);
 }

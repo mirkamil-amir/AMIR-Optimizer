@@ -28,7 +28,7 @@ public sealed record IndexDefinition(
 /// the source of truth. Instruments are never deleted: a stock that leaves an index stays in the catalogue (and keeps
 /// its prices) without that membership. Selecting stocks never writes here.
 /// </summary>
-public sealed partial class UniverseService(IApplicationDbContext db, IAuditLog audit, TimeProvider clock)
+public sealed partial class UniverseService(IApplicationDbContext db, IAuditLog audit, TimeProvider clock, PriceQueryService prices)
 {
     public static readonly string[] MemberColumns = ["symbol", "name", "country", "exchange", "mic", "currency", "sector", "industry", "isin", "wiki"];
 
@@ -151,16 +151,17 @@ public sealed partial class UniverseService(IApplicationDbContext db, IAuditLog 
     public async Task<IReadOnlyList<MarketDto>> GetMarketsAsync(string activeSource, CancellationToken ct)
     {
         var indices = await db.MarketIndices.AsNoTracking().OrderBy(i => i.IsHistorical).ThenBy(i => i.Name).ToListAsync(ct);
-        var counts = await db.IndexMemberships.AsNoTracking()
+        // Membership counts in memory from three set queries (no per-member EXISTS subqueries; see AssetIdsWithPricesAsync).
+        var withPrices = await prices.AssetIdsWithPricesAsync(activeSource, ct);
+        var withQuotes = (await db.LatestQuotes.AsNoTracking().Where(q => q.Source == activeSource).Select(q => q.AssetId).ToListAsync(ct)).ToHashSet();
+        var counts = (await db.IndexMemberships.AsNoTracking().Select(m => new { m.IndexCode, m.AssetId }).ToListAsync(ct))
             .GroupBy(m => m.IndexCode)
-            .Select(g => new
+            .ToDictionary(g => g.Key, g => new
             {
-                Code = g.Key,
                 Members = g.Count(),
-                WithPrices = g.Count(m => db.HistoricalPrices.Any(p => p.AssetId == m.AssetId && p.Source == activeSource)),
-                WithQuotes = g.Count(m => db.LatestQuotes.Any(q => q.AssetId == m.AssetId && q.Source == activeSource)),
-            })
-            .ToDictionaryAsync(x => x.Code, ct);
+                WithPrices = g.Count(m => withPrices.Contains(m.AssetId)),
+                WithQuotes = g.Count(m => withQuotes.Contains(m.AssetId)),
+            });
         return indices.GroupBy(i => i.Country)
             .Select(g =>
             {
