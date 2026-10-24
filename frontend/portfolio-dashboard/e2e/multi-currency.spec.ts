@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { ADMIN_STATE } from './helpers'
+import { ADMIN_STATE, acceptDownloadIfAsked } from './helpers'
 
 // A portfolio in EUR holding stocks from four markets (USD, EUR, JPY, GBP): created, optimized, traded and reported in one
 // base currency, on the e2e stack's simulated prices and simulated exchange rates.
@@ -45,11 +45,13 @@ test('mixed-currency portfolio: EUR base with US, German, Japanese and UK stocks
   await expect(page.getByRole('heading', { level: 1, name })).toBeVisible()
 
   // 3. Optimization in EUR with converted returns, native currency per stock and the currency exposure.
-  await page.getByRole('navigation', { name: 'Portfolio sections' }).getByRole('link', { name: 'Optimize' }).click()
+  await page.getByRole('navigation', { name: 'Portfolio sections' }).getByRole('link', { name: 'Math Optimization' }).click()
   await page.getByRole('combobox', { name: 'Optimization method' }).click()
   await page.getByRole('option', { name: 'Minimum variance' }).click()
   await page.getByRole('button', { name: 'Run optimization' }).click()
-  await expect(page.getByText(/^In EUR · FX converted$/)).toBeVisible({ timeout: 60_000 })
+  // The fresh e2e database lacks older GBP rates for the lookback: the app asks before running; accept the download.
+  await acceptDownloadIfAsked(page)
+  await expect(page.getByText(/^In EUR · FX converted$/)).toBeVisible({ timeout: 120_000 })
   const allocation = page.getByRole('table', { name: 'Recommended allocation' })
   await expect(allocation.getByRole('row', { name: /7203\.T/ })).toContainText('JPY')
   await expect(allocation.getByRole('row', { name: /AZN\.L/ })).toContainText('GBP')

@@ -138,6 +138,8 @@ public class BacktestRun
 {
     public Guid Id { get; set; }
     public Guid OwnerId { get; set; }
+    /// <summary>Portfolio whose optimization is backtested, or whose settings a custom backtest started from (optional).</summary>
+    public Guid? PortfolioId { get; set; }
     public string Name { get; set; } = "";
     public JobStatus Status { get; set; }
     public DateTime CreatedAtUtc { get; set; }

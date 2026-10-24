@@ -15,12 +15,11 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   AllocationDonut, ChartCard, CorrelationHeatmap, FrontierChart, RiskContributionChart, TimeSeriesChart, timeSeriesTable,
 } from '@/components/charts'
 import { DataTable } from '@/components/data-table'
-import { DataBadge, EmptyState, ErrorState, InfoTip, LoadingBlock, MetricCard, PageHeader } from '@/components/common'
+import { DataBadge, EmptyState, ErrorState, InfoTip, LoadingBlock, MetricCard, PageHeader, ResultSection } from '@/components/common'
 import { TradeProposalView } from '@/components/proposal'
 import { StrategyInsights } from '@/components/strategy-insights'
 import { interpretOptimization } from '@/lib/interpretation'
@@ -147,8 +146,8 @@ export function OptimizePage() {
     <>
       <PageHeader
         level={2}
-        title="Optimize"
-        description="Configure the universe and constraints of this portfolio, run a mean-variance optimization, then review and confirm a simulated trade proposal. A result never changes holdings by itself."
+        title="Math Optimization"
+        description="Configure the universe and constraints of this portfolio, run a mean-variance optimization, then review its allocation and confirm a simulated trade proposal. A result never changes holdings by itself."
       />
       <div className="grid gap-6 xl:grid-cols-[400px_minmax(0,1fr)]">
         <div className="space-y-4">
@@ -520,41 +519,31 @@ function RunResults({ run }: { run: OptimizationRun }) {
         </div>
       )}
 
-      <StrategyInsights insights={interpretOptimization(run)} guideId={guideForObjective(run.objective)} />
-
-      <Tabs defaultValue={ok ? 'allocation' : 'methodology'}>
-        <TabsList className="flex-wrap">
-          {ok && <TabsTrigger value="allocation">Allocation</TabsTrigger>}
-          {a.frontier.length > 0 && <TabsTrigger value="frontier">Efficient frontier</TabsTrigger>}
-          {a.correlationSymbols.length > 0 && <TabsTrigger value="correlation">Correlation</TabsTrigger>}
-          {ok && <TabsTrigger value="risk">Risk contribution</TabsTrigger>}
-          {a.references.length > 0 && <TabsTrigger value="compare">Comparison</TabsTrigger>}
-          <TabsTrigger value="methodology">Inputs & methodology</TabsTrigger>
-        </TabsList>
-
-        {ok && (
-          <TabsContent value="allocation" className="mt-4 space-y-4">
+      {/* Every result is visible at once (no tabs); the same section order as ML Optimization. */}
+      {ok && (
+        <ResultSection title="Allocation">
+          <Card>
+            <CardContent className="pt-2">
+              <AllocationDonut items={[...allocation.map((x) => ({ name: x.symbol, value: x.weight })), ...(cashWeight > 1e-6 ? [{ name: 'Cash', value: cashWeight }] : [])]} />
+            </CardContent>
+          </Card>
+          <AllocationTable rows={run.allocation} currency={run.currency} />
+          {run.currencyExposure && run.currencyExposure.length > 1 && (
             <Card>
-              <CardContent className="pt-2">
-                <AllocationDonut items={[...allocation.map((x) => ({ name: x.symbol, value: x.weight })), ...(cashWeight > 1e-6 ? [{ name: 'Cash', value: cashWeight }] : [])]} />
+              <CardContent className="space-y-2 pt-2">
+                <h3 className="text-sm font-semibold">Currency exposure</h3>
+                <CurrencyExposureList items={run.currencyExposure} />
+                <p className="text-xs text-muted-foreground">
+                  Share of the allocation by trading currency. Returns and risk above are measured in {run.currency} and include these currencies&apos; movements against {run.currency} (unhedged).
+                </p>
               </CardContent>
             </Card>
-            <AllocationTable rows={run.allocation} currency={run.currency} />
-            {run.currencyExposure && run.currencyExposure.length > 1 && (
-              <Card>
-                <CardContent className="space-y-2 pt-2">
-                  <h3 className="text-sm font-semibold">Currency exposure</h3>
-                  <CurrencyExposureList items={run.currencyExposure} />
-                  <p className="text-xs text-muted-foreground">
-                    Share of the allocation by trading currency. Returns and risk above are measured in {run.currency} and include these currencies&apos; movements against {run.currency} (unhedged).
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-        )}
+          )}
+        </ResultSection>
+      )}
 
-        <TabsContent value="frontier" className="mt-4">
+      {a.frontier.length > 0 && (
+        <ResultSection title="Efficient frontier">
           <ChartCard
             title="Efficient frontier"
             description={`Minimum-variance portfolios for ${a.frontier.length} target returns under the same constraints · annualized, ${date(run.periodStart)} – ${date(run.periodEnd)}`}
@@ -569,29 +558,33 @@ function RunResults({ run }: { run: OptimizationRun }) {
               references={a.references}
             />
           </ChartCard>
-        </TabsContent>
+        </ResultSection>
+      )}
 
-        <TabsContent value="correlation" className="mt-4">
+      {a.correlationSymbols.length > 0 && (
+        <ResultSection title="Correlation">
           <ChartCard title="Correlation of daily returns" description={`Estimation window ${date(run.periodStart)} – ${date(run.periodEnd)}`}
             table={{ columns: ['', ...a.correlationSymbols], rows: a.correlation.map((r, i) => [a.correlationSymbols[i], ...r.map((v) => v.toFixed(3))]) }}>
             <CorrelationHeatmap symbols={a.correlationSymbols} matrix={a.correlation} />
           </ChartCard>
-        </TabsContent>
+        </ResultSection>
+      )}
 
-        {ok && (
-          <TabsContent value="risk" className="mt-4">
-            <ChartCard
-              title="Weight vs. contribution to volatility"
-              description="Share of portfolio variance attributable to each holding: wᵢ(Σw)ᵢ / wᵀΣw"
-              legend={[{ name: 'Weight', color: 'var(--series-1)' }, { name: 'Risk contribution', color: 'var(--series-2)' }]}
-              table={{ columns: ['Symbol', 'Weight', 'Risk contribution'], rows: allocation.map((x) => [x.symbol, pct(x.weight), pct(x.riskContribution)]) }}
-            >
-              <RiskContributionChart items={allocation.map((x) => ({ symbol: x.symbol, weight: x.weight, risk: x.riskContribution }))} />
-            </ChartCard>
-          </TabsContent>
-        )}
+      {ok && (
+        <ResultSection title="Risk contribution">
+          <ChartCard
+            title="Weight vs. contribution to volatility"
+            description="Share of portfolio variance attributable to each holding: wᵢ(Σw)ᵢ / wᵀΣw"
+            legend={[{ name: 'Weight', color: 'var(--series-1)' }, { name: 'Risk contribution', color: 'var(--series-2)' }]}
+            table={{ columns: ['Symbol', 'Weight', 'Risk contribution'], rows: allocation.map((x) => [x.symbol, pct(x.weight), pct(x.riskContribution)]) }}
+          >
+            <RiskContributionChart items={allocation.map((x) => ({ symbol: x.symbol, weight: x.weight, risk: x.riskContribution }))} />
+          </ChartCard>
+        </ResultSection>
+      )}
 
-        <TabsContent value="compare" className="mt-4 space-y-4">
+      {a.references.length > 0 && (
+        <ResultSection title="Comparison with reference portfolios">
           <DataTable
             caption="Comparison with reference portfolios"
             rows={[
@@ -622,38 +615,38 @@ function RunResults({ run }: { run: OptimizationRun }) {
               />
             </ChartCard>
           )}
-        </TabsContent>
+        </ResultSection>
+      )}
 
-        <TabsContent value="methodology" className="mt-4">
-          <Card>
-            <CardContent className="space-y-4 pt-2 text-sm">
-              <p className="leading-relaxed text-muted-foreground">{run.methodology}</p>
-              <dl className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
-                <Def k="Run ID" v={<code className="text-xs">{run.id}</code>} />
-                <Def k="Prices" v={run.usesSimulatedData ? 'Simulated' : 'Stored daily closes'} />
-                <Def k="Analysis currency" v={run.fxSource ? `${run.currency} – other currencies converted with the reference rate of each date` : `${run.currency} (no conversion needed)`} />
-                <Def k="Estimation window" v={`${date(run.periodStart)} – ${date(run.periodEnd)} (${run.observations} daily returns)`} />
-                <Def k="Data snapshot hash" v={<code className="text-xs">{run.dataSnapshotHash || '—'}</code>} />
-                <Def k="Universe" v={run.symbols.join(', ') || '—'} />
-                <Def k="Excluded for data" v={a.excludedForData.join(', ') || 'none'} />
-                <Def k="Covariance" v={`${run.settings.covarianceMethod}${run.settings.covarianceMethod === 'LedoitWolf' ? ` (shrinkage ${pct(a.covarianceShrinkage, 1)})` : ''}`} />
-                <Def k="Weights" v={`min ${pct(run.settings.minWeight, 0)} · max ${pct(run.settings.maxWeight, 0)} · cash ${pct(run.settings.cashReserve, 1)}`} />
-                <Def k="Holdings / min position" v={`${run.settings.maxHoldings ?? 'no limit'} / ${run.settings.minPositionWeight !== null ? pct(run.settings.minPositionWeight) : 'none'}`} />
-                <Def k="Turnover limit" v={run.settings.maxTurnover !== null ? pct(run.settings.maxTurnover) : 'none'} />
-                <Def k="Sector limits" v={Object.entries(run.settings.sectorLimits).map(([k, v]) => `${k} ≤ ${pct(v, 0)}`).join(', ') || 'none'} />
-                <Def k="Risk-free rate · benchmark" v={`${pct(run.settings.riskFreeRate)} · ${run.settings.benchmarkSymbol}`} />
-                <Def k="Solver" v={`${run.solverCalls} QP solve(s), ${run.solverIterations} ADMM iterations, ${num(run.durationMs, 0)} ms`} />
-              </dl>
-              {run.diagnostics.length > 0 && (
-                <div>
-                  <h3 className="mb-1 font-medium">Diagnostics</h3>
-                  <ul className="list-disc space-y-0.5 pl-5 text-muted-foreground">{run.diagnostics.map((d) => <li key={d}>{d}</li>)}</ul>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      <ResultSection title="Inputs & methodology" collapsible>
+        <Card>
+          <CardContent className="space-y-4 pt-2 text-sm">
+            <p className="leading-relaxed text-muted-foreground">{run.methodology}</p>
+            <dl className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
+              <Def k="Run ID" v={<code className="text-xs">{run.id}</code>} />
+              <Def k="Prices" v={run.usesSimulatedData ? 'Simulated' : 'Stored daily closes'} />
+              <Def k="Analysis currency" v={run.fxSource ? `${run.currency} – other currencies converted with the reference rate of each date` : `${run.currency} (no conversion needed)`} />
+              <Def k="Estimation window" v={`${date(run.periodStart)} – ${date(run.periodEnd)} (${run.observations} daily returns)`} />
+              <Def k="Data snapshot hash" v={<code className="text-xs">{run.dataSnapshotHash || '—'}</code>} />
+              <Def k="Universe" v={run.symbols.join(', ') || '—'} />
+              <Def k="Excluded for data" v={a.excludedForData.join(', ') || 'none'} />
+              <Def k="Covariance" v={`${run.settings.covarianceMethod}${run.settings.covarianceMethod === 'LedoitWolf' ? ` (shrinkage ${pct(a.covarianceShrinkage, 1)})` : ''}`} />
+              <Def k="Weights" v={`min ${pct(run.settings.minWeight, 0)} · max ${pct(run.settings.maxWeight, 0)} · cash ${pct(run.settings.cashReserve, 1)}`} />
+              <Def k="Holdings / min position" v={`${run.settings.maxHoldings ?? 'no limit'} / ${run.settings.minPositionWeight !== null ? pct(run.settings.minPositionWeight) : 'none'}`} />
+              <Def k="Turnover limit" v={run.settings.maxTurnover !== null ? pct(run.settings.maxTurnover) : 'none'} />
+              <Def k="Sector limits" v={Object.entries(run.settings.sectorLimits).map(([k, v]) => `${k} ≤ ${pct(v, 0)}`).join(', ') || 'none'} />
+              <Def k="Risk-free rate · benchmark" v={`${pct(run.settings.riskFreeRate)} · ${run.settings.benchmarkSymbol}`} />
+              <Def k="Solver" v={`${run.solverCalls} QP solve(s), ${run.solverIterations} ADMM iterations, ${num(run.durationMs, 0)} ms`} />
+            </dl>
+            {run.diagnostics.length > 0 && (
+              <div>
+                <h3 className="mb-1 font-medium">Diagnostics</h3>
+                <ul className="list-disc space-y-0.5 pl-5 text-muted-foreground">{run.diagnostics.map((d) => <li key={d}>{d}</li>)}</ul>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </ResultSection>
 
       {ok && (
         <Card>
@@ -674,6 +667,8 @@ function RunResults({ run }: { run: OptimizationRun }) {
           )}
         </Card>
       )}
+
+      <StrategyInsights insights={interpretOptimization(run)} guideId={guideForObjective(run.objective)} collapsible />
     </div>
   )
 }

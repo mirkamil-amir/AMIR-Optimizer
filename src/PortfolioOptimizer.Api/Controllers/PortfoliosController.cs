@@ -17,7 +17,8 @@ public sealed class PortfoliosController(
     PortfolioTransactionService transactions,
     OptimizationService optimization,
     TradingService trading,
-    PortfolioAnalyticsService analytics) : ControllerBase
+    PortfolioAnalyticsService analytics,
+    PortfolioOptimizer.Application.Comparisons.PortfolioStrategyService strategies) : ControllerBase
 {
     /// <summary>Lists the current user's portfolios (active and archived) with current valuation.</summary>
     [HttpGet]
@@ -48,6 +49,15 @@ public sealed class PortfoliosController(
     [ProducesResponseType<PortfolioDto>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public Task<PortfolioDto> Get(Guid id, CancellationToken ct) => portfolios.GetAsync(id, ct);
+
+    /// <summary>
+    /// The portfolio's optimizations that can be backtested or compared: successful mathematical runs and successful ML
+    /// experiments linked to it, newest first.
+    /// </summary>
+    [HttpGet("{id:guid}/strategies")]
+    [ProducesResponseType<IReadOnlyList<PortfolioStrategyDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public Task<IReadOnlyList<PortfolioStrategyDto>> Strategies(Guid id, CancellationToken ct) => strategies.ListAsync(id, ct);
 
     /// <summary>Renames a portfolio and/or replaces its configuration. Does not trade.</summary>
     [HttpPut("{id:guid}")]

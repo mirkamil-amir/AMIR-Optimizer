@@ -39,8 +39,15 @@ public sealed class MachineLearningController(MlExperimentService experiments) :
 
     /// <summary>The caller's experiments, newest first.</summary>
     [HttpGet("experiments")]
-    public Task<PagedResult<MlExperimentSummaryDto>> List(CancellationToken ct, [FromQuery] int page = 1, [FromQuery] int pageSize = 20) =>
-        experiments.ListAsync(page, pageSize, ct);
+    public Task<PagedResult<MlExperimentSummaryDto>> List(CancellationToken ct, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] Guid? portfolioId = null, [FromQuery] bool unlinked = false) =>
+        experiments.ListAsync(page, pageSize, ct, portfolioId, unlinked);
+
+    /// <summary>Links the experiment to one of the caller's portfolios (null unlinks); the currencies must match.</summary>
+    [HttpPut("experiments/{id:guid}/portfolio")]
+    [ProducesResponseType<MlExperimentDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public Task<MlExperimentDto> AssignPortfolio(Guid id, AssignMlExperimentPortfolioRequest request, CancellationToken ct) =>
+        experiments.AssignPortfolioAsync(id, request.PortfolioId, ct);
 
     /// <summary>Status, configuration, periods, metrics, explanations, model versions and the latest predictions.</summary>
     [HttpGet("experiments/{id:guid}")]

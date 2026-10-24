@@ -1,5 +1,51 @@
 # Implementation status
 
+## 2026-10-24 (5): foldable reference boxes; backtest monthly line chart and currency
+
+* Shared `Collapsible` (button with `aria-expanded`, closed by default): comparison – "Strategies and methodology",
+  "Universe and data notes", "What the comparison shows" (Holdings overlap now next to Risk vs return, Turnover full width);
+  backtest – "Rebalance log" (new "Invested" column: sum of target weights, or "held" when the previous holdings were kept)
+  and "Data notes"; Math and ML Optimization – "What your result means" (the "How this strategy works" button stays in the
+  title row), "Inputs & methodology", ML data notes.
+* Backtest monthly returns: line chart of strategy and benchmark. Fixed: backtest amounts were always labelled USD; they now
+  use the backtest's analysis currency.
+
+## 2026-10-24 (4): Strategy comparison layout
+
+* Drawdown, average allocation by stock and average sector exposure use the full page width (sector names no longer
+  shortened); risk vs return and turnover side by side; monthly returns as one line chart of all strategies (table view
+  lists every month); "Universe and data notes" folded by default and complete when opened (`Warnings collapsible`);
+  "What the comparison shows" with "How this strategy works" at the bottom. `optimizations.spec.ts` checks the order and
+  the folded notes.
+
+## 2026-10-24 (3): Math and ML Optimization side by side in each portfolio
+
+* Renamed "Mathematical Optimization" → "Math Optimization". ML Optimization moved into the portfolio workspace
+  (`/portfolios/:id/ml-optimize[/:experimentId]`, tab next to Math Optimization); `/ml-optimize` and the earlier
+  `/machine-learning[/:id]` URLs redirect. Both pages share one layout: configuration (portfolio universe, "Use stock
+  selection", Browse, Clear; Run optimization / Run ML optimization) and run history on the left; header with badges and
+  actions, four headline metrics, every result section visible at once (`ResultSection`, no tabs), the trade proposal card
+  (Create trade proposal / Recalculate), and "What your result means" with "How this strategy works" last.
+* Experiments without a portfolio are listed in each portfolio of their currency ("Earlier ML experiments without a
+  portfolio", `GET /ml/experiments?unlinked=true`) and linked with one click; ML trade proposals always target the
+  portfolio in the URL. Selection tray: "Math Optimization in …" and "ML Optimization in …".
+* Tests: Playwright `optimizations.spec.ts` checks both pages (no tabs, named sections visible, interpretation below the
+  proposal) and a backtest window with two Math runs and one ML Optimization; other specs updated for names and URLs.
+
+## 2026-10-24 (2): Mathematical / ML Optimization, backtest and compare any optimization of a portfolio (D-36)
+
+* Sidebar: Mathematical (since renamed Math) Optimization, ML Optimization, Optimization history; Test & compare: Backtest, Strategy
+  comparison. Workspace tab and page titles renamed accordingly.
+* ML experiments record their portfolio (form picker; `PUT /ml/experiments/{id}/portfolio` links older ones of the same
+  currency). `GET /portfolios/{id}/strategies`; `POST /backtests/from-strategy` (window on the Backtest page; ML strategies
+  run walk-forward through `BacktestEngine`); comparisons of any two optimizations of one portfolio (math/math, ML/ML,
+  math/ML; hybrid only for math + ML). Migration `StrategiesPerPortfolio` (nullable `PortfolioId` on three tables).
+* Tests: `StrategyComparisonTests` rewritten (math vs ML, math vs math, ML vs ML, same-portfolio and cross-user 404s,
+  linking with currency check, backtests of a run and an experiment incl. the in-sample warning, frozen settings after
+  deletion); Vitest `strategies.test.ts`; Playwright `optimizations.spec.ts` (sidebar order, backtest window, math vs math
+  comparison). Note: with simulated prices a Maximum Sharpe run can be infeasible and is then not offered (only successful
+  optimizations are listed).
+
 ## 2026-10-24: ask before an analysis when prices or exchange rates are missing
 
 * `DataReadinessService` + `POST /market-data/check` / `download-missing`; dialog (`useMissingDataGuard`) in the ML

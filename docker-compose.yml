@@ -65,6 +65,7 @@ services:
       ModelArtifacts__RootPath: /app/artifacts
       Cors__AllowedOrigins__0: http://localhost:${WEB_PORT:-8081}
       RateLimiting__AuthenticationPermitPerMinute: ${AUTH_RATE_LIMIT_PER_MINUTE:-10}
+      RateLimiting__PermitPerMinute: ${RATE_LIMIT_PER_MINUTE:-600}
     ports:
       - "${API_PORT:-5080}:8080"
     volumes:

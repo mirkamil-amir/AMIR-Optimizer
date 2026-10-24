@@ -318,6 +318,22 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         b.Entity<BacktestRun>(e => { e.Property(x => x.Currency).HasMaxLength(3); e.Property(x => x.FxSource).HasMaxLength(40); });
         b.Entity<StrategyComparison>(e => { e.Property(x => x.Currency).HasMaxLength(3); e.Property(x => x.FxSource).HasMaxLength(40); });
         b.Entity<MlExperiment>(e => { e.Property(x => x.Currency).HasMaxLength(3); e.Property(x => x.FxSource).HasMaxLength(40); });
+        // Optional portfolio link of ML experiments, backtests and comparisons: deleting a portfolio keeps them, unlinked.
+        b.Entity<MlExperiment>(e =>
+        {
+            e.HasOne<Portfolio>().WithMany().HasForeignKey(x => x.PortfolioId).OnDelete(DeleteBehavior.SetNull);
+            e.HasIndex(x => new { x.OwnerId, x.PortfolioId });
+        });
+        b.Entity<BacktestRun>(e =>
+        {
+            e.HasOne<Portfolio>().WithMany().HasForeignKey(x => x.PortfolioId).OnDelete(DeleteBehavior.SetNull);
+            e.HasIndex(x => new { x.OwnerId, x.PortfolioId });
+        });
+        b.Entity<StrategyComparison>(e =>
+        {
+            e.HasOne<Portfolio>().WithMany().HasForeignKey(x => x.PortfolioId).OnDelete(DeleteBehavior.SetNull);
+            e.HasIndex(x => new { x.OwnerId, x.PortfolioId });
+        });
         b.Entity<TradeProposalLine>(e => { e.Property(x => x.Currency).HasMaxLength(3); e.Property(x => x.FxRate).HasPrecision(20, 10); });
         b.Entity<SimulatedOrder>(e => { e.Property(x => x.Currency).HasMaxLength(3); e.Property(x => x.FxRate).HasPrecision(20, 10); });
         b.Entity<PortfolioTransaction>(e =>

@@ -93,15 +93,15 @@ Offline demo: start with `MarketData__DefaultProvider=Mock` on a new database, o
 ## Using the platform
 
 Navigation: the top bar holds **Optimizer · AI Research · Financial News · Watchlist · Market Data · Strategy Guide ·
-Glossary · Settings**; the left sidebar lists the Optimizer's sections (Overview, Portfolio Creation, Optimize,
-Optimization history, Backtest, Strategy comparison, Machine learning) and, for administrators, **Administration** with
+Glossary · Settings**; the left sidebar lists the Optimizer's sections (Overview, Portfolio Creation, **Math Optimization**, **ML
+Optimization**, Optimization history, Backtest, Strategy comparison) and, for administrators, **Administration** with
 **Admin settings**.
 
 **Portfolios.** You can keep several independent portfolios. **Overview** (`/`) lists all of yours with value, cash,
 invested amount, P/L (against net contributions), last optimization and activity, plus an honest total. **Portfolio
 Creation** (`/stocks`) asks for a name, description, currency and starting cash, lets you choose the stocks it may invest
-in and creates it only when you confirm. Each portfolio opens in its own workspace (`/portfolios/<id>`: Overview, Optimize,
-Holdings, Transactions, Performance, Optimization runs) where you can record buys, sells, deposits, withdrawals,
+in and creates it only when you confirm. Each portfolio opens in its own workspace (`/portfolios/<id>`: Overview, Math Optimization,
+ML Optimization, Holdings, Transactions, Performance, Optimization runs) where you can record buys, sells, deposits, withdrawals,
 dividends and fees, archive or restore it. Details: [portfolios.md](docs/portfolios.md).
 
 0. **AI research** (`/research`, in the top bar). Write an objective ("low-risk US stocks without energy,
@@ -129,17 +129,28 @@ dividends and fees, archive or restore it. Details: [portfolios.md](docs/portfol
    ones. Each price shows its currency, kind (*Delayed quote* / *Last close*, never "live"), when it applies, when it was
    retrieved and whether it is cached, stale or SIMULATED; a refresh icon updates a single stock. Select stocks across
    sectors – the selection lives **only in browser memory** (not saved, survives navigation, discarded on reload or
-   sign-out). Fetch price history for selected stocks from the selection tray. Analyses need stocks of one currency.
-3. **Optimize** (classical). The selection becomes the universe. Choose an objective and constraints, run, inspect
-   allocation, frontier, risk contributions and diagnostics, then create a trade proposal for the paper portfolio.
-4. **Machine learning.** Choose a model family, target (forward return, forward excess return, probability of
+   sign-out). Fetch price history for selected stocks from the selection tray. Stocks of different currencies can be
+   combined (converted into the portfolio currency). When an analysis would miss stored prices or exchange rates, a window
+   offers to download them first.
+3. **Math Optimization** (classical mean-variance, a tab of the portfolio). The portfolio's universe (or the selection) is
+   used. Choose an objective and constraints, run, inspect allocation, frontier, correlation, risk contributions and
+   diagnostics – all on one page – then create a trade proposal for the paper portfolio.
+4. **ML Optimization** (a tab of the same portfolio, laid out like Math Optimization: configuration and run history on the
+   left, every result section on one page, the trade proposal, then "What your result means" at the bottom). The
+   portfolio's universe (or the selection) and currency are used; choose a model family, target (forward return, forward excess return, probability of
    outperformance, forward volatility), horizon and portfolio-construction rules. The experiment runs in the
    background: chronological train/validation/test split with purging, hyperparameter search on validation,
    one evaluation on the untouched test period with naive baselines, explainability, current predictions, an ML
    portfolio and a walk-forward backtest. Every model version is stored with a checksummed artifact.
-5. **Strategy comparison.** Pick an optimization run and an ML experiment. Both are re-run walk-forward with their
-   stored settings on identical dates, universe, capital, costs and rebalancing next to equal weight and the
-   benchmark (optionally a hybrid). Saved comparisons are immutable.
+5. **Backtest.** "Backtest an optimization" opens a window: choose a portfolio and any of its Mathematical or ML
+   Optimizations, the period, capital, costs and rebalancing; the strategy is re-simulated walk-forward with its stored
+   settings (results before an ML experiment's test period are marked partly in-sample). A custom mean-variance strategy
+   can still be entered by hand.
+5b. **Strategy comparison.** Pick a portfolio and two of its optimizations – mathematical vs mathematical, ML vs ML or
+   mathematical vs ML. Both are re-run walk-forward with their stored settings on identical dates, universe, capital,
+   costs and rebalancing next to equal weight and the benchmark (a hybrid for one mathematical + one ML strategy).
+   Saved comparisons are immutable. ML experiments created before portfolios were recorded are linked to a portfolio of
+   the same currency from the experiment page.
 6. **Paper portfolio.** Proposals never change holdings; executing requires an explicit confirmation. Each portfolio's
    Holdings, Transactions (recorded transactions, proposals, orders, executions, cash ledger) and Performance (value,
    cash and time-weighted return since the first booking) are tabs of its workspace; every portfolio belongs to its owner.
@@ -193,8 +204,9 @@ readable `XSRF-TOKEN` cookie; `GET /auth/antiforgery` issues one). Swagger UI se
 | Auth | `GET /auth/antiforgery`, `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, `POST /auth/change-password` |
 | Administration | `GET /admin/overview`, `GET /admin/users?includeTestAccounts`, `GET /admin/users/{id}`, `PUT /admin/users/{id}/status`, `PUT /admin/users/{id}/roles`, `GET /admin/audit-events`, `POST /admin/catalogue/import`, `POST /admin/catalogue/universes/{code}`, `POST/GET /admin/catalogue/quote-refresh` |
 | Stock selection | `GET /markets`, `GET /sectors?country&index`, `GET /stocks?country&index&sector&search&sort&withPrices&symbols&page`, `GET /stocks/{symbol}`, `…/quote`, `…/prices`, `POST /stocks/quotes/refresh`, `POST /stocks/{symbol}/quote/refresh`, `GET /market-data/quote-refresh/latest` |
-| Machine learning | `GET /ml/models`, `POST/GET /ml/experiments`, `GET/DELETE /ml/experiments/{id}`, `…/metrics`, `…/backtest`, `…/models`, `GET/POST …/predictions` |
-| Strategy comparison | `POST/GET /strategy-comparisons`, `GET/DELETE /strategy-comparisons/{id}` |
+| Machine learning | `GET /ml/models`, `POST/GET /ml/experiments` (`portfolioId` in the body / as filter), `GET/DELETE /ml/experiments/{id}`, `PUT …/portfolio` (link to a portfolio of the same currency), `…/metrics`, `…/backtest`, `…/models`, `GET/POST …/predictions` |
+| Strategy comparison | `POST/GET /strategy-comparisons` (`portfolioId`, `strategyA`, `strategyB` = `{kind: Mathematical|MachineLearning, id}`), `GET/DELETE /strategy-comparisons/{id}`; `GET /portfolios/{id}/strategies` lists a portfolio's optimizations |
+| Backtests | `POST /backtests` (custom), `POST /backtests/from-strategy` (an optimization of a portfolio), `GET /backtests?portfolioId`, `GET /backtests/{id}` |
 | AI research | `GET/POST /research`, `GET/DELETE /research/{id}`, `PUT …/brief`, `PUT …/universe`, `POST …/evaluate`, `POST/DELETE …/refinements`, `POST …/refinements/{proposalId}/apply`, `GET …/compare?a&b`, `POST …/save` (requires `confirm: true`), `GET …/companies/{symbol}` |
 | Market data & assets | `GET/POST /assets`, `PATCH /assets/{symbol}`, `POST /market-data/sync`, `GET /market-data/jobs/{id}`, `GET /market-data/status`, `POST /market-data/check`, `POST /market-data/download-missing` |
 | Portfolios, optimization, trading, analytics, backtests | as before: `/portfolios/…`, `/optimization-runs/…`, `/trade-proposals/…`, `/backtests/…` (all owner-scoped) |

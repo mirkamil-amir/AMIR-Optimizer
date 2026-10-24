@@ -374,6 +374,9 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("OwnerId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("PortfolioId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("PriceSource")
                         .IsRequired()
                         .HasColumnType("text");
@@ -396,7 +399,11 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("CreatedAtUtc");
 
+                    b.HasIndex("PortfolioId");
+
                     b.HasIndex("OwnerId", "CreatedAtUtc");
+
+                    b.HasIndex("OwnerId", "PortfolioId");
 
                     b.ToTable("Backtests");
                 });
@@ -919,6 +926,9 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("OwnerId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("PortfolioId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("PriceSource")
                         .IsRequired()
                         .HasMaxLength(40)
@@ -987,9 +997,13 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("PortfolioId");
+
                     b.HasIndex("Status");
 
                     b.HasIndex("OwnerId", "CreatedAtUtc");
+
+                    b.HasIndex("OwnerId", "PortfolioId");
 
                     b.ToTable("MlExperiments");
                 });
@@ -1875,6 +1889,9 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("OwnerId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("PortfolioId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("PriceSource")
                         .IsRequired()
                         .HasMaxLength(40)
@@ -1913,7 +1930,11 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("OptimizationRunId");
 
+                    b.HasIndex("PortfolioId");
+
                     b.HasIndex("OwnerId", "CreatedAtUtc");
+
+                    b.HasIndex("OwnerId", "PortfolioId");
 
                     b.ToTable("StrategyComparisons");
                 });
@@ -2323,6 +2344,11 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                         .HasForeignKey("OwnerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("PortfolioOptimizer.Domain.Portfolio", null)
+                        .WithMany()
+                        .HasForeignKey("PortfolioId")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("PortfolioOptimizer.Domain.CashLedgerEntry", b =>
@@ -2416,6 +2442,11 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                         .HasForeignKey("OwnerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("PortfolioOptimizer.Domain.Portfolio", null)
+                        .WithMany()
+                        .HasForeignKey("PortfolioId")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("PortfolioOptimizer.Domain.MlModelVersion", b =>
@@ -2575,6 +2606,11 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                         .HasForeignKey("OwnerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("PortfolioOptimizer.Domain.Portfolio", null)
+                        .WithMany()
+                        .HasForeignKey("PortfolioId")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("PortfolioOptimizer.Domain.TradeExecution", b =>

@@ -38,7 +38,7 @@ test('the selection hands its universe to the optimizer', async ({ page }) => {
     await page.getByRole('checkbox', { name: `Select ${symbol}` }).check()
   }
   // The tray names the portfolio whose optimizer receives the selection.
-  await page.getByRole('region', { name: 'Selected stocks' }).getByRole('link', { name: /^Optimize in “/ }).click()
+  await page.getByRole('region', { name: 'Selected stocks' }).getByRole('link', { name: /^Math Optimization in “/ }).click()
   await expect(page).toHaveURL(/\/portfolios\/[0-9a-f-]{36}\/optimize\?from=selection/)
   await expect(page.getByText('AAPL').first()).toBeVisible()
   await expect(page.getByText('MSFT').first()).toBeVisible()
@@ -46,7 +46,7 @@ test('the selection hands its universe to the optimizer', async ({ page }) => {
 
 test('ML workspace and strategy comparison pages load', async ({ page }) => {
   await page.goto('/machine-learning')
-  await expect(page.getByRole('heading', { name: 'Machine-learning research' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'ML Optimization', exact: true })).toBeVisible()
 
   await page.goto('/strategy-comparison')
   await expect(page.getByRole('heading', { name: /strategy comparison/i })).toBeVisible()

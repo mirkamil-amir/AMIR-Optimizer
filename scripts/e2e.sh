@@ -15,6 +15,8 @@ export POSTGRES_DB=portfolio_e2e POSTGRES_OWNER_USER=e2e_owner APP_DB_USER=e2e_a
 export POSTGRES_OWNER_PASSWORD="$(openssl rand -hex 16)" APP_DB_PASSWORD="$(openssl rand -hex 16)"
 export ADMIN_EMAIL=admin@e2e.test ADMIN_PASSWORD="E2e-$(openssl rand -hex 8)-Aa1"
 export MARKET_DATA_PROVIDER=Mock ALPHAVANTAGE_API_KEY= ASPNETCORE_ENVIRONMENT=E2E AUTH_RATE_LIMIT_PER_MINUTE=1000
+# All browsers share one client IP; the global per-IP limit (600/min in production) would throttle the whole suite.
+export RATE_LIMIT_PER_MINUTE=6000
 # Simulated news only (no network); real news sources stay off on the disposable stack.
 export NEWS_YAHOO_ENABLED=false NEWS_OFFICIAL_FEEDS_ENABLED=false NEWS_MOCK_ENABLED=true
 export PROFILES_WIKIPEDIA_ENABLED=false PROFILES_MOCK_ENABLED=true

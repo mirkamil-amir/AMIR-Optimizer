@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router'
+import { useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
 import { AlertTriangle, CheckCircle2, GitCompareArrows, Loader2, Play, Trash2 } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -11,21 +11,28 @@ import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import { ChartCard, MonthlyReturnsGrid, TimeSeriesChart, seriesColor, timeSeriesTable } from '@/components/charts'
+import { ChartCard, TimeSeriesChart, seriesColor, timeSeriesTable } from '@/components/charts'
 import { GroupedBarChart, RiskReturnScatter, SignedBarChart, groupedBarTable } from '@/components/analysis-charts'
-import { DataBadge, EmptyState, ErrorState, InfoTip, LoadingBlock, PageHeader, SectionTitle, Warnings } from '@/components/common'
+import { Collapsible, DataBadge, EmptyState, ErrorState, InfoTip, LoadingBlock, PageHeader, SectionTitle, Warnings } from '@/components/common'
 import { PerformanceTable } from '@/components/performance-table'
 import { Pager } from '@/components/data-table'
 import { StrategyInsights } from '@/components/strategy-insights'
 import { interpretComparison } from '@/lib/interpretation'
 import { errorMessage } from '@/lib/api'
-import { useComparison, useComparisons, useCreateComparison, useDeleteComparison, useMlExperiments, useOptimizationHistory } from '@/lib/queries'
+import { useComparison, useComparisons, useCreateComparison, useDeleteComparison, usePortfolioStrategies } from '@/lib/queries'
+import { usePortfolioContext } from '@/lib/portfolio-context'
+import { dataNeeded, defaultStart, hybridPossible, strategyKey, strategyRef } from '@/lib/strategies'
+import { NoStrategies, PortfolioPicker, StrategySelect } from '@/components/strategy-picker'
+import { useMissingDataGuard } from '@/components/missing-data-dialog'
 import type { ComparisonStrategy, StrategyComparison, StrategyComparisonRequest } from '@/lib/types'
-import { date, dateTime, money, objectiveLabels, pct, relativeTime } from '@/lib/format'
+import { date, money, pct, relativeTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 /** Fixed colour per strategy kind (follows the entity, never its rank). */
 const strategyColor: Record<string, string> = {
+  a: seriesColor(0),
+  b: seriesColor(1),
+  // Comparisons stored before 2026-10-24 keyed their two strategies by kind.
   math: seriesColor(0),
   ml: seriesColor(1),
   hybrid: seriesColor(2),
@@ -41,7 +48,7 @@ export function StrategyComparisonPage() {
     <>
       <PageHeader
         title="Strategy comparison"
-        description="Mathematical optimization vs machine learning vs equal weight vs the benchmark – re-evaluated walk-forward on one shared simulator with identical dates, costs, capital and rebalancing."
+        description="Any two optimizations of a portfolio – Math vs Math, ML vs ML or Math vs ML – next to equal weight and the benchmark – re-evaluated walk-forward on one shared simulator with identical dates, costs, capital and rebalancing."
         actions={<Badge variant="outline" className="gap-1"><GitCompareArrows className="size-3" /> Shared evaluation engine</Badge>}
       />
       <div className="grid gap-6 xl:grid-cols-[380px_minmax(0,1fr)]">
@@ -61,12 +68,14 @@ export function StrategyComparisonPage() {
 }
 
 function NewComparisonCard() {
-  const runs = useOptimizationHistory(1, undefined, 'Succeeded')
-  const experiments = useMlExperiments()
+  const { portfolioId: defaultPortfolio, portfolios } = usePortfolioContext()
+  const [portfolioId, setPortfolioId] = useState<string | undefined>(defaultPortfolio)
+  const strategies = usePortfolioStrategies(portfolioId)
   const create = useCreateComparison()
+  const missingData = useMissingDataGuard()
   const navigate = useNavigate()
-  const [runId, setRunId] = useState<string | null>(null)
-  const [experimentId, setExperimentId] = useState<string | null>(null)
+  const [a, setA] = useState<string | null>(null)
+  const [b, setB] = useState<string | null>(null)
   const [start, setStart] = useState('')
   const [end, setEnd] = useState('')
   const [costs, setCosts] = useState(10)
@@ -75,52 +84,61 @@ function NewComparisonCard() {
   const [universe, setUniverse] = useState<'Intersection' | 'Union'>('Intersection')
   const [hybrid, setHybrid] = useState(false)
 
-  const runItems = (runs.data?.items ?? []).map((r) => ({ value: r.id, label: `${objectiveLabels[r.objective]} · ${r.assetCount} assets · ${dateTime(r.createdAtUtc)}` }))
-  const expItems = (experiments.data?.items ?? []).filter((e) => e.status === 'Succeeded').map((e) => ({ value: e.id, label: e.name }))
+  const list = strategies.data ?? []
+  const strategyA = list.find((s) => strategyKey(s) === a)
+  const strategyB = list.find((s) => strategyKey(s) === b)
+  const canHybrid = hybridPossible(strategyA, strategyB)
+  const portfolio = portfolios.find((p) => p.id === portfolioId)
+  const choosePortfolio = (id: string) => {
+    setPortfolioId(id)
+    setA(null)
+    setB(null)
+  }
 
-  const submit = async () => {
-    if (!runId || !experimentId) return
+  const submit = () => {
+    const refA = strategyRef(a, list)
+    const refB = strategyRef(b, list)
+    if (!portfolioId || !refA || !refB || !strategyA || !strategyB || !portfolio) return
     const body: StrategyComparisonRequest = {
-      optimizationRunId: runId, mlExperimentId: experimentId, startDate: start || null, endDate: end || null, initialCapital: capital,
-      benchmarkSymbol: 'SPY', transactionCostBps: costs, rebalance, universe, includeHybrid: hybrid,
+      portfolioId, strategyA: refA, strategyB: refB, startDate: start || null, endDate: end || null, initialCapital: capital,
+      benchmarkSymbol: strategyA.benchmarkSymbol, transactionCostBps: costs, rebalance, universe, includeHybrid: canHybrid && hybrid,
     }
-    try {
-      const c = await create.mutateAsync(body)
-      toast.success('Comparison queued')
-      navigate(`/strategy-comparison/${c.summary.id}`)
-    } catch (e) {
-      toast.error('Could not start the comparison', { description: errorMessage(e) })
-    }
+    // Missing prices or rates for both strategies (incl. their history before the start) are offered for download first.
+    const from = start || defaultStart()
+    return missingData.guard(dataNeeded([strategyA, strategyB], from, end || null, portfolio.baseCurrency), async () => {
+      try {
+        const c = await create.mutateAsync(body)
+        toast.success('Comparison queued')
+        navigate(`/strategy-comparison/${c.summary.id}`)
+      } catch (e) {
+        toast.error('Could not start the comparison', { description: errorMessage(e) })
+      }
+    })
   }
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-sm">New comparison</CardTitle>
-        <CardDescription className="text-xs">Both strategies are re-run walk-forward with their stored settings; nothing is compared from stored results.</CardDescription>
+        <CardDescription className="text-xs">
+          Any two optimizations of one portfolio – Math vs Math, ML vs ML or Math vs ML. Both are re-run walk-forward with their
+          stored settings; nothing is compared from stored results.
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="space-y-1.5">
-          <Label className="text-xs">Mathematical optimization run</Label>
-          {runItems.length === 0 ? <p className="text-xs text-muted-foreground">No successful run yet. <Link to="/optimize" className="underline underline-offset-4">Run an optimization</Link>.</p> : (
-            <Select value={runId} onValueChange={(v) => setRunId(v ? String(v) : null)} items={runItems}>
-              <SelectTrigger className="w-full" aria-label="Optimization run"><SelectValue placeholder="Choose a run" /></SelectTrigger>
-              <SelectContent>{runItems.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}</SelectContent>
-            </Select>
-          )}
-        </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs">ML experiment</Label>
-          {expItems.length === 0 ? <p className="text-xs text-muted-foreground">No completed experiment yet. <Link to="/machine-learning" className="underline underline-offset-4">Start one</Link>.</p> : (
-            <Select value={experimentId} onValueChange={(v) => setExperimentId(v ? String(v) : null)} items={expItems}>
-              <SelectTrigger className="w-full" aria-label="ML experiment"><SelectValue placeholder="Choose an experiment" /></SelectTrigger>
-              <SelectContent>{expItems.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}</SelectContent>
-            </Select>
-          )}
-        </div>
+        <PortfolioPicker value={portfolioId} onChange={choosePortfolio} id="cmp-portfolio" />
+        {portfolioId && (strategies.error ? <ErrorState error={strategies.error} /> : !strategies.data ? <LoadingBlock height="h-16" /> : list.length === 0 ? (
+          <NoStrategies portfolioId={portfolioId} />
+        ) : (
+          <>
+            <StrategySelect strategies={list} value={a} onChange={setA} label="Strategy A" disabledKey={b} />
+            <StrategySelect strategies={list} value={b} onChange={setB} label="Strategy B" disabledKey={a} />
+            {list.length < 2 && <p className="text-xs text-muted-foreground">A comparison needs two optimizations of this portfolio.</p>}
+          </>
+        ))}
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label htmlFor="cmp-start" className="flex items-center gap-1 text-xs">Start<InfoTip>Default: the ML experiment's test period, so neither strategy's choices used the evaluation data. Earlier starts are flagged as partly in-sample.</InfoTip></Label>
+            <Label htmlFor="cmp-start" className="flex items-center gap-1 text-xs">Start<InfoTip>Default: the latest start of an ML strategy's test period, so no strategy's choices used the evaluation data (without ML: three years ago). Earlier starts are flagged as partly in-sample.</InfoTip></Label>
             <Input id="cmp-start" type="date" value={start} onChange={(e) => setStart(e.target.value)} />
           </div>
           <div className="space-y-1.5">
@@ -143,7 +161,7 @@ function NewComparisonCard() {
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label className="flex items-center gap-1 text-xs">Universe<InfoTip>Intersection: only stocks in both sources (like-for-like). Union: every strategy may invest in all stocks of either.</InfoTip></Label>
+            <Label className="flex items-center gap-1 text-xs">Universe<InfoTip>Intersection: only stocks in both strategies (like-for-like). Union: every strategy may invest in all stocks of either.</InfoTip></Label>
             <Select value={universe} onValueChange={(v) => setUniverse(v as 'Intersection' | 'Union')} items={[{ value: 'Intersection', label: 'Intersection' }, { value: 'Union', label: 'Union' }]}>
               <SelectTrigger className="w-full" aria-label="Universe"><SelectValue /></SelectTrigger>
               <SelectContent><SelectItem value="Intersection">Intersection</SelectItem><SelectItem value="Union">Union</SelectItem></SelectContent>
@@ -151,13 +169,14 @@ function NewComparisonCard() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Switch id="hybrid" checked={hybrid} onCheckedChange={setHybrid} />
+          <Switch id="hybrid" checked={canHybrid && hybrid} onCheckedChange={setHybrid} disabled={!canHybrid} />
           <Label htmlFor="hybrid" className="font-normal">Add hybrid (ML screen + mean-variance)</Label>
-          <InfoTip>A separate, clearly labelled third strategy. The ML and mathematical strategies themselves stay unchanged.</InfoTip>
+          <InfoTip>Only for one mathematical and one ML optimization: a separate, clearly labelled extra strategy. The two strategies themselves stay unchanged.</InfoTip>
         </div>
-        <Button className="w-full" onClick={submit} disabled={!runId || !experimentId || create.isPending}>
-          {create.isPending ? <Loader2 className="animate-spin" /> : <Play />} Compare strategies
+        <Button className="w-full" onClick={submit} disabled={!strategyA || !strategyB || create.isPending || missingData.checking}>
+          {create.isPending || missingData.checking ? <Loader2 className="animate-spin" /> : <Play />} Compare strategies
         </Button>
+        {missingData.dialog}
       </CardContent>
     </Card>
   )
@@ -250,6 +269,7 @@ function ComparisonResultView({ c }: { c: StrategyComparison }) {
   const sectors = [...new Set(traders.flatMap((s) => Object.keys(s.averageSectorExposure)))].sort()
   const allocationSeries = traders.map((s) => ({ name: s.name, color: colorOf(s), values: allSymbols.map((k) => s.averageWeights[k] ?? 0) }))
   const sectorSeries = traders.map((s) => ({ name: s.name, color: colorOf(s), values: sectors.map((k) => s.averageSectorExposure[k] ?? 0) }))
+  const monthly = monthlySeries(strategies, colorOf)
   return (
     <>
       {r.fairness.isFair ? (
@@ -261,7 +281,6 @@ function ComparisonResultView({ c }: { c: StrategyComparison }) {
           <ul className="list-disc pl-4">{r.fairness.issues.map((x) => <li key={x}>{x}</li>)}</ul>
         </AlertDescription></Alert>
       )}
-      <StrategyInsights insights={interpretComparison(c)} guideId="strategy-comparison" title="What the comparison shows" />
       {r.rankingBySharpe && (
         <p className="text-sm">
           <span className="font-medium">Sharpe ranking over this period: </span>{r.rankingBySharpe.join(' › ')}
@@ -279,16 +298,10 @@ function ComparisonResultView({ c }: { c: StrategyComparison }) {
         <PerformanceTable items={strategies.map((s) => s.performance)} colors={strategies.map(colorOf)} />
       </CardContent></Card>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <ChartCard title="Drawdown" legend={drawdowns.map((x) => ({ name: x.name, color: x.color }))} table={timeSeriesTable(r.dates, drawdowns, (v) => pct(v))}>
-          <TimeSeriesChart dates={r.dates} series={drawdowns} format={(v) => pct(v, 0)} height={220} />
-        </ChartCard>
-        <ChartCard title="Risk vs return" hint="Annualized volatility (x) against annualized return (y)."
-          table={{ columns: ['Strategy', 'Return', 'Volatility'], rows: strategies.map((s) => [s.name, pct(s.performance.annualizedReturn.value), pct(s.performance.annualizedVolatility.value)]) }}>
-          <RiskReturnScatter points={strategies.filter((s) => s.performance.annualizedReturn.value !== null && s.performance.annualizedVolatility.value !== null)
-            .map((s) => ({ name: s.name, color: colorOf(s), ret: s.performance.annualizedReturn.value!, risk: s.performance.annualizedVolatility.value! }))} height={220} />
-        </ChartCard>
-      </div>
+      <ChartCard title="Drawdown" legend={drawdowns.map((x) => ({ name: x.name, color: x.color }))} table={timeSeriesTable(r.dates, drawdowns, (v) => pct(v))}
+        hint="Decline from the previous peak of each strategy's value.">
+        <TimeSeriesChart dates={r.dates} series={drawdowns} format={(v) => pct(v, 0)} height={280} />
+      </ChartCard>
 
       <ChartCard title={`Rolling Sharpe ratio (${r.rollingSharpeWindow} days)`} legend={rolling.map((x) => ({ name: x.name, color: x.color }))}
         hint="Sharpe ratio over a trailing window; shows how stable relative performance was."
@@ -296,20 +309,24 @@ function ComparisonResultView({ c }: { c: StrategyComparison }) {
         <TimeSeriesChart dates={r.dates} series={rolling.map((x) => ({ ...x, values: x.values.map((v) => v ?? null) }))} format={(v) => v.toFixed(1)} height={220} zeroLine />
       </ChartCard>
 
+      {/* Full width: one group of bars per stock / sector with a bar per strategy needs the room. */}
+      <ChartCard title="Average allocation by stock" hint="Average target weight across rebalances (top 15 stocks)." legend={allocationSeries.map((x) => ({ name: x.name, color: x.color }))}
+        table={groupedBarTable(allSymbols, allocationSeries, (v) => pct(v, 1))}>
+        <GroupedBarChart categories={allSymbols} series={allocationSeries} format={(v) => pct(v, 0)} legend={false} />
+      </ChartCard>
+      <ChartCard title="Average sector exposure" hint="Average weight per sector across rebalances." legend={sectorSeries.map((x) => ({ name: x.name, color: x.color }))}
+        table={groupedBarTable(sectors, sectorSeries, (v) => pct(v, 1))}>
+        <GroupedBarChart categories={sectors} series={sectorSeries} format={(v) => pct(v, 0)} legend={false} />
+      </ChartCard>
+
       <div className="grid gap-4 lg:grid-cols-2">
-        <ChartCard title="Average allocation by stock" hint="Average target weight across rebalances (top 15 stocks)." legend={allocationSeries.map((x) => ({ name: x.name, color: x.color }))}
-          table={groupedBarTable(allSymbols, allocationSeries, (v) => pct(v, 1))}>
-          <GroupedBarChart categories={allSymbols} series={allocationSeries} format={(v) => pct(v, 0)} legend={false} />
-        </ChartCard>
-        <ChartCard title="Average sector exposure" legend={sectorSeries.map((x) => ({ name: x.name, color: x.color }))} table={groupedBarTable(sectors, sectorSeries, (v) => pct(v, 1))}>
-          <GroupedBarChart categories={sectors.map((x) => x.split(' ')[0])} series={sectorSeries} format={(v) => pct(v, 0)} legend={false} />
-        </ChartCard>
-        <ChartCard title="Turnover" hint="Total one-way turnover over the period as a fraction of capital. Transaction costs are far smaller and listed in the table view and the performance table."
-          table={{ columns: ['Strategy', 'Total turnover', 'Costs (% of capital)'], rows: traders.map((s) => [s.name, pct(s.performance.totalTurnover, 1), pct(s.performance.transactionCostsFraction, 2)]) }}>
-          <SignedBarChart items={traders.map((s) => ({ name: s.name, value: s.performance.totalTurnover }))} signed={false} format={(v) => pct(v, 0)} />
+        <ChartCard title="Risk vs return" hint="Annualized volatility (x) against annualized return (y)."
+          table={{ columns: ['Strategy', 'Return', 'Volatility'], rows: strategies.map((s) => [s.name, pct(s.performance.annualizedReturn.value), pct(s.performance.annualizedVolatility.value)]) }}>
+          <RiskReturnScatter points={strategies.filter((s) => s.performance.annualizedReturn.value !== null && s.performance.annualizedVolatility.value !== null)
+            .map((s) => ({ name: s.name, color: colorOf(s), ret: s.performance.annualizedReturn.value!, risk: s.performance.annualizedVolatility.value! }))} height={220} />
         </ChartCard>
         <Card><CardContent className="space-y-3 py-4">
-          <SectionTitle hint="Final holdings of the mathematical and ML strategies, and the average weight overlap Σ min(wᵃ, wᵇ) across rebalances.">Holdings overlap</SectionTitle>
+          <SectionTitle hint="Final holdings of strategies A and B, and the average weight overlap Σ min(wᵃ, wᵇ) across rebalances.">Holdings overlap</SectionTitle>
           {r.overlaps.map((o) => (
             <div key={o.strategyA} className="space-y-2 text-sm">
               <div className="grid grid-cols-3 gap-2 tabular">
@@ -324,27 +341,39 @@ function ComparisonResultView({ c }: { c: StrategyComparison }) {
           ))}
         </CardContent></Card>
       </div>
+      <ChartCard title="Turnover" hint="Total one-way turnover over the period as a fraction of capital. Transaction costs are far smaller and listed in the table view and the performance table."
+        table={{ columns: ['Strategy', 'Total turnover', 'Costs (% of capital)'], rows: traders.map((s) => [s.name, pct(s.performance.totalTurnover, 1), pct(s.performance.transactionCostsFraction, 2)]) }}>
+        <SignedBarChart items={traders.map((s) => ({ name: s.name, value: s.performance.totalTurnover }))} signed={false} format={(v) => pct(v, 0)} />
+      </ChartCard>
 
-      <Card><CardContent className="space-y-4 py-4">
-        <SectionTitle>Monthly returns</SectionTitle>
-        {traders.map((s) => (
-          <div key={s.key}>
-            <div className="mb-1 flex items-center gap-1.5 text-sm font-medium"><span className="inline-block size-2 rounded-full" style={{ background: colorOf(s) }} aria-hidden />{s.name}</div>
-            <MonthlyReturnsGrid label={s.name} items={s.monthlyReturns.map((m) => ({ year: m.year, month: m.month, value: m.return }))} />
-          </div>
-        ))}
-      </CardContent></Card>
+      <ChartCard title="Monthly returns" hint="Return of each calendar month per strategy (first and last month may be partial). The table view lists every month."
+        legend={monthly.series.map((x) => ({ name: x.name, color: x.color }))} table={timeSeriesTable(monthly.dates, monthly.series, (v) => pct(v, 1))}>
+        <TimeSeriesChart dates={monthly.dates} series={monthly.series} format={(v) => pct(v, 0)} height={280} zeroLine />
+      </ChartCard>
 
-      <Card><CardContent className="space-y-2 py-4 text-sm">
-        <SectionTitle>Strategies and methodology</SectionTitle>
+      <Collapsible title="Strategies and methodology" summary={`${strategies.length} strategies`}>
+        <div className="space-y-2">
         <ul className="space-y-1.5">{strategies.map((s) => (
           <li key={s.key}><span className="font-medium" style={{ color: 'var(--foreground)' }}>{s.name}: </span><span className="text-muted-foreground">{s.description}</span></li>
         ))}</ul>
         <p className="text-xs text-muted-foreground">{r.methodology}</p>
         <p className="text-xs text-muted-foreground">Universe ({r.universe.length}): {r.universe.join(', ')}</p>
         {c.dataSnapshotHash && <p className="text-xs text-muted-foreground">Data snapshot {c.dataSnapshotHash}. Saved results are never recalculated.</p>}
-      </CardContent></Card>
-      <Warnings items={[...r.universeNotes, ...r.warnings]} title="Universe and data notes" />
+        </div>
+      </Collapsible>
+      <Warnings items={[...r.universeNotes, ...r.warnings]} title="Universe and data notes" collapsible />
+      <StrategyInsights insights={interpretComparison(c)} guideId="strategy-comparison" title="What the comparison shows" collapsible />
     </>
   )
+}
+
+/** Monthly returns of every strategy on one month axis (first day of each month); a missing month stays empty. */
+function monthlySeries(strategies: ComparisonStrategy[], colorOf: (s: ComparisonStrategy) => string) {
+  const key = (y: number, m: number) => `${y}-${String(m).padStart(2, '0')}-01`
+  const dates = [...new Set(strategies.flatMap((s) => s.monthlyReturns.map((m) => key(m.year, m.month))))].sort()
+  const series = strategies.map((s) => {
+    const byMonth = new Map(s.monthlyReturns.map((m) => [key(m.year, m.month), m.return]))
+    return { name: s.name, color: colorOf(s), values: dates.map((d) => byMonth.get(d) ?? null) }
+  })
+  return { dates, series }
 }

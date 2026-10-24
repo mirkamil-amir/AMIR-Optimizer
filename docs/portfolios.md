@@ -99,6 +99,10 @@ Endpoint `POST /api/v1/portfolios/{id}/journal` (header `Idempotency-Key` requir
 * Switching portfolio remounts the workspace sections, so form state, chosen runs and proposals of one portfolio cannot
   appear under another.
 * Archived portfolios refuse runs, proposals, executions and bookings (422); pending proposals are cancelled on archive.
+* **Optimizations of a portfolio** (`GET /portfolios/{id}/strategies`): its successful mathematical runs and the successful
+  ML experiments linked to it (`MlExperiment.PortfolioId`). Backtests of an optimization and strategy comparisons work only
+  within one portfolio; ML experiments, backtests and comparisons keep an optional `PortfolioId` (deleting the portfolio
+  unlinks them, it does not delete them).
 
 ## AI research context
 
@@ -134,9 +138,9 @@ Cross-user tests: `MultiPortfolioTests.AnotherUser_CannotReadOrChangeAnyPartOfAP
 |---|---|
 | `/` | **My portfolios** (overview): cards with value, cash, invested, holdings, P/L, last optimization, last activity; totals; archived list (restore, delete) |
 | `/stocks` | **Portfolio Creation**: details (name, description, currency, starting cash, advanced cap) → choose stocks → review → Create |
-| `/portfolios/:id` | workspace: header (name, currency, value, cash, holdings, valuation date, warnings, switcher, Record transaction, rename, archive, research) and tabs Overview · Optimize · Holdings · Transactions · Performance · Optimization runs |
-| `/portfolios/:id/optimize[/:runId]`, `/holdings`, `/transactions`, `/performance` | sections of that portfolio |
-| `/optimize`, `/optimize/:runId`, `/holdings`, `/trades`, `/analytics` | old URLs: redirect into the most recently opened portfolio, or into the run's own portfolio |
+| `/portfolios/:id` | workspace: header (name, currency, value, cash, holdings, valuation date, warnings, switcher, Record transaction, rename, archive, research) and tabs Overview · Math Optimization · ML Optimization · Holdings · Transactions · Performance · Optimization runs |
+| `/portfolios/:id/optimize[/:runId]`, `/ml-optimize[/:experimentId]`, `/holdings`, `/transactions`, `/performance` | sections of that portfolio (Math and ML Optimization share one layout; an experiment of another portfolio redirects to it) |
+| `/optimize`, `/optimize/:runId`, `/ml-optimize`, `/machine-learning[/:experimentId]`, `/holdings`, `/trades`, `/analytics` | sidebar links and old URLs: redirect into the most recently opened portfolio, or into the run's / experiment's own portfolio |
 
 Unknown, deleted or foreign portfolio ids show "Portfolio not found" without revealing which case applies.
 

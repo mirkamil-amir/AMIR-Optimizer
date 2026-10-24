@@ -9,6 +9,7 @@ import type {
   AdminOverview, HistoryRange, PriceHistory, Watchlist, WatchlistAddResult, NewsFeed, NewsFilters, EventComparison, RealityCheck, CompanyProfile,
   FxInfo, FxRate, FxHistory, FxBoard, ResearchSession, ResearchSessionSummary, UpdateBriefRequest, HypothesisComparison, CompanyContext, RefinementChange,
   PortfolioOverview, PortfolioTransaction, RecordTransactionRequest, MarketDataSummary, DataCheck, DataCheckRequest, DataDownload,
+  PortfolioStrategy, StrategyBacktestRequest,
 } from './types'
 
 const V1 = '/api/v1'
@@ -364,6 +365,22 @@ export function useCreateBacktest() {
   })
 }
 
+/** Backtest of a stored optimization (mathematical run or ML experiment) of a portfolio. */
+export function useCreateStrategyBacktest() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: StrategyBacktestRequest) => api.post<Backtest>(`${V1}/backtests/from-strategy`, body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.backtests }),
+  })
+}
+
+/** The portfolio's optimizations that can be backtested or compared (successful runs and linked ML experiments). */
+export const usePortfolioStrategies = (portfolioId: string | undefined) => useQuery({
+  queryKey: ['portfolio-strategies', portfolioId],
+  queryFn: () => api.get<PortfolioStrategy[]>(`${V1}/portfolios/${portfolioId}/strategies`),
+  enabled: !!portfolioId,
+})
+
 // ---------------------------------------------------------------- stock discovery
 
 export const useMarkets = () => useQuery({ queryKey: ['markets'], queryFn: () => api.get<Market[]>(`${V1}/markets`), staleTime: 60_000 })
@@ -572,10 +589,12 @@ const isActive = (s?: string) => s === 'Queued' || s === 'Running'
 
 export const useMlCatalog = () => useQuery({ queryKey: ['ml-catalog'], queryFn: () => api.get<MlCatalog>(`${V1}/ml/models`), staleTime: Infinity })
 
-export const useMlExperiments = (page = 1) =>
+/** The user's ML experiments; `filter.portfolioId` = of one portfolio, `filter.unlinked` = those without a portfolio. */
+export const useMlExperiments = (page = 1, filter: { portfolioId?: string; unlinked?: boolean } = {}) =>
   useQuery({
-    queryKey: ['ml-experiments', page],
-    queryFn: () => api.get<PagedResult<MlExperimentSummary>>(`${V1}/ml/experiments?page=${page}&pageSize=20`),
+    queryKey: ['ml-experiments', page, filter.portfolioId ?? '', filter.unlinked ?? false],
+    queryFn: () => api.get<PagedResult<MlExperimentSummary>>(
+      `${V1}/ml/experiments?page=${page}&pageSize=20${filter.portfolioId ? `&portfolioId=${filter.portfolioId}` : ''}${filter.unlinked ? '&unlinked=true' : ''}`),
     placeholderData: keepPreviousData,
     refetchInterval: (q) => (q.state.data?.items.some((e) => isActive(e.status)) ? 2000 : false),
   })
@@ -596,6 +615,19 @@ export function useCreateMlExperiment() {
   return useMutation({
     mutationFn: (body: MlExperimentRequest) => api.post<MlExperiment>(`${V1}/ml/experiments`, body),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['ml-experiments'] }),
+  })
+}
+
+/** Links an ML experiment to one of the user's portfolios (null unlinks); the currencies must match. */
+export function useAssignExperimentPortfolio(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (portfolioId: string | null) => api.put<MlExperiment>(`${V1}/ml/experiments/${id}/portfolio`, { portfolioId }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['ml-experiment', id] })
+      qc.invalidateQueries({ queryKey: ['ml-experiments'] })
+      qc.invalidateQueries({ queryKey: ['portfolio-strategies'] })
+    },
   })
 }
 

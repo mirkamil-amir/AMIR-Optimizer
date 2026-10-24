@@ -46,6 +46,7 @@ public sealed class MlExperimentService(
     PriceQueryService prices,
     MlDataLoader loader,
     MarketDataService marketData,
+    Portfolios.PortfolioService portfolios,
     IModelArtifactStore artifacts,
     IBackgroundJobQueue queue,
     ICurrentUser currentUser,
@@ -103,8 +104,15 @@ public sealed class MlExperimentService(
         if (badFeatures.Count > 0) errors["features"] = [$"Unknown feature(s): {string.Join(", ", badFeatures)}."];
         if (errors.Count > 0) throw new ValidationException(errors);
 
+        // An experiment of a portfolio is computed in that portfolio's base currency (owner-scoped: another user's → 404).
+        Portfolio? portfolio = null;
+        if (request.PortfolioId is { } portfolioId)
+        {
+            portfolio = await portfolios.LoadAsync(portfolioId, ct);
+            portfolio.EnsureActive();
+        }
         // Features, targets and the benchmark are computed in one analysis currency (prices converted with dated FX rates).
-        var currency = await UniverseCurrency.ResolveAsync(db, universe, benchmark, request.Currency, ct);
+        var currency = await UniverseCurrency.ResolveAsync(db, universe, benchmark, portfolio?.BaseCurrency ?? request.Currency, ct);
         benchmark = currency.Benchmark;
 
         var active = await db.MlExperiments.CountAsync(e => e.OwnerId == owner && (e.Status == JobStatus.Queued || e.Status == JobStatus.Running), ct);
@@ -118,6 +126,7 @@ public sealed class MlExperimentService(
         {
             Id = Guid.NewGuid(),
             OwnerId = owner,
+            PortfolioId = portfolio?.Id,
             Name = string.IsNullOrWhiteSpace(request.Name)
                 ? $"{Label(request.ModelFamily)} · {TargetLabel(request.Target)} · {request.HorizonDays}d · {universe.Count} stocks"
                 : request.Name.Trim(),
@@ -149,11 +158,15 @@ public sealed class MlExperimentService(
         return await ToDtoAsync(experiment, ct);
     }
 
-    public async Task<PagedResult<MlExperimentSummaryDto>> ListAsync(int page, int pageSize, CancellationToken ct)
+    /// <param name="portfolioId">Only experiments of this portfolio (one of the caller's).</param>
+    /// <param name="unlinked">Only experiments without a portfolio (created before portfolios were recorded).</param>
+    public async Task<PagedResult<MlExperimentSummaryDto>> ListAsync(int page, int pageSize, CancellationToken ct, Guid? portfolioId = null, bool unlinked = false)
     {
         if (page < 1 || pageSize is < 1 or > 100) throw new ValidationException("Invalid paging parameters (page ≥ 1, 1 ≤ pageSize ≤ 100).");
         var owner = currentUser.RequireUserId();
         var q = db.MlExperiments.AsNoTracking().Where(e => e.OwnerId == owner);
+        if (portfolioId is { } pid) q = q.Where(e => e.PortfolioId == pid);
+        if (unlinked) q = q.Where(e => e.PortfolioId == null);
         var total = await q.CountAsync(ct);
         var items = await q.OrderByDescending(e => e.CreatedAtUtc).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
         return new PagedResult<MlExperimentSummaryDto>(items.Select(Summary).ToList(), page, pageSize, total);
@@ -232,6 +245,26 @@ public sealed class MlExperimentService(
         await artifacts.DeleteExperimentAsync(id, ct);
     }
 
+    /// <summary>
+    /// Links an experiment to one of the caller's portfolios (or unlinks it). Experiments created before portfolios were
+    /// recorded are assigned this way – never by guessing. The experiment's currency must be the portfolio's base currency,
+    /// because its strategy was trained on returns in that currency.
+    /// </summary>
+    public async Task<MlExperimentDto> AssignPortfolioAsync(Guid id, Guid? portfolioId, CancellationToken ct)
+    {
+        var experiment = await LoadAsync(id, ct, tracking: true);
+        if (portfolioId is { } pid)
+        {
+            var portfolio = await portfolios.LoadAsync(pid, ct);
+            if (portfolio.BaseCurrency != experiment.Currency)
+                throw new ValidationException("portfolioId",
+                    $"The experiment was computed in {experiment.Currency}; the portfolio's currency is {portfolio.BaseCurrency}. Run a new experiment from that portfolio instead.");
+        }
+        experiment.PortfolioId = portfolioId;
+        await db.SaveChangesAsync(ct);
+        return await ToDtoAsync(experiment, ct);
+    }
+
     /// <summary>Loads an experiment of the current user (other users' experiments are reported as not found).</summary>
     public async Task<MlExperiment> LoadAsync(Guid id, CancellationToken ct, bool tracking = false)
     {
@@ -306,7 +339,7 @@ public sealed class MlExperimentService(
             Enum.Parse<ModelFamily>(e.ModelFamily), Enum.Parse<PredictionTarget>(e.Target), e.HorizonDays, e.Symbols.Count,
             e.CreatedAtUtc, e.CompletedAtUtc, e.UsesSimulatedData, e.IsExploratory,
             r?.TestMetrics.Ranking.MeanInformationCoefficient, r?.TestMetrics.Regression?.OutOfSampleR2, r?.TestMetrics.Classification?.RocAuc,
-            backtestReturn, e.Error);
+            backtestReturn, e.Error, e.PortfolioId, e.Currency);
     }
 
     private static MlModelVersionDto ToDto(MlModelVersion v) => new(v.Id, v.Version, v.Role, v.ModelFamily, v.TrainedFrom, v.TrainedThrough, v.TrainingSamples,

@@ -26,7 +26,10 @@ Toolchain once per shell: `export PATH="$HOME/.dotnet:/opt/homebrew/opt/node@22/
    `npm test` · `npm run build` · `npm run lint` (0 errors). Add a Vitest test for new logic in `lib/` or shared components.
    After `npm ci`, restore the `node_modules` → `node_modules.nosync` symlink (docs/testing.md).
 7. **Running stack:** `podman compose up --build -d` (or only `api` / `web`), then `curl -s localhost:5080/health/ready` → Healthy.
-8. **End-to-end** (user-visible flows: auth, prices, selection, optimization, learn, admin): `./scripts/e2e.sh`
+   A schema change is applied by the `migrate` service on `up`. Builds fail with "no space left on device" when the Mac
+   is full: check `df -h /`, then `podman machine ssh sudo fstrim -av` (frees the VM's unused blocks, deletes nothing);
+   never prune volumes.
+8. **End-to-end** (user-visible flows: auth, prices, selection, Mathematical/ML Optimization, backtest, comparison, learn, admin): `./scripts/e2e.sh`
    from the repo root – builds a disposable `po-e2e` stack (Mock data, own DB and ports), runs Playwright, removes it.
    **Never** point Playwright at the development stack: it creates accounts (the setup step refuses non-E2E targets).
 9. **Visual change?** Screenshot the page (Playwright or Chrome tools) and check labels, legends (once), overflow, dark mode.

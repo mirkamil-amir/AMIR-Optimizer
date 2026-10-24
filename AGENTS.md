@@ -32,7 +32,7 @@ Read this file before changing code; details are in `docs/` (linked below).
 | `src/PortfolioOptimizer.Infrastructure` | EF Core/Npgsql, Identity, providers, jobs, seeding | `Persistence/AppDbContext.cs`, `MarketData/*Provider.cs`, `News/NewsProviders.cs`, `Jobs/BackgroundJobWorker.cs`, `Persistence/UniverseSeeder.cs`, `Seed/universes/*.csv` |
 | `frontend/portfolio-dashboard/src` | React app | `main.tsx` (routes), `pages/*`, `components/*`, `pages/portfolios.tsx` (overview), `pages/portfolio-workspace.tsx`, `lib/` (navigation (top bar + sidebar model), portfolio-context (URL-scoped portfolio), api, auth, selection, queries, types, interpretation, strategy-guide, glossary, quote-status, news) |
 | `tests/*` | unit, ML, integration (real PostgreSQL) | `IntegrationTests/ApiFactory.cs` |
-| `frontend/.../e2e` | Playwright | `admin.setup.ts` (environment guard), `journeys.spec.ts`, `research.spec.ts` (watchlist, news), `research-agent.spec.ts` (AI research journey), `multi-currency.spec.ts` (EUR portfolio with four markets), `navigation.spec.ts` (top bar, sidebar, admin area, viewports), `portfolios.spec.ts` (two portfolios, two users) |
+| `frontend/.../e2e` | Playwright | `admin.setup.ts` (environment guard), `journeys.spec.ts`, `research.spec.ts` (watchlist, news), `research-agent.spec.ts` (AI research journey), `multi-currency.spec.ts` (EUR portfolio with four markets), `navigation.spec.ts` (top bar, sidebar, admin area, viewports), `portfolios.spec.ts` (two portfolios, two users), `missing-data.spec.ts` (download dialog), `optimizations.spec.ts` (backtest window, comparison of two runs) |
 | `tools/` | `universe-builder` (constituent CSVs), `PortfolioOptimizer.DataMigration` (SQLite import) | |
 
 ## Run and test
@@ -52,6 +52,10 @@ Secrets live in `.env` (gitignored) – load with `set -a; . ./.env; set +a`; ne
   guards for security.
 * **Ownership:** `Portfolio`, `OptimizationRun`, `BacktestRun`, `MlExperiment`, `StrategyComparison`, `WatchlistEntry` are filtered by
   `OwnerId` in every query; another user's id → 404. Add a cross-user test for every new owned entity.
+* **Optimizations of a portfolio:** "Math Optimization" = an `OptimizationRun`, "ML Optimization" = an
+  `MlExperiment` with `PortfolioId`. Backtests of an optimization and comparisons resolve both through
+  `PortfolioStrategyService` (owner + same portfolio, else 404) and freeze a `StrategySnapshotDto`. Never link an
+  experiment to a portfolio by guessing; only the owner links it (same currency).
 * **Temporary vs persisted:** the stock selection is browser memory only (`lib/selection.tsx`) – never persist it.
   Runs store their own inputs. Quotes/prices/catalogue are shared.
 * **Portfolios (fundamental):** a user has many independent private portfolios – see [portfolios.md](docs/portfolios.md).

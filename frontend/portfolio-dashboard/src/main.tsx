@@ -33,7 +33,8 @@ const WatchlistPage = lazy(() => import('@/pages/watchlist').then((m) => ({ defa
 const NewsPage = lazy(() => import('@/pages/news').then((m) => ({ default: m.NewsPage })))
 const RealityCheckPage = lazy(() => import('@/pages/reality-check').then((m) => ({ default: m.RealityCheckPage })))
 const HistoryPage = lazy(() => import('@/pages/history').then((m) => ({ default: m.HistoryPage })))
-const MachineLearningPage = lazy(() => import('@/pages/machine-learning').then((m) => ({ default: m.MachineLearningPage })))
+const MlOptimizePage = lazy(() => import('@/pages/machine-learning').then((m) => ({ default: m.MlOptimizePage })))
+const ExperimentRedirect = lazy(() => import('@/pages/portfolio-workspace').then((m) => ({ default: m.ExperimentRedirect })))
 const StrategyComparisonPage = lazy(() => import('@/pages/strategy-comparison').then((m) => ({ default: m.StrategyComparisonPage })))
 const AdminUsersPage = lazy(() => import('@/pages/admin').then((m) => ({ default: m.AdminUsersPage })))
 const AdminSettingsPage = lazy(() => import('@/pages/admin').then((m) => ({ default: m.AdminSettingsPage })))
@@ -76,6 +77,8 @@ const router = createBrowserRouter([
               { index: true, element: <OverviewPage /> },
               { path: 'optimize', element: <OptimizePage /> },
               { path: 'optimize/:runId', element: <OptimizePage /> },
+              { path: 'ml-optimize', element: <MlOptimizePage /> },
+              { path: 'ml-optimize/:experimentId', element: <MlOptimizePage /> },
               { path: 'holdings', element: <HoldingsPage /> },
               { path: 'transactions', element: <TradesPage /> },
               { path: 'performance', element: <AnalyticsPage /> },
@@ -93,8 +96,10 @@ const router = createBrowserRouter([
           { path: '/optimize/:runId', element: <RunRedirect /> },
           { path: '/history', element: <HistoryPage /> },
           { path: '/reality-check/:runId', element: <RealityCheckPage /> },
-          { path: '/machine-learning', element: <MachineLearningPage /> },
-          { path: '/machine-learning/:experimentId', element: <MachineLearningPage /> },
+          // ML Optimization belongs to a portfolio like Math Optimization; earlier URLs open it inside the right portfolio.
+          { path: '/ml-optimize', element: <ToCurrentPortfolio section="ml-optimize" /> },
+          { path: '/machine-learning', element: <ToCurrentPortfolio section="ml-optimize" /> },
+          { path: '/machine-learning/:experimentId', element: <ExperimentRedirect /> },
           { path: '/strategy-comparison', element: <StrategyComparisonPage /> },
           { path: '/strategy-comparison/:comparisonId', element: <StrategyComparisonPage /> },
           { path: '/trades', element: <ToCurrentPortfolio section="transactions" /> },

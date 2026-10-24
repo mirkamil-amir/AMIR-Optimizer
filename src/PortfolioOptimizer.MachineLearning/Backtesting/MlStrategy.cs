@@ -1,4 +1,5 @@
 using PortfolioOptimizer.MachineLearning.Data;
+using PortfolioOptimizer.MachineLearning.Features;
 using PortfolioOptimizer.MachineLearning.Labels;
 using PortfolioOptimizer.MachineLearning.Models;
 using PortfolioOptimizer.MachineLearning.Strategy;
@@ -122,13 +123,16 @@ public sealed class MlStrategy
 /// <summary>Equal weights across every stock with complete features on the signal date (the simple baseline).</summary>
 public static class EqualWeightRule
 {
-    public static Func<SignalContext, PortfolioDecision> Create(Dataset dataset, double cashReserve)
+    public static Func<SignalContext, PortfolioDecision> Create(Dataset dataset, double cashReserve) => Create(dataset.Panel, dataset.Features, cashReserve);
+
+    /// <summary>Stocks are eligible once <paramref name="features"/> can be computed for them (same rule with or without an ML strategy).</summary>
+    public static Func<SignalContext, PortfolioDecision> Create(MarketPanel panel, FeatureEngine features, double cashReserve)
     {
-        var index = dataset.Panel.Symbols.Select((s, i) => (s, i)).ToDictionary(x => x.s, x => x.i);
+        var index = panel.Symbols.Select((s, i) => (s, i)).ToDictionary(x => x.s, x => x.i);
         return ctx =>
         {
-            var t = dataset.Panel.IndexOnOrBefore(ctx.Date);
-            var eligible = ctx.Symbols.Where(s => index.TryGetValue(s, out var a) && t >= 0 && dataset.Features.Compute(a, t) is not null).ToList();
+            var t = panel.IndexOnOrBefore(ctx.Date);
+            var eligible = ctx.Symbols.Where(s => index.TryGetValue(s, out var a) && t >= 0 && features.Compute(a, t) is not null).ToList();
             if (eligible.Count == 0) return PortfolioDecision.Hold(eligible, "No eligible stock.");
             var w = (1 - cashReserve) / eligible.Count;
             return new PortfolioDecision(ctx.Symbols.Select(s => eligible.Contains(s) ? w : 0).ToArray(), eligible, true, "Equal weight.");

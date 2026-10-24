@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { admin, approve, register, requireAdminCredentials, signIn, signOut, strongPassword, uniqueEmail } from './helpers'
+import { admin, approve, register, requireAdminCredentials, signIn, signOut, strongPassword, uniqueEmail, acceptDownloadIfAsked } from './helpers'
 
 // Several independent portfolios per user: Portfolio Creation, the overview, a workspace per portfolio, recorded
 // transactions, isolation between portfolios and between users, deep links and narrow layouts.
@@ -73,6 +73,7 @@ test('two independent portfolios: create, optimize, record, switch, reload, isol
   await page.getByRole('combobox', { name: 'Optimization method' }).click()
   await page.getByRole('option', { name: 'Minimum variance' }).click()
   await page.getByRole('button', { name: 'Run optimization' }).click()
+  await acceptDownloadIfAsked(page)
   await expect(page.getByText('What your result means')).toBeVisible({ timeout: 30_000 })
   await expect(page).toHaveURL(new RegExp(`/portfolios/${a}/optimize/[0-9a-f-]{36}$`))
   const runUrl = page.url()
@@ -125,7 +126,7 @@ test('two independent portfolios: create, optimize, record, switch, reload, isol
   await sections(page).getByRole('link', { name: 'Holdings' }).click()
   await expect(page.getByRole('row', { name: /AAPL/ })).toHaveCount(0)
   expect(await held(b)).toEqual([])
-  await sections(page).getByRole('link', { name: 'Optimize' }).click()
+  await sections(page).getByRole('link', { name: 'Math Optimization' }).click()
   await expect(page.getByText('No optimization yet')).toBeVisible()
 
   // Back to A: its run and history are still there; the optimization history can be filtered to it.
@@ -184,7 +185,7 @@ test('overview and workspace fit narrow screens', async ({ page }) => {
     }
     // Every section of the workspace is reachable (the tab bar scrolls when narrow).
     await page.goto(`/portfolios/${id}`)
-    for (const name of ['Overview', 'Optimize', 'Holdings', 'Transactions', 'Performance', 'Optimization runs']) {
+    for (const name of ['Overview', 'Math Optimization', 'ML Optimization', 'Holdings', 'Transactions', 'Performance', 'Optimization runs']) {
       const link = sections(page).getByRole('link', { name })
       await link.scrollIntoViewIfNeeded()
       await expect(link).toBeInViewport()

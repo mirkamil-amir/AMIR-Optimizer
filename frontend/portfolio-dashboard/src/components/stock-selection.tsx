@@ -132,15 +132,18 @@ export function SelectionTray({ className }: { className?: string }) {
             <Trash2 /> Clear all
           </Button>
           {portfolio && (
-            // Names the target, so the selection is never applied to a portfolio by accident.
-            <Button size="sm" variant="outline" render={<Link to={`/portfolios/${portfolio.id}/optimize?from=selection`} />}
-              title={`Use this selection as the universe in the optimizer of “${portfolio.name}”`}>
-              <Sigma /> Optimize in “{portfolio.name}”
-            </Button>
+            // Both name the target, so the selection is never applied to a portfolio by accident.
+            <>
+              <Button size="sm" variant="outline" render={<Link to={`/portfolios/${portfolio.id}/optimize?from=selection`} />}
+                title={`Use this selection as the universe in the Math Optimization of “${portfolio.name}”`}>
+                <Sigma /> Math Optimization in “{portfolio.name}”
+              </Button>
+              <Button size="sm" variant="outline" render={<Link to={`/portfolios/${portfolio.id}/ml-optimize?from=selection`} />}
+                title={`Use this selection as the universe in the ML Optimization of “${portfolio.name}”`}>
+                <BrainCircuit /> ML Optimization in “{portfolio.name}”
+              </Button>
+            </>
           )}
-          <Button size="sm" render={<Link to="/machine-learning?from=selection" />}>
-            <BrainCircuit /> ML analysis
-          </Button>
         </div>
       </div>
       {selection.currencies.some((c) => c !== analysisCurrency) && (

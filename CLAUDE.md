@@ -5,7 +5,14 @@
 ## Claude-specific
 
 - Skills: `/run-app` (start + verify the stack), `/ship-change` (checklist after any change), `/ml-experiment`
-  (run and honestly report ML experiments through the API).
+  (run ML Optimizations through the API, backtest/compare them within a portfolio, report honestly).
+- UI names: "Math Optimization" (`/portfolios/:id/optimize`, an `OptimizationRun`) and "ML Optimization"
+  (`/portfolios/:id/ml-optimize`, an `MlExperiment` linked to that portfolio) – two tabs of a portfolio with one shared
+  layout (results in `ResultSection`s, never tabs; "What your result means" last). Keep both pages alike when changing
+  one. Backtest and Strategy comparison work on any optimization of one portfolio. Use these names in UI text, docs and tests.
+- Disk: the Podman VM disk file (`~/.local/share/containers/podman/machine`) grows with every image build and never
+  shrinks by itself; when the Mac runs out of space, `podman machine ssh sudo fstrim -av` returns the VM's free blocks
+  (2026-10-24: 47 → 20 GB) without deleting anything. Never prune volumes (the development database lives in one).
 - Integration tests in Rider/IDEs: Testcontainers reads `~/.testcontainers.properties` (Podman socket,
   `ryuk.disabled=true`) – set up on this machine; without it every integration test fails.
 - Browser checks: Playwright from `frontend/portfolio-dashboard` against http://localhost:5173 (dev) or 8081
@@ -13,4 +20,4 @@
   accounts or runs must use `./scripts/e2e.sh`, never the development stack.
 - The development database contains the user's data. Before any destructive SQL: dry run, backup
   (`pg_dump` into `../PortfolioOptimizer-backups/`), transaction, and report what was deleted.
-- Commit only when asked; nothing is committed on `main` yet.
+- Commit only when asked, on a feature branch; `main` receives the user's merged pull requests.

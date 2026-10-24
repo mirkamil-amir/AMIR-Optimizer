@@ -93,10 +93,26 @@ public sealed class BacktestsController(BacktestService backtests) : ControllerB
         return AcceptedAtAction(nameof(Get), new { id = b.Id }, b);
     }
 
-    /// <summary>Backtests, newest first.</summary>
+    /// <summary>
+    /// Queues a backtest of a stored optimization of the portfolio – a mathematical run or an ML experiment
+    /// (GET /api/v1/portfolios/{id}/strategies) – re-simulated walk-forward with its frozen settings.
+    /// </summary>
+    /// <response code="202">Queued.</response>
+    [HttpPost("from-strategy")]
+    [EnableRateLimiting("expensive")]
+    [ProducesResponseType<BacktestDto>(StatusCodes.Status202Accepted)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<BacktestDto>> CreateFromStrategy(CreateStrategyBacktestRequest request, CancellationToken ct)
+    {
+        var b = await backtests.CreateFromStrategyAsync(request, ct);
+        return AcceptedAtAction(nameof(Get), new { id = b.Id }, b);
+    }
+
+    /// <summary>Backtests, newest first (optionally of one portfolio).</summary>
     [HttpGet]
-    public Task<PagedResult<BacktestSummaryDto>> List(CancellationToken ct, [FromQuery] int page = 1, [FromQuery] int pageSize = 20) =>
-        backtests.ListAsync(page, pageSize, ct);
+    public Task<PagedResult<BacktestSummaryDto>> List(CancellationToken ct, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] Guid? portfolioId = null) =>
+        backtests.ListAsync(page, pageSize, ct, portfolioId);
 
     /// <summary>Backtest configuration, status and results.</summary>
     [HttpGet("{id:guid}")]

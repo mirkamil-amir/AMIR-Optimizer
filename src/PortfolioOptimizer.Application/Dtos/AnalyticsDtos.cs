@@ -83,6 +83,13 @@ public sealed record CreateBacktestRequest : IValidatableObject
     [Range(1, 500)] public int? MaxHoldings { get; init; }
     [Range(-1, 5)] public double? TargetReturn { get; init; }
     [Range(0.001, 5)] public double? MaxVolatility { get; init; }
+    /// <summary>Portfolio the backtest belongs to (optional for custom backtests; one of the caller's).</summary>
+    public Guid? PortfolioId { get; init; }
+    /// <summary>
+    /// Set by the server for a backtest of a stored optimization (<c>POST /backtests/from-strategy</c>): the frozen strategy.
+    /// Ignored when sent to <c>POST /backtests</c>.
+    /// </summary>
+    public StrategySnapshotDto? Strategy { get; init; }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
@@ -95,6 +102,29 @@ public sealed record CreateBacktestRequest : IValidatableObject
     }
 }
 
+/// <summary>
+/// Backtest of a stored optimization of a portfolio (mathematical run or ML experiment) over a chosen period: the strategy
+/// is re-simulated walk-forward with its frozen settings – mean-variance re-optimization or ML retraining at each rebalance.
+/// </summary>
+public sealed record CreateStrategyBacktestRequest : IValidatableObject
+{
+    [StringLength(100)] public string? Name { get; init; }
+    [Required] public Guid PortfolioId { get; init; }
+    [Required] public StrategyRef Strategy { get; init; } = new();
+    [Required] public DateOnly StartDate { get; init; }
+    [Required] public DateOnly EndDate { get; init; }
+    [Range(100, 1_000_000_000)] public double InitialCapital { get; init; } = 100_000;
+    public RebalanceKind RebalanceFrequency { get; init; } = RebalanceKind.Monthly;
+    [Range(0, 500)] public double TransactionCostBps { get; init; } = 10;
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (EndDate <= StartDate.AddMonths(3)) yield return new ValidationResult("The period must be longer than three months.", [nameof(EndDate)]);
+        if (Strategy.Kind == OptimizationKind.MachineLearning && RebalanceFrequency == RebalanceKind.None)
+            yield return new ValidationResult("An ML strategy rebalances Monthly or Quarterly.", [nameof(RebalanceFrequency)]);
+    }
+}
+
 public sealed record BacktestSummaryDto(
     Guid Id,
     string Name,
@@ -103,7 +133,10 @@ public sealed record BacktestSummaryDto(
     DateTime? CompletedAtUtc,
     string PriceSource,
     bool UsesSimulatedData,
-    string? Error);
+    string? Error,
+    Guid? PortfolioId = null,
+    OptimizationKind? StrategyKind = null,
+    string? StrategyLabel = null);
 
 public sealed record BacktestSeriesMetricsDto(
     string Name,

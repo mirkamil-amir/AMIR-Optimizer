@@ -186,14 +186,14 @@ export function interpretComparison(c: StrategyComparison): Insight[] {
     text: `All strategies were simulated on the same ${r.dates.length} trading days, the same ${r.universe.length} stocks, the same costs and rebalancing dates – differences come from the strategies, not the setup.`,
   })
   const by = (kind: string) => r.strategies.find((s) => s.kind === kind)
-  const math = by('Mathematical')
-  const ml = by('MachineLearning')
+  // The two compared optimizations (any kinds: mathematical and/or ML), in the order A, B.
+  const compared = r.strategies.filter((s) => s.kind === 'Mathematical' || s.kind === 'MachineLearning')
   const equal = by('EqualWeight')
   const bench = by('Benchmark')
   if (r.rankingBySharpe?.length)
     out.push({ kind: 'fact', text: `Ranked by Sharpe ratio over this period: ${r.rankingBySharpe.join(' › ')}.` })
-  if (math && equal) out.push(...comparePerformance(math.performance, equal.performance, 'the mathematical optimization', 'equal weight'))
-  if (ml && equal) out.push(...comparePerformance(ml.performance, equal.performance, 'the ML strategy', 'equal weight'))
+  if (compared.length === 2) out.push(...comparePerformance(compared[0].performance, compared[1].performance, compared[0].name, compared[1].name))
+  if (equal) for (const s of compared) out.push(...comparePerformance(s.performance, equal.performance, s.name, 'equal weight'))
   if (bench) {
     const beat = r.strategies.filter((s) => s.kind !== 'Benchmark' && s.performance.totalReturn > bench.performance.totalReturn).map((s) => s.name)
     out.push({ kind: 'fact', text: beat.length ? `Beat the benchmark's total return (${pct(bench.performance.totalReturn, 1)}): ${beat.join(', ')}.` : `No strategy beat the benchmark's total return of ${pct(bench.performance.totalReturn, 1)}.` })

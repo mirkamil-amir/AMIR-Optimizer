@@ -11,11 +11,12 @@ test('missing prices and rates: the experiment asks, cancel starts nothing, down
     await page.getByRole('checkbox', { name: `Select ${symbol}` }).check()
   }
   // Client-side navigation keeps the in-memory selection.
-  await page.getByRole('navigation', { name: 'Optimizer sections' }).first().getByRole('link', { name: 'Machine learning', exact: true }).click()
-  await expect(page.getByRole('heading', { name: 'Machine-learning research' })).toBeVisible()
+  await page.getByRole('navigation', { name: 'Optimizer sections' }).first().getByRole('link', { name: 'ML Optimization', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'ML Optimization', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: /^Use stock selection/ }).click()  // like Math Optimization: the portfolio's universe unless replaced
   await page.getByLabel('History (years)').fill('15')                      // older than anything stored
 
-  const start = page.getByRole('button', { name: 'Start experiment' })
+  const start = page.getByRole('button', { name: 'Run ML optimization' })
   await start.click()
   const dialog = page.getByRole('dialog', { name: 'Data missing for this analysis' })
   await expect(dialog).toBeVisible()
@@ -25,10 +26,10 @@ test('missing prices and rates: the experiment asks, cancel starts nothing, down
 
   await dialog.getByRole('button', { name: 'Cancel' }).click()
   await expect(dialog).toBeHidden()
-  await expect(page).toHaveURL(/\/machine-learning$/)                       // nothing was started
+  await expect(page).toHaveURL(/\/portfolios\/[0-9a-f-]{36}\/ml-optimize$/)  // nothing was started
 
   await start.click()
   await expect(dialog).toBeVisible()
   await dialog.getByRole('button', { name: 'Download and continue' }).click()
-  await expect(page).toHaveURL(/\/machine-learning\/[0-9a-f-]{36}$/, { timeout: 180_000 })
+  await expect(page).toHaveURL(/\/portfolios\/[0-9a-f-]{36}\/ml-optimize\/[0-9a-f-]{36}$/, { timeout: 180_000 })
 })

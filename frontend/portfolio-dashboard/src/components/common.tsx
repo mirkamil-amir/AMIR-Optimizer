@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react'
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, Database, FlaskConical, Info, Inbox, RefreshCw } from 'lucide-react'
+import { useId, useState, type ReactNode } from 'react'
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, ChevronDown, Database, FlaskConical, Info, Inbox, RefreshCw } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -141,8 +141,20 @@ export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () =>
   )
 }
 
-export function Warnings({ items, title = 'Data notes' }: { items: string[] | undefined; title?: string }) {
+/**
+ * Data and methodology notes. `collapsible`: closed by default (title and count); opening it shows every note, untruncated.
+ */
+export function Warnings({ items, title = 'Data notes', collapsible = false }: { items: string[] | undefined; title?: string; collapsible?: boolean }) {
   if (!items || items.length === 0) return null
+  if (collapsible) {
+    return (
+      <Collapsible title={title} icon={<AlertTriangle className="size-4 text-warn" />} summary={`${items.length} ${items.length === 1 ? 'note' : 'notes'}`} className="ring-warn/40">
+        <ul className="list-disc space-y-0.5 pl-5 text-muted-foreground">
+          {items.map((w) => <li key={w}>{w}</li>)}
+        </ul>
+      </Collapsible>
+    )
+  }
   return (
     <Alert className="border-warn/40">
       <AlertTriangle className="text-warn" />
@@ -161,6 +173,62 @@ export function Warnings({ items, title = 'Data notes' }: { items: string[] | un
 
 export function LoadingBlock({ height = 'h-64' }: { height?: string }) {
   return <Skeleton className={cn('w-full rounded-xl', height)} />
+}
+
+/**
+ * A card whose content is folded away until its title is clicked (closed by default). The title row stays visible with
+ * an optional summary and actions; the toggle is a button with `aria-expanded`, so it works with keyboard and screen readers.
+ */
+export function Collapsible({ title, summary, icon, hint, actions, defaultOpen = false, className, children }: {
+  title: ReactNode; summary?: ReactNode; icon?: ReactNode; hint?: ReactNode; actions?: ReactNode; defaultOpen?: boolean; className?: string; children: ReactNode
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+  const id = useId()
+  return (
+    <div className={cn('rounded-xl bg-card text-sm ring-1 ring-foreground/10', className)}>
+      <div className="flex items-center gap-2 px-4 py-3">
+        <button type="button" aria-expanded={open} aria-controls={id} onClick={() => setOpen((o) => !o)}
+          className="flex min-w-0 flex-1 items-center gap-2 text-left font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
+          <ChevronDown className={cn('size-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')} aria-hidden />
+          {icon}
+          <span className="truncate">{title}</span>
+          {summary && <span className="shrink-0 text-xs font-normal text-muted-foreground">({summary})</span>}
+        </button>
+        {hint && <InfoTip>{hint}</InfoTip>}
+        {actions}
+      </div>
+      {open && <div id={id} className="px-4 pb-4">{children}</div>}
+    </div>
+  )
+}
+
+/**
+ * One result section of an optimization page (Math and ML Optimization use the same layout): a heading and its cards,
+ * visible at once – results are never hidden behind tabs. `collapsible`: reference material (inputs, methodology) folded
+ * until its heading is clicked.
+ */
+export function ResultSection({ title, hint, collapsible = false, children }: { title: string; hint?: ReactNode; collapsible?: boolean; children: ReactNode }) {
+  const [open, setOpen] = useState(false)
+  const id = useId()
+  if (collapsible) {
+    return (
+      <section className="space-y-3" aria-label={title}>
+        <h3 className="flex items-center gap-1.5 border-b pb-1 text-base font-semibold">
+          <button type="button" aria-expanded={open} aria-controls={id} onClick={() => setOpen((o) => !o)} className="flex items-center gap-1.5 text-left">
+            <ChevronDown className={cn('size-4 text-muted-foreground transition-transform', open && 'rotate-180')} aria-hidden />{title}
+          </button>
+          {hint && <InfoTip>{hint}</InfoTip>}
+        </h3>
+        {open && <div id={id} className="space-y-3">{children}</div>}
+      </section>
+    )
+  }
+  return (
+    <section className="space-y-3" aria-label={title}>
+      <h3 className="flex items-center gap-1.5 border-b pb-1 text-base font-semibold">{title}{hint && <InfoTip>{hint}</InfoTip>}</h3>
+      {children}
+    </section>
+  )
 }
 
 export function SectionTitle({ children, hint, right }: { children: ReactNode; hint?: ReactNode; right?: ReactNode }) {

@@ -577,6 +577,48 @@ export interface BacktestRequest {
   maxVolatility: number | null
   /** Analysis currency; stocks in other currencies are converted with dated FX rates. */
   currency?: string | null
+  portfolioId?: string | null
+  /** Set by the server for a backtest of a stored optimization. */
+  strategy?: StrategySnapshot | null
+}
+
+/** Mathematical = a mean-variance optimization run; MachineLearning = an ML experiment. */
+export type OptimizationKind = 'Mathematical' | 'MachineLearning'
+export interface StrategyRef { kind: OptimizationKind; id: string }
+/** A successful optimization of a portfolio that can be backtested or compared. */
+export interface PortfolioStrategy {
+  kind: OptimizationKind; id: string; label: string; detail: string; createdAtUtc: string; stocks: number; currency: string; usesSimulatedData: boolean
+  universe: string[]; benchmarkSymbol: string
+  /** Calendar days of prices a simulation needs before its start (lookback or ML training history). */
+  historyDaysBeforeStart: number
+}
+/** Frozen settings of an optimization, copied when a backtest or comparison is submitted. */
+export interface StrategySnapshot {
+  kind: OptimizationKind
+  sourceId: string
+  label: string
+  sourceCreatedAtUtc: string
+  currency: string
+  universe: string[]
+  benchmarkSymbol: string
+  mathSettings?: PortfolioSettings | null
+  mathObjective?: string | null
+  mlConfiguration?: MlExperimentRequest | null
+  mlHyperparameters?: Record<string, number> | null
+  mlFeatures?: string[] | null
+  mlValidationEnd?: string | null
+  mlTestStart?: string | null
+  mlFeatureSetVersion?: string | null
+}
+export interface StrategyBacktestRequest {
+  name?: string | null
+  portfolioId: string
+  strategy: StrategyRef
+  startDate: string
+  endDate: string
+  initialCapital: number
+  rebalanceFrequency: RebalanceKind
+  transactionCostBps: number
 }
 
 export interface BacktestSeriesMetrics {
@@ -624,6 +666,9 @@ export interface BacktestSummary {
   priceSource: string
   usesSimulatedData: boolean
   error: string | null
+  portfolioId?: string | null
+  strategyKind?: OptimizationKind | null
+  strategyLabel?: string | null
 }
 
 export interface Backtest extends BacktestSummary {
@@ -824,6 +869,8 @@ export interface MlExperimentRequest {
   benchmarkSymbol: string
   /** Analysis currency; stocks in other currencies are converted with dated FX rates. */
   currency?: string | null
+  /** Portfolio the experiment belongs to; its base currency is used. */
+  portfolioId?: string | null
   modelFamily: ModelFamily
   target: PredictionTarget
   horizonDays: number
@@ -883,6 +930,9 @@ export interface MlExperimentSummary {
   testRocAuc: number | null
   backtestAnnualizedReturn: number | null
   error: string | null
+  /** Portfolio the experiment belongs to (null: created before portfolios were recorded, until assigned). */
+  portfolioId?: string | null
+  currency?: string
 }
 
 export interface RegressionMetrics { count: number; mae: number; rmse: number; outOfSampleR2: number | null; pooledRankCorrelation: number | null; directionalAccuracy: number | null }
@@ -995,8 +1045,9 @@ export type ComparisonUniverse = 'Intersection' | 'Union'
 
 export interface StrategyComparisonRequest {
   name?: string | null
-  optimizationRunId: string
-  mlExperimentId: string
+  portfolioId: string
+  strategyA: StrategyRef
+  strategyB: StrategyRef
   startDate?: string | null
   endDate?: string | null
   initialCapital: number
@@ -1040,22 +1091,15 @@ export interface ComparisonResult {
 export interface StrategyComparisonSummary {
   id: string; name: string; status: JobStatus; progressPercent: number; progressMessage: string | null; createdAtUtc: string; completedAtUtc: string | null
   evaluationStart: string; evaluationEnd: string; optimizationRunId: string | null; mlExperimentId: string | null; usesSimulatedData: boolean
-  isFair: boolean | null; error: string | null
+  isFair: boolean | null; error: string | null; portfolioId?: string | null; strategyLabels?: string[] | null
 }
 
 export interface StrategyComparison {
   summary: StrategyComparisonSummary
   configuration: {
     request: StrategyComparisonRequest
-    optimizationSettings: PortfolioSettings
-    optimizationObjective: string
-    optimizationRunCreatedAtUtc: string
-    mlConfiguration: MlExperimentRequest
-    mlHyperparameters: Record<string, number>
-    mlFeatures: string[]
-    mlValidationEnd: string | null
-    mlTestStart: string | null
-    mlFeatureSetVersion: string
+    /** The two compared optimizations (also filled for comparisons stored before 2026-10-24). */
+    strategies: StrategySnapshot[]
   }
   benchmarkSymbol: string
   priceSource: string

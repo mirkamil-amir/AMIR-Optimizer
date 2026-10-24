@@ -27,6 +27,12 @@ public sealed record CreateMlExperimentRequest : IValidatableObject
     [Required, StringLength(15)] public string BenchmarkSymbol { get; init; } = "SPY";
     /// <summary>Analysis currency (ISO 4217); stocks in other currencies are converted with dated FX rates. Default: the selection's own currency, or the application default when it mixes currencies.</summary>
     [RegularExpression("^[A-Z]{3}$")] public string? Currency { get; init; }
+    /// <summary>
+    /// Portfolio the experiment belongs to (one of the caller's; another user's → 404). Its base currency becomes the
+    /// analysis currency, and the experiment's strategy can then be backtested and compared with the portfolio's other
+    /// optimizations.
+    /// </summary>
+    public Guid? PortfolioId { get; init; }
 
     // ---- model
     public ModelFamily ModelFamily { get; init; } = ModelFamily.RidgeRegression;
@@ -98,7 +104,12 @@ public sealed record MlExperimentSummaryDto(
     double? TestOutOfSampleR2,
     double? TestRocAuc,
     double? BacktestAnnualizedReturn,
-    string? Error);
+    string? Error,
+    Guid? PortfolioId = null,
+    string Currency = "USD");
+
+/// <summary>Links an experiment to one of the caller's portfolios (null unlinks). The currencies must match.</summary>
+public sealed record AssignMlExperimentPortfolioRequest(Guid? PortfolioId);
 
 public sealed record MlModelVersionDto(
     Guid Id,
