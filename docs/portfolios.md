@@ -138,9 +138,11 @@ Cross-user tests: `MultiPortfolioTests.AnotherUser_CannotReadOrChangeAnyPartOfAP
 |---|---|
 | `/` | **My portfolios** (overview): cards with value, cash, invested, holdings, P/L, last optimization, last activity; totals; archived list (restore, delete) |
 | `/stocks` | **Portfolio Creation**: details (name, description, currency, starting cash, advanced cap) → choose stocks → review → Create |
-| `/portfolios/:id` | workspace: header (name, currency, value, cash, holdings, valuation date, warnings, switcher, Record transaction, rename, archive, research) and tabs Overview · Math Optimization · ML Optimization · Holdings · Transactions · Performance · Optimization runs |
-| `/portfolios/:id/optimize[/:runId]`, `/ml-optimize[/:experimentId]`, `/holdings`, `/transactions`, `/performance` | sections of that portfolio (Math and ML Optimization share one layout; an experiment of another portfolio redirects to it) |
-| `/optimize`, `/optimize/:runId`, `/ml-optimize`, `/machine-learning[/:experimentId]`, `/holdings`, `/trades`, `/analytics` | sidebar links and old URLs: redirect into the most recently opened portfolio, or into the run's / experiment's own portfolio |
+| `/portfolios/:id` | workspace: header (name, currency, value, cash, holdings, valuation date, warnings, switcher, Record transaction, rename, archive, research) and tabs Overview · Math Optimization · ML Optimization · Holdings · Transactions · Optimization runs · Backtest · Strategy comparison; the Overview shows key figures, portfolio vs benchmark (date range) and allocation, the efficient frontier of the latest successful Math Optimization right below, then recorded performance (time-weighted metrics, value and cash, drawdown, monthly returns), ex-ante risk (VaR, CVaR, beta, tracking error, information ratio, risk contribution, correlation) and historical weights – each chart once |
+| `/portfolios/:id/optimize[/:runId]`, `/ml-optimize[/:experimentId]`, `/holdings`, `/transactions` | sections of that portfolio (Math and ML Optimization share one layout; an experiment of another portfolio redirects to it) |
+| `/portfolios/:id/runs`, `/backtest[/:backtestId]`, `/comparison[/:comparisonId]` | that portfolio's Math and ML Optimizations, backtests and comparisons only (`?portfolioId=` on the list endpoints); new backtests and comparisons belong to it, the portfolio cannot be changed there. `/history`, `/backtest`, `/strategy-comparison` still list everything of the user across portfolios |
+| `/portfolios/:id/performance`, `/analytics` | earlier URLs: open the portfolio's Overview |
+| `/optimize`, `/optimize/:runId`, `/ml-optimize`, `/machine-learning[/:experimentId]`, `/holdings`, `/trades` | sidebar links and old URLs: redirect into the most recently opened portfolio, or into the run's / experiment's own portfolio |
 
 Unknown, deleted or foreign portfolio ids show "Portfolio not found" without revealing which case applies.
 

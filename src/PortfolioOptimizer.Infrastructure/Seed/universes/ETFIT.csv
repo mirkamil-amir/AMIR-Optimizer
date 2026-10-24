@@ -1,0 +1,3 @@
+symbol,name,country,exchange,mic,currency,sector,industry,isin,wiki,type
+ETFMIB.MI,Amundi FTSE MIB UCITS ETF Dist,IT,Borsa Italiana,XMIL,EUR,,Exchange-traded index fund (FTSE MIB),,,Etf
+IMIB.MI,iShares FTSE MIB UCITS ETF EUR (Dist),IT,Borsa Italiana,XMIL,EUR,,Exchange-traded index fund (FTSE MIB),,,Etf

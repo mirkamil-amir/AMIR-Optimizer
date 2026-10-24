@@ -1,6 +1,6 @@
 # AGENTS.md – instructions for coding agents
 
-AMIR Optimizer: an educational portfolio-research platform. Students browse stocks from five markets, optimize
+AMIR Optimizer: an educational portfolio-research platform. Students browse stocks and index ETFs from fifteen markets, optimize
 portfolios (mean-variance), train ML ranking models, compare strategies fairly and paper-trade. .NET 10 API +
 PostgreSQL + React/Vite. **No real orders, not investment advice, never claim profitability or real-time prices.**
 Read this file before changing code; details are in `docs/` (linked below).
@@ -30,10 +30,10 @@ Read this file before changing code; details are in `docs/` (linked below).
 | `src/PortfolioOptimizer.Optimization` | pure math: QP solver, mean-variance, `PortfolioSimulator`, diversification diagnostics | `Portfolio/MeanVarianceOptimizer.cs`, `Portfolio/DiversificationMath.cs`, `Backtesting/*` |
 | `src/PortfolioOptimizer.MachineLearning` | pure ML (no I/O, no optimizer use) | `Training/ExperimentEngine.cs`, `Features/FeatureCatalog.cs` |
 | `src/PortfolioOptimizer.Infrastructure` | EF Core/Npgsql, Identity, providers, jobs, seeding | `Persistence/AppDbContext.cs`, `MarketData/*Provider.cs`, `News/NewsProviders.cs`, `Jobs/BackgroundJobWorker.cs`, `Persistence/UniverseSeeder.cs`, `Seed/universes/*.csv` |
-| `frontend/portfolio-dashboard/src` | React app | `main.tsx` (routes), `pages/*`, `components/*`, `pages/portfolios.tsx` (overview), `pages/portfolio-workspace.tsx`, `lib/` (navigation (top bar + sidebar model), portfolio-context (URL-scoped portfolio), api, auth, selection, queries, types, interpretation, strategy-guide, glossary, quote-status, news) |
+| `frontend/portfolio-dashboard/src` | React app | `main.tsx` (routes), `pages/*`, `components/*`, `pages/portfolios.tsx` (overview), `pages/portfolio-workspace.tsx`, `lib/` (navigation (top bar + sidebar model), portfolio-context (URL-scoped portfolio), markets (venues, exchange cities, region frames), world-map (background map state), map-camera (framing + camera math), api, auth, selection, queries, types, interpretation, strategy-guide, glossary, quote-status, news) |
 | `tests/*` | unit, ML, integration (real PostgreSQL) | `IntegrationTests/ApiFactory.cs` |
-| `frontend/.../e2e` | Playwright | `admin.setup.ts` (environment guard), `journeys.spec.ts`, `research.spec.ts` (watchlist, news), `research-agent.spec.ts` (AI research journey), `multi-currency.spec.ts` (EUR portfolio with four markets), `navigation.spec.ts` (top bar, sidebar, admin area, viewports), `portfolios.spec.ts` (two portfolios, two users), `missing-data.spec.ts` (download dialog), `optimizations.spec.ts` (backtest window, comparison of two runs) |
-| `tools/` | `universe-builder` (constituent CSVs), `PortfolioOptimizer.DataMigration` (SQLite import) | |
+| `frontend/.../e2e` | Playwright | `admin.setup.ts` (environment guard), `journeys.spec.ts`, `research.spec.ts` (watchlist, news), `research-agent.spec.ts` (AI research journey), `multi-currency.spec.ts` (EUR portfolio with four markets), `navigation.spec.ts` (top bar, sidebar, admin area, viewports), `portfolios.spec.ts` (two portfolios, two users), `missing-data.spec.ts` (download dialog), `optimizations.spec.ts` (backtest window, comparison of two runs, portfolio tabs, Overview layout, world map) |
+| `tools/` | `universe-builder` (constituent CSVs, curated index-ETF lists), `world-map` (country outlines of the background map), `PortfolioOptimizer.DataMigration` (SQLite import) | |
 
 ## Run and test
 
@@ -102,9 +102,12 @@ Secrets live in `.env` (gitignored) – load with `set -a; . ./.env; set +a`; ne
 ## How to …
 
 * **Add a market or index:** add the venue to `Markets.Venues` (suffix, MIC, currency, time zone, Alpha Vantage
-  suffix or null) with `SymbolMapper` tests; add a parser + sector mapping in `tools/universe-builder/build_universes.py`,
-  run it, validate symbols, commit the CSV (it is re-imported automatically on start). Benchmarks:
-  `UniverseSeeder.Benchmarks`. Docs: [market-data.md](docs/market-data.md).
+  suffix or null) and its session to `Markets.Session`, with `SymbolMapper` tests; mirror it in `frontend/…/lib/markets.ts`
+  (exchange city for the background map) and `BriefRules`/`lib/research.ts`; add a parser + sector mapping in
+  `tools/universe-builder/build_universes.py`, run it, validate every symbol and its currency against the price provider
+  (listings in another currency → `CURRENCY_OVERRIDES`), commit the CSV (re-imported automatically on start). Benchmarks:
+  `UniverseSeeder.Benchmarks` + `Markets.IndexVenues`. The currency must have an ECB rate (`EcbFxProvider.Currencies`).
+  Docs: [market-data.md](docs/market-data.md).
 * **Update constituents:** admin upload, `Universes__Directory`, or re-run the builder (see market-data.md).
 * **Add a data provider:** implement `IMarketDataProvider` (incl. `Supports`, `QuoteBatchSize`, `RemainingDailyRequests`,
   batch quotes, currency normalization), register it in `Infrastructure/DependencyInjection.cs`, unit-test parsing

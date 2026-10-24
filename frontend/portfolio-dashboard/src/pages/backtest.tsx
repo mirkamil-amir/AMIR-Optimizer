@@ -18,7 +18,7 @@ import { ChartCard, TimeSeriesChart, WeightsOverTimeChart, seriesColor, timeSeri
 import { DataTable } from '@/components/data-table'
 import { Collapsible, DataBadge, EmptyState, ErrorState, LoadingBlock, MetricValue, PageHeader, Warnings } from '@/components/common'
 import { errorMessage } from '@/lib/api'
-import { usePortfolioContext } from '@/lib/portfolio-context'
+import { portfolioPath, usePortfolioContext } from '@/lib/portfolio-context'
 import { useAssets, useBacktest, useBacktests, useCreateBacktest, useCreateStrategyBacktest, usePortfolio, usePortfolioStrategies } from '@/lib/queries'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { NoStrategies, PortfolioPicker, StrategySelect } from '@/components/strategy-picker'
@@ -52,15 +52,27 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>
 const asNum = { setValueAs: (v: unknown) => (v === '' || v === null || v === undefined ? undefined : Number(v)) }
 
+/** Where backtests open: inside a portfolio's workspace (`/portfolios/:id/backtest`) or on the page of all backtests. */
+function backtestBase(portfolioId: string | undefined) {
+  return portfolioId ? portfolioPath(portfolioId, 'backtest') : '/backtest'
+}
+
+/**
+ * Backtests. Inside a portfolio (`/portfolios/:portfolioId/backtest`) only that portfolio's backtests are listed and new ones
+ * belong to it; `/backtest` lists all of the user's backtests and lets the user choose the portfolio.
+ */
 export function BacktestPage() {
-  const { backtestId } = useParams()
-  const list = useBacktests()
+  const { backtestId, portfolioId: scoped } = useParams()
+  const list = useBacktests(scoped)
   const activeId = backtestId ?? list.data?.items[0]?.id
   const bt = useBacktest(activeId)
+  const base = backtestBase(scoped)
 
   return (
     <>
-      <PageHeader title="Backtesting" description="Walk-forward historical simulation of any optimization – Math or ML – or of a custom strategy, with periodic rebalancing, transaction costs and benchmark comparison." />
+      {scoped
+        ? <PageHeader level={2} title="Backtest" description="Walk-forward historical simulation of this portfolio's Math and ML Optimizations – or of a custom strategy – with periodic rebalancing, transaction costs and benchmark comparison." />
+        : <PageHeader title="Backtesting" description="Walk-forward historical simulation of any optimization – Math or ML – or of a custom strategy, with periodic rebalancing, transaction costs and benchmark comparison." />}
       <Alert className="mb-6">
         <AlertTriangle className="text-warn" />
         <AlertTitle>Hypothetical results</AlertTitle>
@@ -68,14 +80,14 @@ export function BacktestPage() {
       </Alert>
       <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
         <div className="space-y-4">
-          <StrategyBacktestCard />
-          <BacktestForm />
+          <StrategyBacktestCard portfolioId={scoped} />
+          <BacktestForm portfolioId={scoped} />
           {list.data && list.data.items.length > 0 && (
             <Card>
               <CardHeader><CardTitle className="text-sm">Previous backtests</CardTitle></CardHeader>
               <CardContent className="max-h-72 space-y-1 overflow-y-auto">
                 {list.data.items.map((b) => (
-                  <Link key={b.id} to={`/backtest/${b.id}`} className={`block rounded-md px-2.5 py-1.5 text-sm hover:bg-muted ${b.id === activeId ? 'bg-muted' : ''}`}>
+                  <Link key={b.id} to={`${base}/${b.id}`} className={`block rounded-md px-2.5 py-1.5 text-sm hover:bg-muted ${b.id === activeId ? 'bg-muted' : ''}`}>
                     <div className="flex items-center justify-between gap-2"><span className="truncate font-medium">{b.name}</span><StatusBadge status={b.status} /></div>
                     {b.strategyKind && <div className="text-[11px] text-muted-foreground">{b.strategyKind === 'MachineLearning' ? 'ML Optimization' : 'Math Optimization'}</div>}
                     <div className="text-xs text-muted-foreground">{dateTime(b.createdAtUtc)}</div>
@@ -87,7 +99,7 @@ export function BacktestPage() {
         </div>
         <div className="min-w-0">
           {bt.isLoading || list.isLoading ? <LoadingBlock height="h-96" /> : bt.error ? <ErrorState error={bt.error} /> : bt.data ? <BacktestResults bt={bt.data} /> : (
-            <EmptyState title="No backtests yet" description="Configure a strategy on the left and run it." />
+            <EmptyState title="No backtests yet" description={scoped ? 'Backtest one of this portfolio’s optimizations or a custom strategy on the left.' : 'Configure a strategy on the left and run it.'} />
           )}
         </div>
       </div>
@@ -98,7 +110,7 @@ export function BacktestPage() {
 const isoDate = (d: Date) => d.toISOString().slice(0, 10)
 
 /** Opens the window that chooses which optimization of which portfolio is backtested. */
-function StrategyBacktestCard() {
+function StrategyBacktestCard({ portfolioId }: { portfolioId?: string }) {
   const [open, setOpen] = useState(false)
   return (
     <Card>
@@ -110,15 +122,16 @@ function StrategyBacktestCard() {
       </CardHeader>
       <CardContent>
         <Button className="w-full" variant="outline" onClick={() => setOpen(true)}><Sigma /> <BrainCircuit /> Choose optimization…</Button>
-        {open && <StrategyBacktestDialog onClose={() => setOpen(false)} />}
+        {open && <StrategyBacktestDialog fixedPortfolioId={portfolioId} onClose={() => setOpen(false)} />}
       </CardContent>
     </Card>
   )
 }
 
-function StrategyBacktestDialog({ onClose }: { onClose: () => void }) {
+/** `fixedPortfolioId`: opened inside a portfolio – its optimizations only, no portfolio choice. */
+function StrategyBacktestDialog({ fixedPortfolioId, onClose }: { fixedPortfolioId?: string; onClose: () => void }) {
   const { portfolioId: defaultPortfolio, portfolios } = usePortfolioContext()
-  const [portfolioId, setPortfolioId] = useState<string | undefined>(defaultPortfolio)
+  const [portfolioId, setPortfolioId] = useState<string | undefined>(fixedPortfolioId ?? defaultPortfolio)
   const strategies = usePortfolioStrategies(portfolioId)
   const create = useCreateStrategyBacktest()
   const missingData = useMissingDataGuard()
@@ -141,7 +154,7 @@ function StrategyBacktestDialog({ onClose }: { onClose: () => void }) {
         const b = await create.mutateAsync({ portfolioId, strategy: ref, startDate: start, endDate: end, initialCapital: capital, transactionCostBps: costs, rebalanceFrequency: rebalance })
         toast.success('Backtest queued', { description: 'It runs in the background; results appear automatically.' })
         onClose()
-        navigate(`/backtest/${b.id}`)
+        navigate(`${backtestBase(fixedPortfolioId)}/${b.id}`)
       } catch (e) {
         toast.error('Could not start backtest', { description: errorMessage(e) })
       }
@@ -159,7 +172,9 @@ function StrategyBacktestDialog({ onClose }: { onClose: () => void }) {
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
-          <PortfolioPicker value={portfolioId} onChange={(id) => { setPortfolioId(id); setKey(null) }} id="bt-portfolio" />
+          {fixedPortfolioId
+            ? <p className="text-xs text-muted-foreground">Portfolio: <span className="font-medium text-foreground">{portfolio?.name}</span> ({portfolio?.baseCurrency})</p>
+            : <PortfolioPicker value={portfolioId} onChange={(id) => { setPortfolioId(id); setKey(null) }} id="bt-portfolio" />}
           {portfolioId && (strategies.error ? <ErrorState error={strategies.error} /> : !strategies.data ? <LoadingBlock height="h-16" /> : list.length === 0
             ? <NoStrategies portfolioId={portfolioId} />
             : <StrategySelect strategies={list} value={key} onChange={setKey} label="Optimization" />)}
@@ -194,9 +209,11 @@ function StatusBadge({ status }: { status: string }) {
   return <Badge variant={status === 'Failed' ? 'destructive' : status === 'Succeeded' ? 'secondary' : 'outline'} className="text-[10px]">{status}</Badge>
 }
 
-function BacktestForm() {
+/** Custom strategy. Inside a portfolio the backtest belongs to it; elsewhere it uses the current portfolio's settings as defaults only. */
+function BacktestForm({ portfolioId: scoped }: { portfolioId?: string }) {
   const assets = useAssets()
-  const { portfolioId } = usePortfolioContext()
+  const { portfolioId: current } = usePortfolioContext()
+  const portfolioId = scoped ?? current
   const portfolio = usePortfolio(portfolioId)
   const create = useCreateBacktest()
   const navigate = useNavigate()
@@ -228,10 +245,11 @@ function BacktestForm() {
         rebalanceFrequency: v.rebalanceFrequency, objective: v.objective, covarianceMethod: 'LedoitWolf', lookbackDays: v.lookbackDays,
         transactionCostBps: v.transactionCostBps, riskFreeRate: v.riskFreeRate / 100, benchmarkSymbol: v.benchmarkSymbol || null,
         minWeight: 0, maxWeight: v.maxWeight / 100, cashReserve: 0, maxHoldings: null, currency: portfolio.data?.baseCurrency ?? null,
+        portfolioId: scoped ?? null,
         targetReturn: v.targetReturn !== undefined ? v.targetReturn / 100 : null, maxVolatility: v.maxVolatility !== undefined ? v.maxVolatility / 100 : null,
       })
       toast.success('Backtest queued', { description: 'It runs in the background; results appear automatically.' })
-      navigate(`/backtest/${b.id}`)
+      navigate(`${backtestBase(scoped)}/${b.id}`)
     } catch (e) {
       toast.error('Could not start backtest', { description: errorMessage(e) })
     }

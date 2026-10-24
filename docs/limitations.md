@@ -19,10 +19,18 @@
 - Yahoo Finance is an unofficial endpoint (personal, non-commercial use; may break or throttle without notice).
   Stooq is blocked by a bot challenge and not supported. Alpha Vantage was verified with the configured free key
   (US, Xetra, Paris, London quotes; 2026-10-14).
-- The universes (S&P 500, DAX 40, DAX 30 historical, CAC 40, FTSE 100, Nikkei 225) are snapshots of Wikipedia
+- The universes (S&P 500, DAX 40, DAX 30 historical, CAC 40, FTSE 100, Nikkei 225, SMI, IBEX 35, FTSE MIB, OMX
+  Stockholm 30, OMX Copenhagen 25, S&P/TSX 60, S&P/ASX 50, Hang Seng, NIFTY 50, Straits Times) are snapshots of Wikipedia
   constituent tables (CC BY-SA). There are **no point-in-time constituents** (the DAX 30 list is one fixed historical
-  composition), so every backtest, ML evaluation and comparison is subject to **survivorship bias**. ISINs are not
-  provided by the sources. Cross-market sectors are an approximate mapping onto GICS-style groups.
+  composition), so every backtest, ML evaluation and comparison is subject to **survivorship bias**. ISINs are provided
+  only for the FTSE MIB. Cross-market sectors are an approximate mapping onto GICS-style groups; for the Straits Times
+  Index and the Hang Seng "Commerce & Industry" members the sector is a maintainer assignment (the sources list none).
+- The index-ETF lists of the ten newer markets are curated (1–2 funds per market, checked 2026-10-24), not a complete
+  ETF catalogue. Wikipedia tables can lag index reviews (e.g. the ASX 50 table had 49 rows and listed a fund, removed).
+- The background map shows where a security is listed (exchange), not its headquarters or revenue footprint. Hong Kong
+  and Singapore have no country outline at the map's 1:110m scale (marker only). Frames are fixed regions per market.
+- Trading sessions of the newer markets are the regular continuous sessions without lunch breaks (Hong Kong, Singapore)
+  or holiday calendars; they only label quote times.
 - Alpha Vantage (configured free key): 25 requests/day, no Tokyo, no index levels – Yahoo remains the default.
 - No FX conversion: each analysis uses stocks of one currency; paper portfolios need the stocks' currency.
 - Quotes for all ~920 catalogue instruments are refreshed at sign-in; daily *history* is downloaded on demand (and

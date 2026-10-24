@@ -8,6 +8,9 @@ export const objectiveNames: Record<string, string> = {
 
 export const marketNames: Record<string, string> = {
   US: 'United States (S&P 500)', DE: 'Germany (DAX 40)', FR: 'France (CAC 40)', GB: 'United Kingdom (FTSE 100)', JP: 'Japan (Nikkei 225)',
+  CH: 'Switzerland (SMI)', ES: 'Spain (IBEX 35)', IT: 'Italy (FTSE MIB)', SE: 'Sweden (OMX Stockholm 30)', DK: 'Denmark (OMX Copenhagen 25)',
+  CA: 'Canada (S&P/TSX 60)', AU: 'Australia (S&P/ASX 50)', HK: 'Hong Kong (Hang Seng Index)', IN: 'India (NIFTY 50)',
+  SG: 'Singapore (Straits Times Index)',
 }
 
 export const sectors = [

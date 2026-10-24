@@ -331,3 +331,76 @@
 
 /* Primary navigation scrolls horizontally on narrow screens; a thin scrollbar shows that more items follow. */
 .nav-scroll { scrollbar-width: thin; }
+
+/* ------------------------------------------------------------------ background world map (components/world-map.tsx)
+   A calm, cool-toned map: ice-blue ocean with a faint lavender drift, blue-grey land with hairline borders. Markets of the
+   page are teal with a dark blue-grey outline; the focused market has a heavier outline and a double-ring marker (not colour alone). Exchange cities are
+   small markers; a selected stock's city ripples once, an opened stock's city blinks. The camera is a CSS transform
+   transition on .world-map-camera (no endless animation; reduced motion → no camera animation). */
+:root {
+  --map-ocean-from: oklch(0.955 0.022 220);
+  --map-ocean-to: oklch(0.935 0.026 265);
+  --map-land: oklch(0.885 0.028 232);
+  --map-border: oklch(0.42 0.045 250 / 0.32);
+  --map-lit: oklch(0.82 0.068 195);
+  --map-lit-border: oklch(0.36 0.06 245);
+  --map-focus: oklch(0.72 0.1 200);
+  --map-marker: oklch(0.5 0.045 250);
+  --map-highlight: oklch(0.52 0.11 205);
+  --map-label: oklch(0.3 0.045 250);
+  --map-label-halo: oklch(0.96 0.02 220);
+}
+.dark {
+  --map-ocean-from: oklch(0.2 0.03 250);
+  --map-ocean-to: oklch(0.18 0.035 275);
+  --map-land: oklch(0.275 0.03 245);
+  --map-border: oklch(0.62 0.04 230 / 0.28);
+  --map-lit: oklch(0.42 0.065 200);
+  --map-lit-border: oklch(0.78 0.07 200);
+  --map-focus: oklch(0.52 0.09 200);
+  --map-marker: oklch(0.65 0.04 235);
+  --map-highlight: oklch(0.8 0.1 200);
+  --map-label: oklch(0.9 0.03 220);
+  --map-label-halo: oklch(0.2 0.03 250);
+}
+.world-map { background: linear-gradient(160deg, var(--map-ocean-from), var(--map-ocean-to)); }
+.world-map-camera {
+  transition-property: transform; transition-timing-function: cubic-bezier(0.33, 0, 0.2, 1); --map-k: 1;
+}
+.world-map-country {
+  fill: var(--map-land); stroke: var(--map-border); stroke-width: calc(0.12px / var(--map-k)); stroke-linejoin: round;
+  transition: fill 400ms ease;
+}
+.world-map-country-lit { fill: var(--map-lit); stroke: var(--map-lit-border); stroke-width: calc(0.22px / var(--map-k)); }
+.world-map-country-focus { fill: var(--map-focus); stroke-width: calc(0.45px / var(--map-k)); }
+
+.world-map-city { transition-property: transform; transition-timing-function: cubic-bezier(0.33, 0, 0.2, 1); }
+.world-map-marker, .world-map-pulse-ring, .world-map-blink-ring {
+  position: absolute; left: 0; top: 0; border-radius: 9999px; translate: -50% -50%;
+}
+.world-map-marker { width: 5px; height: 5px; background: var(--map-marker); transition: width 300ms ease, height 300ms ease, background 300ms ease; }
+.world-map-city:not([data-state="idle"]) .world-map-marker {
+  width: 8px; height: 8px; background: var(--map-highlight); box-shadow: 0 0 0 2px var(--map-label-halo);
+}
+/* Focused market: a second ring – distinguishable without colour. */
+.world-map-city[data-state="focus"] .world-map-marker { box-shadow: 0 0 0 2px var(--map-label-halo), 0 0 0 3.5px var(--map-highlight); }
+.world-map-label {
+  position: absolute; white-space: nowrap; font-size: 11px; font-weight: 600; line-height: 1; color: var(--map-label);
+  text-shadow: 0 0 3px var(--map-label-halo), 0 0 3px var(--map-label-halo), 0 0 2px var(--map-label-halo);
+}
+.world-map-label-right { left: 8px; top: 0; translate: 0 -50%; }
+.world-map-label-left { right: 8px; top: 0; translate: 0 -50%; }
+.world-map-label-above { left: 0; bottom: 8px; translate: -50% 0; }
+.world-map-label-below { left: 0; top: 8px; translate: -50% 0; }
+.world-map-city[data-state="focus"] .world-map-label { font-weight: 700; }
+.world-map-pulse-ring, .world-map-blink-ring { width: 8px; height: 8px; border: 1.5px solid var(--map-highlight); opacity: 0; }
+@media (prefers-reduced-motion: no-preference) {
+  .world-map-pulse-ring { animation: world-map-ripple 1.4s ease-out 1; }
+  .world-map-blink-ring { animation: world-map-ripple 0.8s ease-out 3; }
+  .world-map-city[data-state="blink"] .world-map-marker { animation: world-map-blink 0.4s steps(2, jump-none) 6; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .world-map-camera, .world-map-city { transition-duration: 0s !important; }
+}
+@keyframes world-map-ripple { from { opacity: 1; scale: 1; } to { opacity: 0; scale: 5; } }
+@keyframes world-map-blink { from { opacity: 1; } to { opacity: 0.15; } }

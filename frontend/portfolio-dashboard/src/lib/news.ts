@@ -1,3 +1,4 @@
+import { countryNames } from './markets'
 import type { NewsArticle, NewsCategory, NewsScope } from './types'
 
 export const categoryLabels: Record<NewsCategory, string> = {
@@ -19,9 +20,7 @@ export const scopeLabels: Record<NewsScope, string> = {
   Macro: 'Macroeconomic',
 }
 
-export const regionLabels: Record<string, string> = {
-  US: 'United States', EU: 'Euro area', DE: 'Germany', FR: 'France', NL: 'Netherlands', GB: 'United Kingdom', JP: 'Japan',
-}
+export const regionLabels: Record<string, string> = { ...countryNames, EU: 'Euro area' }
 
 /** "3 h ago" for recent items, else the local date; never claims a time the provider did not supply. */
 export function publishedLabel(iso: string, now: Date = new Date()): string {

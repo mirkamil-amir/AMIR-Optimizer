@@ -1,0 +1,3 @@
+symbol,name,country,exchange,mic,currency,sector,industry,isin,wiki,type
+CHSPI.SW,iShares Core SPI ETF (CH),CH,SIX Swiss Exchange,XSWX,CHF,,Exchange-traded index fund (Swiss Performance Index),,,Etf
+CSSMI.SW,iShares SMI ETF (CH),CH,SIX Swiss Exchange,XSWX,CHF,,Exchange-traded index fund (SMI),,,Etf

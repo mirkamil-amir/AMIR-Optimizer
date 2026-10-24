@@ -42,14 +42,15 @@ export const optimizerSections: NavSection[] = [
       { to: '/optimize', label: 'Math Optimization', icon: Sigma, match: ['/portfolios/*/optimize'] },
       // Like Math Optimization: the ML Optimization of the current portfolio (earlier /machine-learning URLs redirect).
       { to: '/ml-optimize', label: 'ML Optimization', icon: BrainCircuit, match: ['/portfolios/*/ml-optimize', '/machine-learning'] },
-      { to: '/history', label: 'Optimization history', icon: ListChecks, match: ['/reality-check'] },
+      { to: '/history', label: 'Optimization history', icon: ListChecks, match: ['/reality-check', '/portfolios/*/runs'] },
     ],
   },
   {
     title: 'Test & compare',
     items: [
-      { to: '/backtest', label: 'Backtest', icon: Gauge },
-      { to: '/strategy-comparison', label: 'Strategy comparison', icon: GitCompareArrows },
+      // All of the user's backtests and comparisons; a portfolio's own tabs (/portfolios/:id/backtest, …/comparison) belong here too.
+      { to: '/backtest', label: 'Backtest', icon: Gauge, match: ['/portfolios/*/backtest'] },
+      { to: '/strategy-comparison', label: 'Strategy comparison', icon: GitCompareArrows, match: ['/portfolios/*/comparison'] },
     ],
   },
 ]

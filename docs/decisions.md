@@ -2,6 +2,36 @@
 
 Short records of decisions that are not obvious from the code. Newest first. Format: context → decision → consequences.
 
+## D-38 Background map: coloured countries and a camera that frames the selected markets (2026-10-24)
+**Context:** the dotted map of D-37 looked washed out in the light theme and always showed the whole world, so selecting
+stocks changed little. **Decision:** keep the hand-built SVG map (no map library, no tiles, no new dependency) but draw
+Natural Earth 1:110m country outlines with a cool palette per theme (map tokens in `index.css`). Markets come from the
+canonical symbol (the server's `Markets.ForSymbol` convention, mirrored in `lib/markets.ts` and cached); unknown suffixes are
+recorded, never guessed. The map shows the *listing exchange*, not the headquarters or revenue footprint (the catalogue does
+not record those). The camera frames a fixed region per market (Europe for any European listing, the contiguous US, Japan,
+…), the union for several markets, and the world for none; zoom 1–5, 10 % padding. It is one CSS transform with a native
+transition (450–1400 ms by distance), applied imperatively after a 220 ms pause that combines rapid selections; a newer
+target retargets a running move; reduced motion → no animation. Exchange markers are HTML elements moved with the same
+transition, so they keep their size. Manual choices ("World view", one market) in the header control last until the
+selection changes. **Consequences:** a 105 KB (37 KB compressed) lazily loaded geometry chunk; Hong Kong and Singapore are
+too small for 1:110m and are shown by their exchange marker only; the map has one copy of the world (all supported
+exchanges lie between −125° and 155°, so no frame crosses the antimeridian).
+
+## D-37 Ten more markets; one Overview per portfolio; portfolio-scoped runs, backtests and comparisons; background map (2026-10-24)
+**Context:** students asked for stocks and ETFs beyond the five markets; the portfolio workspace split its charts between
+Overview and Performance (two cumulative-return charts and two allocation donuts), and "Optimization runs" left the
+workspace for the global history. **Decision:** ten venues (CH, ES, IT, SE, DK, CA, AU, HK, IN, SG) chosen because
+Wikipedia has a constituent table with tickers and the ECB publishes their currencies, so `FxService` converts them like
+the earlier ones; one index benchmark each; small curated index-ETF universes per new market (checked against the price
+provider, `type` column) instead of an unbounded ETF catalogue. Sectors where the source has none are assigned in the
+builder and documented as approximate. Performance is merged into the Overview (each chart once, efficient frontier
+directly under portfolio vs benchmark); Optimization runs, Backtest and Strategy comparison become tabs under
+`/portfolios/:id/…` using the existing `portfolioId` list filters; inside a portfolio a custom backtest belongs to the
+URL's portfolio (explicit, never the remembered one). A dotted world map (Natural Earth, public domain) is a decorative
+background; it lights markets of the page and is hidden from assistive technology. **Consequences:** ~460 more
+instruments (prices downloaded on demand as before); `/portfolios/:id/performance` and `/analytics` open the Overview;
+the map is a 45 KB lazily loaded chunk.
+
 ## D-36 Optimizations belong to a portfolio; backtest and compare any of them (2026-10-24)
 **Context:** the sidebar called the two optimization kinds "Optimize" and "Machine learning" in different groups;
 backtests covered only hand-entered mean-variance settings, and a comparison was always one optimization run against one

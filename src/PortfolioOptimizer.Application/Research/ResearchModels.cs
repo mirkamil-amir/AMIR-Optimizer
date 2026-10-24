@@ -19,7 +19,7 @@ public sealed record ResearchBrief
     public string Question { get; init; } = "";
     /// <summary>build-portfolio (the implemented end-to-end path).</summary>
     public string Path { get; init; } = "build-portfolio";
-    /// <summary>ISO country of the market (US, DE, FR, GB, JP) or null when unknown.</summary>
+    /// <summary>ISO country of the market (a key of BriefRules.DefaultIndex) or null when unknown.</summary>
     public string? Market { get; init; }
     /// <summary>Index code (SP500, DAX40, CAC40, FTSE100, NIKKEI225).</summary>
     public string? Index { get; init; }

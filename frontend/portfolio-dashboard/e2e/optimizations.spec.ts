@@ -111,4 +111,37 @@ test('optimizations of one portfolio: Math and ML pages alike, backtest any opti
   expect(insightsBox!.y).toBeGreaterThan(notesBox!.y)
   await expect(page.getByText('Monthly returns', { exact: true })).toBeVisible()
   if (process.env.SCREENSHOT_DIR) await page.screenshot({ path: `${process.env.SCREENSHOT_DIR}/comparison-result.png`, fullPage: true })
+
+  // The portfolio's own tabs: its backtests, comparisons and runs, without leaving the portfolio.
+  const tabs = page.getByRole('navigation', { name: 'Portfolio sections' })
+  await page.goto(`/portfolios/${portfolioId}`)
+  await tabs.getByRole('link', { name: 'Backtest' }).click()
+  await expect(page).toHaveURL(new RegExp(`/portfolios/${portfolioId}/backtest$`))
+  await expect(page.getByRole('link', { name: /Math: Minimum Variance/ })).toBeVisible()
+  await page.getByRole('link', { name: /Math: Minimum Variance/ }).click()
+  await expect(page).toHaveURL(new RegExp(`/portfolios/${portfolioId}/backtest/[0-9a-f-]{36}$`))
+  await tabs.getByRole('link', { name: 'Strategy comparison' }).click()
+  await expect(page).toHaveURL(new RegExp(`/portfolios/${portfolioId}/comparison$`))
+  await expect(page.getByText(/^A: Minimum Variance/).first()).toBeVisible({ timeout: 60_000 })
+  await expect(page.getByRole('combobox', { name: 'Portfolio', exact: true })).toHaveCount(0)   // the portfolio is fixed here
+  await tabs.getByRole('link', { name: 'Optimization runs' }).click()
+  await expect(page).toHaveURL(new RegExp(`/portfolios/${portfolioId}/runs$`))
+  await expect(page.getByRole('table', { name: 'Math Optimizations of this portfolio' }).getByRole('row')).toHaveCount(3)
+  await expect(page.getByRole('table', { name: 'ML Optimizations of this portfolio' }).getByRole('row')).toHaveCount(2)
+
+  // Overview: the former Performance charts, each once; the efficient frontier right below Portfolio vs benchmark.
+  await tabs.getByRole('link', { name: 'Overview' }).click()
+  await expect(tabs.getByRole('link', { name: 'Performance' })).toHaveCount(0)
+  const vsBenchmark = await page.getByText('Portfolio vs benchmark', { exact: true }).boundingBox()
+  const frontier = page.getByText('Efficient frontier (latest successful Math Optimization)')
+  await expect(frontier).toBeVisible({ timeout: 30_000 })
+  expect((await frontier.boundingBox())!.y).toBeGreaterThan(vsBenchmark!.y)
+  for (const name of ['Recorded performance', 'Risk of the current holdings', 'Allocation over time']) await expect(page.getByRole('region', { name })).toBeVisible()
+  // Background map: this US-only portfolio lights New York only; the portfolio list lights every exchange city.
+  const map = page.getByTestId('world-map')
+  await expect(map.locator('[data-country="US"]')).toHaveAttribute('data-state', 'lit')
+  await expect(map.locator('[data-country="JP"]')).toHaveAttribute('data-state', 'idle')
+  if (process.env.SCREENSHOT_DIR) await page.screenshot({ path: `${process.env.SCREENSHOT_DIR}/overview.png`, fullPage: true })
+  await page.goto('/')
+  await expect(map.locator('[data-state="lit"]')).toHaveCount(16)
 })

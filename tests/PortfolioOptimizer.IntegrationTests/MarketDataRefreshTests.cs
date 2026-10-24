@@ -74,7 +74,7 @@ public sealed class MarketDataRefreshTests : IAsyncLifetime
     public async Task Markets_ListEveryUniverse_WithProvenance()
     {
         var markets = await (await _admin.GetAsync("/api/v1/markets")).ReadAsync<List<MarketDto>>();
-        Assert.Equal(["US", "DE", "FR", "GB", "JP"], markets.Select(m => m.Country));
+        Assert.Equal(["US", "DE", "FR", "GB", "JP", "CH", "ES", "IT", "SE", "DK", "CA", "AU", "HK", "IN", "SG"], markets.Select(m => m.Country));
         var indices = markets.SelectMany(m => m.Indices).ToDictionary(i => i.Code);
         Assert.Equal(40, indices["DAX40"].Members);
         Assert.Equal(30, indices["DAX30"].Members);
@@ -84,8 +84,35 @@ public sealed class MarketDataRefreshTests : IAsyncLifetime
         Assert.Equal("GBP", indices["FTSE100"].Currency);
         Assert.InRange(indices["NIKKEI225"].Members, 220, 225);
         Assert.InRange(indices["SP500"].Members, 495, 510);
-        Assert.All(indices.Values, i => Assert.Contains("wikipedia.org", i.SourceUrl));
-        Assert.All(indices.Values, i => Assert.Equal("CC BY-SA 4.0", i.Licence));
+        var constituentLists = indices.Values.Where(i => !i.Code.StartsWith("ETF")).ToList();
+        Assert.Equal(16, constituentLists.Count);
+        Assert.All(constituentLists, i => Assert.Contains("wikipedia.org", i.SourceUrl));
+        Assert.All(constituentLists, i => Assert.Equal("CC BY-SA 4.0", i.Licence));
+        Assert.Equal(48, indices["ASX50"].Members);
+        Assert.Equal("CHF", indices["SMI"].Currency);
+        Assert.Equal("^HSI", indices["HSI"].BenchmarkSymbol);
+        // The index-ETF lists of the newer markets say they are curated, not Wikipedia data.
+        var etfLists = indices.Values.Where(i => i.Code.StartsWith("ETF")).ToList();
+        Assert.Equal(10, etfLists.Count);
+        Assert.All(etfLists, i => Assert.StartsWith("Curated list", i.Source));
+        Assert.All(etfLists, i => Assert.InRange(i.Members, 1, 3));
+    }
+
+    [Fact]
+    public async Task NewMarkets_KeepTheirTradingCurrencies_AndEtfsAreFunds()
+    {
+        var singapore = await (await _admin.GetAsync("/api/v1/stocks?index=STI&pageSize=100")).ReadAsync<PagedResult<StockListItemDto>>();
+        Assert.Equal(30, singapore.TotalCount);
+        Assert.Equal("USD", singapore.Items.Single(s => s.Symbol == "J36.SI").Currency);
+        Assert.Equal("SGD", singapore.Items.Single(s => s.Symbol == "D05.SI").Currency);
+        var india = await (await _admin.GetAsync("/api/v1/stocks?index=NIFTY50&pageSize=100")).ReadAsync<PagedResult<StockListItemDto>>();
+        Assert.Contains(india.Items, s => s.Symbol == "M&M.NS" && s.Currency == "INR");
+        // A symbol with '&' works in a URL path when encoded.
+        Assert.Equal(HttpStatusCode.OK, (await _admin.GetAsync($"/api/v1/stocks/{Uri.EscapeDataString("M&M.NS")}")).StatusCode);
+
+        var canadianEtfs = await (await _admin.GetAsync("/api/v1/stocks?index=ETFCA&pageSize=10")).ReadAsync<PagedResult<StockListItemDto>>();
+        Assert.Contains(canadianEtfs.Items, s => s.Symbol == "XIU.TO" && s.Currency == "CAD");
+        Assert.All(canadianEtfs.Items, s => Assert.Equal(AssetType.Etf, s.AssetType));
     }
 
     [Fact]

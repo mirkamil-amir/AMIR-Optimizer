@@ -1,0 +1,21 @@
+symbol,name,country,exchange,mic,currency,sector,industry,isin,wiki
+ABBN.SW,ABB Ltd,CH,SIX Swiss Exchange,XSWX,CHF,Industrials,Industrials,,en:Asea Brown Boveri
+ALC.SW,Alcon Inc,CH,SIX Swiss Exchange,XSWX,CHF,Health Care,Health care,,en:Alcon
+AMRZ.SW,Amrize AG,CH,SIX Swiss Exchange,XSWX,CHF,Materials,Materials,,en:Amrize
+CFR.SW,Compagnie Financière Richemont SA,CH,SIX Swiss Exchange,XSWX,CHF,Consumer Discretionary,Retail discretionary,,en:Richemont
+GALD.SW,Galderma,CH,SIX Swiss Exchange,XSWX,CHF,Health Care,Healthcare,,en:Galderma
+GEBN.SW,Geberit AG,CH,SIX Swiss Exchange,XSWX,CHF,Industrials,Industrials,,en:Geberit AG
+GIVN.SW,Givaudan SA,CH,SIX Swiss Exchange,XSWX,CHF,Materials,Materials,,en:Givaudan
+HOLN.SW,Holcim Limited,CH,SIX Swiss Exchange,XSWX,CHF,Materials,Materials,,en:Holcim Group
+LOGN.SW,Logitech International SA,CH,SIX Swiss Exchange,XSWX,CHF,Information Technology,Information technology,,en:Logitech
+LONN.SW,Lonza Group AG,CH,SIX Swiss Exchange,XSWX,CHF,Health Care,Healthcare,,en:Lonza Group
+NESN.SW,Nestlé SA,CH,SIX Swiss Exchange,XSWX,CHF,Consumer Staples,Retail staples,,en:Nestlé SA
+NOVN.SW,Novartis International AG,CH,SIX Swiss Exchange,XSWX,CHF,Health Care,Health care,,en:Novartis
+PGHN.SW,Partners Group Holding AG,CH,SIX Swiss Exchange,XSWX,CHF,Financials,Financials,,en:Partners Group
+ROP.SW,Roche Holding AG,CH,SIX Swiss Exchange,XSWX,CHF,Health Care,Health care,,en:Roche Holding AG
+SDZ.SW,Sandoz,CH,SIX Swiss Exchange,XSWX,CHF,Health Care,Healthcare,,en:Sandoz
+SIKA.SW,Sika AG,CH,SIX Swiss Exchange,XSWX,CHF,Materials,Materials,,en:Sika AG
+SLHN.SW,Swiss Life Holding AG,CH,SIX Swiss Exchange,XSWX,CHF,Financials,Financials,,en:Swiss Life
+SREN.SW,Swiss Reinsurance Company Ltd,CH,SIX Swiss Exchange,XSWX,CHF,Financials,Financials,,en:Swiss Reinsurance Company Ltd
+UBSG.SW,UBS Group AG,CH,SIX Swiss Exchange,XSWX,CHF,Financials,Financials,,en:UBS
+ZURN.SW,Zurich Insurance Group AG,CH,SIX Swiss Exchange,XSWX,CHF,Financials,Financials,,en:Zurich Insurance Group

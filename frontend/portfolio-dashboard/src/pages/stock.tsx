@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { ArrowLeft, ChevronLeft, ChevronRight, Minus, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -12,6 +12,8 @@ import { date, dateTime, money, num } from '@/lib/format'
 import { useStock, useWatchlist } from '@/lib/queries'
 import { useSelection } from '@/lib/selection'
 import type { HistoryRange } from '@/lib/types'
+import { countryOfSymbol } from '@/lib/markets'
+import { useMapSignal } from '@/lib/world-map'
 
 /** Security page: latest price with provenance, price history by range, metadata and company news. */
 export function StockPage() {
@@ -20,6 +22,8 @@ export function StockPage() {
   const selection = useSelection()
   const [range, setRange] = useState<HistoryRange>('1Y')
   const s = detail.data?.stock
+  const signal = useMapSignal()
+  useEffect(() => { if (symbol) signal(countryOfSymbol(symbol), 'blink') }, [symbol, signal])
 
   if (detail.error) return <ErrorState error={detail.error} onRetry={() => detail.refetch()} />
   if (!s || !detail.data) return <LoadingBlock />

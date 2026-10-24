@@ -30,10 +30,11 @@ public sealed record IndexDefinition(
 /// </summary>
 public sealed partial class UniverseService(IApplicationDbContext db, IAuditLog audit, TimeProvider clock, PriceQueryService prices)
 {
-    public static readonly string[] MemberColumns = ["symbol", "name", "country", "exchange", "mic", "currency", "sector", "industry", "isin", "wiki"];
+    /// <summary>Columns of a constituent file; <c>type</c> (Equity, Etf, …) is optional and defaults to Equity.</summary>
+    public static readonly string[] MemberColumns = ["symbol", "name", "country", "exchange", "mic", "currency", "sector", "industry", "isin", "wiki", "type"];
 
     public sealed record MemberRow(string Symbol, string Name, string Country, string? Exchange, string? Mic, string Currency, string? Sector, string? Industry, string? Isin,
-        string? ReferenceArticle = null);
+        string? ReferenceArticle = null, AssetType Type = AssetType.Equity);
 
     public async Task<UniverseImportResultDto> ImportAsync(IndexDefinition index, string membersCsv, CancellationToken ct, bool recordAudit = true)
     {
@@ -71,7 +72,7 @@ public sealed partial class UniverseService(IApplicationDbContext db, IAuditLog 
         {
             if (!assets.TryGetValue(r.Symbol, out var asset))
             {
-                asset = new Asset { Symbol = r.Symbol, IsEnabled = false, CreatedAtUtc = now, Currency = r.Currency, AssetType = AssetType.Equity };
+                asset = new Asset { Symbol = r.Symbol, IsEnabled = false, CreatedAtUtc = now, Currency = r.Currency, AssetType = r.Type };
                 db.Assets.Add(asset);
                 assets[r.Symbol] = asset;
                 inserted++;
@@ -87,8 +88,9 @@ public sealed partial class UniverseService(IApplicationDbContext db, IAuditLog 
 
             var changed = asset.Name != r.Name || asset.Sector != r.Sector || asset.Industry != r.Industry || asset.Country != r.Country ||
                           asset.Exchange != r.Exchange || asset.Mic != r.Mic || (r.Isin is not null && asset.Isin != r.Isin) ||
-                          (r.ReferenceArticle is not null && asset.ReferenceArticle != r.ReferenceArticle);
+                          (r.ReferenceArticle is not null && asset.ReferenceArticle != r.ReferenceArticle) || asset.AssetType != r.Type;
             asset.Name = r.Name;
+            asset.AssetType = r.Type;
             asset.Sector = r.Sector;
             asset.Industry = r.Industry;
             asset.Country = r.Country;
@@ -219,8 +221,13 @@ public sealed partial class UniverseService(IApplicationDbContext db, IAuditLog 
             if (isin is not null && !IsinPattern().IsMatch(isin)) { errors.Add($"Line {number}: {symbol} has an invalid ISIN; ignored."); isin = null; }
             var wiki = Cell("wiki", 300);
             if (wiki is not null && !ReferencePattern().IsMatch(wiki)) { errors.Add($"Line {number}: {symbol} has an invalid wiki reference (expected lang:Title); ignored."); wiki = null; }
+            var type = AssetType.Equity;
+            if (Cell("type", 20) is { } t && (!Enum.TryParse(t, ignoreCase: true, out type) || type == AssetType.Index))
+            {
+                errors.Add($"Line {number}: {symbol} has an unsupported type '{t}'."); continue;
+            }
             rows.Add(new MemberRow(symbol, name, country, Cell("exchange", 50) ?? venue.Exchange, Cell("mic", 4) ?? venue.Mic, currency,
-                Cell("sector", 100), Cell("industry", 150), isin, wiki));
+                Cell("sector", 100), Cell("industry", 150), isin, wiki, type));
         }
         return (rows, errors);
     }
@@ -234,7 +241,8 @@ public sealed partial class UniverseService(IApplicationDbContext db, IAuditLog 
         if (string.IsNullOrWhiteSpace(index.Source)) throw new ValidationException("source", "The membership source is required.");
     }
 
-    [GeneratedRegex(@"^[A-Z0-9.\-^=]{1,20}$")]
+    /// <summary>Canonical symbols; '&amp;' occurs on the NSE (M&amp;M.NS).</summary>
+    [GeneratedRegex(@"^[A-Z0-9.\-^=&]{1,20}$")]
     private static partial Regex SymbolPattern();
 
     [GeneratedRegex("^[A-Z]{3}$")]

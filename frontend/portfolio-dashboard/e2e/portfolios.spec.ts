@@ -129,12 +129,14 @@ test('two independent portfolios: create, optimize, record, switch, reload, isol
   await sections(page).getByRole('link', { name: 'Math Optimization' }).click()
   await expect(page.getByText('No optimization yet')).toBeVisible()
 
-  // Back to A: its run and history are still there; the optimization history can be filtered to it.
+  // Back to A: its run and history are still there; its Optimization runs tab lists only its own runs and stays inside it.
   await page.goto(runUrl)
   await expect(page.getByText('What your result means')).toBeVisible({ timeout: 30_000 })
   await sections(page).getByRole('link', { name: 'Optimization runs' }).click()
-  await expect(page.getByRole('combobox', { name: 'Portfolio filter' })).toContainText('Core A')
-  await expect(page.getByRole('table', { name: 'Optimization runs' }).getByRole('row')).toHaveCount(2)
+  await expect(page).toHaveURL(new RegExp(`/portfolios/${a}/runs$`))
+  await expect(page.getByRole('heading', { level: 1, name: 'Core A' })).toBeVisible()
+  await expect(page.getByRole('combobox', { name: 'Portfolio filter' })).toHaveCount(0)
+  await expect(page.getByRole('table', { name: 'Math Optimizations of this portfolio' }).getByRole('row')).toHaveCount(2)
 
   // A deep link survives a reload; back/forward keep the portfolio.
   await page.goto(`/portfolios/${a}/holdings`)
@@ -185,7 +187,7 @@ test('overview and workspace fit narrow screens', async ({ page }) => {
     }
     // Every section of the workspace is reachable (the tab bar scrolls when narrow).
     await page.goto(`/portfolios/${id}`)
-    for (const name of ['Overview', 'Math Optimization', 'ML Optimization', 'Holdings', 'Transactions', 'Performance', 'Optimization runs']) {
+    for (const name of ['Overview', 'Math Optimization', 'ML Optimization', 'Holdings', 'Transactions', 'Optimization runs', 'Backtest', 'Strategy comparison']) {
       const link = sections(page).getByRole('link', { name })
       await link.scrollIntoViewIfNeeded()
       await expect(link).toBeInViewport()

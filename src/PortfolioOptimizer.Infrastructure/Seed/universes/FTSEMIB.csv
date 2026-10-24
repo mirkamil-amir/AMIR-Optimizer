@@ -1,0 +1,41 @@
+symbol,name,country,exchange,mic,currency,sector,industry,isin,wiki
+A2A.MI,A2A,IT,Borsa Italiana,XMIL,EUR,Utilities,Utilities,IT0001233417,en:A2A
+AMP.MI,Amplifon,IT,Borsa Italiana,XMIL,EUR,Health Care,Health Care,IT0004056880,en:Amplifon
+AVIO.MI,Avio,IT,Borsa Italiana,XMIL,EUR,Industrials,Aerospace,IT0005119810,en:Avio
+AZM.MI,Azimut,IT,Borsa Italiana,XMIL,EUR,Financials,Financial Services,IT0003261697,en:Azimut Holding
+BAMI.MI,Banco BPM,IT,Borsa Italiana,XMIL,EUR,Financials,Banks,IT0005218380,en:Banco BPM
+BC.MI,Brunello Cucinelli,IT,Borsa Italiana,XMIL,EUR,Consumer Discretionary,Consumer Products and Services,IT0004764699,en:Brunello Cucinelli (brand)
+BMED.MI,Banca Mediolanum,IT,Borsa Italiana,XMIL,EUR,Financials,Financial Services,IT0004776628,en:Banca Mediolanum
+BMPS.MI,Banca Monte dei Paschi di Siena,IT,Borsa Italiana,XMIL,EUR,Financials,Banks,IT0005508921,en:Banca Monte dei Paschi di Siena
+BPE.MI,BPER Banca,IT,Borsa Italiana,XMIL,EUR,Financials,Banks,IT0000066123,en:BPER Banca
+BZU.MI,Buzzi,IT,Borsa Italiana,XMIL,EUR,Materials,Construction and Materials,IT0001347308,en:Buzzi Unicem
+CPR.MI,Campari,IT,Borsa Italiana,XMIL,EUR,Consumer Staples,"Food, Beverage and Tobacco",NL0015435975,en:Davide Campari - Milano
+ENEL.MI,Enel,IT,Borsa Italiana,XMIL,EUR,Utilities,Utilities,IT0003128367,en:Enel
+ENI.MI,Eni,IT,Borsa Italiana,XMIL,EUR,Energy,Energy,IT0003132476,en:Eni
+FBK.MI,FinecoBank,IT,Borsa Italiana,XMIL,EUR,Financials,Banks,IT0000072170,en:FinecoBank
+FCT.MI,Fincantieri,IT,Borsa Italiana,XMIL,EUR,Industrials,Shipbuilding,IT0005599938,en:Fincantieri
+G.MI,Generali,IT,Borsa Italiana,XMIL,EUR,Financials,Insurance,IT0000062072,en:Assicurazioni Generali
+HER.MI,Hera,IT,Borsa Italiana,XMIL,EUR,Utilities,Utilities,IT0001250932,en:Hera Group
+IG.MI,Italgas,IT,Borsa Italiana,XMIL,EUR,Utilities,Utilities,IT0005211237,en:Italgas
+INW.MI,INWIT,IT,Borsa Italiana,XMIL,EUR,Communication Services,Telecommunications,IT0005090300,en:Infrastrutture Wireless Italiane
+ISP.MI,Intesa Sanpaolo,IT,Borsa Italiana,XMIL,EUR,Financials,Banks,IT0000072618,en:Intesa Sanpaolo
+IVG.MI,Iveco,IT,Borsa Italiana,XMIL,EUR,Industrials,Industrial Goods and Services,NL0015000LU4,en:Iveco
+LDO.MI,Leonardo,IT,Borsa Italiana,XMIL,EUR,Industrials,Industrial Goods and Services,IT0003856405,en:Leonardo (company)
+LTMC.MI,Lottomatica Group,IT,Borsa Italiana,XMIL,EUR,Consumer Discretionary,Gambling,IT0005541336,
+MB.MI,Mediobanca,IT,Borsa Italiana,XMIL,EUR,Financials,Banks,IT0000062957,en:Mediobanca
+MONC.MI,Moncler,IT,Borsa Italiana,XMIL,EUR,Consumer Discretionary,Consumer Products and Services,IT0004965148,en:Moncler
+NEXI.MI,Nexi,IT,Borsa Italiana,XMIL,EUR,Financials,Industrial Goods and Services,IT0005366767,en:Nexi
+PRY.MI,Prysmian,IT,Borsa Italiana,XMIL,EUR,Industrials,Industrial Goods and Services,IT0004176001,en:Prysmian
+PST.MI,Poste italiane,IT,Borsa Italiana,XMIL,EUR,Financials,Financial Services,IT0003796171,en:Poste italiane
+RACE.MI,Ferrari,IT,Borsa Italiana,XMIL,EUR,Consumer Discretionary,Automobiles and Parts,NL0011585146,en:Ferrari
+REC.MI,Recordati,IT,Borsa Italiana,XMIL,EUR,Health Care,Health Care,IT0003828271,en:Recordati
+SPM.MI,Saipem,IT,Borsa Italiana,XMIL,EUR,Energy,Energy,IT0005495657,en:Saipem
+SRG.MI,Snam,IT,Borsa Italiana,XMIL,EUR,Utilities,Energy,IT0003153415,en:Snam
+STLAM.MI,Stellantis,IT,Borsa Italiana,XMIL,EUR,Consumer Discretionary,Automobiles and Parts,NL00150001Q9,en:Stellantis
+STMMI.MI,STMicroelectronics,IT,Borsa Italiana,XMIL,EUR,Information Technology,Technology,NL0000226223,en:STMicroelectronics
+TEN.MI,Tenaris,IT,Borsa Italiana,XMIL,EUR,Energy,Energy,LU2598331598,en:Tenaris
+TIT.MI,Telecom Italia,IT,Borsa Italiana,XMIL,EUR,Communication Services,Telecommunications,IT0005712671,en:Telecom Italia
+TPRO.MI,Technoprobe,IT,Borsa Italiana,XMIL,EUR,Information Technology,Technology,IT0005482333,en:Technoprobe
+TRN.MI,Terna,IT,Borsa Italiana,XMIL,EUR,Utilities,Utilities,IT0003242622,en:Terna - Rete Elettrica Nazionale
+UCG.MI,UniCredit,IT,Borsa Italiana,XMIL,EUR,Financials,Banks,IT0005239360,en:UniCredit
+UNI.MI,Unipol,IT,Borsa Italiana,XMIL,EUR,Financials,Insurance,IT0004810054,en:Unipol

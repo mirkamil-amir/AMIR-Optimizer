@@ -111,7 +111,7 @@ public sealed class ResearchAgent(
         if (r.Market is { } m)
         {
             var mu = m.ToUpperInvariant();
-            if (!BriefRules.IsMarket(mu)) throw new ValidationException("market", "Market must be US, DE, FR, GB or JP.");
+            if (!BriefRules.IsMarket(mu)) throw new ValidationException("market", $"Market must be one of {string.Join(", ", BriefRules.DefaultIndex.Keys)}.");
             brief = brief with { Market = mu, Index = BriefRules.DefaultIndex[mu] }; Mark("market");
         }
         if (r.Index is { } ix)

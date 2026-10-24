@@ -24,6 +24,8 @@ import { age, symbolsNeedingRefresh } from '@/lib/quote-status'
 import { useSelection } from '@/lib/selection'
 import type { Market, QuoteRefreshRun, StockListItem } from '@/lib/types'
 import { num } from '@/lib/format'
+import { countryOfSymbol } from '@/lib/markets'
+import { useMapSignal } from '@/lib/world-map'
 
 const sortOptions: { value: StockSort; label: string }[] = [
   { value: 'name', label: 'Company name A–Z' },
@@ -41,6 +43,9 @@ export function StocksPage() {
   const [withPricesOnly, setWithPricesOnly] = useState(false)
   const [page, setPage] = useState(1)
   const [detail, setDetail] = useState<string | null>(null)
+  const signal = useMapSignal()
+  // Opening a stock makes its exchange city blink on the background map.
+  useEffect(() => { if (detail) signal(countryOfSymbol(detail), 'blink') }, [detail, signal])
   const markets = useMarkets()
   const sectors = useSectors({ country: scope.country, index: scope.index })
   const stocks = useStocks({ ...scope, search: search || undefined, sort, withPrices: withPricesOnly ? true : undefined, page, pageSize: 50 })
@@ -232,7 +237,8 @@ export function StocksPage() {
           <p className="text-xs text-muted-foreground">
             Prices come from the server&apos;s data provider and are delayed quotes or last closes – never real-time. Each price shows when it
             applies and when it was retrieved; prices are converted to the trading currency (London quotes from pence to pounds). Index
-            memberships come from versioned Wikipedia constituent lists (CC BY-SA 4.0); the DAX 30 list is a historical composition.
+            memberships come from versioned Wikipedia constituent lists (CC BY-SA 4.0); the DAX 30 list is a historical composition. The index
+            ETFs of the newer markets are a curated list, not index constituents.
           </p>
         </div>
       </div>

@@ -19,18 +19,22 @@ import { TransactionDialog } from '@/components/transaction-form'
 import { errorMessage } from '@/lib/api'
 import { date, money, relativeTime } from '@/lib/format'
 import { PortfolioScope, portfolioPath, usePortfolioContext } from '@/lib/portfolio-context'
-import { useArchivePortfolio, useMlExperiment, usePortfolio, useRun, useUpdatePortfolioDetails } from '@/lib/queries'
+import { countriesOf } from '@/lib/markets'
+import { useArchivePortfolio, useHoldings, useMlExperiment, usePortfolio, useRun, useUpdatePortfolioDetails } from '@/lib/queries'
+import { useMapHighlight } from '@/lib/world-map'
 import type { PortfolioSummary } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
-/** Sections of one portfolio, in the order of the tab bar. `runs` leads to the optimization history filtered to it. */
+/** Sections of one portfolio, in the order of the tab bar; every one stays inside `/portfolios/:id/…`. */
 const SECTIONS = [
   { path: '', label: 'Overview' },
   { path: 'optimize', label: 'Math Optimization' },
   { path: 'ml-optimize', label: 'ML Optimization' },
   { path: 'holdings', label: 'Holdings' },
   { path: 'transactions', label: 'Transactions' },
-  { path: 'performance', label: 'Performance' },
+  { path: 'runs', label: 'Optimization runs' },
+  { path: 'backtest', label: 'Backtest' },
+  { path: 'comparison', label: 'Strategy comparison' },
 ] as const
 
 /** The section of the current URL inside `/portfolios/:id/…` (run and experiment pages belong to their optimization section). */
@@ -82,6 +86,11 @@ function WorkspaceHeader({ portfolio }: { portfolio: PortfolioSummary }) {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const details = usePortfolio(portfolio.id)
+  const holdings = useHoldings(portfolio.id)
+  // The background map highlights and frames the markets of the portfolio's holdings – or, while it holds nothing yet, of
+  // the stocks it may invest in (its working universe). Recomputed when holdings change or another portfolio opens.
+  const held = (holdings.data?.holdings ?? []).filter((h) => h.quantity > 0).map((h) => h.symbol)
+  useMapHighlight('portfolio', countriesOf(held.length > 0 ? held : details.data?.settings.universe ?? []))
   const archive = useArchivePortfolio()
   const [recording, setRecording] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -186,12 +195,6 @@ function WorkspaceHeader({ portfolio }: { portfolio: PortfolioSummary }) {
               </li>
             )
           })}
-          <li>
-            <Link to={`/history?portfolio=${portfolio.id}`}
-              className="inline-flex border-b-2 border-transparent px-3 py-2 text-sm whitespace-nowrap text-muted-foreground hover:border-border hover:text-foreground focus-visible:rounded-t-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset">
-              Optimization runs
-            </Link>
-          </li>
         </ul>
       </nav>
 

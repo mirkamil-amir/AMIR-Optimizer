@@ -1,0 +1,36 @@
+symbol,name,country,exchange,mic,currency,sector,industry,isin,wiki
+ACS.MC,ACS,ES,Bolsa de Madrid,XMAD,EUR,Industrials,Construction,,en:ACS Group
+ACX.MC,Acerinox,ES,Bolsa de Madrid,XMAD,EUR,Materials,Steel,,en:Acerinox
+AENA.MC,AENA,ES,Bolsa de Madrid,XMAD,EUR,Industrials,Aviation,,en:AENA
+AMS.MC,Amadeus IT Group,ES,Bolsa de Madrid,XMAD,EUR,Information Technology,Tourism,,en:Amadeus IT Group
+ANA.MC,Acciona,ES,Bolsa de Madrid,XMAD,EUR,Industrials,Construction,,en:Acciona
+ANE.MC,Acciona Energía,ES,Bolsa de Madrid,XMAD,EUR,Utilities,Energy,,en:Acciona Energía
+BBVA.MC,BBVA,ES,Bolsa de Madrid,XMAD,EUR,Financials,Financial Services,,en:Banco Bilbao Vizcaya Argentaria
+BKT.MC,Bankinter,ES,Bolsa de Madrid,XMAD,EUR,Financials,Financial Services,,en:Bankinter
+CABK.MC,CaixaBank,ES,Bolsa de Madrid,XMAD,EUR,Financials,Financial Services,,en:CaixaBank
+CLNX.MC,Cellnex Telecom,ES,Bolsa de Madrid,XMAD,EUR,Communication Services,Telecommunications,,en:Cellnex Telecom
+COL.MC,Inmobiliaria Colonial,ES,Bolsa de Madrid,XMAD,EUR,Real Estate,Real Estate,,en:Inmobiliaria Colonial
+ELE.MC,Endesa,ES,Bolsa de Madrid,XMAD,EUR,Utilities,Energy,,en:Endesa
+ENG.MC,Enagás,ES,Bolsa de Madrid,XMAD,EUR,Utilities,Energy,,en:Enagás
+FDR.MC,Fluidra,ES,Bolsa de Madrid,XMAD,EUR,Industrials,Manufacturing,,en:Fluidra
+FER.MC,Ferrovial,ES,Bolsa de Madrid,XMAD,EUR,Industrials,Infrastructure,,en:Ferrovial
+GRF.MC,Grifols,ES,Bolsa de Madrid,XMAD,EUR,Health Care,Pharmaceuticals,,en:Grifols
+IAG.MC,International Airlines Group,ES,Bolsa de Madrid,XMAD,EUR,Industrials,Aviation,,en:International Airlines Group
+IBE.MC,Iberdrola,ES,Bolsa de Madrid,XMAD,EUR,Utilities,Energy,,en:Iberdrola
+IDR.MC,Indra,ES,Bolsa de Madrid,XMAD,EUR,Information Technology,Information Technology,,en:Indra Sistemas
+ITX.MC,Inditex,ES,Bolsa de Madrid,XMAD,EUR,Consumer Discretionary,Textile,,en:Inditex
+LOG.MC,Logista,ES,Bolsa de Madrid,XMAD,EUR,Industrials,Logistics,,en:Logista
+MAP.MC,Mapfre,ES,Bolsa de Madrid,XMAD,EUR,Financials,Insurance,,en:Mapfre
+MRL.MC,Merlin Properties,ES,Bolsa de Madrid,XMAD,EUR,Real Estate,Real Estate,,en:Merlin Properties
+MTS.MC,ArcelorMittal,ES,Bolsa de Madrid,XMAD,EUR,Materials,Steel,,en:ArcelorMittal
+NTGY.MC,Naturgy,ES,Bolsa de Madrid,XMAD,EUR,Utilities,Energy,,en:Naturgy
+PUIG.MC,Puig,ES,Bolsa de Madrid,XMAD,EUR,Consumer Staples,Clothes and Cosmetics,,en:Puig (company)
+RED.MC,Redeia Corporación,ES,Bolsa de Madrid,XMAD,EUR,Utilities,Energy,,en:Redeia Corporación
+REP.MC,Repsol,ES,Bolsa de Madrid,XMAD,EUR,Energy,Oil and Gas,,en:Repsol
+ROVI.MC,Laboratorios Rovi,ES,Bolsa de Madrid,XMAD,EUR,Health Care,Pharmaceuticals,,en:Laboratorios Rovi
+SAB.MC,Banco Sabadell,ES,Bolsa de Madrid,XMAD,EUR,Financials,Financial Services,,en:Banco Sabadell
+SAN.MC,Santander,ES,Bolsa de Madrid,XMAD,EUR,Financials,Financial Services,,en:Banco Santander
+SCYR.MC,Sacyr,ES,Bolsa de Madrid,XMAD,EUR,Industrials,Construction,,en:Sacyr
+SLR.MC,Solaria,ES,Bolsa de Madrid,XMAD,EUR,Utilities,Solar Energy,,
+TEF.MC,Telefónica,ES,Bolsa de Madrid,XMAD,EUR,Communication Services,Telecommunications,,en:Telefónica
+UNI.MC,Unicaja,ES,Bolsa de Madrid,XMAD,EUR,Financials,Financial Services,,en:Unicaja

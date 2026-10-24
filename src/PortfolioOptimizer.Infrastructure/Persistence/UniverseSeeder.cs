@@ -20,7 +20,9 @@ public sealed class UniverseOptions
 }
 
 /// <summary>
-/// Loads the index universes (S&amp;P 500, DAX 40, DAX 30 historical, CAC 40, FTSE 100, Nikkei 225) from the versioned CSV
+/// Loads the index universes (S&amp;P 500, DAX 40, DAX 30 historical, CAC 40, FTSE 100, Nikkei 225, SMI, IBEX 35, FTSE MIB,
+/// OMX Stockholm 30, OMX Copenhagen 25, S&amp;P/TSX 60, S&amp;P/ASX 50, Hang Seng, NIFTY 50, Straits Times and one list of
+/// national index ETFs per new market) from the versioned CSV
 /// files in <c>Seed/universes</c> (built by tools/universe-builder from pinned Wikipedia revisions, CC BY-SA 4.0) and
 /// ensures the benchmark instruments exist. An index is re-imported only when its file content changed (SHA-256), so
 /// starting the API stays fast.
@@ -37,6 +39,16 @@ public sealed class UniverseSeeder(UniverseService universes, AppDbContext db, I
         ("^FCHI", "CAC 40 index", "EUR", AssetType.Index),
         ("^FTSE", "FTSE 100 index", "GBP", AssetType.Index),
         ("^N225", "Nikkei 225 index", "JPY", AssetType.Index),
+        ("^SSMI", "SMI index (price)", "CHF", AssetType.Index),
+        ("^IBEX", "IBEX 35 index", "EUR", AssetType.Index),
+        ("FTSEMIB.MI", "FTSE MIB index", "EUR", AssetType.Index),
+        ("^OMX", "OMX Stockholm 30 index", "SEK", AssetType.Index),
+        ("^OMXC25", "OMX Copenhagen 25 index", "DKK", AssetType.Index),
+        ("^GSPTSE", "S&P/TSX Composite index", "CAD", AssetType.Index),
+        ("^AXJO", "S&P/ASX 200 index", "AUD", AssetType.Index),
+        ("^HSI", "Hang Seng Index", "HKD", AssetType.Index),
+        ("^NSEI", "NIFTY 50 index", "INR", AssetType.Index),
+        ("^STI", "Straits Times Index", "SGD", AssetType.Index),
     ];
 
     public async Task SeedAsync(CancellationToken ct)

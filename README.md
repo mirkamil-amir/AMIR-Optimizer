@@ -7,8 +7,10 @@
 An educational portfolio-research platform. An **AI research assistant** turns an investment objective into an
 editable research brief, researches a universe with evidence, runs the real optimizer and risk review, explains the
 results only with numbers it can show, and lets students refine and compare alternatives before deliberately saving
-one (works without any language model; see [agentic architecture](docs/agentic-architecture.md)). Students browse ~900 stocks from five markets (S&P 500, DAX 40 and the
-historical DAX 30, CAC 40, FTSE 100, Nikkei 225) with automatically refreshed, clearly labelled prices, build a
+one (works without any language model; see [agentic architecture](docs/agentic-architecture.md)). Students browse ~1,350 stocks and index ETFs from fifteen markets (S&P 500, DAX 40 and the
+historical DAX 30, CAC 40, FTSE 100, Nikkei 225, SMI, IBEX 35, FTSE MIB, OMX Stockholm 30, OMX Copenhagen 25, S&P/TSX 60,
+S&P/ASX 50, Hang Seng, NIFTY 50, Straits Times, plus local index ETFs of the ten newer markets) with automatically refreshed,
+clearly labelled prices, build a
 temporary selection, follow stocks on a personal **watchlist** with price history and company news, read
 **financial news** from attributed sources (with an event and price-movement comparison that makes no causal claims),
 optimize a selection with **classical mean-variance optimization** and challenge the result with the **Portfolio
@@ -101,8 +103,14 @@ Optimization**, Optimization history, Backtest, Strategy comparison) and, for ad
 invested amount, P/L (against net contributions), last optimization and activity, plus an honest total. **Portfolio
 Creation** (`/stocks`) asks for a name, description, currency and starting cash, lets you choose the stocks it may invest
 in and creates it only when you confirm. Each portfolio opens in its own workspace (`/portfolios/<id>`: Overview, Math Optimization,
-ML Optimization, Holdings, Transactions, Performance, Optimization runs) where you can record buys, sells, deposits, withdrawals,
-dividends and fees, archive or restore it. Details: [portfolios.md](docs/portfolios.md).
+ML Optimization, Holdings, Transactions, Optimization runs, Backtest, Strategy comparison) where you can record buys, sells,
+deposits, withdrawals, dividends and fees, archive or restore it. The Overview holds every chart of the portfolio once
+(portfolio vs benchmark with the efficient frontier right below it, recorded performance, risk, allocation over time);
+Optimization runs, Backtest and Strategy comparison list only that portfolio's work. Behind the pages, a cool-toned world map
+highlights the markets (listing exchanges) of what you are looking at – the open portfolio's holdings, your stock selection,
+all markets on "My portfolios" – and its camera moves smoothly to frame them: one market brings its region into view, markets
+on several continents open up a world view. Selecting a stock ripples its city, opening one makes it blink; the globe button
+in the header lists the markets in view and offers "Fit selected markets" and "World view". Details: [portfolios.md](docs/portfolios.md).
 
 0. **AI research** (`/research`, in the top bar). Write an objective ("low-risk US stocks without energy,
    at most 20 % per stock"). The brief separates what you said from what was assumed (badges) and asks only for what

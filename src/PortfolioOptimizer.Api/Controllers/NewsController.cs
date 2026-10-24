@@ -20,7 +20,7 @@ public sealed class NewsController(NewsService news) : ControllerBase
     /// </summary>
     /// <param name="category">General, Earnings, CorporateTransaction, RegulatoryLegal, CentralBank, Macroeconomic, Geopolitical, CommoditiesEnergy, CurrenciesBonds, MarketIndex.</param>
     /// <param name="scope">Company, Market or Macro.</param>
-    /// <param name="region">ISO country (US, DE, FR, GB, JP) or EU.</param>
+    /// <param name="region">ISO country of a market (US, DE, JP, …) or EU.</param>
     /// <param name="symbol">Only articles the provider tagged with this listing.</param>
     /// <param name="watchlist">Only articles about stocks on the caller's watchlist.</param>
     /// <param name="from">Published on or after (UTC date).</param>
