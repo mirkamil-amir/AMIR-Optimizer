@@ -16,7 +16,7 @@ export function PageHeader({ title, description, actions, level = 1 }: { title: 
   return (
     <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <Heading className={level === 1 ? 'text-2xl font-semibold tracking-tight' : 'text-lg font-semibold'}>{title}</Heading>
+        <Heading className={cn('heading-display', level === 1 ? 'text-[1.7rem]' : 'text-[1.3rem]')}>{title}</Heading>
         {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
@@ -213,7 +213,7 @@ export function ResultSection({ title, hint, collapsible = false, children }: { 
   if (collapsible) {
     return (
       <section className="space-y-3" aria-label={title}>
-        <h3 className="flex items-center gap-1.5 border-b pb-1 text-base font-semibold">
+        <h3 className="heading-display flex items-center gap-1.5 border-b pb-1 text-[1.15rem]">
           <button type="button" aria-expanded={open} aria-controls={id} onClick={() => setOpen((o) => !o)} className="flex items-center gap-1.5 text-left">
             <ChevronDown className={cn('size-4 text-muted-foreground transition-transform', open && 'rotate-180')} aria-hidden />{title}
           </button>
@@ -225,7 +225,7 @@ export function ResultSection({ title, hint, collapsible = false, children }: { 
   }
   return (
     <section className="space-y-3" aria-label={title}>
-      <h3 className="flex items-center gap-1.5 border-b pb-1 text-base font-semibold">{title}{hint && <InfoTip>{hint}</InfoTip>}</h3>
+      <h3 className="heading-display flex items-center gap-1.5 border-b pb-1 text-[1.15rem]">{title}{hint && <InfoTip>{hint}</InfoTip>}</h3>
       {children}
     </section>
   )

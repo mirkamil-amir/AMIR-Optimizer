@@ -2,11 +2,13 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
+@import "@fontsource-variable/sora";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
     --font-heading: var(--font-sans);
+    --font-display: 'Sora Variable', 'Geist Variable', sans-serif;
     --font-sans: 'Geist Variable', sans-serif;
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
@@ -326,25 +328,32 @@
   --sidebar: oklch(0.17 0.02 290); --sidebar-accent: oklch(0.28 0.05 290); --sidebar-primary: oklch(0.72 0.14 290);
 }
 
-/* Wordmark: a classic serif for the name (system fonts; no download). */
-.font-brand { font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif; }
+/* ------------------------------------------------------------------ typography
+   Two OFL families, served from the app (no external font service; the CSP allows fonts from 'self' only):
+   – AMIR Display = Sora (variable): a wide, confident modern sans – chosen by the owner from seven options – for the
+     wordmark (spaced capitals), page titles, portfolio names and section headings only; weight 600, tightened.
+   – AMIR Text = Geist (variable): body text, labels, tables and every figure (tabular digits via .tabular), which stays
+     legible at 11–14 px. Card and dialog titles stay in Geist (small sizes). */
+.font-brand { font-family: var(--font-display); }
+.heading-display {
+  font-family: var(--font-display); font-weight: 600; letter-spacing: -0.03em; line-height: 1.2; text-wrap: balance;
+}
 
 /* Primary navigation scrolls horizontally on narrow screens; a thin scrollbar shows that more items follow. */
 .nav-scroll { scrollbar-width: thin; }
 
 /* ------------------------------------------------------------------ background world map (components/world-map.tsx)
-   A calm, cool-toned map: ice-blue ocean with a faint lavender drift, blue-grey land with hairline borders. Markets of the
-   page are teal with a dark blue-grey outline; the focused market has a heavier outline and a double-ring marker (not colour alone). Exchange cities are
+   A calm, cool-toned dotted map without country borders: ice-blue ocean with a faint lavender drift, land as a fine
+   blue-grey dot grid. Markets of the page have teal dots; the focused market has larger, stronger dots, a bold label and a
+   double-ring marker (not colour alone). Exchange cities are
    small markers; a selected stock's city ripples once, an opened stock's city blinks. The camera is a CSS transform
    transition on .world-map-camera (no endless animation; reduced motion → no camera animation). */
 :root {
-  --map-ocean-from: oklch(0.955 0.022 220);
-  --map-ocean-to: oklch(0.935 0.026 265);
-  --map-land: oklch(0.885 0.028 232);
-  --map-border: oklch(0.42 0.045 250 / 0.32);
-  --map-lit: oklch(0.82 0.068 195);
-  --map-lit-border: oklch(0.36 0.06 245);
-  --map-focus: oklch(0.72 0.1 200);
+  --map-ocean-from: oklch(0.96 0.02 220);
+  --map-ocean-to: oklch(0.94 0.025 265);
+  --map-land: oklch(0.74 0.04 245);
+  --map-lit: oklch(0.7 0.085 195);
+  --map-focus: oklch(0.6 0.11 203);
   --map-marker: oklch(0.5 0.045 250);
   --map-highlight: oklch(0.52 0.11 205);
   --map-label: oklch(0.3 0.045 250);
@@ -353,11 +362,9 @@
 .dark {
   --map-ocean-from: oklch(0.2 0.03 250);
   --map-ocean-to: oklch(0.18 0.035 275);
-  --map-land: oklch(0.275 0.03 245);
-  --map-border: oklch(0.62 0.04 230 / 0.28);
-  --map-lit: oklch(0.42 0.065 200);
-  --map-lit-border: oklch(0.78 0.07 200);
-  --map-focus: oklch(0.52 0.09 200);
+  --map-land: oklch(0.47 0.04 240);
+  --map-lit: oklch(0.72 0.1 195);
+  --map-focus: oklch(0.84 0.11 195);
   --map-marker: oklch(0.65 0.04 235);
   --map-highlight: oklch(0.8 0.1 200);
   --map-label: oklch(0.9 0.03 220);
@@ -367,12 +374,12 @@
 .world-map-camera {
   transition-property: transform; transition-timing-function: cubic-bezier(0.33, 0, 0.2, 1); --map-k: 1;
 }
-.world-map-country {
-  fill: var(--map-land); stroke: var(--map-border); stroke-width: calc(0.12px / var(--map-k)); stroke-linejoin: round;
-  transition: fill 400ms ease;
-}
-.world-map-country-lit { fill: var(--map-lit); stroke: var(--map-lit-border); stroke-width: calc(0.22px / var(--map-k)); }
-.world-map-country-focus { fill: var(--map-focus); stroke-width: calc(0.45px / var(--map-k)); }
+/* Land is a dot grid (patterns in components/world-map.tsx); highlighted markets get brighter, larger dots. */
+.world-map-dot { fill: var(--map-land); }
+.world-map-dot-lit { fill: var(--map-lit); }
+.world-map-dot-focus { fill: var(--map-focus); }
+/* No country borders: countries are told apart by their dots only. */
+.world-map-country { stroke: none; }
 
 .world-map-city { transition-property: transform; transition-timing-function: cubic-bezier(0.33, 0, 0.2, 1); }
 .world-map-marker, .world-map-pulse-ring, .world-map-blink-ring {
@@ -404,3 +411,23 @@
 }
 @keyframes world-map-ripple { from { opacity: 1; scale: 1; } to { opacity: 0; scale: 5; } }
 @keyframes world-map-blink { from { opacity: 1; } to { opacity: 0.15; } }
+
+/* Content surfaces are slightly translucent so the background map (and its camera moves) shows through; text stays on a
+   mostly opaque surface. No backdrop blur: it would be recomputed on every frame of a camera move. Dialogs, popovers and
+   menus are rendered outside #main and stay opaque. */
+#main [data-slot="card"], #main .bg-card { background-color: color-mix(in oklch, var(--card) 82%, transparent); }
+
+/* Readability over the background map: the content column has a light veil (70 % page colour, no blur), so the map and its
+   moves stay visible but never compete with text; at the page edges and behind the header the map shows fully. Text
+   directly on the veil also gets a soft halo in the page colour; inside cards, panels and controls it is switched off. */
+#main { background-color: color-mix(in oklch, var(--background) 70%, transparent); }
+#main {
+  text-shadow: 0 0 1px var(--background), 0 0 2px var(--background), 0 0 4px var(--background), 0 0 8px var(--background),
+    0 0 14px var(--background);
+}
+#main [data-slot="card"], #main .bg-card, #main .map-surface, #main input, #main button, #main [data-slot="button"],
+#main [data-slot="badge"], #main [role="combobox"], #main table {
+  text-shadow: none;
+}
+/* A near-solid panel for dense text next to the map (e.g. the market and sector list of Portfolio Creation). */
+.map-surface { background-color: color-mix(in oklch, var(--card) 94%, transparent); box-shadow: 0 0 0 1px color-mix(in oklch, var(--foreground) 10%, transparent); }

@@ -71,7 +71,7 @@ export function OverviewPage() {
   return (
     <>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-semibold">Overview</h2>
+        <h2 className="heading-display text-[1.3rem]">Overview</h2>
         <div className="flex flex-wrap items-center gap-2">
           {s?.usesSimulatedData && <DataBadge kind="simulated" />}
           <div className="flex items-center gap-1 rounded-lg border bg-background p-0.5" role="group" aria-label="Date range">

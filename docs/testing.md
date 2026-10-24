@@ -8,7 +8,7 @@ access or live market hours. Real-provider checks are separate and opt-in.
 | Unit | `tests/PortfolioOptimizer.UnitTests` | optimizer math against closed forms, solver, metrics, backtest timing, accounting, provider parsing (Yahoo spark batches, pence conversion, retry/fallback, Alpha Vantage symbol mapping and daily quota), universe files, symbol mapping per market | `dotnet test tests/PortfolioOptimizer.UnitTests` |
 | ML | `tests/PortfolioOptimizer.MachineLearning.Tests` | features and labels on hand-computed series, purged splits, leakage tests, model determinism, artifacts, architecture rules | `dotnet test tests/PortfolioOptimizer.MachineLearning.Tests` |
 | Integration | `tests/PortfolioOptimizer.IntegrationTests` | the real API on real PostgreSQL: auth/approval/roles, owner isolation, stock discovery, universes, sign-in quote refresh, page/single refresh, currency rules, ML, comparisons, SQLite import, test-data purge, admin overview | `./scripts/test.sh` (all .NET suites) |
-| Frontend unit | `frontend/portfolio-dashboard/src/**/*.test.ts(x)` (Vitest + Testing Library) | API client (antiforgery, retries), selection (memory only), route guards, header identity ("Admin Investor"), quote states, interpretations, worked examples, strategy-guide structure, components | `npm test` |
+| Frontend unit | `frontend/portfolio-dashboard/src/**/*.test.ts(x)` (Vitest + Testing Library) | API client (antiforgery, retries), selection (memory only), route guards, header identity ("Admin Investor"), quote states, interpretations, worked examples, strategy-guide structure, market resolution and map camera, components | `npm test` |
 | End-to-end | `frontend/portfolio-dashboard/e2e` (Playwright) | sign-in, registration + approval, roles, personalized header, automatic prices + single refresh, markets/indices, selection → optimization with interpretation, strategy guide, glossary, admin overview, sign-out | `./scripts/e2e.sh` |
 | Live smoke (opt-in) | `LiveProviderSmokeTests` in the unit project | one stock per market from real Yahoo; Alpha Vantage US + Xetra (2 of 25 daily requests) | `PO_LIVE_SMOKE=1 ALPHAVANTAGE_API_KEY=… dotnet test tests/PortfolioOptimizer.UnitTests --filter LiveProviderSmokeTests` |
 
@@ -56,6 +56,17 @@ hidden and purged.
 * UI logic belongs in `src/lib/*.ts` (pure, Vitest-tested); components get light Testing Library tests; user journeys
   get Playwright specs with role-based locators.
 * Frontend fixtures: build typed objects; cast partial fixtures with `as unknown as T` only in tests.
+
+## Results (2026-10-25, markets, portfolio tabs, map, typography)
+
+* `./scripts/test.sh`: unit 296 passed (9 skipped), ML 41, integration 136 (adds new-market universes, ETF type, '&' symbols,
+  listing currencies, sessions; `MarketDataRefreshTests.NewMarkets_KeepTheirTradingCurrencies_AndEtfsAreFunds`).
+* Vitest 173 (adds `lib/markets.test.ts`, `lib/map-camera.test.ts` – framing, zoom limits, durations, view modes – and
+  `components/world-map.test.tsx` – debounced and interrupted moves, manual view, resize, reduced motion, cleanup), build,
+  lint (no errors).
+* `./scripts/e2e.sh` 34 passed (`optimizations.spec.ts` now covers the portfolio tabs, the merged Overview and the map;
+  `portfolios.spec.ts` the in-portfolio Optimization runs tab). Map and typography were checked in light and dark mode at
+  1440/820/390 px with throwaway screenshot specs (deleted). Frame rate was not measured.
 
 ## Results (2026-10-19, performance)
 

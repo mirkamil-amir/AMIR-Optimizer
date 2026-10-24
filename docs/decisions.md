@@ -2,10 +2,22 @@
 
 Short records of decisions that are not obvious from the code. Newest first. Format: context → decision → consequences.
 
+## D-39 Typography and readability over the map (2026-10-24)
+**Context:** text placed directly on the background map (e.g. the market list of Portfolio Creation) became hard to read
+where dots or highlighted countries ran through it, and the interface used one generic sans-serif. **Decision:** a
+two-family type system served from the app (the CSP allows fonts from 'self' only): Sora (OFL, variable – a wide, confident
+modern sans, chosen by the owner from seven rendered options after Cormorant Garamond and Source Serif 4 were rejected) as
+display face for the wordmark (spaced capitals), page titles, portfolio names and section headings (`.heading-display`,
+weight 600, −0.03 em); Geist stays for body text, labels, tables and all figures. Readability: the content column has a 70 % veil in the
+page colour (no blur – it would be recomputed on every camera frame), text on it gets a soft halo, dense text next to the
+map sits on a near-solid panel (`.map-surface`), cards stay 82 % opaque. **Consequences:** the map shows fully only behind
+the header and at the page edges and faintly behind content; one more font file (Latin subset; other scripts load only when such characters appear).
+
 ## D-38 Background map: coloured countries and a camera that frames the selected markets (2026-10-24)
 **Context:** the dotted map of D-37 looked washed out in the light theme and always showed the whole world, so selecting
 stocks changed little. **Decision:** keep the hand-built SVG map (no map library, no tiles, no new dependency) but draw
-Natural Earth 1:110m country outlines with a cool palette per theme (map tokens in `index.css`). Markets come from the
+Natural Earth 1:50m country shapes (simplified) as a fine dot grid without borders, with a cool palette per theme (map tokens in
+`index.css`); the dot spacing follows the target zoom, so dots keep their size on screen and coastlines their detail. Markets come from the
 canonical symbol (the server's `Markets.ForSymbol` convention, mirrored in `lib/markets.ts` and cached); unknown suffixes are
 recorded, never guessed. The map shows the *listing exchange*, not the headquarters or revenue footprint (the catalogue does
 not record those). The camera frames a fixed region per market (Europe for any European listing, the contiguous US, Japan,
@@ -13,8 +25,9 @@ not record those). The camera frames a fixed region per market (Europe for any E
 transition (450–1400 ms by distance), applied imperatively after a 220 ms pause that combines rapid selections; a newer
 target retargets a running move; reduced motion → no animation. Exchange markers are HTML elements moved with the same
 transition, so they keep their size. Manual choices ("World view", one market) in the header control last until the
-selection changes. **Consequences:** a 105 KB (37 KB compressed) lazily loaded geometry chunk; Hong Kong and Singapore are
-too small for 1:110m and are shown by their exchange marker only; the map has one copy of the world (all supported
+selection changes. Cards in the content area are 82 % opaque so the map and its moves show through (no backdrop blur – it would be
+recomputed every frame). **Consequences:** a 269 KB (≈100 KB compressed) geometry chunk loaded after the page; the map has
+one copy of the world (all supported
 exchanges lie between −125° and 155°, so no frame crosses the antimeridian).
 
 ## D-37 Ten more markets; one Overview per portfolio; portfolio-scoped runs, backtests and comparisons; background map (2026-10-24)

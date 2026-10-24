@@ -38,7 +38,7 @@ export function AmirWordmark({ compact = false, className }: { compact?: boolean
     <div className={cn('flex items-center gap-2.5', className)} title={`${BRAND.name} – ${BRAND.expansion}`}>
       <AmirMark className={compact ? 'size-9' : 'size-11'} />
       <div className="leading-none">
-        <div className={cn('font-brand font-semibold tracking-[0.18em]', compact ? 'text-[17px]' : 'text-[22px]')}>
+        <div className={cn('font-brand font-semibold tracking-[0.2em]', compact ? 'text-[17px]' : 'text-[22px]')}>
           {BRAND.short}
         </div>
         <div className="mt-1 flex items-center gap-1.5">
