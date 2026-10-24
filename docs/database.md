@@ -26,7 +26,8 @@ Money and quantities are `numeric` (`decimal`); keys of user-facing records are 
 
 * User-owned: `Portfolios` (and everything under them), `OptimizationRuns`, `Backtests`, `MlExperiments`,
   `StrategyComparisons`, `WatchlistEntries` – each has `OwnerId` (FK to `AspNetUsers`, restrict). Every service query filters by the
-  current user; another user's id returns 404. Administrators see counts and run metadata on the admin overview,
+  current user; another user's id returns 404. `MlExperiments`, `Backtests` and `StrategyComparisons` also carry an optional
+  `PortfolioId` (FK, set null on portfolio deletion; migration `StrategiesPerPortfolio`, additive). Administrators see counts and run metadata on the admin overview,
   never other users' results.
 * Shared: catalogue, universes, prices, quotes, settings, data jobs, news articles and their fetch state (never copied per user).
 * **Not persisted:** the stock selection (browser memory only) and anything a page merely displays. A run stores its

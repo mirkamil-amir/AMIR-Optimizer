@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { Link, useNavigate, useParams } from 'react-router'
+import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
-import { AlertTriangle, BrainCircuit, FlaskConical, ListChecks, Loader2, Play, RefreshCw, ShoppingCart, Trash2 } from 'lucide-react'
+import { AlertTriangle, ArrowRight, BrainCircuit, FileText, FlaskConical, ListChecks, Loader2, Play, RefreshCw, Trash2, X } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -12,26 +12,26 @@ import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AllocationDonut, ChartCard, TimeSeriesChart, seriesColor, timeSeriesTable } from '@/components/charts'
 import { CalibrationChart, SignedBarChart } from '@/components/analysis-charts'
 import { DataTable, Pager, type Column } from '@/components/data-table'
-import { DataBadge, EmptyState, ErrorState, InfoTip, LoadingBlock, MetricCard, PageHeader, SectionTitle, Warnings } from '@/components/common'
+import { DataBadge, EmptyState, ErrorState, InfoTip, LoadingBlock, MetricCard, PageHeader, ResultSection, SectionTitle, Warnings } from '@/components/common'
 import { TradeProposalView } from '@/components/proposal'
 import { PerformanceTable } from '@/components/performance-table'
 import { StrategyInsights } from '@/components/strategy-insights'
 import { interpretMlExperiment } from '@/lib/interpretation'
 import { guideForModel } from '@/lib/strategy-guide'
 import { errorMessage } from '@/lib/api'
-import { usePortfolioContext } from '@/lib/portfolio-context'
+import { portfolioPath, usePortfolioContext } from '@/lib/portfolio-context'
+import { NoPortfolio } from '@/pages/shared'
 import {
-  useCreateMlExperiment, useDeleteMlExperiment, useMlBacktest, useMlCatalog, useMlExperiment, useMlExperiments, usePredictAgain, useRebalancePreview, useSettings,
+  useAssignExperimentPortfolio, useCreateMlExperiment, useDeleteMlExperiment, useMlBacktest, useMlCatalog, useMlExperiment, useMlExperiments, usePortfolio, usePredictAgain, useRebalancePreview,
 } from '@/lib/queries'
 import { useSelection } from '@/lib/selection'
 import { useMissingDataGuard } from '@/components/missing-data-dialog'
 import { yearsAgo } from '@/lib/data-check'
 import type {
-  AssetEligibility, MlCatalog, MlExperiment, MlExperimentRequest, MlExperimentSummary, MlPrediction, ModelFamily, PeriodMetrics, PredictionTarget,
+  AssetEligibility, MlCatalog, MlExperiment, MlExperimentRequest, MlExperimentSummary, MlPrediction, ModelFamily, PeriodMetrics, Portfolio, PredictionTarget,
   TradeProposal, WeightingMethod,
 } from '@/lib/types'
 import { date, dateTime, money, num, pct, relativeTime } from '@/lib/format'
@@ -51,26 +51,39 @@ const targetLabels: Record<PredictionTarget, string> = {
 }
 const horizons = [5, 10, 21, 63, 126].map((h) => ({ value: h, label: `${h} trading days (≈ ${h <= 10 ? `${Math.round(h / 5)} week${h > 5 ? 's' : ''}` : `${Math.round(h / 21)} month${h > 21 ? 's' : ''}`})` }))
 
-export function MachineLearningPage() {
+/**
+ * ML Optimization of one portfolio (`/portfolios/:id/ml-optimize[/:experimentId]`), laid out like Math Optimization:
+ * configuration and run history on the left, the selected experiment's results on the right – all sections visible.
+ */
+export function MlOptimizePage() {
   const { experimentId } = useParams()
-  const list = useMlExperiments()
+  const { portfolioId, isLoading } = usePortfolioContext()
+  const list = useMlExperiments(1, { portfolioId })
   const activeId = experimentId ?? list.data?.items[0]?.id
+  const experiment = useMlExperiment(activeId)
+
+  if (!isLoading && !portfolioId) return <NoPortfolio />
+  // An experiment always opens inside its own portfolio (like a Math Optimization run).
+  const owner = experiment.data?.summary.portfolioId
+  if (portfolioId && owner && owner !== portfolioId) return <Navigate to={portfolioPath(owner, `ml-optimize/${experiment.data!.summary.id}`)} replace />
+
   return (
     <>
       <PageHeader
-        title="Machine-learning research"
-        description="Train and evaluate ML models that forecast and rank stocks with chronological validation, build ML-driven portfolios and backtest them walk-forward. Separate from the mean-variance optimizer."
-        actions={<Badge variant="outline" className="gap-1 border-series-7/50"><BrainCircuit className="size-3" /> ML workspace</Badge>}
+        level={2}
+        title="ML Optimization"
+        description="Configure a machine-learning model for this portfolio's universe, train and test it chronologically, then review its ranking-based allocation and confirm a simulated trade proposal. A result never changes holdings by itself."
       />
-      <div className="grid gap-6 xl:grid-cols-[420px_minmax(0,1fr)]">
+      <div className="grid gap-6 xl:grid-cols-[400px_minmax(0,1fr)]">
         <div className="space-y-4">
-          <NewExperimentCard />
-          <ExperimentHistory activeId={activeId} />
+          {portfolioId && <NewExperimentCard portfolioId={portfolioId} />}
+          {portfolioId && <ExperimentHistory portfolioId={portfolioId} activeId={activeId} />}
+          {portfolioId && <UnlinkedExperiments portfolioId={portfolioId} />}
         </div>
         <div className="min-w-0">
-          {activeId ? <ExperimentDetail id={activeId} /> : list.isLoading ? <LoadingBlock height="h-96" /> : (
-            <EmptyState icon={<BrainCircuit className="size-8" />} title="No experiments yet"
-              description="Choose stocks on the Stock discovery page, configure a model on the left and start an experiment." />
+          {activeId ? <ExperimentResults id={activeId} portfolioId={portfolioId!} /> : list.isLoading ? <LoadingBlock height="h-96" /> : (
+            <EmptyState icon={<BrainCircuit className="size-8" />} title="No ML optimization yet"
+              description="Configure the model on the left and click Run ML optimization." />
           )}
         </div>
       </div>
@@ -107,27 +120,33 @@ const defaults: Omit<MlExperimentRequest, 'universe' | 'benchmarkSymbol' | 'risk
   initialCapital: 100_000,
 }
 
-function NewExperimentCard() {
+function NewExperimentCard({ portfolioId }: { portfolioId: string }) {
   const catalog = useMlCatalog()
-  const settings = useSettings()
+  const portfolio = usePortfolio(portfolioId)
   if (catalog.error) return <ErrorState error={catalog.error} />
-  if (!catalog.data || !settings.data) return <LoadingBlock height="h-[520px]" />
-  return <NewExperimentForm catalog={catalog.data} benchmark={settings.data.defaultBenchmark} riskFree={settings.data.defaultRiskFreeRate} />
+  if (portfolio.error) return <ErrorState error={portfolio.error} />
+  if (!catalog.data || !portfolio.data) return <LoadingBlock height="h-[520px]" />
+  // Keyed by portfolio: switching portfolio starts from that portfolio's universe and settings.
+  return <NewExperimentForm key={portfolioId} catalog={catalog.data} portfolio={portfolio.data} />
 }
 
-function NewExperimentForm({ catalog, benchmark, riskFree }: { catalog: MlCatalog; benchmark: string; riskFree: number }) {
+function NewExperimentForm({ catalog, portfolio }: { catalog: MlCatalog; portfolio: Portfolio }) {
   const selection = useSelection()
-  const { portfolio } = usePortfolioContext()
   const create = useCreateMlExperiment()
   const navigate = useNavigate()
   const missingData = useMissingDataGuard()
-  const [form, setForm] = useState({ ...defaults, benchmarkSymbol: benchmark, riskFreeRate: riskFree })
+  // Like Math Optimization: the portfolio's universe, benchmark and risk-free rate; computed in its currency.
+  const [form, setForm] = useState({ ...defaults, benchmarkSymbol: portfolio.settings.benchmarkSymbol, riskFreeRate: portfolio.settings.riskFreeRate })
+  // "from=selection" (selection tray) starts from the stock selection instead, like Math Optimization.
+  const [searchParams] = useSearchParams()
+  const fromSelection = searchParams.get('from') === 'selection' && selection.count > 0
+  const [universe, setUniverse] = useState<string[]>(fromSelection ? selection.symbols : portfolio.settings.universe)
   const [allFeatures, setAllFeatures] = useState(true)
   const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => setForm((f) => ({ ...f, [key]: value }))
+  const universeOptions = [...new Set([...portfolio.settings.universe, ...selection.symbols, ...universe])].sort()
 
   const family = catalog.modelFamilies.find((f) => f.value === form.modelFamily)!
   const targets = catalog.targets.filter((t) => family.supportedTargets.includes(t.value as PredictionTarget))
-  const universe = selection.symbols
   const featureGroups = useMemo(() => {
     const groups = new Map<string, MlCatalog['features']>()
     catalog.features.forEach((f) => groups.set(f.group, [...(groups.get(f.group) ?? []), f]))
@@ -141,14 +160,14 @@ function NewExperimentForm({ catalog, benchmark, riskFree }: { catalog: MlCatalo
 
   // Missing prices or exchange rates for the requested history are offered for download first.
   const submit = () => {
-    return missingData.guard({ symbols: universe, benchmarkSymbol: form.benchmarkSymbol, from: yearsAgo(form.historyYears), currency: portfolio?.baseCurrency ?? null }, start)
+    return missingData.guard({ symbols: universe, benchmarkSymbol: form.benchmarkSymbol, from: yearsAgo(form.historyYears), currency: portfolio.baseCurrency }, start)
   }
   const start = async () => {
     try {
       // Computed in the portfolio's currency: stocks of other markets are converted with dated exchange rates.
-      const result = await create.mutateAsync({ ...form, universe, features: allFeatures ? [] : form.features, currency: portfolio?.baseCurrency ?? null })
-      toast.success('Experiment queued', { description: 'Training, validation, testing and the backtest run in the background.' })
-      navigate(`/machine-learning/${result.summary.id}`)
+      const result = await create.mutateAsync({ ...form, universe, features: allFeatures ? [] : form.features, currency: portfolio.baseCurrency, portfolioId: portfolio.id })
+      toast.success('ML optimization queued', { description: 'Training, validation, testing and the backtest run in the background.' })
+      navigate(portfolioPath(portfolio.id, `ml-optimize/${result.summary.id}`))
     } catch (e) {
       toast.error('Could not start the experiment', { description: errorMessage(e) })
     }
@@ -157,22 +176,32 @@ function NewExperimentForm({ catalog, benchmark, riskFree }: { catalog: MlCatalo
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-sm">New experiment</CardTitle>
-        <CardDescription className="text-xs">Model settings decide what is predicted; portfolio settings decide how predictions become weights.</CardDescription>
+        <CardTitle className="text-sm">Configuration</CardTitle>
+        <CardDescription className="text-xs">
+          {portfolio.name}, computed in {portfolio.baseCurrency}. Model settings decide what is predicted; portfolio construction decides how predictions become weights.
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
         <fieldset className="space-y-2">
-          <legend className="flex w-full items-center justify-between text-sm font-medium">
-            Stock universe <span className="text-xs font-normal text-muted-foreground">{universe.length} selected</span>
+          <legend className="mb-1 flex w-full items-center justify-between text-sm font-medium">
+            Equity universe <span className="text-xs font-normal text-muted-foreground">{universe.length} selected</span>
           </legend>
-          {universe.length === 0 ? (
-            <p className="text-xs text-muted-foreground">No stocks selected. <Link to="/stocks" className="underline underline-offset-4">Choose stocks</Link> (at least 5).</p>
-          ) : (
-            <div className="flex max-h-24 flex-wrap gap-1 overflow-y-auto">
-              {universe.map((s) => <Badge key={s} variant="outline">{s}</Badge>)}
-            </div>
-          )}
-          <Button size="xs" variant="ghost" render={<Link to="/stocks" />}><ListChecks /> Edit selection</Button>
+          <div className="flex flex-wrap gap-1.5">
+            {selection.count > 0 && (
+              <Button type="button" size="xs" variant="outline" onClick={() => setUniverse(selection.symbols)}><ListChecks /> Use stock selection ({selection.count})</Button>
+            )}
+            <Button type="button" size="xs" variant="ghost" render={<Link to="/stocks" />}>Browse stocks</Button>
+            {universe.length > 0 && <Button type="button" size="xs" variant="ghost" onClick={() => setUniverse([])}><X /> Clear</Button>}
+          </div>
+          <div className="grid max-h-56 grid-cols-2 gap-1 overflow-y-auto rounded-md border p-2">
+            {universeOptions.map((symbol) => (
+              <label key={symbol} className="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-sm hover:bg-muted">
+                <Checkbox checked={universe.includes(symbol)} aria-label={symbol}
+                  onCheckedChange={(on) => setUniverse((u) => (on ? [...u, symbol] : u.filter((x) => x !== symbol)))} />
+                <span className="font-medium">{symbol}</span>
+              </label>
+            ))}
+          </div>
         </fieldset>
 
         <section className="space-y-3">
@@ -273,7 +302,7 @@ function NewExperimentForm({ catalog, benchmark, riskFree }: { catalog: MlCatalo
         </details>
 
         <Button className="w-full" onClick={submit} disabled={create.isPending || missingData.checking || universe.length < 5}>
-          {create.isPending || missingData.checking ? <Loader2 className="animate-spin" /> : <Play />} Start experiment
+          {create.isPending || missingData.checking ? <Loader2 className="animate-spin" /> : <Play />} {create.isPending ? 'Starting…' : 'Run ML optimization'}
         </Button>
         {missingData.dialog}
         {universe.length > 0 && universe.length < 5 && <p className="text-xs text-warn">Select at least 5 stocks.</p>}
@@ -311,22 +340,23 @@ function StatusBadge({ status }: { status: MlExperimentSummary['status'] }) {
   return <Badge variant="outline" className={cls}>{status === 'Running' && <Loader2 className="size-3 animate-spin" />}{status}</Badge>
 }
 
-function ExperimentHistory({ activeId }: { activeId?: string }) {
+function ExperimentHistory({ portfolioId, activeId }: { portfolioId: string; activeId?: string }) {
   const [page, setPage] = useState(1)
-  const list = useMlExperiments(page)
+  const list = useMlExperiments(page, { portfolioId })
   const navigate = useNavigate()
+  if (list.data && list.data.items.length === 0) return null
   return (
     <Card>
-      <CardHeader><CardTitle className="text-sm">Experiment history</CardTitle></CardHeader>
+      <CardHeader><CardTitle className="text-sm">Run history</CardTitle></CardHeader>
       <CardContent>
         {list.error ? <ErrorState error={list.error} /> : !list.data ? <LoadingBlock height="h-40" /> : list.data.items.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No experiments yet.</p>
+          <p className="text-sm text-muted-foreground">No ML optimization yet.</p>
         ) : (
           <>
             <ul className="divide-y rounded-md border">
               {list.data.items.map((e) => (
                 <li key={e.id}>
-                  <button type="button" onClick={() => navigate(`/machine-learning/${e.id}`)}
+                  <button type="button" onClick={() => navigate(portfolioPath(portfolioId, `ml-optimize/${e.id}`))}
                     className={cn('w-full px-3 py-2 text-left text-sm hover:bg-muted', e.id === activeId && 'bg-muted')} aria-current={e.id === activeId ? 'true' : undefined}>
                     <div className="flex items-center justify-between gap-2">
                       <span className="truncate font-medium">{e.name}</span>
@@ -350,77 +380,210 @@ function ExperimentHistory({ activeId }: { activeId?: string }) {
   )
 }
 
+/**
+ * Experiments created before portfolios were recorded have none. They are listed in every portfolio of their currency
+ * and become this portfolio's only when the user links them – never by guessing.
+ */
+function UnlinkedExperiments({ portfolioId }: { portfolioId: string }) {
+  const { portfolios } = usePortfolioContext()
+  const portfolio = portfolios.find((p) => p.id === portfolioId)
+  const list = useMlExperiments(1, { unlinked: true })
+  const items = (list.data?.items ?? []).filter((e) => e.currency === portfolio?.baseCurrency)
+  if (!portfolio || items.length === 0) return null
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm">Earlier ML experiments without a portfolio</CardTitle>
+        <CardDescription className="text-xs">
+          Created before experiments belonged to a portfolio. Link one to “{portfolio.name}” to list it here and to backtest and compare it with this
+          portfolio&apos;s optimizations. Only {portfolio.baseCurrency} experiments are shown.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="max-h-72 space-y-1 overflow-y-auto">
+        {items.map((e) => <UnlinkedExperimentRow key={e.id} experiment={e} portfolioId={portfolioId} />)}
+      </CardContent>
+    </Card>
+  )
+}
+
+function UnlinkedExperimentRow({ experiment, portfolioId }: { experiment: MlExperimentSummary; portfolioId: string }) {
+  const assign = useAssignExperimentPortfolio(experiment.id)
+  return (
+    <div className="flex items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-sm hover:bg-muted">
+      <Link to={portfolioPath(portfolioId, `ml-optimize/${experiment.id}`)} className="min-w-0">
+        <div className="truncate font-medium">{experiment.name}</div>
+        <div className="text-xs text-muted-foreground">{relativeTime(experiment.createdAtUtc)} · {experiment.status}</div>
+      </Link>
+      <Button size="xs" variant="outline" disabled={assign.isPending} onClick={async () => {
+        try {
+          await assign.mutateAsync(portfolioId)
+          toast.success('Experiment linked to the portfolio')
+        } catch (err) {
+          toast.error('Could not link the experiment', { description: errorMessage(err) })
+        }
+      }}>Link</Button>
+    </div>
+  )
+}
+
 // ------------------------------------------------------------------ experiment detail
 
-function ExperimentDetail({ id }: { id: string }) {
+function ExperimentResults({ id, portfolioId }: { id: string; portfolioId: string }) {
   const experiment = useMlExperiment(id)
   const remove = useDeleteMlExperiment()
+  const predictAgain = usePredictAgain(id)
   const navigate = useNavigate()
   if (experiment.error) return <ErrorState error={experiment.error} onRetry={() => experiment.refetch()} />
   if (!experiment.data) return <LoadingBlock height="h-96" />
   const e = experiment.data
   const s = e.summary
   const active = s.status === 'Queued' || s.status === 'Running'
+  const ok = s.status === 'Succeeded' && !!e.results
 
   return (
     <div className="space-y-4">
-      <Card className="py-4">
-        <CardContent className="space-y-3 px-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-semibold">{s.name}</h2>
-              <p className="text-xs text-muted-foreground">
-                {familyLabels[s.modelFamily]} · {targetLabels[s.target]} · {s.horizonDays}-day horizon · {e.symbols.length} stocks · benchmark {e.benchmarkSymbol}
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-1.5">
-              <StatusBadge status={s.status} />
-              {s.usesSimulatedData && <DataBadge kind="simulated" />}
-              {s.isExploratory && <Badge variant="outline" className="border-warn/50 text-warn" title="Too few independent test periods for robust conclusions">Exploratory</Badge>}
-              {!active && (
-                <Button size="icon-sm" variant="ghost" aria-label="Delete experiment" onClick={async () => {
-                  try {
-                    await remove.mutateAsync(id)
-                    toast.success('Experiment deleted')
-                    navigate('/machine-learning')
-                  } catch (err) {
-                    toast.error('Delete failed', { description: errorMessage(err) })
-                  }
-                }}><Trash2 /></Button>
-              )}
-            </div>
-          </div>
-          {active && (
-            <div className="space-y-1" aria-live="polite">
-              <Progress value={s.progressPercent} aria-label="Experiment progress" />
-              <p className="text-xs text-muted-foreground">{s.progressMessage ?? 'Queued'} · {s.progressPercent}%</p>
-            </div>
+      {/* Header like Math Optimization: name, status, data badges, currency, date and actions. */}
+      <div className="flex flex-wrap items-center gap-2">
+        <h2 className="text-lg font-semibold">{s.name}</h2>
+        <StatusBadge status={s.status} />
+        {s.usesSimulatedData ? <DataBadge kind="simulated" /> : <DataBadge kind="estimate" label="Model estimate" />}
+        {s.isExploratory && <Badge variant="outline" className="border-warn/50 text-warn" title="Too few independent test periods for robust conclusions">Exploratory</Badge>}
+        <Badge variant="outline">In {e.currency}</Badge>
+        <span className="text-xs text-muted-foreground">{dateTime(s.createdAtUtc)}</span>
+        <div className="ml-auto flex flex-wrap gap-1.5">
+          {ok && (
+            <Button size="sm" variant="outline" disabled={predictAgain.isPending} onClick={async () => {
+              try {
+                await predictAgain.mutateAsync()
+                toast.success('New predictions stored', { description: 'Scored with the stored deployment model (not retrained).' })
+              } catch (err) {
+                toast.error('Prediction failed', { description: errorMessage(err) })
+              }
+            }}>{predictAgain.isPending ? <Loader2 className="animate-spin" /> : <RefreshCw />} Predict on latest data</Button>
           )}
-          {s.status === 'Failed' && (
-            <Alert variant="destructive"><AlertTriangle /><AlertTitle>Experiment failed</AlertTitle><AlertDescription>{s.error}</AlertDescription></Alert>
+          {!active && (
+            <Button size="sm" variant="ghost" aria-label="Delete experiment" onClick={async () => {
+              try {
+                await remove.mutateAsync(id)
+                toast.success('ML optimization deleted')
+                navigate(portfolioPath(portfolioId, 'ml-optimize'))
+              } catch (err) {
+                toast.error('Delete failed', { description: errorMessage(err) })
+              }
+            }}><Trash2 /></Button>
           )}
-          <p className="text-[11px] text-muted-foreground">{e.disclaimer}</p>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        {familyLabels[s.modelFamily]} · {targetLabels[s.target]} · {s.horizonDays}-day horizon · {e.symbols.length} stocks · benchmark {e.benchmarkSymbol}
+      </p>
+      <ExperimentPortfolio id={id} experimentPortfolioId={s.portfolioId ?? null} currency={e.currency} portfolioId={portfolioId} />
 
-      {e.results && <MlInsights e={e} />}
-      {e.results && (
-        <Tabs defaultValue="evaluation">
-          <TabsList className="flex-wrap">
-            <TabsTrigger value="evaluation">Evaluation</TabsTrigger>
-            <TabsTrigger value="predictions">Predictions &amp; portfolio</TabsTrigger>
-            <TabsTrigger value="explain">Explainability</TabsTrigger>
-            <TabsTrigger value="backtest">Backtest</TabsTrigger>
-            <TabsTrigger value="setup">Setup &amp; model versions</TabsTrigger>
-          </TabsList>
-          <TabsContent value="evaluation" className="mt-4 space-y-4"><EvaluationTab e={e} /></TabsContent>
-          <TabsContent value="predictions" className="mt-4 space-y-4"><PredictionsTab e={e} /></TabsContent>
-          <TabsContent value="explain" className="mt-4 space-y-4"><ExplainTab e={e} /></TabsContent>
-          <TabsContent value="backtest" className="mt-4 space-y-4"><BacktestTab id={e.summary.id} /></TabsContent>
-          <TabsContent value="setup" className="mt-4 space-y-4"><SetupTab e={e} /></TabsContent>
-        </Tabs>
+      {active && (
+        <div className="space-y-1" aria-live="polite">
+          <Progress value={s.progressPercent} aria-label="Experiment progress" />
+          <p className="text-xs text-muted-foreground">{s.progressMessage ?? 'Queued'} · {s.progressPercent}%</p>
+        </div>
       )}
-      <Warnings items={e.warnings} title="Data and methodology notes" />
+      {s.status === 'Failed' && (
+        <Alert variant="destructive"><AlertTriangle /><AlertTitle>The ML optimization did not complete</AlertTitle><AlertDescription>{s.error}</AlertDescription></Alert>
+      )}
+
+      {ok && <HeadlineMetrics e={e} />}
+      {/* Every result is visible at once (no tabs); the same section order as Math Optimization. */}
+      {ok && <ResultSection title="Allocation"><AllocationSection e={e} /></ResultSection>}
+      {ok && <ResultSection title="Validation & test" hint={e.results!.validationMethodology}><EvaluationSection e={e} /></ResultSection>}
+      {ok && <ResultSection title="Walk-forward backtest (test period)"><BacktestSection id={id} /></ResultSection>}
+      {ok && <ResultSection title="Explainability"><ExplainSection e={e} /></ResultSection>}
+      {ok && <ResultSection title="Inputs & methodology" collapsible><SetupSection e={e} /></ResultSection>}
+      {ok && <MlTradeProposal e={e} portfolioId={portfolioId} />}
+      <Warnings items={e.warnings} title="Data and methodology notes" collapsible />
+      <p className="text-[11px] text-muted-foreground">{e.disclaimer}</p>
+      {ok && <MlInsights e={e} />}
+    </div>
+  )
+}
+
+/** The headline numbers, in the same place as Math Optimization's expected return, volatility, Sharpe and holdings. */
+function HeadlineMetrics({ e }: { e: MlExperiment }) {
+  const test = e.results!.testMetrics
+  const set = e.latestPredictions
+  const held = set?.predictions.filter((p) => p.targetWeight > 0).length ?? 0
+  return (
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <MetricCard label="Rank correlation (IC)" value={f3(test.ranking.meanInformationCoefficient)} numeric={test.ranking.meanInformationCoefficient} tone="signed"
+        hint="Mean Spearman correlation per date between scores and realized forward excess returns on the untouched test period. 0 = no ranking skill."
+        sub={test.ranking.informationCoefficientTStat !== null ? `t = ${num(test.ranking.informationCoefficientTStat, 2)} · test period` : 'Test period'} />
+      <MetricCard label={`Top-${test.ranking.topK} excess vs universe`} value={pct(test.ranking.topKExcessOverUniverse)} numeric={test.ranking.topKExcessOverUniverse} tone="signed"
+        sub="Test period, before costs" hint="Average realized forward excess return of the top-K stocks minus the universe average, per decision date." />
+      {test.classification ? (
+        <MetricCard label="ROC-AUC" value={f3(test.classification.rocAuc)} sub="Test period" hint="Probability that a random outperformer is scored above a random underperformer. 0.5 = no skill." />
+      ) : (
+        <MetricCard label="Out-of-sample R²" value={f3(test.regression!.outOfSampleR2)} numeric={test.regression!.outOfSampleR2} tone="signed" sub="Test period"
+          hint="1 − SSE/SSE of always predicting the training mean. Negative = worse than that naive forecast; small values are normal for returns." />
+      )}
+      <MetricCard label="Holdings · cash" value={set ? `${held} · ${pct(set.cashWeight, 1)}` : '—'} sub={set ? `Predictions as of ${date(set.asOfDate)}` : undefined} />
+    </div>
+  )
+}
+
+/** Trade proposal for this portfolio (from the URL), in the same card as Math Optimization's. */
+function MlTradeProposal({ e, portfolioId }: { e: MlExperiment; portfolioId: string }) {
+  const { portfolios } = usePortfolioContext()
+  const portfolio = portfolios.find((p) => p.id === portfolioId)
+  const preview = useRebalancePreview(portfolioId)
+  const [created, setCreated] = useState<{ id: string; proposal: TradeProposal } | null>(null)
+  const proposal = created?.id === e.summary.id ? created.proposal : null
+  const weights = Object.fromEntries((e.latestPredictions?.predictions ?? []).filter((p) => p.targetWeight > 0).map((p) => [p.symbol, p.targetWeight]))
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between gap-2">
+        <div>
+          <CardTitle className="flex items-center gap-2 text-sm"><FileText className="size-4" /> Trade proposal</CardTitle>
+          <CardDescription className="text-xs">Translate the ML target weights into whole-share orders for “{portfolio?.name ?? 'this portfolio'}” at the latest stored prices, after costs. Nothing is executed until you confirm.</CardDescription>
+        </div>
+        <Button variant={proposal ? 'outline' : 'default'} disabled={preview.isPending || Object.keys(weights).length === 0} onClick={async () => {
+          try {
+            setCreated({ id: e.summary.id, proposal: await preview.mutateAsync({ targetWeights: weights }) })
+          } catch (err) {
+            toast.error('Could not create trade proposal', { description: errorMessage(err) })
+          }
+        }}>
+          {preview.isPending ? <Loader2 className="animate-spin" /> : <ArrowRight />}
+          {proposal ? 'Recalculate' : 'Create trade proposal'}
+        </Button>
+      </CardHeader>
+      {proposal && <CardContent><TradeProposalView proposal={proposal} currency={portfolio?.baseCurrency ?? e.currency} /></CardContent>}
+    </Card>
+  )
+}
+
+/**
+ * The portfolio the experiment belongs to. Experiments created before portfolios were recorded can be assigned here –
+ * explicitly, to a portfolio of the same currency – so they can be backtested and compared within it.
+ */
+function ExperimentPortfolio({ id, experimentPortfolioId, currency, portfolioId }: { id: string; experimentPortfolioId: string | null; currency: string; portfolioId: string }) {
+  const { portfolios } = usePortfolioContext()
+  const assign = useAssignExperimentPortfolio(id)
+  if (experimentPortfolioId) return null
+  const portfolio = portfolios.find((p) => p.id === portfolioId)
+  const sameCurrency = portfolio?.baseCurrency === currency
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-md border border-dashed p-2 text-xs">
+      <span className="text-muted-foreground">
+        This experiment belongs to no portfolio yet (created before experiments were linked).{' '}
+        {sameCurrency ? `Link it to “${portfolio?.name}” to backtest and compare it with this portfolio's optimizations.` : `It was computed in ${currency}; this portfolio uses ${portfolio?.baseCurrency}, so it cannot be linked here.`}
+      </span>
+      {sameCurrency && (
+        <Button size="xs" disabled={assign.isPending} onClick={async () => {
+          try {
+            await assign.mutateAsync(portfolioId)
+            toast.success('Experiment linked to the portfolio')
+          } catch (err) {
+            toast.error('Could not link the experiment', { description: errorMessage(err) })
+          }
+        }}>Link to this portfolio</Button>
+      )}
     </div>
   )
 }
@@ -428,7 +591,7 @@ function ExperimentDetail({ id }: { id: string }) {
 /** Interpretation of this experiment's own numbers (test metrics, portfolio, backtest) with a link to the model guide. */
 function MlInsights({ e }: { e: MlExperiment }) {
   const bt = useMlBacktest(e.summary.id, !!e.results)
-  return <StrategyInsights insights={interpretMlExperiment(e, bt.data)} guideId={guideForModel(e.configuration.modelFamily)} />
+  return <StrategyInsights insights={interpretMlExperiment(e, bt.data)} guideId={guideForModel(e.configuration.modelFamily)} collapsible />
 }
 
 const f3 = (v: number | null | undefined) => (v === null || v === undefined ? '—' : num(v, 3))
@@ -464,7 +627,7 @@ function PeriodTimeline({ e }: { e: MlExperiment }) {
   )
 }
 
-function EvaluationTab({ e }: { e: MlExperiment }) {
+function EvaluationSection({ e }: { e: MlExperiment }) {
   const r = e.results!
   const test = r.testMetrics
   const isClass = !!test.classification
@@ -475,23 +638,6 @@ function EvaluationTab({ e }: { e: MlExperiment }) {
         <PeriodTimeline e={e} />
         <p className="text-xs text-muted-foreground"><span className="font-medium text-foreground">Target: </span>{r.targetDefinition}</p>
       </CardContent></Card>
-
-      <SectionTitle hint="Measured once on the untouched test period with the model refit on training + validation data. Not investment performance.">Out-of-sample test metrics</SectionTitle>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <MetricCard label="Rank correlation (IC)" value={f3(test.ranking.meanInformationCoefficient)} numeric={test.ranking.meanInformationCoefficient} tone="signed"
-          hint="Mean Spearman correlation per date between scores and realized forward excess returns. 0 = no ranking skill."
-          sub={test.ranking.informationCoefficientTStat !== null ? `t = ${num(test.ranking.informationCoefficientTStat, 2)} on ${test.ranking.nonOverlappingDates} non-overlapping dates` : undefined} />
-        <MetricCard label={`Top-${test.ranking.topK} excess vs universe`} value={pct(test.ranking.topKExcessOverUniverse)} numeric={test.ranking.topKExcessOverUniverse} tone="signed"
-          hint="Average realized forward excess return of the top-K stocks minus the universe average, per decision date (before costs)." />
-        <MetricCard label="Top-K hit rate" value={pct(test.ranking.topKHitRate, 1)}
-          hint="Share of top-K stocks whose realized outcome beat the cross-sectional median. 50% ≈ no skill." />
-        {isClass ? (
-          <MetricCard label="ROC-AUC" value={f3(test.classification!.rocAuc)} hint="Probability that a random outperformer is scored above a random underperformer. 0.5 = no skill." />
-        ) : (
-          <MetricCard label="Out-of-sample R²" value={f3(test.regression!.outOfSampleR2)} numeric={test.regression!.outOfSampleR2} tone="signed"
-            hint="1 − SSE/SSE of always predicting the training mean. Negative = worse than that naive forecast; small values are normal for returns." />
-        )}
-      </div>
 
       <Card><CardContent className="py-4">
         <SectionTitle hint="In-sample training metrics are optimistic and shown only for comparison; decisions should rest on the test column.">Train vs validation vs test</SectionTitle>
@@ -585,12 +731,8 @@ function predictionFormat(target: PredictionTarget) {
   return (v: number) => (target === 'OutperformBenchmark' ? pct(v, 1) : pct(v, 2))
 }
 
-function PredictionsTab({ e }: { e: MlExperiment }) {
+function AllocationSection({ e }: { e: MlExperiment }) {
   const set = e.latestPredictions
-  const predictAgain = usePredictAgain(e.summary.id)
-  const { portfolioId, portfolio } = usePortfolioContext()
-  const preview = useRebalancePreview(portfolioId ?? '')
-  const [proposal, setProposal] = useState<TradeProposal | null>(null)
   if (!set) return <EmptyState title="No predictions" />
   const fmt = predictionFormat(e.summary.target)
   const valueLabel = e.summary.target === 'OutperformBenchmark' ? 'P(outperform)' : e.summary.target === 'ForwardVolatility' ? 'Predicted volatility' : `Predicted ${targetLabels[e.summary.target].toLowerCase()}`
@@ -628,21 +770,11 @@ function PredictionsTab({ e }: { e: MlExperiment }) {
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-        <span>
-          Predictions as of <span className="font-medium text-foreground">{date(set.asOfDate)}</span> for the next {set.horizonDays} trading days ·
-          model v{set.modelVersion} ({set.modelRole}, trained through {date(set.modelTrainedThrough)}) · created {dateTime(set.createdAtUtc)}
-          {set.usesSimulatedData && <> · <DataBadge kind="simulated" /></>}
-        </span>
-        <Button size="sm" variant="outline" disabled={predictAgain.isPending} onClick={async () => {
-          try {
-            await predictAgain.mutateAsync()
-            toast.success('New predictions stored', { description: 'Scored with the stored deployment model (not retrained).' })
-          } catch (err) {
-            toast.error('Prediction failed', { description: errorMessage(err) })
-          }
-        }}>{predictAgain.isPending ? <Loader2 className="animate-spin" /> : <RefreshCw />} Predict on latest data</Button>
-      </div>
+      <p className="text-xs text-muted-foreground">
+        Predictions as of <span className="font-medium text-foreground">{date(set.asOfDate)}</span> for the next {set.horizonDays} trading days ·
+        model v{set.modelVersion} ({set.modelRole}, trained through {date(set.modelTrainedThrough)}) · created {dateTime(set.createdAtUtc)}
+        {set.usesSimulatedData && <> · <DataBadge kind="simulated" /></>}
+      </p>
       <Alert><FlaskConical /><AlertTitle>Estimates, not guarantees</AlertTitle><AlertDescription>
         Predicted values are uncertain model estimates. {set.intervalMethod ?? 'No uncertainty interval is shown for this target.'} Drivers: {e.results!.contributionMethod}
       </AlertDescription></Alert>
@@ -661,24 +793,13 @@ function PredictionsTab({ e }: { e: MlExperiment }) {
             <li>Cap each stock at {pct(e.configuration.maxWeight, 0)}; cash reserve {pct(e.configuration.cashReserve, 0)}.</li>
           </ul>
           <Warnings items={set.notes} title="Construction notes" />
-          <div className="space-y-2 border-t pt-3">
-            <p className="text-xs text-muted-foreground">Create a simulated trade proposal that moves {portfolio ? `“${portfolio.name}”` : 'the selected portfolio'} to these weights. Nothing is executed until you confirm.</p>
-            <Button size="sm" disabled={!portfolioId || preview.isPending || Object.keys(weights).length === 0} onClick={async () => {
-              try {
-                setProposal(await preview.mutateAsync({ targetWeights: weights }))
-              } catch (err) {
-                toast.error('Could not create a proposal', { description: errorMessage(err) })
-              }
-            }}>{preview.isPending ? <Loader2 className="animate-spin" /> : <ShoppingCart />} Propose paper trades</Button>
-          </div>
         </CardContent></Card>
       </div>
-      {proposal && <Card><CardContent className="py-4"><TradeProposalView proposal={proposal} currency={portfolio?.baseCurrency ?? 'USD'} /></CardContent></Card>}
     </>
   )
 }
 
-function ExplainTab({ e }: { e: MlExperiment }) {
+function ExplainSection({ e }: { e: MlExperiment }) {
   const r = e.results!
   const native = r.nativeExplanation
   const signed = native.method.toLowerCase().includes('coefficient')
@@ -709,7 +830,7 @@ function ExplainTab({ e }: { e: MlExperiment }) {
   )
 }
 
-function BacktestTab({ id }: { id: string }) {
+function BacktestSection({ id }: { id: string }) {
   const bt = useMlBacktest(id)
   if (bt.error) return <ErrorState error={bt.error} />
   if (!bt.data) return <LoadingBlock />
@@ -744,7 +865,7 @@ function BacktestTab({ id }: { id: string }) {
   )
 }
 
-function SetupTab({ e }: { e: MlExperiment }) {
+function SetupSection({ e }: { e: MlExperiment }) {
   const r = e.results!
   return (
     <>

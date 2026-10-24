@@ -31,8 +31,8 @@ public sealed class StrategyComparisonsController(StrategyComparisonService comp
 
     /// <summary>Saved comparisons of the caller, newest first.</summary>
     [HttpGet]
-    public Task<PagedResult<StrategyComparisonSummaryDto>> List(CancellationToken ct, [FromQuery] int page = 1, [FromQuery] int pageSize = 20) =>
-        comparisons.ListAsync(page, pageSize, ct);
+    public Task<PagedResult<StrategyComparisonSummaryDto>> List(CancellationToken ct, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] Guid? portfolioId = null) =>
+        comparisons.ListAsync(page, pageSize, ct, portfolioId);
 
     /// <summary>Configuration (frozen copies of both strategies' settings), fairness assessment, series and metrics.</summary>
     [HttpGet("{id:guid}")]

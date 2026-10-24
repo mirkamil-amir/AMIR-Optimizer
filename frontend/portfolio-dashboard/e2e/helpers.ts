@@ -63,3 +63,13 @@ export async function approve(page: Page, email: string) {
 
 /** Session of the administrator saved by admin.setup.ts (gitignored). */
 export const ADMIN_STATE = 'playwright/.auth/admin.json'
+
+/**
+ * Before an analysis the app asks when stored prices or exchange rates are missing (a fresh e2e database has few FX
+ * rates). Accepts the download when the window appears; does nothing otherwise.
+ */
+export async function acceptDownloadIfAsked(page: Page) {
+  const ask = page.getByRole('dialog', { name: 'Data missing for this analysis' })
+  await ask.waitFor({ state: 'visible', timeout: 3_000 }).catch(() => undefined)
+  if (await ask.isVisible()) await ask.getByRole('button', { name: 'Download and continue' }).click()
+}

@@ -1,9 +1,12 @@
 ---
 name: ml-experiment
-description: Run machine-learning experiments in AMIR Optimizer through the API on real stored prices (one or several model families/targets on the same universe), wait for them, and report out-of-sample results honestly against baselines and equal weight. Use when asked to train, evaluate, compare or benchmark ML models or to produce ML evaluation numbers.
+description: Run ML Optimizations (machine-learning experiments) in AMIR Optimizer through the API on real stored prices (one or several model families/targets on the same universe, linked to a portfolio), wait for them, backtest or compare them with the portfolio's other optimizations, and report out-of-sample results honestly against baselines and equal weight. Use when asked to train, evaluate, compare or benchmark ML models or to produce ML evaluation numbers.
 ---
 
 # Run & report ML experiments
+
+In the UI an experiment is an **ML Optimization** of a portfolio: the tab next to Math Optimization in the portfolio
+workspace (`/portfolios/<id>/ml-optimize/<experimentId>`); link results there when reporting.
 
 Requires a running stack (see `/run-app`). Uses the API as the administrator; never print the password.
 
@@ -26,15 +29,20 @@ Missing history is queued automatically when the experiment is created (≤ 50 s
 
 ## 2. Queue experiments
 
-`POST $B/ml/experiments` (202). Key fields: `universe` (≥ 5), `benchmarkSymbol`, `modelFamily`
+`POST $B/ml/experiments` (202). Key fields: `portfolioId` (one of the user's portfolios – its base currency is used and the
+experiment becomes one of its optimizations; `GET $B/portfolios` lists them), `universe` (≥ 5), `benchmarkSymbol`, `modelFamily`
 (`RidgeRegression`, `LogisticRegression`, `RandomForest`, `GradientBoosting`), `target` (`ForwardReturn`,
 `ForwardExcessReturn`, `OutperformBenchmark`, `ForwardVolatility`), `horizonDays`, `historyYears`, `topK`.
 Ridge supports regression targets only; logistic only `OutperformBenchmark`. Catalogue: `GET $B/ml/models`.
 
 - Set `topK` to at most half the universe – with `topK ≥ universe` the ML portfolio is just equal weight.
-- One currency per experiment (US, or DAX/CAC, or FTSE, or Nikkei). A benchmark in another currency is switched to the
-  index benchmark (SPY → ^GDAXI for DAX stocks) and noted in `warnings`; missing history is downloaded before training
-  (also noted). Mixed currencies → 400 with an explanation.
+- Stocks of several markets may be mixed: prices are converted into the analysis currency (the portfolio's) with dated
+  ECB rates; a stock with > 5 % of prices without a rate is excluded with the cause (see `results.eligibility`). In a
+  single-market analysis in its own currency a foreign benchmark is switched to the index benchmark (SPY → ^GDAXI for
+  DAX stocks in EUR) and noted in `warnings`. Missing history is downloaded before training (also noted); the
+  experiment uses only the benchmark's stored span, so check the benchmark's history too.
+- Without `portfolioId` the experiment is unlinked and cannot be backtested or compared from the UI;
+  `PUT $B/ml/experiments/{id}/portfolio` `{"portfolioId":"…"}` links it later (same currency only).
 - At most **2 active experiments per user** (409 otherwise): queue two, wait, queue more.
 - In zsh build per-experiment variables (`f=${spec%%:*}; t=${spec##*:}`); `set -- $spec` does not split.
 
@@ -54,6 +62,12 @@ reason in `error` – report it; never substitute numbers.
   `topKExcessOverUniverse`), `results.baselines` (training mean / base rate, 12-1 momentum), `results.testPeriod`,
   `results.selectedHyperparameters`.
 - `GET $B/ml/experiments/{id}/backtest` → `performance[]` (ML strategy, equal weight, benchmark) and `rebalances`.
+- `results.eligibility[]` → per stock: stored prices, prices in the benchmark span, prices without an FX rate, samples,
+  rank, weight and the stage/reason where it stopped – use it to explain excluded or unselected stocks.
+- Other periods: `POST $B/backtests/from-strategy` `{"portfolioId":…,"strategy":{"kind":"MachineLearning","id":…},"startDate":…,"endDate":…}`
+  (results before the test period are flagged "Partly in-sample"). Against another optimization of the same portfolio:
+  `POST $B/strategy-comparisons` `{"portfolioId":…,"strategyA":{"kind":"Mathematical","id":<run>},"strategyB":{"kind":"MachineLearning","id":<experiment>}}`;
+  `GET $B/portfolios/{id}/strategies` lists the candidates. Comparisons and backtests are queued jobs (poll by id).
 
 ## 4. Report honestly
 
@@ -64,5 +78,7 @@ reason in `error` – report it; never substitute numbers.
 - Never call a model profitable or superior; mention survivorship bias (today's constituents) and small samples.
 - If two models give identical backtests, check `rebalances[].selected` before calling it a bug (same top-K set ⇒
   same equal-weight portfolio).
-- Delete only experiments you created as probes (`DELETE $B/ml/experiments/{id}`, 204); never others.
+- Experiments, backtests and comparisons are runs in the user's account: on the development stack create them only
+  when the user asked for these numbers; otherwise use `./scripts/e2e.sh`. Delete only experiments you created as probes
+  (`DELETE $B/ml/experiments/{id}`, 204); never others.
 - `rm -f $J` when done.

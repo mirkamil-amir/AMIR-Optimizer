@@ -22,7 +22,7 @@ describe('navigation model', () => {
   it('keeps every other former sidebar destination under Optimizer', () => {
     const optimizer = optimizerSections.flatMap((s) => s.items.map((i) => i.to))
     expect(optimizer.sort()).toEqual([
-      '/', '/backtest', '/history', '/machine-learning', '/optimize', '/stocks', '/strategy-comparison',
+      '/', '/backtest', '/history', '/ml-optimize', '/optimize', '/stocks', '/strategy-comparison',
     ])
     // Holdings, transactions and performance are sections of each portfolio's workspace, not global sidebar entries.
     expect(optimizerSections.flatMap((s) => s.items.map((i) => i.label))).toContain('Portfolio Creation')

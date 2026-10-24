@@ -116,23 +116,43 @@ generated form are accepted when reading. Back up the artifact directory togethe
 
 ## Strategy comparison
 
-`StrategyComparisonEngine` re-evaluates strategies on **one price grid** with the same shared `PortfolioSimulator`:
+A comparison takes **two optimizations of the same portfolio** (`PortfolioStrategyService`): mathematical vs
+mathematical, ML vs ML or mathematical vs ML. A mathematical optimization is a successful run of the portfolio; an ML
+optimization is a successful experiment linked to it (`MlExperiment.PortfolioId`, set from the experiment form or, for
+experiments created before 2026-10-24, with `PUT /ml/experiments/{id}/portfolio` to a portfolio of the same currency –
+never guessed). Another portfolio's or user's optimization → 404. Both strategies' settings are frozen into the
+comparison (`StrategySnapshotDto`), so later deletions do not change it; comparisons stored before 2026-10-24 (one run,
+one experiment) are read in the same shape.
+
+`StrategyComparisonEngine` re-evaluates the two strategies ("A", "B") on **one price grid** with the same shared `PortfolioSimulator`:
 
 | Fairness rule | How it is enforced |
 |---|---|
 | Same period and decision dates | one evaluation window and one rebalancing calendar for all strategies |
-| Same universe | intersection (default) or union of the two runs' universes; exclusions are listed |
+| Same universe | intersection (default) or union of the two strategies' universes; exclusions are listed |
 | Same capital, costs, execution | initial capital, proportional cost in bps, next-close fills, cash at 0% |
-| No look-ahead | the classical strategy re-optimizes with its **stored settings** on a trailing window ending at the signal date; the ML strategy retrains with its **stored hyperparameters** on labels realized before the signal date |
+| No look-ahead | a mathematical strategy re-optimizes with its **stored settings** on a trailing window ending at the signal date; an ML strategy retrains with its **stored hyperparameters** on labels realized before the signal date |
+| Out-of-sample | default start = the latest test-period start of an ML strategy (without ML: three years ago); an earlier start makes the comparison "partly in-sample", unranked |
 | Comparable outputs | identical metric definitions (`StrategyMetrics`) for all strategies and the benchmark |
 
-Strategies: mathematical optimization, machine learning, equal weight, benchmark (buy and hold), and an optional
-experimental hybrid (the ML model screens the top candidates; the mean-variance optimizer weights them with the run's
-settings). Outputs: growth, drawdown, rolling Sharpe, risk/return, monthly returns, average weights and sector
-exposure, turnover and costs, holdings overlap, and a Sharpe ranking for the period with an explicit note that
-differences over one period can be due to chance.
+Strategies: A and B, equal weight, benchmark (buy and hold), and – only for one mathematical and one ML strategy – an
+optional experimental hybrid (the ML model screens the top candidates; the mean-variance optimizer weights them with the
+run's settings). Outputs: growth, drawdown, rolling Sharpe, risk/return, monthly returns, average weights and sector
+exposure, turnover and costs, holdings overlap, monthly returns (line chart), and a Sharpe ranking for the period with an
+explicit note that differences over one period can be due to chance. The interpretation ("What the comparison shows")
+closes the page; data notes are folded until opened.
 
 A comparison stores its inputs, data snapshot hash and results; it is never recalculated or edited. Deleting removes it.
+
+## Backtesting an optimization
+
+`POST /backtests/from-strategy` (Backtest page → "Backtest an optimization") backtests any optimization of a portfolio
+over a chosen period with the shared `BacktestEngine`: a mathematical run re-optimizes with its stored settings (incl.
+sector limits) at every rebalance; an ML experiment is re-run walk-forward (`MlStrategyFactory`: its features, target,
+selected hyperparameters and portfolio rules, retrained on realized labels only) through the same simulator, with the
+same baselines (buy & hold of the first allocation, equal weight, benchmark) in the portfolio's currency. A period that
+starts before the experiment's test period carries a "Partly in-sample" warning. The settings are frozen into the
+backtest (`CreateBacktestRequest.Strategy`).
 
 ## Currencies, benchmarks and missing history
 
@@ -156,7 +176,7 @@ experiment starts once the data is stored. Comparisons apply the same rules.
 
 ## Explanations for students
 
-The ML workspace shows "What your result means" (`interpretMlExperiment` in `frontend/.../lib/interpretation.ts`):
+ML Optimization (`/portfolios/:id/ml-optimize`) shows "What your result means" at the bottom of the page (`interpretMlExperiment` in `frontend/.../lib/interpretation.ts`):
 the test window and independent dates, whether the IC is distinguishable from zero (t-statistic), comparison with the
 momentum baseline, out-of-sample R² or AUC in plain words, an overfitting warning when training skill far exceeds test
 skill, how predictions became weights (and a warning when top K covers the whole universe), and the backtest versus

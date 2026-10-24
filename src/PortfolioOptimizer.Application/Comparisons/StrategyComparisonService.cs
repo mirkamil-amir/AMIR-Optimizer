@@ -20,6 +20,8 @@ public sealed class StrategyComparisonService(
     IApplicationDbContext db,
     PriceQueryService prices,
     MarketDataService marketData,
+    Portfolios.PortfolioService portfolios,
+    PortfolioStrategyService strategies,
     IBackgroundJobQueue queue,
     ICurrentUser currentUser,
     IOptions<MachineLearningOptions> options,
@@ -32,59 +34,46 @@ public sealed class StrategyComparisonService(
     public async Task<StrategyComparisonDto> CreateAsync(CreateStrategyComparisonRequest request, CancellationToken ct)
     {
         var owner = currentUser.RequireUserId();
-        var run = await db.OptimizationRuns.AsNoTracking().SingleOrDefaultAsync(r => r.Id == request.OptimizationRunId && r.OwnerId == owner, ct)
-                  ?? throw new NotFoundException("Optimization run", request.OptimizationRunId);
-        if (run.Status != OptimizationRunStatus.Succeeded) throw new ConflictException("The optimization run did not succeed; choose a successful run.");
-        var experiment = await db.MlExperiments.AsNoTracking().Include(e => e.ModelVersions)
-                             .SingleOrDefaultAsync(e => e.Id == request.MlExperimentId && e.OwnerId == owner, ct)
-                         ?? throw new NotFoundException("ML experiment", request.MlExperimentId);
-        if (experiment.Status != JobStatus.Succeeded) throw new ConflictException("The ML experiment has not completed successfully.");
-        var evaluation = experiment.ModelVersions.Where(v => v.Role == "Evaluation").MaxBy(v => v.Version)
-                         ?? throw new ConflictException("The ML experiment has no evaluation model version.");
-        if (evaluation.FeatureSetVersion != FeatureCatalog.Version)
-            throw new ConflictException($"The ML experiment used feature set {evaluation.FeatureSetVersion}; the current definitions are {FeatureCatalog.Version}. Run a new experiment.");
+        // Both optimizations must belong to the same portfolio of the caller (another user's portfolio or optimization → 404).
+        var portfolio = await portfolios.LoadAsync(request.PortfolioId, ct);
+        var a = await strategies.SnapshotAsync(portfolio.Id, request.StrategyA, ct);
+        var b = await strategies.SnapshotAsync(portfolio.Id, request.StrategyB, ct);
 
         var benchmark = Asset.NormalizeSymbol(request.BenchmarkSymbol);
         if (!await db.Assets.AnyAsync(a => a.Symbol == benchmark, ct)) throw new ValidationException("benchmarkSymbol", $"Unknown benchmark {benchmark}.");
-        // Both strategies and the benchmark are evaluated in the optimization run's currency (prices converted with dated FX rates).
-        var currency = await UniverseCurrency.ResolveAsync(db, run.Symbols.Union(experiment.Symbols).ToList(), benchmark, run.Currency, ct);
+        // Every strategy and the benchmark are evaluated in the portfolio's currency (prices converted with dated FX rates).
+        var currency = await UniverseCurrency.ResolveAsync(db, a.Universe.Union(b.Universe).ToList(), benchmark, portfolio.BaseCurrency, ct);
         benchmark = currency.Benchmark;
         var active = await db.StrategyComparisons.CountAsync(c => c.OwnerId == owner && (c.Status == JobStatus.Queued || c.Status == JobStatus.Running), ct);
         if (active >= options.Value.MaxActiveExperimentsPerUser)
             throw new ConflictException($"You already have {active} comparison(s) queued or running. Wait for them to finish.");
 
+        var snapshots = new[] { a, b };
         var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
-        var start = request.StartDate ?? experiment.TestStart ?? today.AddYears(-1);
+        // Default: out-of-sample for every ML strategy (from the latest test-period start); without ML, three years.
+        var start = request.StartDate ?? snapshots.Select(s => s.MlTestStart).Where(d => d is not null).Max() ?? today.AddYears(-3);
         var end = request.EndDate ?? today;
         if (end > today) end = today;
         if (end <= start.AddMonths(3)) throw new ValidationException("endDate", "The evaluation period must be longer than three months.");
+        var riskFree = request.RiskFreeRate ?? snapshots.Select(s => s.MathSettings?.RiskFreeRate ?? s.MlConfiguration?.RiskFreeRate).FirstOrDefault(r => r is not null) ?? 0.04;
 
-        var mlConfig = JsonSerializer.Deserialize<CreateMlExperimentRequest>(experiment.ConfigJson, MlJson.Options)!;
-        var hyperparameters = JsonSerializer.Deserialize<Dictionary<string, double>>(evaluation.HyperparametersJson, MlJson.Options) ?? [];
         var settings = await prices.SettingsAsync(ct);
         var config = new ComparisonConfigurationDto(
-            request with { StartDate = start, EndDate = end, BenchmarkSymbol = benchmark, RiskFreeRate = request.RiskFreeRate ?? run.SettingsSnapshot.RiskFreeRate },
-            run.SettingsSnapshot.ToDto() with { Universe = [.. run.Symbols] },
-            run.Objective.ToString(),
-            run.CreatedAtUtc,
-            mlConfig,
-            hyperparameters,
-            evaluation.FeatureNames,
-            experiment.ValidationEnd,
-            experiment.TestStart,
-            evaluation.FeatureSetVersion);
-
+            request with { StartDate = start, EndDate = end, BenchmarkSymbol = benchmark, RiskFreeRate = riskFree }, snapshots);
+        var name = string.IsNullOrWhiteSpace(request.Name) ? $"{a.Label} vs {b.Label}" : request.Name.Trim();
         var comparison = new StrategyComparison
         {
             Id = Guid.NewGuid(),
             OwnerId = owner,
-            Name = string.IsNullOrWhiteSpace(request.Name) ? $"{run.Objective} vs {MlExperimentService.Label(Enum.Parse<ModelFamily>(experiment.ModelFamily))} · {start:yyyy-MM}–{end:yyyy-MM}" : request.Name.Trim(),
+            PortfolioId = portfolio.Id,
+            Name = name.Length > 100 ? name[..99] + "…" : name,
             Status = JobStatus.Queued,
             ProgressMessage = "Queued",
             CreatedAtUtc = clock.GetUtcNow().UtcDateTime,
-            OptimizationRunId = run.Id,
-            MlExperimentId = experiment.Id,
-            MlModelVersionId = evaluation.Id,
+            // References kept for navigation (set to null if deleted); the frozen settings are in the configuration.
+            OptimizationRunId = snapshots.FirstOrDefault(s => s.Kind == OptimizationKind.Mathematical)?.SourceId,
+            MlExperimentId = snapshots.FirstOrDefault(s => s.Kind == OptimizationKind.MachineLearning)?.SourceId,
+            MlModelVersionId = snapshots.FirstOrDefault(s => s.Kind == OptimizationKind.MachineLearning)?.MlModelVersionId,
             EvaluationStart = start,
             EvaluationEnd = end,
             BenchmarkSymbol = benchmark,
@@ -92,11 +81,11 @@ public sealed class StrategyComparisonService(
             Currency = currency.Currency,
             ConfigJson = JsonSerializer.Serialize(config, MlJson.Options),
         };
-        if (experiment.Currency != currency.Currency)
-            comparison.Warnings.Add($"The ML experiment was trained on {experiment.Currency} returns; in the comparison both strategies are re-evaluated on {currency.Currency} returns.");
+        foreach (var s in snapshots.Where(s => s.Currency != currency.Currency))
+            comparison.Warnings.Add($"{s.Label} was computed in {s.Currency}; in the comparison it is re-evaluated on {currency.Currency} returns.");
         if (currency.Note is not null) comparison.Warnings.Add(currency.Note);
         // The benchmark (and any stock) without enough history is downloaded first; jobs run in order.
-        var queued = await marketData.EnsureHistoryAsync([.. run.Symbols.Union(experiment.Symbols), benchmark], start.AddYears(-3), 60, ct);
+        var queued = await marketData.EnsureHistoryAsync([.. a.Universe.Union(b.Universe), benchmark], start.AddYears(-3), 60, ct);
         if (queued.Count > 0) comparison.Warnings.Add($"Price history for {string.Join(", ", queued)} was incomplete and is downloaded before the comparison runs.");
         db.StrategyComparisons.Add(comparison);
         await db.SaveChangesAsync(ct);
@@ -104,11 +93,12 @@ public sealed class StrategyComparisonService(
         return ToDto(comparison);
     }
 
-    public async Task<PagedResult<StrategyComparisonSummaryDto>> ListAsync(int page, int pageSize, CancellationToken ct)
+    public async Task<PagedResult<StrategyComparisonSummaryDto>> ListAsync(int page, int pageSize, CancellationToken ct, Guid? portfolioId = null)
     {
         if (page < 1 || pageSize is < 1 or > 100) throw new ValidationException("Invalid paging parameters (page ≥ 1, 1 ≤ pageSize ≤ 100).");
         var owner = currentUser.RequireUserId();
         var q = db.StrategyComparisons.AsNoTracking().Where(c => c.OwnerId == owner);
+        if (portfolioId is { } pid) q = q.Where(c => c.PortfolioId == pid);
         var total = await q.CountAsync(ct);
         var items = await q.OrderByDescending(c => c.CreatedAtUtc).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
         return new PagedResult<StrategyComparisonSummaryDto>(items.Select(Summary).ToList(), page, pageSize, total);
@@ -133,11 +123,19 @@ public sealed class StrategyComparisonService(
     }
 
     private static StrategyComparisonSummaryDto Summary(StrategyComparison c) => new(c.Id, c.Name, c.Status, c.ProgressPercent, c.ProgressMessage,
-        c.CreatedAtUtc, c.CompletedAtUtc, c.EvaluationStart, c.EvaluationEnd, c.OptimizationRunId, c.MlExperimentId, c.UsesSimulatedData, c.IsFair, c.Error);
+        c.CreatedAtUtc, c.CompletedAtUtc, c.EvaluationStart, c.EvaluationEnd, c.OptimizationRunId, c.MlExperimentId, c.UsesSimulatedData, c.IsFair, c.Error,
+        c.PortfolioId, Configuration(c).Strategies!.Select(s => s.Label).ToList());
+
+    /// <summary>The stored configuration with its strategies resolved (also for the format before 2026-10-24).</summary>
+    internal static ComparisonConfigurationDto Configuration(StrategyComparison c)
+    {
+        var config = JsonSerializer.Deserialize<ComparisonConfigurationDto>(c.ConfigJson, MlJson.Options)!;
+        return config with { Strategies = config.Resolve(c.OptimizationRunId, c.MlExperimentId, c.Currency, c.BenchmarkSymbol) };
+    }
 
     private static StrategyComparisonDto ToDto(StrategyComparison c) => new(
         Summary(c),
-        JsonSerializer.Deserialize<ComparisonConfigurationDto>(c.ConfigJson, MlJson.Options)!,
+        Configuration(c),
         c.BenchmarkSymbol,
         c.PriceSource,
         c.DataSnapshotHash,
@@ -170,27 +168,28 @@ public sealed class StrategyComparisonRunner(
         var sw = Stopwatch.StartNew();
         try
         {
-            var config = JsonSerializer.Deserialize<ComparisonConfigurationDto>(comparison.ConfigJson, MlJson.Options)!;
+            var config = StrategyComparisonService.Configuration(comparison);
             var request = config.Request;
             var start = request.StartDate!.Value;
             var end = request.EndDate!.Value;
+            var snapshots = config.Strategies!;
 
             // ---- Universe (identical for every strategy).
-            var mathUniverse = config.OptimizationSettings.Universe.ToHashSet();
-            var mlUniverse = config.MlConfiguration.Universe.ToHashSet();
-            var universe = (request.Universe == ComparisonUniverse.Intersection ? mathUniverse.Intersect(mlUniverse) : mathUniverse.Union(mlUniverse))
+            var universes = snapshots.Select(s => s.Universe.ToHashSet()).ToList();
+            var all = universes.SelectMany(u => u).ToHashSet();
+            var universe = (request.Universe == ComparisonUniverse.Intersection ? universes.Aggregate((x, y) => x.Intersect(y).ToHashSet()) : all)
                 .OrderBy(s => s, StringComparer.Ordinal).ToList();
             var notes = new List<string>();
             if (request.Universe == ComparisonUniverse.Intersection)
             {
-                var dropped = mathUniverse.Union(mlUniverse).Except(universe).OrderBy(s => s).ToList();
-                if (dropped.Count > 0) notes.Add($"Intersection universe: {string.Join(", ", dropped)} appear in only one of the two strategies and are excluded for all.");
+                var dropped = all.Except(universe).OrderBy(s => s).ToList();
+                if (dropped.Count > 0) notes.Add($"Intersection universe: {string.Join(", ", dropped)} appear in only one of the strategies and are excluded for all.");
             }
-            else notes.Add("Union universe: every strategy may invest in all stocks of either the optimization run or the ML experiment.");
+            else notes.Add("Union universe: every strategy may invest in all stocks of either optimization.");
             if (universe.Count < 5) throw new InvalidOperationException($"Only {universe.Count} stock(s) are common to both strategies; at least 5 are needed. Use the union universe or matching selections.");
 
-            // ---- Data: enough history before the start for the ML training window and the optimizer's lookback.
-            var historyYears = Math.Max(config.MlConfiguration.HistoryYears, (int)Math.Ceiling(config.OptimizationSettings.LookbackDays / 252.0) + 1);
+            // ---- Data: enough history before the start for every ML training window and every optimizer's lookback.
+            var historyYears = snapshots.Max(s => s.MlConfiguration?.HistoryYears ?? (int)Math.Ceiling((s.MathSettings?.LookbackDays ?? 252) / 252.0) + 1);
             var data = await loader.LoadAsync(universe, comparison.BenchmarkSymbol, comparison.PriceSource, start.AddYears(-historyYears), end, comparison.Currency, timeout.Token);
             comparison.FxSource = data.FxSource;
             notes.AddRange(data.ExcludedSymbols.Select(s => $"{s}: insufficient stored history; excluded for all strategies."));
@@ -199,25 +198,16 @@ public sealed class StrategyComparisonRunner(
 
             // ---- Fairness checks known before simulating.
             var issues = new List<string>();
-            if (config.MlTestStart is { } testStart && start < testStart)
-                issues.Add($"The ML hyperparameters were selected on a validation period ending {config.MlValidationEnd:yyyy-MM-dd}; the evaluation starts {start:yyyy-MM-dd}, " +
-                           $"before the experiment's out-of-sample test period ({testStart:yyyy-MM-dd}). The ML result is partly in-sample.");
+            foreach (var s in snapshots.Where(s => s.MlTestStart is { } t && start < t))
+                issues.Add($"{s.Label}: hyperparameters were selected on a validation period ending {s.MlValidationEnd:yyyy-MM-dd}; the evaluation starts {start:yyyy-MM-dd}, " +
+                           $"before the experiment's out-of-sample test period ({s.MlTestStart:yyyy-MM-dd}). Its result is partly in-sample.");
             if (data.UsesSimulatedData) notes.Add("Prices are SIMULATED – not real market data.");
 
-            var mathSettings = BuildMathSettings(config, data.Panel);
-            var mlConfig = MlExperimentRunner.ToConfiguration(config.MlConfiguration) with { TransactionCostBps = request.TransactionCostBps };
             var inputs = new ComparisonInputs(
                 data.Panel, start, end, request.InitialCapital, request.TransactionCostBps,
                 request.Rebalance == RebalanceKind.Quarterly ? RebalanceFrequency.Quarterly : RebalanceFrequency.Monthly,
                 request.RiskFreeRate ?? 0.04,
-                mathSettings,
-                $"{config.OptimizationObjective} with the optimization run's constraints (max weight {config.OptimizationSettings.MaxWeight:P0}, cash {config.OptimizationSettings.CashReserve:P0}), " +
-                $"re-estimated on a trailing {config.OptimizationSettings.LookbackDays}-day window at every rebalance.",
-                mlConfig,
-                new Hyperparameters(config.MlHyperparameters),
-                config.MlFeatures,
-                $"{MlExperimentService.Label(config.MlConfiguration.ModelFamily)} on {MlExperimentService.TargetLabel(config.MlConfiguration.Target)} ({config.MlConfiguration.HorizonDays}d); " +
-                $"top {config.MlConfiguration.TopK}, {config.MlConfiguration.Weighting}, max weight {config.MlConfiguration.MaxWeight:P0}; retrained every {config.MlConfiguration.RetrainEveryRebalances} rebalances on realized labels.",
+                snapshots.Select((s, i) => StrategyInput(s, i, request, data.Panel)).ToList(),
                 request.IncludeHybrid);
 
             var progress = new ProgressRelay();
@@ -268,15 +258,39 @@ public sealed class StrategyComparisonRunner(
         logger.LogInformation("Strategy comparison {ComparisonId} finished with {Status} in {Elapsed:0} ms", id, comparison.Status, sw.Elapsed.TotalMilliseconds);
     }
 
-    private static BacktestSettings BuildMathSettings(ComparisonConfigurationDto config, PortfolioOptimizer.MachineLearning.Data.MarketPanel panel)
+    /// <summary>Strategy "A"/"B" of a comparison from its frozen snapshot.</summary>
+    private static ComparisonStrategyInput StrategyInput(StrategySnapshotDto s, int index, CreateStrategyComparisonRequest request, PortfolioOptimizer.MachineLearning.Data.MarketPanel panel)
     {
-        var s = config.OptimizationSettings.ToDomain();
-        var sectors = panel.Symbols.Select((sym, i) => (sym, sector: panel.Sectors[i]))
-            .Where(x => x.sector is not null).ToDictionary(x => x.sym, x => x.sector!, StringComparer.OrdinalIgnoreCase);
+        var key = index == 0 ? "a" : "b";
+        var name = $"{(index == 0 ? "A" : "B")}: {s.Label}";
+        if (s.Kind == OptimizationKind.Mathematical)
+        {
+            var m = s.MathSettings!;
+            return new ComparisonStrategyInput(key, name, StrategyKind.Mathematical,
+                $"{s.MathObjective} with the optimization run's constraints (max weight {m.MaxWeight:P0}, cash {m.CashReserve:P0}), " +
+                $"re-estimated on a trailing {m.LookbackDays}-day window at every rebalance.",
+                Math: BuildMathSettings(m, start: request.StartDate!.Value, end: request.EndDate!.Value, panel));
+        }
+        var c = s.MlConfiguration!;
+        return new ComparisonStrategyInput(key, name, StrategyKind.MachineLearning,
+            $"{MlExperimentService.Label(c.ModelFamily)} on {MlExperimentService.TargetLabel(c.Target)} ({c.HorizonDays}d); " +
+            $"top {c.TopK}, {c.Weighting}, max weight {c.MaxWeight:P0}; retrained every {c.RetrainEveryRebalances} rebalances on realized labels.",
+            Ml: MlExperimentRunner.ToConfiguration(c) with { TransactionCostBps = request.TransactionCostBps },
+            MlHyperparameters: new Hyperparameters(s.MlHyperparameters ?? new Dictionary<string, double>()),
+            MlFeatures: s.MlFeatures ?? []);
+    }
+
+    /// <summary>Mean-variance settings of a stored optimization run for a simulation of [start, end] (shared with backtests).</summary>
+    internal static BacktestSettings BuildMathSettings(PortfolioSettingsDto settings, DateOnly start, DateOnly end, PortfolioOptimizer.MachineLearning.Data.MarketPanel? panel)
+    {
+        var s = settings.ToDomain();
+        var sectors = panel is null ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            : panel.Symbols.Select((sym, i) => (sym, sector: panel.Sectors[i]))
+                .Where(x => x.sector is not null).ToDictionary(x => x.sym, x => x.sector!, StringComparer.OrdinalIgnoreCase);
         return new BacktestSettings
         {
-            Start = config.Request.StartDate!.Value,
-            End = config.Request.EndDate!.Value,
+            Start = start,
+            End = end,
             Objective = s.Objective.ToOptimization(),
             CovarianceMethod = s.CovarianceMethod.ToOptimization(),
             LookbackDays = s.LookbackDays,

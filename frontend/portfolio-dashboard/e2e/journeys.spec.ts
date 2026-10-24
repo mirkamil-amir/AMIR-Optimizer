@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { ADMIN_STATE } from './helpers'
+import { ADMIN_STATE, acceptDownloadIfAsked } from './helpers'
 
 // Main student and administrator journeys on the deterministic Mock data of the e2e stack.
 test.use({ storageState: ADMIN_STATE })
@@ -44,13 +44,16 @@ test('optimizing a selection explains the actual result', async ({ page }) => {
     await search.fill(symbol)
     await page.getByRole('checkbox', { name: `Select ${symbol}` }).check()
   }
-  await page.getByRole('region', { name: 'Selected stocks' }).getByRole('link', { name: 'Optimize' }).click()
+  await page.getByRole('region', { name: 'Selected stocks' }).getByRole('link', { name: /^Math Optimization in “/ }).click()
   // Minimum variance is always feasible (maximum Sharpe is undefined when no stock beats the risk-free rate).
   await page.getByRole('combobox', { name: 'Optimization method' }).click()
   await page.getByRole('option', { name: 'Minimum variance' }).click()
   await page.getByRole('button', { name: 'Run optimization' }).click()
+  await acceptDownloadIfAsked(page)
   const insights = page.getByText('What your result means')
   await expect(insights).toBeVisible({ timeout: 30_000 })
+  // The interpretation is folded at the bottom of the page until opened.
+  await page.getByRole('button', { name: /^What your result means/ }).click()
   await expect(page.getByText(/The portfolio holds \d+ of \d+ eligible stocks/)).toBeVisible()
   await expect(page.getByText(/Minimum variance only looks at risk/)).toBeVisible()
   await expect(page.getByText(/SIMULATED prices/).first()).toBeVisible()

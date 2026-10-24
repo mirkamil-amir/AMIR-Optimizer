@@ -47,7 +47,7 @@ test.describe('as administrator', () => {
       ['Portfolio Creation', 'Portfolio Creation', /\/stocks$/],
       ['Backtest', 'Backtesting', /\/backtest$/],
       ['Optimization history', 'Optimization history', /\/history$/],
-      ['Machine learning', 'Machine-learning research', /\/machine-learning$/],
+      ['ML Optimization', 'ML Optimization', /\/portfolios\/[0-9a-f-]{36}\/ml-optimize$/],
       ['Strategy comparison', 'Strategy comparison', /\/strategy-comparison$/],
     ] as const) {
       await optimizer(page).getByRole('link', { name, exact: true }).click()
@@ -63,8 +63,8 @@ test.describe('as administrator', () => {
 
     // Back and forward follow the history; the active items follow the URL.
     await page.goBack()
-    await expect(page).toHaveURL(/\/machine-learning$/)
-    await expect(optimizer(page).getByRole('link', { name: 'Machine learning' })).toHaveAttribute('aria-current', 'page')
+    await expect(page).toHaveURL(/\/ml-optimize$/)
+    await expect(optimizer(page).getByRole('link', { name: 'ML Optimization' })).toHaveAttribute('aria-current', 'page')
     await page.goForward()
     await expect(page).toHaveURL(/\/strategy-comparison$/)
 

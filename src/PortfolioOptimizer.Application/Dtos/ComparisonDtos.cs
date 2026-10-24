@@ -6,20 +6,24 @@ namespace PortfolioOptimizer.Application.Dtos;
 
 public enum ComparisonUniverse
 {
-    /// <summary>Only stocks in both the optimization run and the ML experiment (default, like-for-like).</summary>
+    /// <summary>Only stocks in both strategies' universes (default, like-for-like).</summary>
     Intersection,
     /// <summary>All stocks of either; every strategy may invest in the same, larger universe.</summary>
     Union,
 }
 
-/// <summary>Compares a completed optimization run's strategy with a completed ML experiment's strategy on shared rules.</summary>
+/// <summary>
+/// Compares two optimizations of one portfolio on shared rules: mathematical vs mathematical, ML vs ML or mathematical vs ML.
+/// Both must belong to <see cref="PortfolioId"/> (one of the caller's portfolios).
+/// </summary>
 public sealed record CreateStrategyComparisonRequest : IValidatableObject
 {
     [StringLength(100)] public string? Name { get; init; }
-    [Required] public Guid OptimizationRunId { get; init; }
-    [Required] public Guid MlExperimentId { get; init; }
+    [Required] public Guid PortfolioId { get; init; }
+    [Required] public StrategyRef StrategyA { get; init; } = new();
+    [Required] public StrategyRef StrategyB { get; init; } = new();
 
-    /// <summary>First evaluation date; default = start of the ML experiment's test period (out-of-sample for both).</summary>
+    /// <summary>First evaluation date; default = the latest start of an ML strategy's test period (out-of-sample), or three years ago.</summary>
     public DateOnly? StartDate { get; init; }
     public DateOnly? EndDate { get; init; }
     [Range(1_000, 1_000_000_000)] public double InitialCapital { get; init; } = 100_000;
@@ -37,6 +41,8 @@ public sealed record CreateStrategyComparisonRequest : IValidatableObject
             yield return new ValidationResult("The evaluation period must be longer than three months.", [nameof(EndDate)]);
         if (Rebalance == RebalanceKind.None)
             yield return new ValidationResult("Choose Monthly or Quarterly rebalancing.", [nameof(Rebalance)]);
+        if (StrategyA.Kind == StrategyB.Kind && StrategyA.Id == StrategyB.Id)
+            yield return new ValidationResult("Choose two different optimizations.", [nameof(StrategyB)]);
     }
 }
 
@@ -97,20 +103,43 @@ public sealed record StrategyComparisonSummaryDto(
     Guid? MlExperimentId,
     bool UsesSimulatedData,
     bool? IsFair,
-    string? Error);
+    string? Error,
+    Guid? PortfolioId = null,
+    IReadOnlyList<string>? StrategyLabels = null);
 
-/// <summary>Resolved, frozen inputs of a comparison (copied from the referenced run and experiment at submission).</summary>
+/// <summary>
+/// Resolved, frozen inputs of a comparison (copied from the referenced optimizations at submission). Comparisons created
+/// before 2026-10-24 stored one optimization run and one ML experiment in the Optimization*/Ml* fields; they are returned
+/// with <see cref="Strategies"/> filled from those fields.
+/// </summary>
 public sealed record ComparisonConfigurationDto(
     CreateStrategyComparisonRequest Request,
-    PortfolioSettingsDto OptimizationSettings,
-    string OptimizationObjective,
-    DateTime OptimizationRunCreatedAtUtc,
-    CreateMlExperimentRequest MlConfiguration,
-    IReadOnlyDictionary<string, double> MlHyperparameters,
-    IReadOnlyList<string> MlFeatures,
-    DateOnly? MlValidationEnd,
-    DateOnly? MlTestStart,
-    string MlFeatureSetVersion);
+    IReadOnlyList<StrategySnapshotDto>? Strategies = null,
+    PortfolioSettingsDto? OptimizationSettings = null,
+    string? OptimizationObjective = null,
+    DateTime? OptimizationRunCreatedAtUtc = null,
+    CreateMlExperimentRequest? MlConfiguration = null,
+    IReadOnlyDictionary<string, double>? MlHyperparameters = null,
+    IReadOnlyList<string>? MlFeatures = null,
+    DateOnly? MlValidationEnd = null,
+    DateOnly? MlTestStart = null,
+    string? MlFeatureSetVersion = null)
+{
+    /// <summary>The compared strategies, also for comparisons stored in the earlier one-run-one-experiment format.</summary>
+    public IReadOnlyList<StrategySnapshotDto> Resolve(Guid? legacyRunId, Guid? legacyExperimentId, string currency, string benchmark)
+    {
+        if (Strategies is { Count: > 0 }) return Strategies;
+        var list = new List<StrategySnapshotDto>();
+        if (OptimizationSettings is not null)
+            list.Add(new StrategySnapshotDto(OptimizationKind.Mathematical, legacyRunId ?? Guid.Empty, $"{OptimizationObjective} · {OptimizationRunCreatedAtUtc:yyyy-MM-dd HH:mm} UTC",
+                OptimizationRunCreatedAtUtc ?? default, currency, OptimizationSettings.Universe, benchmark, MathSettings: OptimizationSettings, MathObjective: OptimizationObjective));
+        if (MlConfiguration is not null)
+            list.Add(new StrategySnapshotDto(OptimizationKind.MachineLearning, legacyExperimentId ?? Guid.Empty, MlConfiguration.Name ?? MlConfiguration.ModelFamily.ToString(),
+                default, currency, MlConfiguration.Universe, benchmark, MlConfiguration: MlConfiguration, MlHyperparameters: MlHyperparameters, MlFeatures: MlFeatures,
+                MlValidationEnd: MlValidationEnd, MlTestStart: MlTestStart, MlFeatureSetVersion: MlFeatureSetVersion));
+        return list;
+    }
+}
 
 public sealed record StrategyComparisonDto(
     StrategyComparisonSummaryDto Summary,

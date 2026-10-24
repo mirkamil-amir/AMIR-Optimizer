@@ -1,10 +1,10 @@
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { AlertTriangle, Loader2, Play } from 'lucide-react'
+import { AlertTriangle, BrainCircuit, Loader2, Play, Sigma } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -14,12 +14,15 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ChartCard, MonthlyReturnsGrid, TimeSeriesChart, WeightsOverTimeChart, seriesColor, timeSeriesTable } from '@/components/charts'
+import { ChartCard, TimeSeriesChart, WeightsOverTimeChart, seriesColor, timeSeriesTable } from '@/components/charts'
 import { DataTable } from '@/components/data-table'
-import { DataBadge, EmptyState, ErrorState, LoadingBlock, MetricValue, PageHeader, Warnings } from '@/components/common'
+import { Collapsible, DataBadge, EmptyState, ErrorState, LoadingBlock, MetricValue, PageHeader, Warnings } from '@/components/common'
 import { errorMessage } from '@/lib/api'
 import { usePortfolioContext } from '@/lib/portfolio-context'
-import { useAssets, useBacktest, useBacktests, useCreateBacktest, usePortfolio } from '@/lib/queries'
+import { useAssets, useBacktest, useBacktests, useCreateBacktest, useCreateStrategyBacktest, usePortfolio, usePortfolioStrategies } from '@/lib/queries'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { NoStrategies, PortfolioPicker, StrategySelect } from '@/components/strategy-picker'
+import { dataNeeded, strategyKey, strategyRef } from '@/lib/strategies'
 import { useMissingDataGuard } from '@/components/missing-data-dialog'
 import { lookbackStart } from '@/lib/data-check'
 import type { Backtest } from '@/lib/types'
@@ -57,7 +60,7 @@ export function BacktestPage() {
 
   return (
     <>
-      <PageHeader title="Backtesting" description="Walk-forward historical simulation with periodic re-optimization, transaction costs and benchmark comparison." />
+      <PageHeader title="Backtesting" description="Walk-forward historical simulation of any optimization – Math or ML – or of a custom strategy, with periodic rebalancing, transaction costs and benchmark comparison." />
       <Alert className="mb-6">
         <AlertTriangle className="text-warn" />
         <AlertTitle>Hypothetical results</AlertTitle>
@@ -65,6 +68,7 @@ export function BacktestPage() {
       </Alert>
       <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
         <div className="space-y-4">
+          <StrategyBacktestCard />
           <BacktestForm />
           {list.data && list.data.items.length > 0 && (
             <Card>
@@ -73,6 +77,7 @@ export function BacktestPage() {
                 {list.data.items.map((b) => (
                   <Link key={b.id} to={`/backtest/${b.id}`} className={`block rounded-md px-2.5 py-1.5 text-sm hover:bg-muted ${b.id === activeId ? 'bg-muted' : ''}`}>
                     <div className="flex items-center justify-between gap-2"><span className="truncate font-medium">{b.name}</span><StatusBadge status={b.status} /></div>
+                    {b.strategyKind && <div className="text-[11px] text-muted-foreground">{b.strategyKind === 'MachineLearning' ? 'ML Optimization' : 'Math Optimization'}</div>}
                     <div className="text-xs text-muted-foreground">{dateTime(b.createdAtUtc)}</div>
                   </Link>
                 ))}
@@ -87,6 +92,101 @@ export function BacktestPage() {
         </div>
       </div>
     </>
+  )
+}
+
+const isoDate = (d: Date) => d.toISOString().slice(0, 10)
+
+/** Opens the window that chooses which optimization of which portfolio is backtested. */
+function StrategyBacktestCard() {
+  const [open, setOpen] = useState(false)
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm">Backtest an optimization</CardTitle>
+        <CardDescription className="text-xs">
+          Any Math or ML Optimization of a portfolio, re-simulated walk-forward over a period you choose with its stored settings.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Button className="w-full" variant="outline" onClick={() => setOpen(true)}><Sigma /> <BrainCircuit /> Choose optimization…</Button>
+        {open && <StrategyBacktestDialog onClose={() => setOpen(false)} />}
+      </CardContent>
+    </Card>
+  )
+}
+
+function StrategyBacktestDialog({ onClose }: { onClose: () => void }) {
+  const { portfolioId: defaultPortfolio, portfolios } = usePortfolioContext()
+  const [portfolioId, setPortfolioId] = useState<string | undefined>(defaultPortfolio)
+  const strategies = usePortfolioStrategies(portfolioId)
+  const create = useCreateStrategyBacktest()
+  const missingData = useMissingDataGuard()
+  const navigate = useNavigate()
+  const [key, setKey] = useState<string | null>(null)
+  const [end, setEnd] = useState(() => isoDate(new Date()))
+  const [start, setStart] = useState(() => { const d = new Date(); d.setFullYear(d.getFullYear() - 3); return isoDate(d) })
+  const [capital, setCapital] = useState(100_000)
+  const [costs, setCosts] = useState(10)
+  const [rebalance, setRebalance] = useState<'Monthly' | 'Quarterly'>('Monthly')
+  const list = strategies.data ?? []
+  const chosen = list.find((s) => strategyKey(s) === key)
+  const portfolio = portfolios.find((p) => p.id === portfolioId)
+
+  const submit = () => {
+    const ref = strategyRef(key, list)
+    if (!portfolioId || !ref || !chosen || !portfolio) return
+    return missingData.guard(dataNeeded([chosen], start, end, portfolio.baseCurrency), async () => {
+      try {
+        const b = await create.mutateAsync({ portfolioId, strategy: ref, startDate: start, endDate: end, initialCapital: capital, transactionCostBps: costs, rebalanceFrequency: rebalance })
+        toast.success('Backtest queued', { description: 'It runs in the background; results appear automatically.' })
+        onClose()
+        navigate(`/backtest/${b.id}`)
+      } catch (e) {
+        toast.error('Could not start backtest', { description: errorMessage(e) })
+      }
+    })
+  }
+
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o) onClose() }}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Backtest an optimization</DialogTitle>
+          <DialogDescription>
+            Choose the portfolio and one of its optimizations. A Math Optimization is re-optimized with its settings at every rebalance; an ML
+            Optimization is retrained walk-forward with its selected hyperparameters. Results before an ML experiment's test period are marked as partly in-sample.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <PortfolioPicker value={portfolioId} onChange={(id) => { setPortfolioId(id); setKey(null) }} id="bt-portfolio" />
+          {portfolioId && (strategies.error ? <ErrorState error={strategies.error} /> : !strategies.data ? <LoadingBlock height="h-16" /> : list.length === 0
+            ? <NoStrategies portfolioId={portfolioId} />
+            : <StrategySelect strategies={list} value={key} onChange={setKey} label="Optimization" />)}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5"><Label htmlFor="bt-s-start" className="text-xs">Start</Label><Input id="bt-s-start" type="date" value={start} onChange={(e) => setStart(e.target.value)} /></div>
+            <div className="space-y-1.5"><Label htmlFor="bt-s-end" className="text-xs">End</Label><Input id="bt-s-end" type="date" value={end} onChange={(e) => setEnd(e.target.value)} /></div>
+            <div className="space-y-1.5"><Label htmlFor="bt-s-capital" className="text-xs">Initial capital</Label><Input id="bt-s-capital" type="number" value={capital} min={100} step={1000} onChange={(e) => setCapital(Number(e.target.value))} /></div>
+            <div className="space-y-1.5"><Label htmlFor="bt-s-costs" className="text-xs">Transaction cost (bps)</Label><Input id="bt-s-costs" type="number" value={costs} min={0} max={500} onChange={(e) => setCosts(Number(e.target.value))} /></div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Rebalancing</Label>
+              <Select value={rebalance} onValueChange={(v) => setRebalance(v as 'Monthly' | 'Quarterly')} items={[{ value: 'Monthly', label: 'Monthly' }, { value: 'Quarterly', label: 'Quarterly' }]}>
+                <SelectTrigger className="w-full" aria-label="Rebalancing"><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="Monthly">Monthly</SelectItem><SelectItem value="Quarterly">Quarterly</SelectItem></SelectContent>
+              </Select>
+            </div>
+          </div>
+          {end <= start && <p className="text-xs text-destructive">The end must be after the start.</p>}
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button onClick={submit} disabled={!chosen || end <= start || create.isPending || missingData.checking}>
+            {create.isPending || missingData.checking ? <Loader2 className="animate-spin" /> : <Play />} Run backtest
+          </Button>
+        </DialogFooter>
+        {missingData.dialog}
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -140,7 +240,7 @@ function BacktestForm() {
   if (!assets.data) return <LoadingBlock height="h-[560px]" />
   return (
     <Card>
-      <CardHeader><CardTitle className="text-sm">Strategy</CardTitle><CardDescription className="text-xs">Defaults are taken from the selected portfolio.</CardDescription></CardHeader>
+      <CardHeader><CardTitle className="text-sm">Custom strategy</CardTitle><CardDescription className="text-xs">Mean-variance settings entered here. Defaults are taken from the selected portfolio.</CardDescription></CardHeader>
       <CardContent>
         <form onSubmit={onSubmit} className="space-y-4" noValidate>
           <Controller control={control} name="universe" render={({ field }) => (
@@ -215,6 +315,8 @@ function F({ label, error, children }: { label: string; error?: string; children
 
 function BacktestResults({ bt }: { bt: Backtest }) {
   const r = bt.result
+  // Every amount is in the backtest's analysis currency (the portfolio's), stored with its configuration.
+  const ccy = bt.config.currency ?? 'USD'
   const running = bt.status === 'Queued' || bt.status === 'Running'
   return (
     <div className="space-y-4">
@@ -223,7 +325,7 @@ function BacktestResults({ bt }: { bt: Backtest }) {
         <StatusBadge status={bt.status} />
         <DataBadge kind="backtest" />
         {bt.usesSimulatedData && <DataBadge kind="simulated" />}
-        <span className="text-xs text-muted-foreground">{date(bt.config.startDate)} – {date(bt.config.endDate)} · {objectiveLabels[bt.config.objective]} · {bt.config.rebalanceFrequency === 'None' ? 'buy & hold' : bt.config.rebalanceFrequency.toLowerCase()}</span>
+        <span className="text-xs text-muted-foreground">{date(bt.config.startDate)} – {date(bt.config.endDate)} · {bt.config.strategy ? `${bt.config.strategy.kind === 'MachineLearning' ? 'ML' : 'Math'}: ${bt.config.strategy.label}` : objectiveLabels[bt.config.objective]} · {bt.config.rebalanceFrequency === 'None' ? 'buy & hold' : bt.config.rebalanceFrequency.toLowerCase()}</span>
       </div>
 
       {running && (
@@ -247,7 +349,7 @@ function BacktestResults({ bt }: { bt: Backtest }) {
               { key: 'so', header: 'Sortino', align: 'right', cell: (m) => <MetricValue metric={m.sortinoRatio} format={(v) => num(v)} /> },
               { key: 'd', header: 'Max DD', align: 'right', cell: (m) => <MetricValue metric={m.maxDrawdown} format={(v) => pct(v)} /> },
               { key: 'to', header: 'Turnover', align: 'right', cell: (m) => pct(m.totalTurnover, 0) },
-              { key: 'c', header: 'Costs', align: 'right', cell: (m) => money(m.totalTransactionCosts, 'USD', { decimals: 0 }) },
+              { key: 'c', header: 'Costs', align: 'right', cell: (m) => money(m.totalTransactionCosts, ccy, { decimals: 0 }) },
             ]}
           />
           <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
@@ -258,11 +360,11 @@ function BacktestResults({ bt }: { bt: Backtest }) {
 
           <ChartCard
             title="Equity curve"
-            description={`Portfolio value (USD), ${date(r.dates[0])} – ${date(r.dates[r.dates.length - 1])}`}
+            description={`Portfolio value (${ccy}), ${date(r.dates[0])} – ${date(r.dates[r.dates.length - 1])}`}
             legend={Object.keys(r.values).map((k, i) => ({ name: k, color: seriesColor(i), dashed: k.startsWith('Benchmark') }))}
-            table={timeSeriesTable(r.dates, Object.entries(r.values).map(([name, values]) => ({ name, values })), (v) => money(v, 'USD', { decimals: 0 }))}
+            table={timeSeriesTable(r.dates, Object.entries(r.values).map(([name, values]) => ({ name, values })), (v) => money(v, ccy, { decimals: 0 }))}
           >
-            <TimeSeriesChart dates={r.dates} series={Object.entries(r.values).map(([name, values]) => ({ name, values, dashed: name.startsWith('Benchmark') }))} format={(v) => money(v, 'USD', { compact: true })} height={320} />
+            <TimeSeriesChart dates={r.dates} series={Object.entries(r.values).map(([name, values]) => ({ name, values, dashed: name.startsWith('Benchmark') }))} format={(v) => money(v, ccy, { compact: true })} height={320} />
           </ChartCard>
 
           <ChartCard title="Drawdown" description="Decline from running peak, %"
@@ -278,35 +380,47 @@ function BacktestResults({ bt }: { bt: Backtest }) {
             </Card>
           )}
 
-          <Card>
-            <CardHeader><CardTitle className="text-sm">Monthly returns (strategy)</CardTitle></CardHeader>
-            <CardContent><MonthlyReturnsGrid items={r.monthlyReturns.map((m) => ({ year: m.year, month: m.month, value: m.portfolio }))} label="Strategy" /></CardContent>
-          </Card>
+          <MonthlyReturnsChart months={r.monthlyReturns} />
 
-          <Card>
-            <CardHeader><CardTitle className="text-sm">Rebalance log</CardTitle></CardHeader>
-            <CardContent>
-              <DataTable
-                caption="Rebalance log"
-                rows={r.rebalances}
-                rowKey={(e) => e.signalDate}
-                dense
-                columns={[
-                  { key: 's', header: 'Signal', cell: (e) => e.signalDate },
-                  { key: 'e', header: 'Executed', cell: (e) => e.executionDate },
-                  { key: 'n', header: 'Assets', align: 'right', cell: (e) => `${Object.keys(e.weights).length}/${e.eligibleSymbols.length}` },
-                  { key: 't', header: 'Turnover', align: 'right', cell: (e) => pct(e.turnover, 1) },
-                  { key: 'c', header: 'Costs', align: 'right', cell: (e) => money(e.transactionCosts, 'USD') },
-                  { key: 'v', header: 'Value', align: 'right', cell: (e) => money(e.portfolioValue, 'USD', { decimals: 0 }) },
-                  { key: 'm', header: 'Note', cell: (e) => <span className={e.optimizationSucceeded ? 'text-xs text-muted-foreground' : 'text-xs text-warn'}>{e.message === 'OK' ? '' : e.message}</span> },
-                ]}
-              />
-            </CardContent>
-          </Card>
-          <Warnings items={r.warnings} />
+          <Collapsible title="Rebalance log" summary={`${r.rebalances.length} rebalances`}
+            hint="Invested: sum of the target weights; the rest is cash (cash reserve, or a stock without a price on the execution day). “Held”: no new target – the optimization failed or no stock had a full lookback window, so the previous holdings were kept.">
+            <DataTable
+              caption="Rebalance log"
+              rows={r.rebalances}
+              rowKey={(e) => e.signalDate}
+              dense
+              columns={[
+                { key: 's', header: 'Signal', cell: (e) => e.signalDate },
+                { key: 'e', header: 'Executed', cell: (e) => e.executionDate },
+                { key: 'n', header: 'Assets', align: 'right', cell: (e) => `${Object.keys(e.weights).length}/${e.eligibleSymbols.length}` },
+                { key: 'i', header: 'Invested', align: 'right', cell: (e) => (!e.optimizationSucceeded && Object.keys(e.weights).length === 0 ? <span className="text-warn">held</span> : pct(Object.values(e.weights).reduce((a, w) => a + w, 0), 1)) },
+                { key: 't', header: 'Turnover', align: 'right', cell: (e) => pct(e.turnover, 1) },
+                { key: 'c', header: 'Costs', align: 'right', cell: (e) => money(e.transactionCosts, ccy) },
+                { key: 'v', header: 'Value', align: 'right', cell: (e) => money(e.portfolioValue, ccy, { decimals: 0 }) },
+                { key: 'm', header: 'Note', cell: (e) => <span className={e.optimizationSucceeded ? 'text-xs text-muted-foreground' : 'text-xs text-warn'}>{e.message === 'OK' ? '' : e.message}</span> },
+              ]}
+            />
+          </Collapsible>
+          <Warnings items={r.warnings} collapsible />
           <p className="text-xs leading-relaxed text-muted-foreground">{r.methodology}</p>
         </>
       )}
     </div>
+  )
+}
+
+/** Monthly returns of the strategy and its benchmark as lines (the table view lists every month). */
+function MonthlyReturnsChart({ months }: { months: { year: number; month: number; portfolio: number | null; benchmark: number | null }[] }) {
+  if (months.length === 0) return null
+  const dates = months.map((m) => `${m.year}-${String(m.month).padStart(2, '0')}-01`)
+  const series = [
+    { name: 'Strategy', color: seriesColor(0), values: months.map((m) => m.portfolio) },
+    ...(months.some((m) => m.benchmark !== null) ? [{ name: 'Benchmark', color: seriesColor(3), dashed: true, values: months.map((m) => m.benchmark) }] : []),
+  ]
+  return (
+    <ChartCard title="Monthly returns" description="Return of each calendar month (the first and last month may be partial)"
+      legend={series.map((x) => ({ name: x.name, color: x.color, dashed: x.dashed }))} table={timeSeriesTable(dates, series, (v) => pct(v, 1))}>
+      <TimeSeriesChart dates={dates} series={series} format={(v) => pct(v, 0)} height={260} zeroLine />
+    </ChartCard>
   )
 }

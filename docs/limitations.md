@@ -56,8 +56,14 @@
   the caller's wait does not – the download continues in the background, D-35).
 * A web request waits at most 25 s for a long rate history: the first interactive analysis needing years of new rates may
   exclude stocks with a note; a later run (or any background job, which waits up to 5 min) has them.
-* The missing-data dialog covers ML experiments, backtests and optimizations; strategy comparisons (universe from stored
-  runs) still queue missing history automatically without asking. A stock whose latest price stays old after a download
+* Backtests: when a stock has no price on the execution day (a holiday on its exchange only), its target weight stays in
+  cash until the next rebalance (shown as "Invested" below 100 % in the rebalance log); a signal date on which few markets
+  trade (e.g. Good Friday) can make the weight caps infeasible, and the previous holdings are then kept ("held").
+* The missing-data dialog covers ML experiments, backtests (custom and of an optimization), optimizations and strategy
+  comparisons.
+* Comparisons take exactly two optimizations, both of one portfolio. ML experiments created before 2026-10-24 have no
+  portfolio until the owner links them (same currency only); unlinked experiments cannot be backtested from the Backtest
+  page or compared. Custom backtests are not linked to a portfolio. A stock whose latest price stays old after a download
   (e.g. delisted) is offered again on the next check.
 * ML experiments use only the benchmark's stored span. Missing benchmark history is downloaded only when it has fewer than
   300 prices, so a benchmark with 5 stored years limits an 8-year experiment to 5 years (the experiment says so); fetch

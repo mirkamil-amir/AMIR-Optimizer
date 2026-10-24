@@ -89,7 +89,13 @@ public sealed class BacktestEngine(IPortfolioOptimizer optimizer, AnalyticsConve
 
     public BacktestEngine() : this(new MeanVarianceOptimizer(), AnalyticsConventions.Default) { }
 
-    public BacktestResult Run(BacktestInput input, BacktestSettings settings, CancellationToken cancellationToken = default)
+    /// <param name="strategyRule">
+    /// Decision rule of the strategy when it is not this engine's mean-variance optimization (e.g. a walk-forward ML strategy).
+    /// It decides at the same signal dates with the same execution, costs and valuation; the buy-and-hold baseline then holds
+    /// its first allocation. The equal-weight baseline is unchanged.
+    /// </param>
+    public BacktestResult Run(BacktestInput input, BacktestSettings settings, CancellationToken cancellationToken = default,
+        Func<SignalContext, PortfolioDecision>? strategyRule = null)
     {
         if (settings.End <= settings.Start) throw new ArgumentException("End date must be after start date.");
         if (settings.InitialCapital <= 0) throw new ArgumentException("Initial capital must be positive.");
@@ -100,10 +106,9 @@ public sealed class BacktestEngine(IPortfolioOptimizer optimizer, AnalyticsConve
         var calendar = grid.Calendar;
         var signalIndices = grid.SignalIndices(settings.Frequency);
 
-        var strategy = PortfolioSimulator.Run(grid, signalIndices, settings.InitialCapital, settings.TransactionCostBps,
-            ctx => Signal(grid, ctx, settings), warnings, cancellationToken);
-        var buyHold = PortfolioSimulator.Run(grid, [0], settings.InitialCapital, settings.TransactionCostBps,
-            ctx => Signal(grid, ctx, settings), null, cancellationToken);
+        var rule = strategyRule ?? (ctx => Signal(grid, ctx, settings));
+        var strategy = PortfolioSimulator.Run(grid, signalIndices, settings.InitialCapital, settings.TransactionCostBps, rule, warnings, cancellationToken);
+        var buyHold = PortfolioSimulator.Run(grid, [0], settings.InitialCapital, settings.TransactionCostBps, rule, null, cancellationToken);
         var equalSettings = settings with { Objective = OptimizationObjective.EqualWeight };
         var equal = PortfolioSimulator.Run(grid, [0], settings.InitialCapital, settings.TransactionCostBps,
             ctx => Signal(grid, ctx, equalSettings), null, cancellationToken);

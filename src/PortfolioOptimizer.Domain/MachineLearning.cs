@@ -8,6 +8,9 @@ public class MlExperiment
 {
     public Guid Id { get; set; }
     public Guid OwnerId { get; set; }
+    /// <summary>Portfolio the experiment belongs to (its strategies can be backtested and compared within it); null for
+    /// experiments created before 2026-10-24 until the owner assigns one.</summary>
+    public Guid? PortfolioId { get; set; }
     public required string Name { get; set; }
     public JobStatus Status { get; set; }
     public int ProgressPercent { get; set; }
@@ -111,6 +114,8 @@ public class StrategyComparison
 {
     public Guid Id { get; set; }
     public Guid OwnerId { get; set; }
+    /// <summary>Portfolio both compared strategies belong to (null for comparisons created before 2026-10-24).</summary>
+    public Guid? PortfolioId { get; set; }
     public required string Name { get; set; }
     public JobStatus Status { get; set; }
     public int ProgressPercent { get; set; }

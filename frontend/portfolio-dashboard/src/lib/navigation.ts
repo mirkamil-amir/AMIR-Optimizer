@@ -39,7 +39,9 @@ export const optimizerSections: NavSection[] = [
     title: 'Optimize',
     items: [
       // Opens the optimizer of the most recently opened portfolio; inside a workspace its own optimizer is highlighted.
-      { to: '/optimize', label: 'Optimize', icon: Sigma, match: ['/portfolios/*/optimize'] },
+      { to: '/optimize', label: 'Math Optimization', icon: Sigma, match: ['/portfolios/*/optimize'] },
+      // Like Math Optimization: the ML Optimization of the current portfolio (earlier /machine-learning URLs redirect).
+      { to: '/ml-optimize', label: 'ML Optimization', icon: BrainCircuit, match: ['/portfolios/*/ml-optimize', '/machine-learning'] },
       { to: '/history', label: 'Optimization history', icon: ListChecks, match: ['/reality-check'] },
     ],
   },
@@ -48,7 +50,6 @@ export const optimizerSections: NavSection[] = [
     items: [
       { to: '/backtest', label: 'Backtest', icon: Gauge },
       { to: '/strategy-comparison', label: 'Strategy comparison', icon: GitCompareArrows },
-      { to: '/machine-learning', label: 'Machine learning', icon: BrainCircuit },
     ],
   },
 ]

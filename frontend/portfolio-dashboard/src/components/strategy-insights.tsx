@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import type { Insight, InsightKind } from '@/lib/interpretation'
 import { guideById } from '@/lib/strategy-guide'
+import { Collapsible } from '@/components/common'
 import { cn } from '@/lib/utils'
 
 const kinds: Record<InsightKind, { label: string; icon: React.ReactNode; className: string; title: string }> = {
@@ -18,14 +19,46 @@ const kinds: Record<InsightKind, { label: string; icon: React.ReactNode; classNa
  * "What your result means": interpretation built only from the run's own numbers, with every statement labelled as a
  * calculated fact, a model estimate, an educational interpretation or a caution. Links to the strategy guide.
  */
-export function StrategyInsights({ insights, guideId, title = 'What your result means', className }: {
+export function StrategyInsights({ insights, guideId, title = 'What your result means', className, collapsible = false }: {
   insights: Insight[]
   guideId?: string
   title?: string
   className?: string
+  /** Folded until the title is clicked; "How this strategy works" stays visible in the title row. */
+  collapsible?: boolean
 }) {
   const guide = guideId ? guideById(guideId) : undefined
   if (insights.length === 0 && !guide) return null
+  const howItWorks = guide && (
+    <Button size="sm" variant="outline" render={<Link to={`/learn/${guide.id}`} />}>
+      <BookOpen /> How {guide.name.toLowerCase().startsWith('from') ? 'it' : 'this strategy'} works
+    </Button>
+  )
+  const list = (
+    <ul className="space-y-2.5">
+      {insights.map((i, n) => {
+        const k = kinds[i.kind]
+        return (
+          <li key={n} className="flex gap-2.5 text-sm leading-relaxed">
+            <Badge variant="outline" title={k.title} className={cn('mt-0.5 h-5 shrink-0 gap-1 px-1.5 text-[10px]', k.className)}>
+              {k.icon}{k.label}
+            </Badge>
+            <span>{i.text}</span>
+          </li>
+        )
+      })}
+    </ul>
+  )
+  if (collapsible) {
+    return (
+      <Collapsible title={title} summary={`${insights.length} statements`} actions={howItWorks} className={className}>
+        <p className="mb-3 text-muted-foreground">
+          {guide ? <>About this strategy: {guide.tagline} </> : null}Statements are generated from this run&apos;s numbers and labelled by type.
+        </p>
+        {list}
+      </Collapsible>
+    )
+  }
   return (
     <Card className={className}>
       <CardHeader className="flex flex-row items-start justify-between gap-3">

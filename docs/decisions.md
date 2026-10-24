@@ -2,6 +2,19 @@
 
 Short records of decisions that are not obvious from the code. Newest first. Format: context → decision → consequences.
 
+## D-36 Optimizations belong to a portfolio; backtest and compare any of them (2026-10-24)
+**Context:** the sidebar called the two optimization kinds "Optimize" and "Machine learning" in different groups;
+backtests covered only hand-entered mean-variance settings, and a comparison was always one optimization run against one
+ML experiment, without any portfolio relation (ML experiments were owner-scoped only). **Decision:** sidebar "Mathematical
+Optimization" and "ML Optimization" next to each other before the history. An ML experiment records the portfolio it was
+created for (explicit picker, its base currency); older experiments are linked explicitly by the owner, only to a
+portfolio of the same currency – never inferred (two USD portfolios existed). A portfolio's optimizations are its
+successful runs and linked experiments; a backtest can run any of them (`/backtests/from-strategy`; ML through
+`BacktestEngine` with the ML decision rule), and a comparison takes any two of the same portfolio. Strategy settings are
+frozen at submission. **Consequences:** additive nullable `PortfolioId` columns; the comparison request changed
+(`portfolioId`, `strategyA`, `strategyB`); stored comparisons keep their old configuration and are read in the new shape;
+custom backtests stay unlinked (no silent use of the remembered portfolio).
+
 ## D-35 Long FX histories: chunked background download; check rates only where they are used (2026-10-23)
 **Context:** an ML experiment in USD with 8 years of prices excluded every EUR/GBP/JPY stock with 8 years of history
 ("749 of 2022 prices have no GBP→USD rate within four days"). Stored ECB rates started 2021-10-08; the API log showed the

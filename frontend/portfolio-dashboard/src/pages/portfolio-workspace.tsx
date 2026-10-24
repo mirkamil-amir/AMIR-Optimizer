@@ -19,20 +19,21 @@ import { TransactionDialog } from '@/components/transaction-form'
 import { errorMessage } from '@/lib/api'
 import { date, money, relativeTime } from '@/lib/format'
 import { PortfolioScope, portfolioPath, usePortfolioContext } from '@/lib/portfolio-context'
-import { useArchivePortfolio, usePortfolio, useRun, useUpdatePortfolioDetails } from '@/lib/queries'
+import { useArchivePortfolio, useMlExperiment, usePortfolio, useRun, useUpdatePortfolioDetails } from '@/lib/queries'
 import type { PortfolioSummary } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 /** Sections of one portfolio, in the order of the tab bar. `runs` leads to the optimization history filtered to it. */
 const SECTIONS = [
   { path: '', label: 'Overview' },
-  { path: 'optimize', label: 'Optimize' },
+  { path: 'optimize', label: 'Math Optimization' },
+  { path: 'ml-optimize', label: 'ML Optimization' },
   { path: 'holdings', label: 'Holdings' },
   { path: 'transactions', label: 'Transactions' },
   { path: 'performance', label: 'Performance' },
 ] as const
 
-/** The section of the current URL inside `/portfolios/:id/…` (run pages belong to Optimize). */
+/** The section of the current URL inside `/portfolios/:id/…` (run and experiment pages belong to their optimization section). */
 function sectionOf(pathname: string, id: string) {
   const rest = pathname.slice(portfolioPath(id).length).replace(/^\/+/, '')
   return rest.split('/')[0] ?? ''
@@ -283,6 +284,26 @@ export function ToCurrentPortfolio({ section }: { section: string }) {
   const { search } = useLocation()
   if (isLoading) return <LoadingBlock height="h-96" />
   return <Navigate to={portfolioId ? `${portfolioPath(portfolioId, section)}${search}` : '/'} replace />
+}
+
+/**
+ * `/machine-learning/:experimentId` (earlier URL): open the experiment inside its portfolio's ML Optimization; an
+ * experiment without a portfolio opens in the current portfolio, where it can be linked.
+ */
+export function ExperimentRedirect() {
+  const { experimentId = '' } = useParams()
+  const experiment = useMlExperiment(experimentId)
+  const { portfolioId, isLoading } = usePortfolioContext()
+  if (experiment.error) {
+    return (
+      <EmptyState icon={<FolderSearch className="size-8" />} title="ML experiment not found"
+        description="It may have been deleted, or the link does not belong to your account."
+        action={<Button render={<Link to="/ml-optimize" />}>ML Optimization</Button>} />
+    )
+  }
+  if (!experiment.data || isLoading) return <LoadingBlock height="h-96" />
+  const target = experiment.data.summary.portfolioId ?? portfolioId
+  return <Navigate to={target ? portfolioPath(target, `ml-optimize/${experimentId}`) : '/'} replace />
 }
 
 /** `/optimize/:runId`: a run belongs to exactly one portfolio – open it inside that portfolio's workspace. */

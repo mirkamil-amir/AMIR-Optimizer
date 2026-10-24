@@ -64,6 +64,7 @@ public static class DependencyInjection
         services.AddScoped<MlExperimentRunner>();
         services.AddSingleton<StrategyComparisonEngine>();
         services.AddScoped<StrategyComparisonService>();
+        services.AddScoped<PortfolioStrategyService>();
         services.AddScoped<StrategyComparisonRunner>();
         services.AddScoped<WatchlistService>();
         services.AddScoped<NewsService>();
