@@ -1,0 +1,26 @@
+symbol,name,country,exchange,mic,currency,sector,industry,isin,wiki
+ALSYDB.CO,AL Sydbank,DK,Nasdaq Copenhagen,XCSE,DKK,Financials,Banks,,en:Sydbank
+AMBU-B.CO,Ambu,DK,Nasdaq Copenhagen,XCSE,DKK,Health Care,Health Care,,en:Ambu (company)
+CARL-B.CO,Carlsberg Group,DK,Nasdaq Copenhagen,XCSE,DKK,Consumer Staples,"Food, Beverage and Tobacco",,en:Carlsberg Group
+COLO-B.CO,Coloplast,DK,Nasdaq Copenhagen,XCSE,DKK,Health Care,Health Care,,en:Coloplast
+DANSKE.CO,Danske Bank,DK,Nasdaq Copenhagen,XCSE,DKK,Financials,Banks,,en:Danske Bank
+DEMANT.CO,Demant,DK,Nasdaq Copenhagen,XCSE,DKK,Health Care,Health Care,,en:Demant
+DSV.CO,DSV,DK,Nasdaq Copenhagen,XCSE,DKK,Industrials,Industrial Goods and Services,,en:DSV (company)
+FLS.CO,FLSmidth & Co.,DK,Nasdaq Copenhagen,XCSE,DKK,Industrials,Construction and Materials,,en:FLSmidth & Co.
+GMAB.CO,Genmab,DK,Nasdaq Copenhagen,XCSE,DKK,Health Care,Health Care,,en:Genmab
+GN.CO,GN Store Nord,DK,Nasdaq Copenhagen,XCSE,DKK,Health Care,Health Care,,en:GN Store Nord
+ISS.CO,ISS,DK,Nasdaq Copenhagen,XCSE,DKK,Industrials,Industrial Goods and Services,,en:ISS A/S
+JYSK.CO,Jyske Bank,DK,Nasdaq Copenhagen,XCSE,DKK,Financials,Banks,,en:Jyske Bank
+MAERSK-A.CO,A.P. Møller-Mærsk (class A),DK,Nasdaq Copenhagen,XCSE,DKK,Industrials,Industrial Goods and Services,,en:A.P. Møller Mærsk
+MAERSK-B.CO,A.P. Møller-Mærsk (class B),DK,Nasdaq Copenhagen,XCSE,DKK,Industrials,Industrial Goods and Services,,en:A.P. Møller Mærsk
+NDA-DK.CO,Nordea Bank Abp,DK,Nasdaq Copenhagen,XCSE,DKK,Financials,Banks,,en:Nordea
+NKT.CO,NKT,DK,Nasdaq Copenhagen,XCSE,DKK,Industrials,Industrial Goods and Services,,en:NKT A/S
+NOVO-B.CO,Novo Nordisk,DK,Nasdaq Copenhagen,XCSE,DKK,Health Care,Health Care,,en:Novo Nordisk
+NSIS-B.CO,Novonesis,DK,Nasdaq Copenhagen,XCSE,DKK,Health Care,Health Care,,en:Novonesis
+ORSTED.CO,Ørsted,DK,Nasdaq Copenhagen,XCSE,DKK,Utilities,Utilities,,en:Ørsted (company)
+PNDORA.CO,Pandora,DK,Nasdaq Copenhagen,XCSE,DKK,Consumer Discretionary,Consumer Products and Services,,en:Pandora (jewelry)
+RBREW.CO,Royal Unibrew,DK,Nasdaq Copenhagen,XCSE,DKK,Consumer Staples,"Food, Beverage and Tobacco",,en:Royal Unibrew
+ROCK-B.CO,Rockwool International,DK,Nasdaq Copenhagen,XCSE,DKK,Industrials,Construction and Materials,,en:Rockwool International
+TRYG.CO,Tryg,DK,Nasdaq Copenhagen,XCSE,DKK,Financials,Insurance,,en:Tryg
+VWS.CO,Vestas Wind Systems,DK,Nasdaq Copenhagen,XCSE,DKK,Industrials,Energy,,en:Vestas
+ZEAL.CO,Zealand Pharma,DK,Nasdaq Copenhagen,XCSE,DKK,Health Care,Health Care,,en:Zealand Pharma

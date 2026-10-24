@@ -10,6 +10,7 @@ import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { DataBadge, LoadingBlock } from '@/components/common'
 import { AmirWordmark } from '@/components/brand'
 import { ThemeQuickToggle } from '@/components/theme-controls'
+import { MapControl, SelectionOnMap, WorldMapBackdrop } from '@/components/world-map'
 import { useAuth } from '@/lib/auth'
 import {
   adminSection, optimizerSections, primaryForPath, primaryNav, sidebarEntryForPath, type NavEntry, type NavSection,
@@ -19,6 +20,7 @@ import { useMarketSummary } from '@/lib/queries'
 import { useSelection } from '@/lib/selection'
 import { relativeTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { WorldMapProvider } from '@/lib/world-map'
 
 function SidebarLink({ entry, active, onNavigate }: { entry: NavEntry; active: boolean; onNavigate?: () => void }) {
   return (
@@ -208,11 +210,15 @@ export function AppShell() {
   const { isAdministrator } = useAuth()
   const menuLabel = isAdministrator ? 'Optimizer and administration menu' : 'Optimizer menu'
   return (
+    <WorldMapProvider>
     <div className="min-h-svh bg-muted/30">
+      <SelectionOnMap />
+      {/* Background world map behind the content area (below the sidebar on large screens). */}
+      <WorldMapBackdrop className="fixed inset-0 z-0 lg:left-60" />
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:bg-background focus:px-3 focus:py-2">
         Skip to content
       </a>
-      <aside className="sidebar-surface fixed inset-y-0 left-0 hidden w-60 flex-col gap-6 overflow-y-auto border-r bg-sidebar px-3 py-4 text-sidebar-foreground lg:flex">
+      <aside className="sidebar-surface fixed inset-y-0 left-0 z-20 hidden w-60 flex-col gap-6 overflow-y-auto border-r bg-sidebar px-3 py-4 text-sidebar-foreground lg:flex">
         <Brand />
         <SidebarNav />
         <div className="mt-auto space-y-2">
@@ -230,7 +236,7 @@ export function AppShell() {
         </SheetContent>
       </Sheet>
 
-      <div className="lg:pl-60">
+      <div className="relative z-10 lg:pl-60">
         <header className="sticky top-0 z-30 border-b bg-background/90 backdrop-blur">
           <div className="flex h-14 items-center gap-3 px-4 lg:px-8">
             <Button variant="ghost" size="icon" className="lg:hidden" aria-label={`Open ${menuLabel}`} aria-expanded={open} onClick={() => setOpen(true)}>
@@ -240,6 +246,7 @@ export function AppShell() {
             <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
               <span className="hidden items-center gap-1 2xl:flex"><FlaskConical className="size-3.5" aria-hidden /> Simulated trading only</span>
                 <SelectionIndicator />
+              <MapControl />
               <ThemeQuickToggle />
               <UserMenu />
             </div>
@@ -253,5 +260,6 @@ export function AppShell() {
         </main>
       </div>
     </div>
+    </WorldMapProvider>
   )
 }

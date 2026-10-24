@@ -16,6 +16,10 @@ import { portfolioPath } from '@/lib/portfolio-context'
 import { useArchivePortfolio, useDeletePortfolio, useFxInfo, usePortfolioOverview } from '@/lib/queries'
 import type { PortfolioSummary } from '@/lib/types'
 import { CurrencySelect } from '@/components/currency'
+import { venues } from '@/lib/markets'
+import { useMapHighlight } from '@/lib/world-map'
+
+const allCountries = venues.map((v) => v.country)
 
 /**
  * Overview: every portfolio of the signed-in user (the server returns only the caller's), with a total over the active
@@ -29,6 +33,8 @@ export function PortfoliosPage() {
   const ccy = data?.currency ?? currency ?? 'USD'
   const active = data?.portfolios.filter((p) => p.status === 'Active') ?? []
   const archived = data?.portfolios.filter((p) => p.status === 'Archived') ?? []
+  // Every exchange city lights up on the background map while the portfolios are listed.
+  useMapHighlight('portfolios', allCountries)
   const profit = data?.totalValue != null && data.totalNetContributions != null ? data.totalValue - data.totalNetContributions : null
 
   return (
@@ -134,8 +140,8 @@ function PortfolioCard({ p }: { p: PortfolioSummary }) {
         <Button size="sm" variant="outline" render={<Link to={portfolioPath(p.id, 'optimize')} />} aria-label={`Optimize ${p.name}`}><Sigma /> Optimize</Button>
         <Button size="sm" variant="ghost" render={<Link to={portfolioPath(p.id, 'holdings')} />} aria-label={`Holdings of ${p.name}`}><Briefcase /> Holdings</Button>
         <Button size="sm" variant="ghost" render={<Link to={portfolioPath(p.id, 'transactions')} />} aria-label={`Transactions of ${p.name}`}><ReceiptText /> Transactions</Button>
-        <Button size="sm" variant="ghost" render={<Link to={portfolioPath(p.id, 'performance')} />} aria-label={`Performance of ${p.name}`}><BarChart3 /> Performance</Button>
-        <Button size="sm" variant="ghost" render={<Link to={`/history?portfolio=${p.id}`} />} aria-label={`Optimization runs of ${p.name}`}><ListChecks /> Runs</Button>
+        <Button size="sm" variant="ghost" render={<Link to={portfolioPath(p.id, 'runs')} />} aria-label={`Optimization runs of ${p.name}`}><ListChecks /> Runs</Button>
+        <Button size="sm" variant="ghost" render={<Link to={portfolioPath(p.id, 'backtest')} />} aria-label={`Backtests of ${p.name}`}><BarChart3 /> Backtest</Button>
       </CardFooter>
     </Card>
   )

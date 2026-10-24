@@ -293,7 +293,7 @@ export const useAssets = () => useQuery({ queryKey: keys.assets, queryFn: () => 
 export const usePrices = (symbol?: string, from?: string) =>
   useQuery({
     queryKey: keys.prices(symbol ?? '', from),
-    queryFn: () => api.get<PagedResult<PriceBar>>(`${V1}/assets/${symbol}/prices?pageSize=5000${from ? `&from=${from}` : ''}`),
+    queryFn: () => api.get<PagedResult<PriceBar>>(`${V1}/assets/${encodeURIComponent(symbol!)}/prices?pageSize=5000${from ? `&from=${from}` : ''}`),
     enabled: !!symbol,
   })
 
@@ -321,7 +321,7 @@ export function useCreateAsset() {
 export function useUpdateAsset() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ symbol, ...body }: { symbol: string; isEnabled?: boolean; sector?: string }) => api.patch<Asset>(`${V1}/assets/${symbol}`, body),
+    mutationFn: ({ symbol, ...body }: { symbol: string; isEnabled?: boolean; sector?: string }) => api.patch<Asset>(`${V1}/assets/${encodeURIComponent(symbol)}`, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: keys.assets })
       qc.invalidateQueries({ queryKey: keys.status })
@@ -342,10 +342,11 @@ export function useUpdateSettings() {
 
 // ---------------------------------------------------------------- backtests
 
-export const useBacktests = () =>
+/** The user's backtests; with `portfolioId` only those of that portfolio (its optimizations and custom backtests started in it). */
+export const useBacktests = (portfolioId?: string) =>
   useQuery({
-    queryKey: keys.backtests,
-    queryFn: () => api.get<PagedResult<BacktestSummary>>(`${V1}/backtests?pageSize=20`),
+    queryKey: [...keys.backtests, portfolioId ?? ''],
+    queryFn: () => api.get<PagedResult<BacktestSummary>>(`${V1}/backtests?pageSize=20${portfolioId ? `&portfolioId=${portfolioId}` : ''}`),
     refetchInterval: (q) => (q.state.data?.items.some((b) => b.status === 'Queued' || b.status === 'Running') ? 1500 : false),
   })
 
@@ -649,10 +650,11 @@ export function useDeleteMlExperiment() {
 
 // ---------------------------------------------------------------- strategy comparison
 
-export const useComparisons = (page = 1) =>
+export const useComparisons = (page = 1, portfolioId?: string) =>
   useQuery({
-    queryKey: ['comparisons', page],
-    queryFn: () => api.get<PagedResult<StrategyComparisonSummary>>(`${V1}/strategy-comparisons?page=${page}&pageSize=20`),
+    queryKey: ['comparisons', page, portfolioId ?? ''],
+    queryFn: () => api.get<PagedResult<StrategyComparisonSummary>>(
+      `${V1}/strategy-comparisons?page=${page}&pageSize=20${portfolioId ? `&portfolioId=${portfolioId}` : ''}`),
     placeholderData: keepPreviousData,
     refetchInterval: (q) => (q.state.data?.items.some((e) => isActive(e.status)) ? 2000 : false),
   })

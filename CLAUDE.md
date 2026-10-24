@@ -10,6 +10,11 @@
   (`/portfolios/:id/ml-optimize`, an `MlExperiment` linked to that portfolio) – two tabs of a portfolio with one shared
   layout (results in `ResultSection`s, never tabs; "What your result means" last). Keep both pages alike when changing
   one. Backtest and Strategy comparison work on any optimization of one portfolio. Use these names in UI text, docs and tests.
+- Portfolio tabs: Overview · Math Optimization · ML Optimization · Holdings · Transactions · Optimization runs · Backtest ·
+  Strategy comparison – every tab stays under `/portfolios/:id/…` (no Performance tab: its charts are on the Overview, each
+  once). The background world map (`components/world-map.tsx`) is decorative and `aria-hidden` (its text counterpart is the
+  header's `MapControl`); pages light markets with `useMapHighlight`, stock interactions use `useMapSignal`. The camera is a
+  CSS transform set imperatively (`lib/map-camera.ts`) – never put camera positions into React state or context.
 - Disk: the Podman VM disk file (`~/.local/share/containers/podman/machine`) grows with every image build and never
   shrinks by itself; when the Mac runs out of space, `podman machine ssh sudo fstrim -av` returns the VM's free blocks
   (2026-10-24: 47 → 20 GB) without deleting anything. Never prune volumes (the development database lives in one).

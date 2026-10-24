@@ -20,7 +20,7 @@ import { StrategyInsights } from '@/components/strategy-insights'
 import { interpretComparison } from '@/lib/interpretation'
 import { errorMessage } from '@/lib/api'
 import { useComparison, useComparisons, useCreateComparison, useDeleteComparison, usePortfolioStrategies } from '@/lib/queries'
-import { usePortfolioContext } from '@/lib/portfolio-context'
+import { portfolioPath, usePortfolioContext } from '@/lib/portfolio-context'
 import { dataNeeded, defaultStart, hybridPossible, strategyKey, strategyRef } from '@/lib/strategies'
 import { NoStrategies, PortfolioPicker, StrategySelect } from '@/components/strategy-picker'
 import { useMissingDataGuard } from '@/components/missing-data-dialog'
@@ -40,26 +40,39 @@ const strategyColor: Record<string, string> = {
   benchmark: seriesColor(4),
 }
 
+/** Where comparisons open: inside a portfolio's workspace (`/portfolios/:id/comparison`) or on the page of all comparisons. */
+function comparisonBase(portfolioId: string | undefined) {
+  return portfolioId ? portfolioPath(portfolioId, 'comparison') : '/strategy-comparison'
+}
+
+/**
+ * Strategy comparisons. Inside a portfolio (`/portfolios/:portfolioId/comparison`) only that portfolio's comparisons are
+ * listed and the portfolio is fixed; `/strategy-comparison` lists all of them and lets the user choose the portfolio.
+ */
 export function StrategyComparisonPage() {
-  const { comparisonId } = useParams()
-  const list = useComparisons()
+  const { comparisonId, portfolioId: scoped } = useParams()
+  const list = useComparisons(1, scoped)
   const activeId = comparisonId ?? list.data?.items[0]?.id
+  const description = scoped
+    ? "Any two of this portfolio's optimizations – Math vs Math, ML vs ML or Math vs ML – next to equal weight and the benchmark, re-evaluated walk-forward on one shared simulator with identical dates, costs, capital and rebalancing."
+    : 'Any two optimizations of a portfolio – Math vs Math, ML vs ML or Math vs ML – next to equal weight and the benchmark – re-evaluated walk-forward on one shared simulator with identical dates, costs, capital and rebalancing.'
   return (
     <>
       <PageHeader
+        level={scoped ? 2 : 1}
         title="Strategy comparison"
-        description="Any two optimizations of a portfolio – Math vs Math, ML vs ML or Math vs ML – next to equal weight and the benchmark – re-evaluated walk-forward on one shared simulator with identical dates, costs, capital and rebalancing."
+        description={description}
         actions={<Badge variant="outline" className="gap-1"><GitCompareArrows className="size-3" /> Shared evaluation engine</Badge>}
       />
       <div className="grid gap-6 xl:grid-cols-[380px_minmax(0,1fr)]">
         <div className="space-y-4">
-          <NewComparisonCard />
-          <ComparisonHistory activeId={activeId} />
+          <NewComparisonCard fixedPortfolioId={scoped} />
+          <ComparisonHistory activeId={activeId} portfolioId={scoped} />
         </div>
         <div className="min-w-0">
-          {activeId ? <ComparisonDetail id={activeId} /> : list.isLoading ? <LoadingBlock height="h-96" /> : (
+          {activeId ? <ComparisonDetail id={activeId} portfolioId={scoped} /> : list.isLoading ? <LoadingBlock height="h-96" /> : (
             <EmptyState icon={<GitCompareArrows className="size-8" />} title="No comparisons yet"
-              description="You need one successful optimization run and one completed ML experiment. Choose both on the left." />
+              description={scoped ? 'Choose two of this portfolio’s Math or ML Optimizations on the left.' : 'Choose a portfolio and two of its Math or ML Optimizations on the left.'} />
           )}
         </div>
       </div>
@@ -67,9 +80,10 @@ export function StrategyComparisonPage() {
   )
 }
 
-function NewComparisonCard() {
+/** `fixedPortfolioId`: inside a portfolio – its optimizations only, no portfolio choice. */
+function NewComparisonCard({ fixedPortfolioId }: { fixedPortfolioId?: string }) {
   const { portfolioId: defaultPortfolio, portfolios } = usePortfolioContext()
-  const [portfolioId, setPortfolioId] = useState<string | undefined>(defaultPortfolio)
+  const [portfolioId, setPortfolioId] = useState<string | undefined>(fixedPortfolioId ?? defaultPortfolio)
   const strategies = usePortfolioStrategies(portfolioId)
   const create = useCreateComparison()
   const missingData = useMissingDataGuard()
@@ -109,7 +123,7 @@ function NewComparisonCard() {
       try {
         const c = await create.mutateAsync(body)
         toast.success('Comparison queued')
-        navigate(`/strategy-comparison/${c.summary.id}`)
+        navigate(`${comparisonBase(fixedPortfolioId)}/${c.summary.id}`)
       } catch (e) {
         toast.error('Could not start the comparison', { description: errorMessage(e) })
       }
@@ -126,7 +140,9 @@ function NewComparisonCard() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <PortfolioPicker value={portfolioId} onChange={choosePortfolio} id="cmp-portfolio" />
+        {fixedPortfolioId
+          ? <p className="text-xs text-muted-foreground">Portfolio: <span className="font-medium text-foreground">{portfolio?.name}</span> ({portfolio?.baseCurrency})</p>
+          : <PortfolioPicker value={portfolioId} onChange={choosePortfolio} id="cmp-portfolio" />}
         {portfolioId && (strategies.error ? <ErrorState error={strategies.error} /> : !strategies.data ? <LoadingBlock height="h-16" /> : list.length === 0 ? (
           <NoStrategies portfolioId={portfolioId} />
         ) : (
@@ -182,9 +198,9 @@ function NewComparisonCard() {
   )
 }
 
-function ComparisonHistory({ activeId }: { activeId?: string }) {
+function ComparisonHistory({ activeId, portfolioId }: { activeId?: string; portfolioId?: string }) {
   const [page, setPage] = useState(1)
-  const list = useComparisons(page)
+  const list = useComparisons(page, portfolioId)
   const navigate = useNavigate()
   return (
     <Card>
@@ -197,7 +213,7 @@ function ComparisonHistory({ activeId }: { activeId?: string }) {
             <ul className="divide-y rounded-md border">
               {list.data.items.map((c) => (
                 <li key={c.id}>
-                  <button type="button" onClick={() => navigate(`/strategy-comparison/${c.id}`)} aria-current={c.id === activeId ? 'true' : undefined}
+                  <button type="button" onClick={() => navigate(`${comparisonBase(portfolioId)}/${c.id}`)} aria-current={c.id === activeId ? 'true' : undefined}
                     className={cn('w-full px-3 py-2 text-left text-sm hover:bg-muted', c.id === activeId && 'bg-muted')}>
                     <div className="flex items-center justify-between gap-2">
                       <span className="truncate font-medium">{c.name}</span>
@@ -218,7 +234,7 @@ function ComparisonHistory({ activeId }: { activeId?: string }) {
   )
 }
 
-function ComparisonDetail({ id }: { id: string }) {
+function ComparisonDetail({ id, portfolioId }: { id: string; portfolioId?: string }) {
   const comparison = useComparison(id)
   const remove = useDeleteComparison()
   const navigate = useNavigate()
@@ -243,7 +259,7 @@ function ComparisonDetail({ id }: { id: string }) {
             <DataBadge kind="backtest" />
             {!active && <Button size="icon-sm" variant="ghost" aria-label="Delete comparison" onClick={async () => {
               await remove.mutateAsync(id)
-              navigate('/strategy-comparison')
+              navigate(comparisonBase(portfolioId))
             }}><Trash2 /></Button>}
           </div>
         </div>

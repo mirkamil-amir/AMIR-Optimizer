@@ -1,0 +1,3 @@
+symbol,name,country,exchange,mic,currency,sector,industry,isin,wiki,type
+XIC.TO,iShares Core S&P/TSX Capped Composite Index ETF,CA,Toronto Stock Exchange,XTSE,CAD,,Exchange-traded index fund (S&P/TSX Capped Composite),,,Etf
+XIU.TO,iShares S&P/TSX 60 Index ETF,CA,Toronto Stock Exchange,XTSE,CAD,,Exchange-traded index fund (S&P/TSX 60),,,Etf

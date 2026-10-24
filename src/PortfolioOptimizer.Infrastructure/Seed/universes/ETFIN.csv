@@ -1,0 +1,3 @@
+symbol,name,country,exchange,mic,currency,sector,industry,isin,wiki,type
+BANKBEES.NS,Nippon India ETF Nifty Bank BeES,IN,National Stock Exchange of India,XNSE,INR,,Exchange-traded index fund (NIFTY Bank),,,Etf
+NIFTYBEES.NS,Nippon India ETF Nifty 50 BeES,IN,National Stock Exchange of India,XNSE,INR,,Exchange-traded index fund (NIFTY 50),,,Etf

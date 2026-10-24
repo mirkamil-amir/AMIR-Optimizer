@@ -34,21 +34,9 @@ import type {
   AssetEligibility, MlCatalog, MlExperiment, MlExperimentRequest, MlExperimentSummary, MlPrediction, ModelFamily, PeriodMetrics, Portfolio, PredictionTarget,
   TradeProposal, WeightingMethod,
 } from '@/lib/types'
-import { date, dateTime, money, num, pct, relativeTime } from '@/lib/format'
+import { date, dateTime, familyLabels, money, num, pct, relativeTime, targetLabels } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
-const familyLabels: Record<ModelFamily, string> = {
-  RidgeRegression: 'Ridge regression',
-  LogisticRegression: 'Logistic regression',
-  RandomForest: 'Random forest',
-  GradientBoosting: 'Gradient boosting',
-}
-const targetLabels: Record<PredictionTarget, string> = {
-  ForwardReturn: 'Forward return',
-  ForwardExcessReturn: 'Forward excess return',
-  OutperformBenchmark: 'Probability of outperformance',
-  ForwardVolatility: 'Forward volatility',
-}
 const horizons = [5, 10, 21, 63, 126].map((h) => ({ value: h, label: `${h} trading days (≈ ${h <= 10 ? `${Math.round(h / 5)} week${h > 5 ? 's' : ''}` : `${Math.round(h / 21)} month${h > 21 ? 's' : ''}`})` }))
 
 /**

@@ -142,7 +142,7 @@ public sealed partial class CatalogueService(IApplicationDbContext db, IAuditLog
 
     private static string? Limit(string? s, int max) => s is null || s.Length <= max ? s : s[..max];
 
-    [GeneratedRegex(@"^[A-Z0-9.\-^=]{1,15}$")]
+    [GeneratedRegex(@"^[A-Z0-9.\-^=&]{1,15}$")]
     private static partial Regex SymbolPattern();
 
     [GeneratedRegex("^[A-Z]{3}$")]

@@ -1,0 +1,31 @@
+symbol,name,country,exchange,mic,currency,sector,industry,isin,wiki
+ABB.ST,ABB Ltd,SE,Nasdaq Stockholm,XSTO,SEK,Industrials,Industrials,,en:ABB
+ADDT-B.ST,Addtech B,SE,Nasdaq Stockholm,XSTO,SEK,Industrials,Industrials,,en:Addtech
+ALFA.ST,Alfa Laval,SE,Nasdaq Stockholm,XSTO,SEK,Industrials,Industrials,,en:Alfa Laval
+ASSA-B.ST,Assa Abloy B,SE,Nasdaq Stockholm,XSTO,SEK,Industrials,Industrials,,en:Assa Abloy
+ATCO-A.ST,Atlas Copco A,SE,Nasdaq Stockholm,XSTO,SEK,Industrials,Industrials,,en:Atlas Copco
+AZN.ST,AstraZeneca,SE,Nasdaq Stockholm,XSTO,SEK,Health Care,Health Care,,en:AstraZeneca
+BOL.ST,Boliden,SE,Nasdaq Stockholm,XSTO,SEK,Materials,Materials,,en:Boliden AB
+EPI-A.ST,Epiroc A,SE,Nasdaq Stockholm,XSTO,SEK,Industrials,Industrials,,en:Epiroc
+EQT.ST,EQT,SE,Nasdaq Stockholm,XSTO,SEK,Financials,Financials,,en:EQT AB
+ERIC-B.ST,Ericsson B,SE,Nasdaq Stockholm,XSTO,SEK,Information Technology,Information Technology,,en:Ericsson
+ESSITY-B.ST,Essity B,SE,Nasdaq Stockholm,XSTO,SEK,Consumer Staples,Consumer Staples,,en:Essity
+EVO.ST,Evolution,SE,Nasdaq Stockholm,XSTO,SEK,Consumer Discretionary,Consumer Discretionary,,en:Evolution AB
+HEXA-B.ST,Hexagon B,SE,Nasdaq Stockholm,XSTO,SEK,Information Technology,Information Technology,,en:Hexagon AB
+HM-B.ST,Hennes & Mauritz B,SE,Nasdaq Stockholm,XSTO,SEK,Consumer Discretionary,Consumer Discretionary,,en:H&M
+INDU-C.ST,Industrivärden C,SE,Nasdaq Stockholm,XSTO,SEK,Financials,Financials,,
+INVE-B.ST,Investor B,SE,Nasdaq Stockholm,XSTO,SEK,Financials,Financials,,en:Investor AB
+LIFCO-B.ST,Lifco B,SE,Nasdaq Stockholm,XSTO,SEK,Industrials,Industrials,,
+NDA-SE.ST,Nordea Bank Abp,SE,Nasdaq Stockholm,XSTO,SEK,Financials,Financials,,en:Nordea
+NIBE-B.ST,Nibe Industrier B,SE,Nasdaq Stockholm,XSTO,SEK,Industrials,Industrials,,en:Nibe Industrier
+SAAB-B.ST,Saab B,SE,Nasdaq Stockholm,XSTO,SEK,Industrials,Industrials,,en:Saab AB
+SAND.ST,Sandvik,SE,Nasdaq Stockholm,XSTO,SEK,Industrials,Industrials,,en:Sandvik
+SCA-B.ST,SCA B,SE,Nasdaq Stockholm,XSTO,SEK,Materials,Materials,,en:SCA (company)
+SEB-A.ST,SEB A,SE,Nasdaq Stockholm,XSTO,SEK,Financials,Financials,,en:SEB Group
+SHB-A.ST,Handelsbanken A,SE,Nasdaq Stockholm,XSTO,SEK,Financials,Financials,,en:Handelsbanken
+SKA-B.ST,Skanska B,SE,Nasdaq Stockholm,XSTO,SEK,Industrials,Industrials,,en:Skanska
+SKF-B.ST,SKF B,SE,Nasdaq Stockholm,XSTO,SEK,Industrials,Industrials,,en:SKF
+SWED-A.ST,Swedbank A,SE,Nasdaq Stockholm,XSTO,SEK,Financials,Financials,,en:Swedbank
+TEL2-B.ST,Tele2 B,SE,Nasdaq Stockholm,XSTO,SEK,Communication Services,Communication Services,,en:Tele2
+TELIA.ST,Telia Company,SE,Nasdaq Stockholm,XSTO,SEK,Communication Services,Communication Services,,en:Telia Company
+VOLV-B.ST,Volvo B,SE,Nasdaq Stockholm,XSTO,SEK,Industrials,Industrials,,en:Volvo

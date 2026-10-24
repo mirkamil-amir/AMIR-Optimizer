@@ -20,6 +20,7 @@ const idle = { mutateAsync: vi.fn(), isPending: false }
 vi.mock('@/lib/queries', () => ({
   usePortfolios: () => ({ data: data.portfolios, isLoading: false }),
   usePortfolio: () => ({ data: undefined }),
+  useHoldings: () => ({ data: undefined }),
   useArchivePortfolio: () => idle,
   useUpdatePortfolioDetails: () => idle,
   useRecordTransaction: () => idle,
@@ -57,6 +58,18 @@ describe('portfolio workspace', () => {
     expect(screen.getByText('Research ideas')).toBeInTheDocument()
     expect(screen.getByText('section of b (scoped)')).toBeInTheDocument()
     expect(within(screen.getByRole('navigation', { name: 'Portfolio sections' })).getByRole('link', { name: 'Overview' })).toHaveAttribute('aria-current', 'page')
+  })
+
+  it('keeps every section inside the portfolio, with Backtest and Strategy comparison last and no Performance tab', async () => {
+    data.portfolios = [summary('a', 'Core')]
+    renderAt('/portfolios/a')
+    const nav = await screen.findByRole('navigation', { name: 'Portfolio sections' })
+    const links = within(nav).getAllByRole('link')
+    expect(links.map((l) => l.textContent)).toEqual([
+      'Overview', 'Math Optimization', 'ML Optimization', 'Holdings', 'Transactions', 'Optimization runs', 'Backtest', 'Strategy comparison',
+    ])
+    for (const link of links) expect(link.getAttribute('href')).toMatch(/^\/portfolios\/a(\/|$)/)
+    expect(within(nav).getByRole('link', { name: 'Optimization runs' })).toHaveAttribute('href', '/portfolios/a/runs')
   })
 
   it('shows a safe not-found state for an unknown or foreign id', async () => {

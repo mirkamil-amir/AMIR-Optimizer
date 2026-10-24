@@ -1,7 +1,7 @@
 import { StrictMode, lazy } from 'react'
 import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { createBrowserRouter, RouterProvider } from 'react-router'
+import { Navigate, createBrowserRouter, RouterProvider } from 'react-router'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AppShell } from '@/components/app-shell'
@@ -23,7 +23,6 @@ const RunRedirect = lazy(() => import('@/pages/portfolio-workspace').then((m) =>
 const HoldingsPage = lazy(() => import('@/pages/holdings').then((m) => ({ default: m.HoldingsPage })))
 const OptimizePage = lazy(() => import('@/pages/optimize').then((m) => ({ default: m.OptimizePage })))
 const TradesPage = lazy(() => import('@/pages/trades').then((m) => ({ default: m.TradesPage })))
-const AnalyticsPage = lazy(() => import('@/pages/analytics').then((m) => ({ default: m.AnalyticsPage })))
 const BacktestPage = lazy(() => import('@/pages/backtest').then((m) => ({ default: m.BacktestPage })))
 const MarketDataPage = lazy(() => import('@/pages/market-data').then((m) => ({ default: m.MarketDataPage })))
 const SettingsPage = lazy(() => import('@/pages/settings').then((m) => ({ default: m.SettingsPage })))
@@ -81,7 +80,13 @@ const router = createBrowserRouter([
               { path: 'ml-optimize/:experimentId', element: <MlOptimizePage /> },
               { path: 'holdings', element: <HoldingsPage /> },
               { path: 'transactions', element: <TradesPage /> },
-              { path: 'performance', element: <AnalyticsPage /> },
+              { path: 'runs', element: <HistoryPage /> },
+              { path: 'backtest', element: <BacktestPage /> },
+              { path: 'backtest/:backtestId', element: <BacktestPage /> },
+              { path: 'comparison', element: <StrategyComparisonPage /> },
+              { path: 'comparison/:comparisonId', element: <StrategyComparisonPage /> },
+              // Performance (value, returns, risk, allocation, efficient frontier) is part of the Overview since 2026-10-24.
+              { path: 'performance', element: <Navigate to=".." relative="path" replace /> },
             ],
           },
           { path: '/research', element: <ResearchHomePage /> },
@@ -103,7 +108,7 @@ const router = createBrowserRouter([
           { path: '/strategy-comparison', element: <StrategyComparisonPage /> },
           { path: '/strategy-comparison/:comparisonId', element: <StrategyComparisonPage /> },
           { path: '/trades', element: <ToCurrentPortfolio section="transactions" /> },
-          { path: '/analytics', element: <ToCurrentPortfolio section="performance" /> },
+          { path: '/analytics', element: <ToCurrentPortfolio section="" /> },
           { path: '/backtest', element: <BacktestPage /> },
           { path: '/backtest/:backtestId', element: <BacktestPage /> },
           { path: '/market-data', element: <MarketDataPage /> },

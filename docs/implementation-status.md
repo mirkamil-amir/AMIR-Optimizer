@@ -1,5 +1,36 @@
 # Implementation status
 
+## 2026-10-24 (7): background map – cool palette and selection-aware camera (D-38)
+
+* Map: Natural Earth countries in an ice-blue/blue-grey palette (navy/slate/cyan in dark mode), hairline borders, selected
+  markets teal with a dark outline, the focused market (last selected or opened stock) with a heavier outline and a
+  double-ring marker. Exchange cities as markers; labels only for highlighted markets.
+* Camera: frames the highlighted markets plus the focused one – one market → its region, several → their combined extent,
+  none → world; smooth CSS transition timed by distance, rapid selections combined (220 ms), resizes re-framed instantly,
+  reduced motion respected. Header globe control: markets in view as text, "Fit selected markets", "World view", one market.
+* Portfolio workspace frames its holdings (its universe while it holds nothing); stock selection, opened stocks and the
+  portfolio list feed the same state. Camera positions never enter React state.
+* Verified: Vitest (camera framing, zoom limits, rapid selections, interruption, manual view, resize, reduced motion,
+  cleanup), browser screenshots in light and dark at 1440, 820 and 390 px (no console errors, no horizontal overflow).
+  Frame rate was not measured.
+
+## 2026-10-24 (6): ten more markets, one Overview, portfolio tabs, world map (D-37)
+
+* Markets: Switzerland (SMI), Spain (IBEX 35), Italy (FTSE MIB), Sweden (OMX Stockholm 30), Denmark (OMX Copenhagen 25),
+  Canada (S&P/TSX 60), Australia (S&P/ASX 50), Hong Kong (Hang Seng), India (NIFTY 50), Singapore (Straits Times) – 423
+  stocks from pinned Wikipedia revisions plus 18 index ETFs (curated); all 441 symbols and their currencies were checked
+  against the price provider on 2026-10-24 (three SGX listings trade in USD and are recorded so). Venues, sessions, index
+  benchmarks, Alpha Vantage `.TRT` for Toronto, research-brief markets; symbols may contain `&` (`M&M.NS`).
+* Portfolio workspace: tabs Overview · Math Optimization · ML Optimization · Holdings · Transactions · Optimization runs ·
+  Backtest · Strategy comparison. Performance merged into the Overview (date range, efficient frontier right under portfolio
+  vs benchmark, recorded performance, risk, allocation over time – duplicates removed). Optimization runs (Math and ML),
+  Backtest and Strategy comparison stay inside the portfolio and list only its work; the portfolio is fixed there.
+* Background world map: dotted Natural Earth land, exchange cities; lit for the open portfolio's holdings and universe,
+  all cities on "My portfolios", the selection's markets; a selected stock's city ripples, an opened stock's city blinks
+  (reduced motion respected).
+* Not done: prices of the new markets are not downloaded in advance (on demand, as for every market); the development
+  database receives the new universes on the next API start.
+
 ## 2026-10-24 (5): foldable reference boxes; backtest monthly line chart and currency
 
 * Shared `Collapsible` (button with `aria-expanded`, closed by default): comparison – "Strategies and methodology",

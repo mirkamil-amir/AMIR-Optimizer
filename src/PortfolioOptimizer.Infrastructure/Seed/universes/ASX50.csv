@@ -1,0 +1,49 @@
+symbol,name,country,exchange,mic,currency,sector,industry,isin,wiki
+ALL.AX,Aristocrat Leisure,AU,Australian Securities Exchange,XASX,AUD,Consumer Discretionary,Consumer Discretionary,,en:Aristocrat Leisure
+AMC.AX,Amcor,AU,Australian Securities Exchange,XASX,AUD,Materials,Materials,,en:Amcor
+ANZ.AX,ANZ Bank,AU,Australian Securities Exchange,XASX,AUD,Financials,Financials,,en:ANZ Bank
+BHP.AX,BHP,AU,Australian Securities Exchange,XASX,AUD,Materials,Materials,,en:BHP
+BXB.AX,Brambles,AU,Australian Securities Exchange,XASX,AUD,Industrials,Industrials,,en:Brambles Limited
+CAR.AX,CAR Group,AU,Australian Securities Exchange,XASX,AUD,Communication Services,Communication Services,,en:CAR Group
+CBA.AX,Commonwealth Bank,AU,Australian Securities Exchange,XASX,AUD,Financials,Financials,,en:Commonwealth Bank
+COH.AX,Cochlear,AU,Australian Securities Exchange,XASX,AUD,Health Care,Health Care,,en:Cochlear Limited
+COL.AX,Coles Group,AU,Australian Securities Exchange,XASX,AUD,Consumer Staples,Consumer Staples,,en:Coles Group
+CPU.AX,Computershare,AU,Australian Securities Exchange,XASX,AUD,Information Technology,Information Technology,,en:Computershare
+CSL.AX,CSL,AU,Australian Securities Exchange,XASX,AUD,Health Care,Health Care,,en:CSL Limited
+EVN.AX,Evolution Mining,AU,Australian Securities Exchange,XASX,AUD,Materials,Materials,,en:Evolution Mining
+FMG.AX,Fortescue,AU,Australian Securities Exchange,XASX,AUD,Materials,Materials,,en:Fortescue (company)
+FPH.AX,Fisher & Paykel Healthcare,AU,Australian Securities Exchange,XASX,AUD,Health Care,Health Care,,en:Fisher & Paykel Healthcare
+GMG.AX,Goodman Group,AU,Australian Securities Exchange,XASX,AUD,Real Estate,Real Estate,,en:Goodman Group
+IAG.AX,Insurance Australia Group,AU,Australian Securities Exchange,XASX,AUD,Financials,Financials,,en:Insurance Australia Group
+JBH.AX,JB Hi-Fi,AU,Australian Securities Exchange,XASX,AUD,Consumer Discretionary,Consumer Discretionary,,en:JB Hi-Fi
+JHX.AX,James Hardie,AU,Australian Securities Exchange,XASX,AUD,Materials,Materials,,en:James Hardie
+LYC.AX,Lynas,AU,Australian Securities Exchange,XASX,AUD,Materials,Materials,,en:Lynas
+MPL.AX,Medibank,AU,Australian Securities Exchange,XASX,AUD,Financials,Financials,,en:Medibank
+MQG.AX,Macquarie Group,AU,Australian Securities Exchange,XASX,AUD,Financials,Financials,,en:Macquarie Group
+NAB.AX,National Australia Bank,AU,Australian Securities Exchange,XASX,AUD,Financials,Financials,,en:National Australia Bank
+NEM.AX,Newmont,AU,Australian Securities Exchange,XASX,AUD,Materials,Materials,,en:Newmont
+NST.AX,Northern Star Resources,AU,Australian Securities Exchange,XASX,AUD,Materials,Materials,,en:Northern Star Resources
+NWS.AX,News Corp,AU,Australian Securities Exchange,XASX,AUD,Communication Services,Communication Services,,en:News Corp
+ORG.AX,Origin Energy,AU,Australian Securities Exchange,XASX,AUD,Utilities,Utilities,,en:Origin Energy
+PME.AX,Pro Medicus,AU,Australian Securities Exchange,XASX,AUD,Health Care,Health Care,,
+QAN.AX,Qantas,AU,Australian Securities Exchange,XASX,AUD,Industrials,Industrials,,en:Qantas
+QBE.AX,QBE Insurance,AU,Australian Securities Exchange,XASX,AUD,Financials,Financials,,en:QBE Insurance
+REA.AX,REA Group,AU,Australian Securities Exchange,XASX,AUD,Communication Services,Communication Services,,en:REA Group
+RIO.AX,Rio Tinto,AU,Australian Securities Exchange,XASX,AUD,Materials,Materials,,en:Rio Tinto (corporation)
+RMD.AX,ResMed,AU,Australian Securities Exchange,XASX,AUD,Health Care,Health Care,,en:ResMed
+S32.AX,South32,AU,Australian Securities Exchange,XASX,AUD,Materials,Materials,,en:South32
+SCG.AX,Scentre Group,AU,Australian Securities Exchange,XASX,AUD,Real Estate,Real Estate,,en:Scentre Group
+SGH.AX,Seven Group Holdings,AU,Australian Securities Exchange,XASX,AUD,Industrials,Industrials,,en:Seven Group Holdings
+SGP.AX,Stockland,AU,Australian Securities Exchange,XASX,AUD,Real Estate,Real Estate,,en:Stockland
+SIG.AX,Sigma Healthcare,AU,Australian Securities Exchange,XASX,AUD,Health Care,Health Care,,en:Sigma Healthcare
+SOL.AX,Soul Patts,AU,Australian Securities Exchange,XASX,AUD,Financials,Financials,,en:Soul Patts
+STO.AX,Santos,AU,Australian Securities Exchange,XASX,AUD,Energy,Energy,,en:Santos Limited
+SUN.AX,Suncorp,AU,Australian Securities Exchange,XASX,AUD,Financials,Financials,,en:Suncorp
+TCL.AX,Transurban,AU,Australian Securities Exchange,XASX,AUD,Industrials,Industrials,,en:Transurban
+TLS.AX,Telstra,AU,Australian Securities Exchange,XASX,AUD,Communication Services,Communication Services,,en:Telstra
+WBC.AX,Westpac,AU,Australian Securities Exchange,XASX,AUD,Financials,Financials,,en:Westpac
+WDS.AX,Woodside Energy,AU,Australian Securities Exchange,XASX,AUD,Energy,Energy,,en:Woodside Energy
+WES.AX,Wesfarmers,AU,Australian Securities Exchange,XASX,AUD,Consumer Discretionary,Consumer Discretionary,,en:Wesfarmers
+WOW.AX,Woolworths,AU,Australian Securities Exchange,XASX,AUD,Consumer Staples,Consumer Staples,,en:Woolworths Group
+XRO.AX,Xero,AU,Australian Securities Exchange,XASX,AUD,Information Technology,Information Technology,,en:Xero (company)
+XYZ.AX,Block,AU,Australian Securities Exchange,XASX,AUD,Financials,Financials,,"en:Block, Inc."

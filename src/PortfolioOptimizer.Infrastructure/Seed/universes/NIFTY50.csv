@@ -1,0 +1,51 @@
+symbol,name,country,exchange,mic,currency,sector,industry,isin,wiki
+ADANIENT.NS,Adani Enterprises,IN,National Stock Exchange of India,XNSE,INR,Materials,Metals & Mining,,en:Adani Enterprises
+ADANIPORTS.NS,Adani Ports & SEZ,IN,National Stock Exchange of India,XNSE,INR,Industrials,Services,,en:Adani Ports & SEZ
+APOLLOHOSP.NS,Apollo Hospitals,IN,National Stock Exchange of India,XNSE,INR,Health Care,Healthcare,,en:Apollo Hospitals
+ASIANPAINT.NS,Asian Paints,IN,National Stock Exchange of India,XNSE,INR,Consumer Discretionary,Consumer Durables,,en:Asian Paints
+AXISBANK.NS,Axis Bank,IN,National Stock Exchange of India,XNSE,INR,Financials,Financial Services,,en:Axis Bank
+BAJAJ-AUTO.NS,Bajaj Auto,IN,National Stock Exchange of India,XNSE,INR,Consumer Discretionary,Automobile and Auto Components,,en:Bajaj Auto
+BAJAJFINSV.NS,Bajaj Finserv,IN,National Stock Exchange of India,XNSE,INR,Financials,Financial Services,,en:Bajaj Finserv
+BAJFINANCE.NS,Bajaj Finance,IN,National Stock Exchange of India,XNSE,INR,Financials,Financial Services,,en:Bajaj Finance
+BEL.NS,Bharat Electronics,IN,National Stock Exchange of India,XNSE,INR,Industrials,Capital Goods,,en:Bharat Electronics
+BHARTIARTL.NS,Bharti Airtel,IN,National Stock Exchange of India,XNSE,INR,Communication Services,Telecommunication,,en:Bharti Airtel
+BSE.NS,BSE,IN,National Stock Exchange of India,XNSE,INR,Financials,Financial Services,,en:Bombay Stock Exchange
+CIPLA.NS,Cipla,IN,National Stock Exchange of India,XNSE,INR,Health Care,Healthcare,,en:Cipla
+COALINDIA.NS,Coal India,IN,National Stock Exchange of India,XNSE,INR,Energy,"Oil, Gas & Consumable Fuels",,en:Coal India
+DRREDDY.NS,Dr. Reddy's Laboratories,IN,National Stock Exchange of India,XNSE,INR,Health Care,Healthcare,,en:Dr. Reddy's Laboratories
+EICHERMOT.NS,Eicher Motors,IN,National Stock Exchange of India,XNSE,INR,Consumer Discretionary,Automobile and Auto Components,,en:Eicher Motors
+ETERNAL.NS,Eternal,IN,National Stock Exchange of India,XNSE,INR,Consumer Discretionary,Consumer Services,,en:Eternal Limited
+GRASIM.NS,Grasim Industries,IN,National Stock Exchange of India,XNSE,INR,Materials,Construction Materials,,en:Grasim Industries
+HCLTECH.NS,HCLTech,IN,National Stock Exchange of India,XNSE,INR,Information Technology,Information Technology,,en:HCLTech
+HDFCBANK.NS,HDFC Bank,IN,National Stock Exchange of India,XNSE,INR,Financials,Financial Services,,en:HDFC Bank
+HDFCLIFE.NS,HDFC Life,IN,National Stock Exchange of India,XNSE,INR,Financials,Financial Services,,en:HDFC Life
+HINDALCO.NS,Hindalco Industries,IN,National Stock Exchange of India,XNSE,INR,Materials,Metals & Mining,,en:Hindalco Industries
+HINDUNILVR.NS,Hindustan Unilever,IN,National Stock Exchange of India,XNSE,INR,Consumer Staples,Fast Moving Consumer Goods,,en:Hindustan Unilever
+ICICIBANK.NS,ICICI Bank,IN,National Stock Exchange of India,XNSE,INR,Financials,Financial Services,,en:ICICI Bank
+INDIGO.NS,IndiGo,IN,National Stock Exchange of India,XNSE,INR,Industrials,Services,,en:IndiGo
+INFY.NS,Infosys,IN,National Stock Exchange of India,XNSE,INR,Information Technology,Information Technology,,en:Infosys
+ITC.NS,ITC,IN,National Stock Exchange of India,XNSE,INR,Consumer Staples,Fast Moving Consumer Goods,,en:ITC Limited
+JIOFIN.NS,Jio Financial Services,IN,National Stock Exchange of India,XNSE,INR,Financials,Financial Services,,en:Jio Financial Services
+JSWSTEEL.NS,JSW Steel,IN,National Stock Exchange of India,XNSE,INR,Materials,Metals & Mining,,en:JSW Steel
+KOTAKBANK.NS,Kotak Mahindra Bank,IN,National Stock Exchange of India,XNSE,INR,Financials,Financial Services,,en:Kotak Mahindra Bank
+LT.NS,Larsen & Toubro,IN,National Stock Exchange of India,XNSE,INR,Industrials,Construction,,en:Larsen & Toubro
+M&M.NS,Mahindra & Mahindra,IN,National Stock Exchange of India,XNSE,INR,Consumer Discretionary,Automobile and Auto Components,,en:Mahindra & Mahindra
+MARUTI.NS,Maruti Suzuki,IN,National Stock Exchange of India,XNSE,INR,Consumer Discretionary,Automobile and Auto Components,,en:Maruti Suzuki
+MAXHEALTH.NS,Max Healthcare,IN,National Stock Exchange of India,XNSE,INR,Health Care,Healthcare,,en:Max Healthcare
+NESTLEIND.NS,Nestlé India,IN,National Stock Exchange of India,XNSE,INR,Consumer Staples,Fast Moving Consumer Goods,,en:Nestlé India
+NTPC.NS,NTPC,IN,National Stock Exchange of India,XNSE,INR,Utilities,Power,,en:NTPC Limited
+ONGC.NS,Oil and Natural Gas Corporation,IN,National Stock Exchange of India,XNSE,INR,Energy,"Oil, Gas & Consumable Fuels",,en:Oil and Natural Gas Corporation
+POWERGRID.NS,Power Grid,IN,National Stock Exchange of India,XNSE,INR,Utilities,Power,,en:PowerGrid Corporation of India
+RELIANCE.NS,Reliance Industries,IN,National Stock Exchange of India,XNSE,INR,Energy,"Oil, Gas & Consumable Fuels",,en:Reliance Industries
+SBILIFE.NS,SBI Life Insurance Company,IN,National Stock Exchange of India,XNSE,INR,Financials,Financial Services,,en:SBI Life Insurance Company
+SBIN.NS,State Bank of India,IN,National Stock Exchange of India,XNSE,INR,Financials,Financial Services,,en:State Bank of India
+SHRIRAMFIN.NS,Shriram Finance,IN,National Stock Exchange of India,XNSE,INR,Financials,Financial Services,,en:Shriram Finance
+SUNPHARMA.NS,Sun Pharma,IN,National Stock Exchange of India,XNSE,INR,Health Care,Healthcare,,en:Sun Pharma
+TATACONSUM.NS,Tata Consumer Products,IN,National Stock Exchange of India,XNSE,INR,Consumer Staples,Fast Moving Consumer Goods,,en:Tata Consumer Products
+TATASTEEL.NS,Tata Steel,IN,National Stock Exchange of India,XNSE,INR,Materials,Metals & Mining,,en:Tata Steel
+TCS.NS,Tata Consultancy Services,IN,National Stock Exchange of India,XNSE,INR,Information Technology,Information Technology,,en:Tata Consultancy Services
+TECHM.NS,Tech Mahindra,IN,National Stock Exchange of India,XNSE,INR,Information Technology,Information Technology,,en:Tech Mahindra
+TITAN.NS,Titan Company,IN,National Stock Exchange of India,XNSE,INR,Consumer Discretionary,Consumer Durables,,en:Titan Company
+TMPV.NS,Tata Motors Passenger Vehicles,IN,National Stock Exchange of India,XNSE,INR,Consumer Discretionary,Automobile and Auto Components,,en:Tata Motors Passenger Vehicles
+TRENT.NS,Trent,IN,National Stock Exchange of India,XNSE,INR,Consumer Discretionary,Consumer Services,,en:Trent Limited
+ULTRACEMCO.NS,UltraTech Cement,IN,National Stock Exchange of India,XNSE,INR,Materials,Construction Materials,,en:UltraTech Cement

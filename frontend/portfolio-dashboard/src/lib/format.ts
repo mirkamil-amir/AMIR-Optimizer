@@ -1,3 +1,5 @@
+import type { ModelFamily, PredictionTarget } from './types'
+
 // Consistent number, currency, percentage and date formatting (en-US, values are fractions for %).
 
 const currencyCache = new Map<string, Intl.NumberFormat>()
@@ -96,3 +98,17 @@ export const objectiveLabels: Record<string, string> = {
 }
 
 export const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+/** ML model families and prediction targets (ML Optimization). */
+export const familyLabels: Record<ModelFamily, string> = {
+  RidgeRegression: 'Ridge regression',
+  LogisticRegression: 'Logistic regression',
+  RandomForest: 'Random forest',
+  GradientBoosting: 'Gradient boosting',
+}
+export const targetLabels: Record<PredictionTarget, string> = {
+  ForwardReturn: 'Forward return',
+  ForwardExcessReturn: 'Forward excess return',
+  OutperformBenchmark: 'Probability of outperformance',
+  ForwardVolatility: 'Forward volatility',
+}

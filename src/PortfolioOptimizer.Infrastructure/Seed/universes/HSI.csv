@@ -1,0 +1,86 @@
+symbol,name,country,exchange,mic,currency,sector,industry,isin,wiki
+0001.HK,CK Hutchison Holdings Limited,HK,Hong Kong Stock Exchange,XHKG,HKD,Industrials,Hang Seng sub-index: Commerce & Industry,,en:CK Hutchison Holdings
+0002.HK,CLP Holdings Limited,HK,Hong Kong Stock Exchange,XHKG,HKD,Utilities,Hang Seng sub-index: Utilities,,en:CLP Holdings
+0003.HK,Hong Kong and China Gas Company Limited,HK,Hong Kong Stock Exchange,XHKG,HKD,Utilities,Hang Seng sub-index: Utilities,,en:Hong Kong and China Gas Company Limited
+0005.HK,HSBC Holdings plc,HK,Hong Kong Stock Exchange,XHKG,HKD,Financials,Hang Seng sub-index: Finance,,en:HSBC Holdings plc
+0006.HK,Power Assets Holdings Limited,HK,Hong Kong Stock Exchange,XHKG,HKD,Utilities,Hang Seng sub-index: Utilities,,en:Power Assets Holdings Limited
+0012.HK,Henderson Land Development Company Limited,HK,Hong Kong Stock Exchange,XHKG,HKD,Real Estate,Hang Seng sub-index: Properties,,en:Henderson Land Development
+0016.HK,Sun Hung Kai Properties Limited,HK,Hong Kong Stock Exchange,XHKG,HKD,Real Estate,Hang Seng sub-index: Properties,,en:Sun Hung Kai Properties
+0027.HK,Galaxy Entertainment Group Ltd.,HK,Hong Kong Stock Exchange,XHKG,HKD,Consumer Discretionary,Hang Seng sub-index: Commerce & Industry,,en:Galaxy Entertainment Group
+0066.HK,MTR Corporation Ltd,HK,Hong Kong Stock Exchange,XHKG,HKD,Industrials,Hang Seng sub-index: Commerce & Industry,,en:MTR Corporation
+0101.HK,Hang Lung Properties Limited,HK,Hong Kong Stock Exchange,XHKG,HKD,Real Estate,Hang Seng sub-index: Properties,,en:Hang Lung Properties
+0175.HK,Geely Auto,HK,Hong Kong Stock Exchange,XHKG,HKD,Consumer Discretionary,Hang Seng sub-index: Commerce & Industry,,en:Geely Auto
+0241.HK,Alibaba Health,HK,Hong Kong Stock Exchange,XHKG,HKD,Health Care,Hang Seng sub-index: Commerce & Industry,,en:Alibaba Health
+0267.HK,CITIC Limited,HK,Hong Kong Stock Exchange,XHKG,HKD,Industrials,Hang Seng sub-index: Commerce & Industry,,en:CITIC Limited
+0285.HK,BYD Electronics,HK,Hong Kong Stock Exchange,XHKG,HKD,Information Technology,Hang Seng sub-index: Commerce & Industry,,en:BYD Electronics
+0288.HK,WH Group,HK,Hong Kong Stock Exchange,XHKG,HKD,Consumer Staples,Hang Seng sub-index: Commerce & Industry,,en:WH Group
+0291.HK,China Resources Beer,HK,Hong Kong Stock Exchange,XHKG,HKD,Consumer Staples,Hang Seng sub-index: Commerce & Industry,,en:China Resources Beer
+0300.HK,Midea Group,HK,Hong Kong Stock Exchange,XHKG,HKD,Consumer Discretionary,Hang Seng sub-index: Commerce & Industry,,en:Midea Group
+0316.HK,Orient Overseas (International) Limited,HK,Hong Kong Stock Exchange,XHKG,HKD,Industrials,Hang Seng sub-index: Commerce & Industry,,en:Orient Overseas (International) Limited
+0322.HK,Tingyi,HK,Hong Kong Stock Exchange,XHKG,HKD,Consumer Staples,Hang Seng sub-index: Commerce & Industry,,en:Tingyi
+0386.HK,Sinopec Corp,HK,Hong Kong Stock Exchange,XHKG,HKD,Energy,Hang Seng sub-index: Commerce & Industry,,en:Sinopec
+0388.HK,HKEx Limited,HK,Hong Kong Stock Exchange,XHKG,HKD,Financials,Hang Seng sub-index: Finance,,en:Hong Kong Exchanges and Clearing
+0669.HK,Techtronic Industries,HK,Hong Kong Stock Exchange,XHKG,HKD,Industrials,Hang Seng sub-index: Commerce & Industry,,en:Techtronic Industries
+0688.HK,China Overseas Land & Investment Limited,HK,Hong Kong Stock Exchange,XHKG,HKD,Real Estate,Hang Seng sub-index: Properties,,en:China Overseas Land & Investment Limited
+0700.HK,Tencent Holdings Limited,HK,Hong Kong Stock Exchange,XHKG,HKD,Communication Services,Hang Seng sub-index: Commerce & Industry,,en:Tencent Holdings Limited
+0762.HK,China Unicom,HK,Hong Kong Stock Exchange,XHKG,HKD,Communication Services,Hang Seng sub-index: Commerce & Industry,,en:China Unicom
+0823.HK,Link REIT,HK,Hong Kong Stock Exchange,XHKG,HKD,Real Estate,Hang Seng sub-index: Properties,,en:Link REIT
+0836.HK,China Resources Power,HK,Hong Kong Stock Exchange,XHKG,HKD,Utilities,Hang Seng sub-index: Utilities,,en:China Resources Power
+0857.HK,PetroChina Company Limited,HK,Hong Kong Stock Exchange,XHKG,HKD,Energy,Hang Seng sub-index: Commerce & Industry,,en:PetroChina
+0868.HK,Xinyi Glass,HK,Hong Kong Stock Exchange,XHKG,HKD,Consumer Discretionary,Hang Seng sub-index: Commerce & Industry,,en:Xinyi Glass
+0881.HK,Zhongsheng Group,HK,Hong Kong Stock Exchange,XHKG,HKD,Consumer Discretionary,Hang Seng sub-index: Commerce & Industry,,en:Zhongsheng Group
+0883.HK,CNOOC Limited,HK,Hong Kong Stock Exchange,XHKG,HKD,Energy,Hang Seng sub-index: Commerce & Industry,,en:CNOOC Limited
+0939.HK,China Construction Bank,HK,Hong Kong Stock Exchange,XHKG,HKD,Financials,Hang Seng sub-index: Finance,,en:China Construction Bank
+0941.HK,China Mobile Ltd,HK,Hong Kong Stock Exchange,XHKG,HKD,Communication Services,Hang Seng sub-index: Commerce & Industry,,en:China Mobile
+0960.HK,Longfor Properties,HK,Hong Kong Stock Exchange,XHKG,HKD,Real Estate,Hang Seng sub-index: Properties,,en:Longfor Properties
+0968.HK,Xinyi Solar,HK,Hong Kong Stock Exchange,XHKG,HKD,Information Technology,Hang Seng sub-index: Commerce & Industry,,en:Xinyi Solar
+0981.HK,Semiconductor Manufacturing International Corporation,HK,Hong Kong Stock Exchange,XHKG,HKD,Information Technology,Hang Seng sub-index: Commerce & Industry,,en:Semiconductor Manufacturing International Corporation
+0992.HK,Lenovo,HK,Hong Kong Stock Exchange,XHKG,HKD,Information Technology,Hang Seng sub-index: Commerce & Industry,,en:Lenovo
+1024.HK,Kuaishou,HK,Hong Kong Stock Exchange,XHKG,HKD,Communication Services,Hang Seng sub-index: Commerce & Industry,,en:Kuaishou
+1038.HK,Cheung Kong Infrastructure Holdings Limited,HK,Hong Kong Stock Exchange,XHKG,HKD,Utilities,Hang Seng sub-index: Utilities,,en:Cheung Kong Infrastructure Holdings
+1044.HK,Hengan International Group Co. Ltd,HK,Hong Kong Stock Exchange,XHKG,HKD,Consumer Staples,Hang Seng sub-index: Commerce & Industry,,en:Hengan International
+1088.HK,China Shenhua Energy,HK,Hong Kong Stock Exchange,XHKG,HKD,Energy,Hang Seng sub-index: Commerce & Industry,,en:China Shenhua Energy
+1093.HK,CSPC Pharmaceutical Group,HK,Hong Kong Stock Exchange,XHKG,HKD,Health Care,Hang Seng sub-index: Commerce & Industry,,en:CSPC Pharmaceutical Group
+1099.HK,Sinopharm Group,HK,Hong Kong Stock Exchange,XHKG,HKD,Health Care,Hang Seng sub-index: Commerce & Industry,,en:Sinopharm Group
+1109.HK,China Resources Land Limited,HK,Hong Kong Stock Exchange,XHKG,HKD,Real Estate,Hang Seng sub-index: Properties,,en:China Resources Land Limited
+1113.HK,CK Asset Holdings,HK,Hong Kong Stock Exchange,XHKG,HKD,Real Estate,Hang Seng sub-index: Properties,,en:CK Asset Holdings
+1177.HK,Sino Biopharm,HK,Hong Kong Stock Exchange,XHKG,HKD,Health Care,Hang Seng sub-index: Commerce & Industry,,en:Sino Biopharm
+1209.HK,China Resources Mixc Lifestyle,HK,Hong Kong Stock Exchange,XHKG,HKD,Real Estate,Hang Seng sub-index: Properties,,en:China Resources Mixc Lifestyle
+1211.HK,BYD Company,HK,Hong Kong Stock Exchange,XHKG,HKD,Consumer Discretionary,Hang Seng sub-index: Commerce & Industry,,en:BYD Company
+1299.HK,AIA Group Limited,HK,Hong Kong Stock Exchange,XHKG,HKD,Financials,Hang Seng sub-index: Finance,,en:AIA Group Limited
+1378.HK,China Hongqiao Group,HK,Hong Kong Stock Exchange,XHKG,HKD,Materials,Hang Seng sub-index: Commerce & Industry,,en:China Hongqiao Group
+1398.HK,Industrial and Commercial Bank of China,HK,Hong Kong Stock Exchange,XHKG,HKD,Financials,Hang Seng sub-index: Finance,,en:Industrial and Commercial Bank of China
+1810.HK,Xiaomi,HK,Hong Kong Stock Exchange,XHKG,HKD,Information Technology,Hang Seng sub-index: Commerce & Industry,,en:Xiaomi
+1876.HK,Budweiser Brewing Company APAC,HK,Hong Kong Stock Exchange,XHKG,HKD,Consumer Staples,Hang Seng sub-index: Commerce & Industry,,
+1928.HK,Sands China,HK,Hong Kong Stock Exchange,XHKG,HKD,Consumer Discretionary,Hang Seng sub-index: Commerce & Industry,,en:Sands China
+1929.HK,Chow Tai Fook,HK,Hong Kong Stock Exchange,XHKG,HKD,Consumer Discretionary,Hang Seng sub-index: Commerce & Industry,,en:Chow Tai Fook
+1997.HK,Wharf Real Estate Investment Company Limited,HK,Hong Kong Stock Exchange,XHKG,HKD,Real Estate,Hang Seng sub-index: Properties,,en:Wharf Real Estate Investment Company Limited
+2015.HK,Li Auto,HK,Hong Kong Stock Exchange,XHKG,HKD,Consumer Discretionary,Hang Seng sub-index: Commerce & Industry,,en:Li Auto
+2020.HK,Anta Sports,HK,Hong Kong Stock Exchange,XHKG,HKD,Consumer Discretionary,Hang Seng sub-index: Commerce & Industry,,en:Anta Sports
+2057.HK,ZTO Express,HK,Hong Kong Stock Exchange,XHKG,HKD,Industrials,Hang Seng sub-index: Commerce & Industry,,en:ZTO Express
+2269.HK,WuXi Biologics,HK,Hong Kong Stock Exchange,XHKG,HKD,Health Care,Hang Seng sub-index: Commerce & Industry,,en:WuXi Biologics
+2313.HK,Shenzhou International,HK,Hong Kong Stock Exchange,XHKG,HKD,Consumer Discretionary,Hang Seng sub-index: Commerce & Industry,,en:Shenzhou International
+2318.HK,Ping An Insurance,HK,Hong Kong Stock Exchange,XHKG,HKD,Financials,Hang Seng sub-index: Finance,,en:Ping An Insurance
+2319.HK,Mengniu Dairy,HK,Hong Kong Stock Exchange,XHKG,HKD,Consumer Staples,Hang Seng sub-index: Commerce & Industry,,en:Mengniu Dairy
+2331.HK,Li-Ning,HK,Hong Kong Stock Exchange,XHKG,HKD,Consumer Discretionary,Hang Seng sub-index: Commerce & Industry,,en:Li-Ning
+2359.HK,WuXi AppTec,HK,Hong Kong Stock Exchange,XHKG,HKD,Health Care,Hang Seng sub-index: Commerce & Industry,,en:WuXi AppTec
+2382.HK,Sunny Optical,HK,Hong Kong Stock Exchange,XHKG,HKD,Information Technology,Hang Seng sub-index: Commerce & Industry,,en:Sunny Optical
+2388.HK,BOC Hong Kong (Holdings) Ltd,HK,Hong Kong Stock Exchange,XHKG,HKD,Financials,Hang Seng sub-index: Finance,,en:Bank of China (Hong Kong)
+2618.HK,JD Logistics,HK,Hong Kong Stock Exchange,XHKG,HKD,Industrials,Hang Seng sub-index: Commerce & Industry,,en:JD Logistics
+2628.HK,China Life,HK,Hong Kong Stock Exchange,XHKG,HKD,Financials,Hang Seng sub-index: Finance,,en:China Life Insurance Company
+2688.HK,ENN Energy,HK,Hong Kong Stock Exchange,XHKG,HKD,Utilities,Hang Seng sub-index: Utilities,,en:ENN Energy
+2899.HK,Zijin Mining,HK,Hong Kong Stock Exchange,XHKG,HKD,Materials,Hang Seng sub-index: Commerce & Industry,,en:Zijin Mining
+3690.HK,Meituan,HK,Hong Kong Stock Exchange,XHKG,HKD,Consumer Discretionary,Hang Seng sub-index: Commerce & Industry,,en:Meituan
+3692.HK,Hansoh Pharmaceutical Group,HK,Hong Kong Stock Exchange,XHKG,HKD,Health Care,Hang Seng sub-index: Commerce & Industry,,en:Hansoh Pharmaceutical Group
+3968.HK,China Merchants Bank,HK,Hong Kong Stock Exchange,XHKG,HKD,Financials,Hang Seng sub-index: Finance,,en:China Merchants Bank
+3988.HK,Bank of China Ltd,HK,Hong Kong Stock Exchange,XHKG,HKD,Financials,Hang Seng sub-index: Finance,,en:Bank of China
+6618.HK,JD Health,HK,Hong Kong Stock Exchange,XHKG,HKD,Health Care,Hang Seng sub-index: Commerce & Industry,,en:JD Health
+6690.HK,Haier,HK,Hong Kong Stock Exchange,XHKG,HKD,Consumer Discretionary,Hang Seng sub-index: Commerce & Industry,,en:Haier
+6862.HK,Haidilao,HK,Hong Kong Stock Exchange,XHKG,HKD,Consumer Discretionary,Hang Seng sub-index: Commerce & Industry,,en:Haidilao
+9618.HK,JD.com,HK,Hong Kong Stock Exchange,XHKG,HKD,Consumer Discretionary,Hang Seng sub-index: Commerce & Industry,,en:JD.com
+9633.HK,Nongfu Spring,HK,Hong Kong Stock Exchange,XHKG,HKD,Consumer Staples,Hang Seng sub-index: Commerce & Industry,,en:Nongfu Spring
+9888.HK,Baidu,HK,Hong Kong Stock Exchange,XHKG,HKD,Communication Services,Hang Seng sub-index: Commerce & Industry,,en:Baidu
+9961.HK,Trip.com Group,HK,Hong Kong Stock Exchange,XHKG,HKD,Consumer Discretionary,Hang Seng sub-index: Commerce & Industry,,en:Trip.com Group
+9988.HK,Alibaba Group,HK,Hong Kong Stock Exchange,XHKG,HKD,Consumer Discretionary,Hang Seng sub-index: Commerce & Industry,,en:Alibaba Group
+9992.HK,Pop Mart,HK,Hong Kong Stock Exchange,XHKG,HKD,Consumer Discretionary,Hang Seng sub-index: Commerce & Industry,,en:Pop Mart
+9999.HK,NetEase,HK,Hong Kong Stock Exchange,XHKG,HKD,Communication Services,Hang Seng sub-index: Commerce & Industry,,en:NetEase

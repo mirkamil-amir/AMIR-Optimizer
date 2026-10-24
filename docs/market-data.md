@@ -13,6 +13,26 @@ against the live providers on 2026-10-14 (smoke tests: `PO_LIVE_SMOKE=1 dotnet t
 | France | CAC 40 | 40 (39 Paris + ArcelorMittal on Euronext Amsterdam `MT.AS`) | XPAR / XAMS | EUR | `MC.PA` | ^FCHI |
 | United Kingdom | FTSE 100 | 100 | LSE (XLON) | GBP | `TSCO.L`, `BT-A.L` | ^FTSE |
 | Japan | Nikkei 225 | 224 (the source lists NTT twice) | TSE (XTKS) | JPY | `7203.T` | ^N225 |
+| Switzerland | SMI | 20 | SIX Swiss Exchange (XSWX) | CHF | `NOVN.SW` | ^SSMI |
+| Spain | IBEX 35 | 35 | Bolsa de Madrid (XMAD) | EUR | `ITX.MC` | ^IBEX |
+| Italy | FTSE MIB | 40 | Borsa Italiana (XMIL) | EUR | `RACE.MI` | FTSEMIB.MI |
+| Sweden | OMX Stockholm 30 | 30 | Nasdaq Stockholm (XSTO) | SEK | `ATCO-A.ST` | ^OMX |
+| Denmark | OMX Copenhagen 25 | 25 | Nasdaq Copenhagen (XCSE) | DKK | `MAERSK-A.CO`, `NDA-DK.CO` | ^OMXC25 |
+| Canada | S&P/TSX 60 | 60 | Toronto Stock Exchange (XTSE) | CAD | `RY.TO`, `RCI-B.TO`, `BIP-UN.TO` | ^GSPTSE (Composite) |
+| Australia | S&P/ASX 50 | 48 (the source lists 49 rows incl. the fund VAS, removed) | ASX (XASX) | AUD | `BHP.AX` | ^AXJO (ASX 200) |
+| Hong Kong | Hang Seng Index | 85 | HKEX (XHKG) | HKD | `0005.HK` (four digits) | ^HSI |
+| India | NIFTY 50 | 50 | NSE (XNSE) | INR | `RELIANCE.NS`, `M&M.NS` | ^NSEI |
+| Singapore | Straits Times Index | 30 (three trade in USD: `D01.SI`, `H78.SI`, `J36.SI`) | SGX (XSES) | SGD | `D05.SI` | ^STI |
+
+**Index ETFs.** Each of the ten newer markets also has a small universe "<Country> index ETFs" (`ETFCH` … `ETFSG`, 1–2
+funds each, `AssetType.Etf`): exchange-traded funds on the local index, e.g. `CSSMI.SW`, `XIU.TO`, `STW.AX`, `2800.HK`,
+`NIFTYBEES.NS`, `ES3.SI`. They are a curated list in `build_universes.py` (not Wikipedia, not index constituents);
+symbol, name, currency and fund type were checked against the price provider on 2026-10-24. `SPIC25KL.CO` is a Danish
+listed index fund (investeringsforening) rather than a UCITS ETF. Constituent files may carry an optional `type` column
+(`Equity` default, `Etf`).
+
+All currencies of the new markets (CHF, SEK, DKK, CAD, AUD, HKD, INR, SGD) have ECB reference rates, so prices,
+analyses, portfolio values and backtests convert exactly like the earlier markets (`FxService`, dated rates).
 
 The DAX 30 list is a fixed historical composition (the 30 members before the expansion to 40), shown as
 "DAX 30 (historical)" and never mixed up with the current DAX 40. Renamed tickers point to today's listing
@@ -32,8 +52,18 @@ All constituent lists come from pinned Wikipedia revisions (CC BY-SA 4.0), recor
 | CAC 40 | en: "CAC 40" | 1379195393 |
 | FTSE 100 | en: "FTSE 100 Index" | 1377721311 |
 | Nikkei 225 | de: "Nikkei 225" (the English article has no constituent table) | 271092994 |
+| SMI | en: "Swiss Market Index" | 1380694390 |
+| IBEX 35 | en: "IBEX 35" | 1369000118 |
+| FTSE MIB | en: "FTSE MIB" | 1381720123 |
+| OMX Stockholm 30 | en: "OMX Stockholm 30" | 1356511453 |
+| OMX Copenhagen 25 | en: "OMX Copenhagen 25" | 1381674834 |
+| S&P/TSX 60 | en: "S&P/TSX 60" | 1363917062 |
+| S&P/ASX 50 | en: "S&P/ASX 50" | 1368805713 |
+| Hang Seng Index | en: "Hang Seng Index" | 1377881667 |
+| NIFTY 50 | en: "NIFTY 50" | 1379683379 |
+| Straits Times Index | en: "Straits Times Index" | 1373209403 |
 
-No source provides ISINs, so the ISIN column is empty (never derived). Index providers' official lists are licensed
+Only the FTSE MIB table lists ISINs (kept); for all other indices the ISIN column is empty (never derived). Index providers' official lists are licensed
 data; Wikipedia was chosen because its licence allows redistribution with attribution.
 
 ### Sectors
@@ -42,7 +72,9 @@ data; Wikipedia was chosen because its licence allows redistribution with attrib
 keeps each source's own classification (GICS sub-industry for S&P 500 and CAC 40, Prime Standard sector for DAX, ICB
 sector for FTSE, Nikkei industry translated from German). The mappings live in `tools/universe-builder/build_universes.py`
 and are approximate where schemes differ (e.g. ICB "Household goods" spans two GICS sectors; company-level overrides
-are listed in the script).
+are listed in the script). Two sources have no usable sector: the Straits Times Index table lists none, and the Hang
+Seng sub-index "Commerce & Industry" spans every non-financial sector – for those members the sector is assigned in the
+script from each company's main business (approximate; the Hang Seng sub-index is kept as `industry`).
 
 ### Updating constituents (no code change)
 
@@ -97,6 +129,8 @@ translates per provider:
 | `MC.PA` / `MT.AS` | unchanged | `MC.PAR` / `MT.AMS` |
 | `TSCO.L`, `BT-A.L` | unchanged | `TSCO.LON`, `BT-A.LON` |
 | `7203.T` | unchanged | not covered |
+| `RCI-B.TO` | unchanged | `RCI-B.TRT` |
+| `NOVN.SW`, `ITX.MC`, `RACE.MI`, `ATCO-A.ST`, `MAERSK-A.CO`, `BHP.AX`, `0005.HK`, `M&M.NS`, `D05.SI` | unchanged | not covered |
 | `^GDAXI` etc. | unchanged | not covered |
 
 **Currency units.** London prices are quoted in pence (Yahoo `GBp`, Alpha Vantage pence); `CurrencyUnits` converts

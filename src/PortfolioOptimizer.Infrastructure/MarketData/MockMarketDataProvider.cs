@@ -39,7 +39,7 @@ public sealed class MockMarketDataProvider(IOptions<MockProviderOptions> options
         }
         var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
         var n = PriceNormalizer.Normalize(raw, startDate, endDate, today);
-        return Task.FromResult(new ProviderHistory(symbol, Markets.ForSymbol(symbol).Currency, n.Bars, raw.Count, n.Rejected, n.Duplicates,
+        return Task.FromResult(new ProviderHistory(symbol, Markets.ListingCurrency(symbol), n.Bars, raw.Count, n.Rejected, n.Duplicates,
             ["Simulated data – not real market prices."]));
     }
 
@@ -49,7 +49,7 @@ public sealed class MockMarketDataProvider(IOptions<MockProviderOptions> options
         var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
         var idx = Array.FindLastIndex(dates, d => d <= today);
         return Task.FromResult<MarketQuote?>(idx < 0 ? null
-            : new MarketQuote(symbol, Math.Round((decimal)prices[idx], 4), Markets.ForSymbol(symbol).Currency,
+            : new MarketQuote(symbol, Math.Round((decimal)prices[idx], 4), Markets.ListingCurrency(symbol),
                 dates[idx].ToDateTime(new TimeOnly(20, 0), DateTimeKind.Utc), idx > 0 ? Math.Round((decimal)prices[idx - 1], 4) : null));
     }
 
