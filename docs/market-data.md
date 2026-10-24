@@ -136,12 +136,22 @@ closes; the refresh keeps the series consistent). This is routine: the Market da
 the note "History refreshed … after a dividend or split adjustment" in its tooltip. Users fetch history for up to 50 selected stocks at once; ML experiments and comparisons queue
 missing history (e.g. an index benchmark) automatically before they run.
 
+**Asking before an analysis (missing-data dialog).** The ML experiment, backtest and optimization forms first call
+`POST /market-data/check` with the stocks, benchmark, period (ML: the history years; backtest/optimization: the start minus
+the lookback, as the backtest loads it) and analysis currency (`DataReadinessService`). It lists, per stock, prices that start
+later than needed (more than 7 days) or end more than the stale threshold before the end, and per currency the exchange-rate
+ranges not stored (`FxService.MissingRatesAsync`). When something can be downloaded the dialog asks: **Download and continue**
+(`POST /market-data/download-missing` queues price jobs of ≤ 50 stocks – the incremental sync adds older history before the
+stored range – and starts the background FX download; the dialog polls the check and starts the analysis once complete),
+**Continue without** (the analysis excludes or shortens as it explains), or **Cancel**. Older prices already requested from
+the source without result are marked as unavailable (younger listing) and not offered again. Any approved user may use both
+endpoints (the same 50-symbol rule as manual syncs; data-provider names are not exposed).
+
 ## Analyses and currencies
 
-Returns are computed in each stock's own currency without FX conversion, so an optimization, ML experiment or
-comparison must use stocks of one currency (`UniverseCurrency`, mixed selections are rejected with an explanation). A
-benchmark in another currency is replaced by the matching index (SPY → ^GDAXI for a DAX selection) with a note. Paper
-trades need a portfolio in the stocks' currency.
+Stocks of different currencies can be combined: prices are converted into the analysis currency with the dated ECB rate
+(`FxService`, rules in [currency.md](currency.md)). In a single-market analysis in that market's own currency a foreign
+benchmark is replaced by the market's index (SPY → ^GDAXI for DAX stocks in EUR) with a note.
 
 ## Known limitations
 

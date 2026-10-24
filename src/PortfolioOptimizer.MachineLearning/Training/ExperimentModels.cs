@@ -117,4 +117,7 @@ public sealed record ExperimentResult
     public required bool IsExploratory { get; init; }
     public required int TotalSamples { get; init; }
     public required int DroppedSamples { get; init; }
+
+    /// <summary>Sample counts per stock of the panel (by symbol).</summary>
+    public IReadOnlyDictionary<string, Data.AssetSampleCount> SamplesPerAsset { get; init; } = new Dictionary<string, Data.AssetSampleCount>();
 }

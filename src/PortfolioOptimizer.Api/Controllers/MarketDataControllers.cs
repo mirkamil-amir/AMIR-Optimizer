@@ -60,8 +60,25 @@ public sealed class AssetsController(MarketDataService marketData) : ControllerB
 /// <summary>Market data ingestion and data-quality status.</summary>
 [ApiController]
 [Route("api/v1/market-data")]
-public sealed class MarketDataController(MarketDataService marketData) : ControllerBase
+public sealed class MarketDataController(MarketDataService marketData, DataReadinessService readiness) : ControllerBase
 {
+    /// <summary>Which stored prices and exchange rates an analysis would miss (stocks, benchmark, period, currency). Changes nothing.</summary>
+    [HttpPost("check")]
+    [ProducesResponseType<DataCheckDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    public Task<DataCheckDto> Check(DataCheckRequest request, CancellationToken ct) => readiness.CheckAsync(request, ct);
+
+    /// <summary>
+    /// Downloads what <c>check</c> reports as missing: queues price jobs for the stocks (poll their ids) and starts the
+    /// exchange-rate download in the background. Poll <c>check</c> until it is complete or no longer downloading.
+    /// </summary>
+    /// <response code="202">Downloads started.</response>
+    [HttpPost("download-missing")]
+    [EnableRateLimiting("expensive")]
+    [ProducesResponseType<DataDownloadDto>(StatusCodes.Status202Accepted)]
+    public async Task<ActionResult<DataDownloadDto>> DownloadMissing(DataCheckRequest request, CancellationToken ct) =>
+        Accepted(await readiness.DownloadAsync(request, ct));
+
     /// <summary>Queues a historical price download. Returns immediately; poll the job for progress.</summary>
     /// <remarks>Downloads are incremental: only missing dates (plus a 7-day overlap for corrections) are requested unless forceFullRefresh is set.</remarks>
     /// <response code="202">Job queued.</response>

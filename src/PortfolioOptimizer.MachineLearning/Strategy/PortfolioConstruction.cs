@@ -56,6 +56,9 @@ public static class PortfolioConstructor
 
         var ranked = candidates.Where(c => double.IsFinite(c.Score))
             .OrderByDescending(c => c.Score).ThenBy(c => c.Symbol, StringComparer.Ordinal).ToList();
+        var invalid = candidates.Where(c => !double.IsFinite(c.Score)).Select(c => c.Symbol).ToList();
+        if (invalid.Count > 0)
+            notes.Add($"No valid score (NaN or infinite) for {string.Join(", ", invalid.Take(5))}{(invalid.Count > 5 ? ", …" : "")}; not eligible.");
         if (settings.MinimumScore is { } min)
         {
             var before = ranked.Count;

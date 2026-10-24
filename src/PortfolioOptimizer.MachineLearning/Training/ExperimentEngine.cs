@@ -146,6 +146,7 @@ public sealed class ExperimentEngine
             IsExploratory = exploratory,
             TotalSamples = dataset.Summary.Samples,
             DroppedSamples = dataset.Summary.DroppedForMissingFeatures,
+            SamplesPerAsset = panel.Symbols.Select((symbol, a) => (symbol, a)).ToDictionary(x => x.symbol, x => dataset.PerAsset[x.a]),
         };
     }
 

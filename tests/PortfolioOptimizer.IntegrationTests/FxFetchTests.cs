@@ -13,7 +13,7 @@ namespace PortfolioOptimizer.IntegrationTests;
 
 /// <summary>
 /// How exchange rates are fetched: a missing currency is loaded together with all others in one provider request, concurrent
-/// requests share one fetch, an ended series (BGN) is never requested again, and a failing or hanging provider costs a bounded
+/// requests share one download, an ended series (BGN) is never requested again, and a failing or hanging provider costs a bounded
 /// wait with an explicit "no rate" instead of an error page. Provider calls are counted by a wrapper around the simulated rates.
 /// </summary>
 public sealed class FxFetchTests : IAsyncLifetime
@@ -113,10 +113,11 @@ public sealed class FxFetchTests : IAsyncLifetime
     public async Task ConcurrentRequestsForTheSameMissingRates_ShareOneProviderCall()
     {
         var calls = _provider.Calls;
-        // Five-year chart (beyond the fetch-everything window): five parallel requests, one fetch of ZAR.
+        // Five-year chart (beyond the fetch-everything window): five parallel requests, one download of ZAR – three two-year
+        // chunks (FxDownloadPlan.ChunkDays), not fifteen requests.
         var responses = await Task.WhenAll(Enumerable.Range(0, 5).Select(_ => _client.GetAsync("/api/v1/fx/history?from=EUR&to=ZAR&days=1830")));
         Assert.All(responses, r => Assert.Equal(HttpStatusCode.OK, r.StatusCode));
-        Assert.Equal(calls + 1, _provider.Calls);
+        Assert.Equal(calls + 3, _provider.Calls);
         var h = await responses[0].ReadAsync<FxHistoryDto>();
         Assert.True(h.Points.Count > 1000);
     }

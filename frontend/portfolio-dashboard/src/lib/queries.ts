@@ -8,7 +8,7 @@ import type {
   MlPredictionSet, StrategyComparison, StrategyComparisonRequest, StrategyComparisonSummary, Market, QuoteRefreshRun, QuoteRefreshResult,
   AdminOverview, HistoryRange, PriceHistory, Watchlist, WatchlistAddResult, NewsFeed, NewsFilters, EventComparison, RealityCheck, CompanyProfile,
   FxInfo, FxRate, FxHistory, FxBoard, ResearchSession, ResearchSessionSummary, UpdateBriefRequest, HypothesisComparison, CompanyContext, RefinementChange,
-  PortfolioOverview, PortfolioTransaction, RecordTransactionRequest, MarketDataSummary,
+  PortfolioOverview, PortfolioTransaction, RecordTransactionRequest, MarketDataSummary, DataCheck, DataCheckRequest, DataDownload,
 } from './types'
 
 const V1 = '/api/v1'
@@ -832,3 +832,11 @@ export const useFxBoard = (base: string | undefined, quotes: string[]) =>
     enabled: !!base && quotes.length > 0,
     staleTime: 30 * 60_000,
   })
+
+/** What an analysis would miss (stored prices and exchange rates); changes nothing. */
+export const checkData = (request: DataCheckRequest) => api.post<DataCheck>(`${V1}/market-data/check`, request)
+
+/** Queues price downloads and starts the exchange-rate download for what {@link checkData} reports as missing. */
+export const downloadMissingData = (request: DataCheckRequest) => api.post<DataDownload>(`${V1}/market-data/download-missing`, request)
+
+export const getSyncJob = (id: string) => api.get<SyncJob>(`${V1}/market-data/jobs/${id}`)

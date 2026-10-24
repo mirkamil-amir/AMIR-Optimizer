@@ -133,7 +133,27 @@ public sealed record MlResultDocument(
     PeriodInfo TestPeriod,
     int TotalSamples,
     int DroppedSamples,
-    string ValidationMethodology);
+    string ValidationMethodology,
+    IReadOnlyList<AssetEligibilityDto>? Eligibility = null);
+
+/// <summary>
+/// One stock's path through an experiment: stored prices → prices on the benchmark's span → without exchange rate → usable
+/// prices → samples → latest prediction → selection and weight. <see cref="Stage"/> is the last step reached, <see cref="Reason"/>
+/// why it stopped there. Null counts: the stock did not reach that step. (Absent in experiments run before 2026-10-23.)
+/// </summary>
+public sealed record AssetEligibilityDto(
+    string Symbol,
+    int StoredPrices,
+    int PricesInBenchmarkSpan,
+    int PricesWithoutFx,
+    int UsablePrices,
+    int? Samples,
+    int? LabeledSamples,
+    int? DroppedSamples,
+    int? Rank,
+    double TargetWeight,
+    string Stage,
+    string? Reason);
 
 public sealed record MlBacktestDocument(
     IReadOnlyList<DateOnly> Dates,

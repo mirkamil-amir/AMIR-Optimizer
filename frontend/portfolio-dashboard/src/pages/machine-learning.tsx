@@ -28,8 +28,10 @@ import {
   useCreateMlExperiment, useDeleteMlExperiment, useMlBacktest, useMlCatalog, useMlExperiment, useMlExperiments, usePredictAgain, useRebalancePreview, useSettings,
 } from '@/lib/queries'
 import { useSelection } from '@/lib/selection'
+import { useMissingDataGuard } from '@/components/missing-data-dialog'
+import { yearsAgo } from '@/lib/data-check'
 import type {
-  MlCatalog, MlExperiment, MlExperimentRequest, MlExperimentSummary, MlPrediction, ModelFamily, PeriodMetrics, PredictionTarget,
+  AssetEligibility, MlCatalog, MlExperiment, MlExperimentRequest, MlExperimentSummary, MlPrediction, ModelFamily, PeriodMetrics, PredictionTarget,
   TradeProposal, WeightingMethod,
 } from '@/lib/types'
 import { date, dateTime, money, num, pct, relativeTime } from '@/lib/format'
@@ -118,6 +120,7 @@ function NewExperimentForm({ catalog, benchmark, riskFree }: { catalog: MlCatalo
   const { portfolio } = usePortfolioContext()
   const create = useCreateMlExperiment()
   const navigate = useNavigate()
+  const missingData = useMissingDataGuard()
   const [form, setForm] = useState({ ...defaults, benchmarkSymbol: benchmark, riskFreeRate: riskFree })
   const [allFeatures, setAllFeatures] = useState(true)
   const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => setForm((f) => ({ ...f, [key]: value }))
@@ -136,7 +139,11 @@ function NewExperimentForm({ catalog, benchmark, riskFree }: { catalog: MlCatalo
     setForm((s) => ({ ...s, modelFamily: value, target: f.supportedTargets.includes(s.target) ? s.target : f.supportedTargets[0] }))
   }
 
-  const submit = async () => {
+  // Missing prices or exchange rates for the requested history are offered for download first.
+  const submit = () => {
+    return missingData.guard({ symbols: universe, benchmarkSymbol: form.benchmarkSymbol, from: yearsAgo(form.historyYears), currency: portfolio?.baseCurrency ?? null }, start)
+  }
+  const start = async () => {
     try {
       // Computed in the portfolio's currency: stocks of other markets are converted with dated exchange rates.
       const result = await create.mutateAsync({ ...form, universe, features: allFeatures ? [] : form.features, currency: portfolio?.baseCurrency ?? null })
@@ -265,9 +272,10 @@ function NewExperimentForm({ catalog, benchmark, riskFree }: { catalog: MlCatalo
           <p className="mt-2 text-[11px] text-muted-foreground">{catalog.validationMethodology}</p>
         </details>
 
-        <Button className="w-full" onClick={submit} disabled={create.isPending || universe.length < 5}>
-          {create.isPending ? <Loader2 className="animate-spin" /> : <Play />} Start experiment
+        <Button className="w-full" onClick={submit} disabled={create.isPending || missingData.checking || universe.length < 5}>
+          {create.isPending || missingData.checking ? <Loader2 className="animate-spin" /> : <Play />} Start experiment
         </Button>
+        {missingData.dialog}
         {universe.length > 0 && universe.length < 5 && <p className="text-xs text-warn">Select at least 5 stocks.</p>}
       </CardContent>
     </Card>
@@ -759,7 +767,32 @@ function SetupTab({ e }: { e: MlExperiment }) {
           ))}</tbody>
         </table>
       </CardContent></Card>
+      {r.eligibility && r.eligibility.length > 0 && <EligibilityTable rows={r.eligibility} />}
     </>
+  )
+}
+
+function EligibilityTable({ rows }: { rows: AssetEligibility[] }) {
+  const dash = (v: number | null) => (v === null ? '—' : num(v, 0))
+  return (
+    <Card><CardContent className="py-4">
+      <SectionTitle hint="Each stock's path: stored prices in the period → prices within the benchmark's stored span (the experiment's calendar) → prices without an exchange rate → usable prices → samples (decision dates with enough features; labeled = horizon elapsed) → latest prediction and weight. The stage is the last step reached.">Stock eligibility</SectionTitle>
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs tabular">
+          <thead><tr className="text-left text-muted-foreground">
+            <th className="py-1">Stock</th><th>Stored</th><th>In span</th><th>No FX rate</th><th>Usable</th><th>Samples</th><th>Labeled</th><th>Rank</th><th>Weight</th><th>Stage</th>
+          </tr></thead>
+          <tbody>{rows.map((a) => (
+            <tr key={a.symbol} className="border-t align-top">
+              <td className="py-1 font-medium">{a.symbol}</td><td>{num(a.storedPrices, 0)}</td><td>{num(a.pricesInBenchmarkSpan, 0)}</td>
+              <td>{num(a.pricesWithoutFx, 0)}</td><td>{num(a.usablePrices, 0)}</td><td>{dash(a.samples)}</td><td>{dash(a.labeledSamples)}</td>
+              <td>{dash(a.rank)}</td><td>{a.targetWeight > 0 ? `${num(a.targetWeight * 100, 1)} %` : '—'}</td>
+              <td><div>{a.stage}</div>{a.reason && <div className="text-muted-foreground">{a.reason}</div>}</td>
+            </tr>
+          ))}</tbody>
+        </table>
+      </div>
+    </CardContent></Card>
   )
 }
 

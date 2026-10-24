@@ -1,5 +1,44 @@
 # Implementation status
 
+## 2026-10-24: ask before an analysis when prices or exchange rates are missing
+
+* `DataReadinessService` + `POST /market-data/check` / `download-missing`; dialog (`useMissingDataGuard`) in the ML
+  experiment, backtest and optimization forms: download and continue / continue without / cancel. Details in
+  [market-data.md](market-data.md#daily-history).
+* Tests: `DataReadinessTests` (missing older prices, benchmark without prices and USD rates reported, downloaded on request
+  as an approved user, then complete; second download does nothing; anonymous 401; validation), Vitest `data-check.test.ts`,
+  Playwright `missing-data.spec.ts` (dialog shown for 15 years of history; cancel starts nothing; download and continue
+  starts the experiment).
+
+## 2026-10-23: long FX histories and ML stock eligibility (D-35)
+
+* **Reported:** an 8-year ML experiment in USD (19 stocks) excluded 7 EUR/GBP/JPY stocks ("749 of 2022 prices have no
+  GBP→USD rate within 4 days").
+* **Root cause 1 – history never downloaded:** stored ECB rates began 2021-10-08; every missing date was in one leading run
+  2018-10-23 → 2021-10-07 (no interior gaps, no weekend/holiday pattern, quote direction and date keys correct). The API log
+  shows the single 8-year ECB request for GBP, JPY, USD hitting the 10 s attempt timeout twice and the 25 s request bound
+  ("FX provider ECB did not answer within 25 s"); measured directly, the ECB needed 17 s for it (2.6–20 s for one year). The
+  fetch was cancelled with the request, so the next run failed the same way. No Redis exists (D-33): no cache was involved.
+* **Root cause 2 – rates checked on unused dates:** the benchmark SPY had prices only from 2021-10-13; the ML panel uses the
+  benchmark's dates, so the stocks' 2018–2021 prices were never used, yet their missing rates excluded the stocks
+  (within SPY's span all 15 non-USD stocks had 0 prices without a rate).
+* **Fixes:** `FxDownloader` (two-year chunks, stored as they arrive, contiguous per currency, single flight, continues after
+  the request stops waiting; background jobs wait up to 5 min; ECB attempt timeout 45 s); `GapsAsync` returns head and tail
+  gaps instead of refetching the stored middle; exclusion reasons name the cause (`FxMissing`) and download problems;
+  `MlDataLoader` converts only the benchmark's span; per-stock eligibility funnel stored with each experiment and shown in the
+  "Setup" tab; non-finite ML scores are reported instead of silently dropped. The 4-day carry-forward and the 5 % exclusion
+  rule are unchanged.
+* **Measured on the development database (2026-10-23):** before – USD/GBP/JPY from 2021-10-08 (1,292 rates each); 720–758
+  prices without a rate for 6952.T, 7751.T, ABF.L, ANTO.L, BAYN.DE, BEI.DE, BVI.PA. After deploying and one history request
+  per pair (6.9 s and 6.7 s, 4 ECB chunk requests of 2.3–4.3 s) – USD/GBP/JPY from 2018-10-08 (2,060 each, largest step
+  5 days); 0 prices without a rate for all 15 non-USD stocks of the experiment. The experiment itself was not re-run on the
+  development stack (runs are created only on the e2e stack); the selection audit of the stored run found the bottleneck
+  in data eligibility: 12 of 19 stocks eligible, top 10 selected at 10 % each, fully invested – not the model or caps.
+* **Tests:** unit (chunk plan, contiguity filter, exact/beyond 4-day age, no later rate, cause classification, reported case),
+  ML (invalid scores), integration `FxHistoryTests` (chunked download kept on failure and resumed; download continues after
+  the request stops waiting and is visible at once; ML experiment waits for rates and checks only the benchmark span –
+  verified to fail with either fix removed), eligibility funnel in `MachineLearningTests`.
+
 ## 2026-10-19 (2): currency converter speed, layout and BGN (D-34)
 
 * Root causes (from the API logs): every added currency waited for a new `/fx/board` request that called the ECB inside the

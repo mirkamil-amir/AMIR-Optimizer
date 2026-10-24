@@ -101,6 +101,14 @@ public sealed class MachineLearningTests : IAsyncLifetime
         Assert.All(predictions.Predictions, p => Assert.NotEmpty(p.Drivers));
         Assert.NotNull(predictions.IntervalMethod);
 
+        // Per-stock funnel: every requested stock appears with its counts; the selected rows carry the predictions' weights.
+        var funnel = r.Eligibility!;
+        Assert.Equal(Universe.Order(), funnel.Select(a => a.Symbol).Order());
+        Assert.All(funnel, a => Assert.True(a.UsablePrices >= 300 && a.Samples > 0 && a.PricesWithoutFx == 0, a.Symbol));
+        Assert.Equal(predictions.Predictions.Where(p => p.Selected).Select(p => (p.Symbol, p.TargetWeight)).OrderBy(x => x.Symbol),
+            funnel.Where(a => a.Stage == "Selected").Select(a => (a.Symbol, a.TargetWeight)).OrderBy(x => x.Symbol));
+        Assert.All(funnel.Where(a => a.Stage != "Selected"), a => Assert.False(string.IsNullOrEmpty(a.Reason), a.Symbol));
+
         var backtest = await (await _user.GetAsync($"/api/v1/ml/experiments/{done.Summary.Id}/backtest")).ReadAsync<MlBacktestDocument>();
         Assert.Equal(3, backtest.Performance.Count);
         Assert.True(backtest.Dates[0] >= r.TestPeriod.Start);

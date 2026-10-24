@@ -15,13 +15,18 @@ public sealed record Sample(int Asset, int DecisionIndex, double[] Features, dou
 
 public sealed record DatasetSummary(int DecisionDates, int Samples, int LabeledSamples, int DroppedForMissingFeatures, int AssetsWithoutUsableHistory);
 
+/// <summary>Samples of one stock: usable, labeled (horizon elapsed) and dropped for missing features.</summary>
+public sealed record AssetSampleCount(int Samples, int LabeledSamples, int DroppedForMissingFeatures);
+
 /// <summary>Panel samples on a regular decision grid (every <c>sampleStep</c> trading days).</summary>
 public sealed class Dataset
 {
     public const double MaxMissingFeatureFraction = 0.3;
 
-    private Dataset(MarketPanel panel, FeatureEngine features, PredictionTarget target, int horizon, IReadOnlyList<Sample> samples, DatasetSummary summary)
+    private Dataset(MarketPanel panel, FeatureEngine features, PredictionTarget target, int horizon, IReadOnlyList<Sample> samples, DatasetSummary summary,
+        IReadOnlyList<AssetSampleCount> perAsset)
     {
+        PerAsset = perAsset;
         Panel = panel;
         Features = features;
         Target = target;
@@ -37,6 +42,9 @@ public sealed class Dataset
     public IReadOnlyList<Sample> Samples { get; }
     public DatasetSummary Summary { get; }
 
+    /// <summary>Sample counts per asset, indexed like <see cref="MarketPanel.Symbols"/>.</summary>
+    public IReadOnlyList<AssetSampleCount> PerAsset { get; }
+
     public static Dataset Build(MarketPanel panel, FeatureEngine features, PredictionTarget target, int horizon, int sampleStep, int firstDecisionIndex = 0)
     {
         if (horizon < TargetCatalog.MinimumHorizon(target)) throw new ArgumentException($"The horizon must be at least {TargetCatalog.MinimumHorizon(target)} days for {target}.");
@@ -48,6 +56,9 @@ public sealed class Dataset
 
         var samples = new List<Sample>();
         var dropped = 0;
+        var droppedPerAsset = new int[panel.AssetCount];
+        var samplesPerAsset = new int[panel.AssetCount];
+        var labeledPerAsset = new int[panel.AssetCount];
         var usableAssets = new HashSet<int>();
         foreach (var t in decisionIndices)
         {
@@ -56,14 +67,17 @@ public sealed class Dataset
                 var x = features.Compute(a, t);
                 if (x is null) continue;
                 var missing = x.Count(double.IsNaN);
-                if (missing > MaxMissingFeatureFraction * x.Length) { dropped++; continue; }
+                if (missing > MaxMissingFeatureFraction * x.Length) { dropped++; droppedPerAsset[a]++; continue; }
                 var label = LabelEngine.Compute(panel, a, t, target, horizon);
                 var outcome = LabelEngine.ForwardExcessReturn(panel, a, t, horizon);
                 samples.Add(new Sample(a, t, x, label, outcome, t + horizon));
+                samplesPerAsset[a]++;
+                if (!double.IsNaN(label)) labeledPerAsset[a]++;
                 usableAssets.Add(a);
             }
         }
         var summary = new DatasetSummary(decisionIndices.Count, samples.Count, samples.Count(s => s.IsLabeled), dropped, panel.AssetCount - usableAssets.Count);
-        return new Dataset(panel, features, target, horizon, samples, summary);
+        var perAsset = Enumerable.Range(0, panel.AssetCount).Select(a => new AssetSampleCount(samplesPerAsset[a], labeledPerAsset[a], droppedPerAsset[a])).ToList();
+        return new Dataset(panel, features, target, horizon, samples, summary, perAsset);
     }
 }

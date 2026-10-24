@@ -196,7 +196,7 @@ readable `XSRF-TOKEN` cookie; `GET /auth/antiforgery` issues one). Swagger UI se
 | Machine learning | `GET /ml/models`, `POST/GET /ml/experiments`, `GET/DELETE /ml/experiments/{id}`, `…/metrics`, `…/backtest`, `…/models`, `GET/POST …/predictions` |
 | Strategy comparison | `POST/GET /strategy-comparisons`, `GET/DELETE /strategy-comparisons/{id}` |
 | AI research | `GET/POST /research`, `GET/DELETE /research/{id}`, `PUT …/brief`, `PUT …/universe`, `POST …/evaluate`, `POST/DELETE …/refinements`, `POST …/refinements/{proposalId}/apply`, `GET …/compare?a&b`, `POST …/save` (requires `confirm: true`), `GET …/companies/{symbol}` |
-| Market data & assets | `GET/POST /assets`, `PATCH /assets/{symbol}`, `POST /market-data/sync`, `GET /market-data/jobs/{id}`, `GET /market-data/status` |
+| Market data & assets | `GET/POST /assets`, `PATCH /assets/{symbol}`, `POST /market-data/sync`, `GET /market-data/jobs/{id}`, `GET /market-data/status`, `POST /market-data/check`, `POST /market-data/download-missing` |
 | Portfolios, optimization, trading, analytics, backtests | as before: `/portfolios/…`, `/optimization-runs/…`, `/trade-proposals/…`, `/backtests/…` (all owner-scoped) |
 | Settings | `GET /settings` (all users), `PUT /settings` (administrators) |
 

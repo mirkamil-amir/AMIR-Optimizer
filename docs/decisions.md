@@ -2,6 +2,24 @@
 
 Short records of decisions that are not obvious from the code. Newest first. Format: context → decision → consequences.
 
+## D-35 Long FX histories: chunked background download; check rates only where they are used (2026-10-23)
+**Context:** an ML experiment in USD with 8 years of prices excluded every EUR/GBP/JPY stock with 8 years of history
+("749 of 2022 prices have no GBP→USD rate within four days"). Stored ECB rates started 2021-10-08; the API log showed the
+one 8-year ECB request for GBP, JPY, USD timing out (10 s per attempt, 25 s per request) – the ECB answered that request in
+17 s and single years in 2.6–20 s when measured directly. The fetch was cancelled with the request, so the history was never
+stored, and the next run failed the same way. Independently, the experiment's benchmark (SPY) had prices only from
+2021-10-13; the panel uses the benchmark's dates, so the 2018–2021 prices were never used, yet their missing rates excluded
+the stocks. **Decision:** `FxDownloader` (singleton) downloads missing history in two-year chunks, newest-first backwards
+and oldest-first forwards, storing each chunk as it arrives and only observations that continue the stored series (stored
+rates of a currency stay one continuous range, so first/last date describe coverage); one download per provider, joined
+by concurrent callers; it keeps running when a web request stops waiting (25 s), background jobs wait up to 5 min; ECB
+attempt timeout 45 s. The ML loader restricts every series to the benchmark's stored span before conversion. The rule
+itself is unchanged: rates at most 4 days old, never later rates, never filled; a stock with > 5 % unconvertible prices is
+excluded – now with the cause (before the first stored rate / gaps / after the latest rate) and any download problem.
+No Redis exists (D-33), so no cache could hide repaired rates. **Consequences:** a long history arrives with the first
+analysis that needs it (or within minutes after an interactive request); experiments store a per-stock eligibility funnel
+(`MlResultDocument.Eligibility`). Details in [currency.md](currency.md) and [machine-learning.md](machine-learning.md).
+
 ## D-34 Exchange rates: fetch the rate set, not single currencies; BGN history-only (2026-10-19)
 **Context:** adding a currency in the converter took 6–7 s and up to 72 s in the development stack's logs: each added row
 waited for a new board request that called the ECB inside the request (30 s attempt timeout, 3 retries); BGN (ECB series

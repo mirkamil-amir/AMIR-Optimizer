@@ -280,3 +280,18 @@ public class ArchitectureTests
         Assert.DoesNotContain("Microsoft.ML", references);
     }
 }
+
+public class InvalidScoreTests
+{
+    [Fact]
+    public void NonFiniteScores_AreNotEligible_AndSaidSo()
+    {
+        var candidates = new List<Candidate>
+        {
+            new("A", "X", 0.9, 0.2), new("B", "X", double.NaN, 0.2), new("C", "X", double.PositiveInfinity, 0.2), new("D", "X", 0.5, 0.2),
+        };
+        var r = PortfolioConstructor.Build(candidates, new PortfolioConstructionSettings { TopK = 4, MaxWeight = 1 });
+        Assert.Equal(["A", "D"], r.Selected);
+        Assert.Contains(r.Notes, n => n.Contains("No valid score") && n.Contains("B") && n.Contains("C"));
+    }
+}
