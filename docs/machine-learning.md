@@ -11,7 +11,8 @@ optimizer** (enforced by an architecture test). The classical optimizer is uncha
 ## Pipeline (one experiment)
 
 1. **Panel.** Adjusted closes, volumes and sectors of the selected universe plus the benchmark (default SPY), from the
-   active provider only. The data window and a SHA-256 snapshot hash are stored with the experiment.
+   active provider only, on the benchmark's trading dates – so only the benchmark's stored span is used (a note says so when
+   stocks have older prices). The data window and a SHA-256 snapshot hash are stored with the experiment.
 2. **Decision grid.** Decision dates every `step` trading days (default 5). With a longer horizon, consecutive labels
    overlap and are dependent; purging and the non-overlapping IC t-statistic account for this.
 3. **Features** at the close of day *t* using prices up to and including *t* only.
@@ -135,8 +136,21 @@ A comparison stores its inputs, data snapshot hash and results; it is never reca
 
 ## Currencies, benchmarks and missing history
 
-An experiment's stocks must trade in one currency; a benchmark in another currency is replaced by the universe's
-index benchmark (e.g. ^GDAXI for DAX stocks) with a note in the experiment's warnings. Stocks or a benchmark without
+Prices of every stock and the benchmark are converted into the experiment's currency with the ECB rate of each price date
+(rules in [currency.md](currency.md)); only prices within the benchmark's stored span are converted and checked, because
+the panel uses no others. A stock with more than 5 % of those prices without a rate is excluded, with the cause (before
+the first stored rate / gaps / after the latest rate). Background jobs wait up to 5 min for missing rates to download
+(decision D-35).
+
+**Stock eligibility** (`MlResultDocument.Eligibility`, "Setup" tab): per stock the stored prices, prices within the
+benchmark's span, prices without an exchange rate, usable prices, samples (labeled / dropped for missing features), the
+latest rank and weight, and the last stage reached with its reason (excluded for data, no usable samples, no prediction,
+predicted but not selected – rank or minimum score –, selected). Data eligibility is separate from model ranking and
+portfolio rules; stocks are never added to reach a count.
+
+Stocks may trade in different currencies (`UniverseCurrency`). In a single-market analysis in that market's own currency, a
+foreign benchmark (e.g. SPY for DAX stocks in EUR) is replaced by the market's index benchmark (^GDAXI) with a note in the
+experiment's warnings. Stocks or a benchmark without
 enough stored history (300 observations) are downloaded first – the background worker runs jobs in order, so the
 experiment starts once the data is stored. Comparisons apply the same rules.
 

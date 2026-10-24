@@ -34,17 +34,29 @@ provider quoting the other direction must be normalized before storage (the ECB 
 
 Simulated prices are always converted with simulated rates and real prices with ECB rates – sources are never mixed.
 Rates are fetched on demand for the needed currencies and dates, upserted into `FxRates` (source, retrieval time,
-simulated flag) and reused; a range the source has no data for yet is not re-requested for an hour. How fetching avoids
-waiting on the provider (`FxService.EnsureAsync`):
+simulated flag) and reused; a range the source has no data for yet, or whose download failed, is not re-requested for an hour
+(`FxFetchThrottle.RetryInterval`). How fetching works (`FxService.EnsureAsync`, `FxDownloader`, decision D-35):
 
 * **Whole rate set for short ranges:** when any currency is missing for a range of ≤ 400 days, all 29 published currencies are
   fetched in the same request (one ECB request: 0.2–0.4 s for 52 days, 0.3–1.2 s for a year, measured 2026-10-19); longer
   ranges fetch only what is missing, and each distinct gap separately (a currency missing a few days is not re-downloaded for years).
 * **Coverage with closures:** a stored series covers a range when its first rate is within the 4-day carry-forward window
   after the start (weekends, Good Friday–Easter Monday) and it reaches the previous weekday at the end.
-* **Single flight:** one fetch per provider at a time; waiting requests re-check what is stored afterwards.
-* **Bounded wait:** at most 25 s per request (`FxFetchThrottle.ProviderWait`, ECB attempt timeout 10 s); after that the stored
-  rates are used and a missing rate is reported as such, never filled.
+* **Chunked, resumable history:** missing history is downloaded in two-year chunks (`FxDownloadPlan.ChunkDays`; the ECB took
+  17 s for one 8-year request and 2.6–20 s per year, measured 2026-10-23) – older history newest-first, recent days
+  oldest-first – and each chunk is stored as it arrives. Only observations that continue a currency's stored series are
+  stored (steps ≤ 7 days, `FxDownloadPlan.Connected`), so stored rates stay one continuous range per currency and its first
+  and last date describe what is stored. A chunk that fails or does not continue the series ends the download there; what
+  was stored is kept and the next download resumes from it.
+* **Single flight in the background:** one download per provider at a time (`FxDownloader`, singleton with its own database
+  scope); concurrent callers join it and re-check what is stored when it ends. The download is not tied to the request.
+* **Bounded wait:** a web request waits at most 25 s (`FxFetchThrottle.ProviderWait`), a background job (ML experiment,
+  backtest, comparison) up to 5 min (`BackgroundProviderWait`); ECB attempt timeout 45 s. After the wait the stored rates are
+  used, a missing rate is reported as such (never filled), the note says the download continues, and the next run finds the
+  rates – there is no cache in between (D-33).
+* **Diagnostics:** an excluded series names the cause of its missing rates (`FxMissing`: before the first stored rate, in
+  gaps longer than 4 days, after the latest stored rate) plus any download failure; the API log records requested range,
+  received, stored and rejected observations per chunk.
 
 ### Discontinued currencies: BGN
 

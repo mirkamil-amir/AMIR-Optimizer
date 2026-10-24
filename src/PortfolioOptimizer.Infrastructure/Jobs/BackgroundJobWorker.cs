@@ -6,6 +6,7 @@ using PortfolioOptimizer.Application.Abstractions;
 using PortfolioOptimizer.Application.Backtesting;
 using PortfolioOptimizer.Application.MachineLearning;
 using PortfolioOptimizer.Application.Comparisons;
+using PortfolioOptimizer.Application.Fx;
 using PortfolioOptimizer.Application.MarketData;
 using PortfolioOptimizer.Domain;
 
@@ -27,6 +28,8 @@ public sealed class BackgroundJobWorker(
         await foreach (var job in queue.DequeueAllAsync(stoppingToken))
         {
             using var scope = scopes.CreateScope();
+            // Jobs wait for missing exchange rates instead of excluding assets after the short web-request bound.
+            scope.ServiceProvider.GetRequiredService<FxService>().UseBackgroundWait();
             try
             {
                 switch (job.Kind)

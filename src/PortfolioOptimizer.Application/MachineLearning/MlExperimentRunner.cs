@@ -162,7 +162,7 @@ public sealed class MlExperimentRunner(
             result.TargetDefinition, result.FeatureNames, result.Trials, result.SelectedHyperparameters, result.TrainMetrics, result.ValidationMetrics,
             result.TestMetrics, result.Baselines, result.PermutationImportance, result.NativeExplanation, result.ContributionMethod,
             result.TrainPeriod, result.ValidationPeriod, result.TestPeriod, result.TotalSamples, result.DroppedSamples,
-            MlExperimentService.ValidationMethodology), MlJson.Options);
+            MlExperimentService.ValidationMethodology, Eligibility(data, result)), MlJson.Options);
         var bt = result.Backtest;
         experiment.BacktestJson = JsonSerializer.Serialize(new MlBacktestDocument(bt.Dates, bt.Values, bt.Drawdowns, bt.Performance, bt.Rebalances,
             bt.Values.SelectMany(kv => StrategyMetrics.MonthlyReturns(bt.Dates, kv.Value).Select(m => new MonthlyReturnPoint(kv.Key, m.Year, m.Month, m.Return))).ToList(),
@@ -184,6 +184,36 @@ public sealed class MlExperimentRunner(
             UsesSimulatedData = data.UsesSimulatedData,
             PredictionsJson = JsonSerializer.Serialize(result.LatestPredictions.Predictions, MlJson.Options),
         });
+    }
+
+    /// <summary>Per-stock funnel: data quality (loader) → samples (engine) → latest prediction and selection (construction).</summary>
+    internal static List<AssetEligibilityDto> Eligibility(MlData data, ExperimentResult result)
+    {
+        var predictions = result.LatestPredictions.Predictions.ToDictionary(p => p.Symbol, StringComparer.OrdinalIgnoreCase);
+        var portfolio = result.Configuration.Portfolio;
+        var rows = new List<AssetEligibilityDto>();
+        foreach (var e in data.Eligibility ?? [])
+        {
+            if (!e.Included)
+            {
+                rows.Add(new(e.Symbol, e.StoredPrices, e.PricesInBenchmarkSpan, e.PricesWithoutFx, e.UsablePrices, null, null, null, null, 0, "Excluded: data", e.Reason));
+                continue;
+            }
+            var n = result.SamplesPerAsset.GetValueOrDefault(e.Symbol);
+            predictions.TryGetValue(e.Symbol, out var p);
+            var (stage, reason) = p switch
+            {
+                null when n is null || n.Samples == 0 => ("No usable samples", $"Not enough history for the features ({n?.DroppedForMissingFeatures ?? 0} sample(s) dropped for missing features)."),
+                null => ("No prediction", "Features were incomplete on the latest date."),
+                { Selected: true } when p.TargetWeight > 0 => ("Selected", null),
+                { Selected: true } => ("Selected, no weight", "Selected, but no weight was left within the weight and sector caps."),
+                _ when portfolio.MinimumScore is { } min && p.Score < min => ("Predicted, not selected", $"Score {p.Score:G4} is below the minimum score {min:G4}."),
+                _ => ("Predicted, not selected", $"Rank {p.Rank} of {predictions.Count}; the portfolio holds the top {portfolio.TopK}."),
+            };
+            rows.Add(new(e.Symbol, e.StoredPrices, e.PricesInBenchmarkSpan, e.PricesWithoutFx, e.UsablePrices, n?.Samples, n?.LabeledSamples, n?.DroppedForMissingFeatures,
+                p?.Rank, p?.TargetWeight ?? 0, stage, reason));
+        }
+        return rows;
     }
 
     public static ExperimentConfiguration ToConfiguration(CreateMlExperimentRequest r) => new()

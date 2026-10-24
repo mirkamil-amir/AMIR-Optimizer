@@ -143,6 +143,8 @@ protection (Stooq); force-pushing or committing without being asked.
 
 * Repo in iCloud-synced `~/Desktop`: `node_modules` is a symlink to `node_modules.nosync`; after `npm ci` restore it
   (docs/testing.md). Prefer `./node_modules/.bin/<tool>` over `npx`. Use `git grep` – `grep -r` over `bin/obj` can hang.
+* FX history arrives through `FxDownloader` (2-year chunks, background, contiguous per currency – D-35); never store FX rates
+  that leave a hole, since coverage is judged by first/last date. ML panels use only the benchmark's stored span.
 * A local API on :5080 blocks the container API; the Vite dev server proxies to whichever owns :5080.
 * Sign-in is rate limited (10/min/IP; e2e stack raises it). Max 2 active ML experiments per user (409).
 * Yahoo spark: ≤ 20 symbols; occasional HTTP 400 handled by retry/fallback. Alpha Vantage free: 25 requests/day.

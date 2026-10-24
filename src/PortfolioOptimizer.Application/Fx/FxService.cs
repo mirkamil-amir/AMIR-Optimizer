@@ -18,7 +18,29 @@ public static class FxSources
 
 /// <summary>One series converted into the base currency, with what was needed to do it.</summary>
 /// <param name="DroppedPoints">Price points without a usable rate (they are removed, never filled).</param>
-public sealed record ConvertedSeries(PriceSeries Series, string NativeCurrency, int DroppedPoints, FxQuote? LastQuote);
+/// <param name="Missing">Why those points had no rate (null when none was dropped).</param>
+public sealed record ConvertedSeries(PriceSeries Series, string NativeCurrency, int DroppedPoints, FxQuote? LastQuote, FxMissing? Missing = null);
+
+/// <summary>
+/// Price dates without a usable rate, by cause – each cause has a different remedy, so they are never reported as one count.
+/// </summary>
+/// <param name="BeforeFirstRate">Before the first stored rate of a leg: that history is not stored (not downloaded yet, or not published).</param>
+/// <param name="InGaps">Between stored rates, more than the carry-forward window after the previous one.</param>
+/// <param name="AfterLastRate">More than the carry-forward window after the latest stored rate.</param>
+/// <param name="FirstRate">Earliest date on which every leg has a stored rate (null: a leg has none).</param>
+/// <param name="LastRate">Latest date on which every leg has a stored rate.</param>
+public sealed record FxMissing(int BeforeFirstRate, int InGaps, int AfterLastRate, DateOnly? FirstRate, DateOnly? LastRate)
+{
+    public string Describe()
+    {
+        var parts = new List<string>();
+        if (FirstRate is null) parts.Add($"{BeforeFirstRate} without any stored rate");
+        else if (BeforeFirstRate > 0) parts.Add($"{BeforeFirstRate} dated before the first stored rate ({FirstRate:yyyy-MM-dd})");
+        if (InGaps > 0) parts.Add($"{InGaps} in gaps longer than {FxTable.DefaultMaxCarryForwardDays} days between stored rates");
+        if (AfterLastRate > 0) parts.Add($"{AfterLastRate} after the latest stored rate ({LastRate:yyyy-MM-dd})");
+        return string.Join(", ", parts);
+    }
+}
 
 /// <summary>The result of converting several series; <see cref="Excluded"/> lists symbols that could not be converted, with the reason.</summary>
 public sealed record CurrencyConversionResult(
@@ -47,10 +69,14 @@ public static class CurrencyConverter
     /// </summary>
     public static ConvertedSeries Convert(PriceSeries native, string nativeCurrency, string baseCurrency, FxTable? fx)
     {
-        if (nativeCurrency == baseCurrency) return new ConvertedSeries(native, nativeCurrency, 0, null);
+        if (nativeCurrency == baseCurrency || native.Points.Count == 0) return new ConvertedSeries(native, nativeCurrency, 0, null);
         if (fx is null) throw new FxRateUnavailableException(nativeCurrency, baseCurrency, DateOnly.MinValue, "no exchange rates are loaded");
         var points = new List<PricePoint>(native.Points.Count);
-        var dropped = 0;
+        int before = 0, inGaps = 0, after = 0;
+        var legs = new[] { nativeCurrency, baseCurrency }.Where(c => c != FxTable.Pivot).ToList();
+        var firsts = legs.Select(fx.FirstObservation).ToList();
+        DateOnly? first = firsts.Any(d => d is null) ? null : firsts.Max();
+        DateOnly? lastRate = first is null ? null : legs.Select(fx.LastObservation).Min();
         FxQuote? last = null;
         foreach (var p in native.Points)
         {
@@ -59,9 +85,13 @@ public static class CurrencyConverter
                 points.Add(new PricePoint(p.Date, p.Price * q!.Rate));
                 last = q;
             }
-            else dropped++;
+            else if (first is null || p.Date < first) before++;
+            else if (p.Date.DayNumber - lastRate!.Value.DayNumber > fx.MaxCarryForwardDays) after++;
+            else inGaps++;
         }
-        return new ConvertedSeries(native with { Points = points }, nativeCurrency, dropped, last);
+        var dropped = before + inGaps + after;
+        return new ConvertedSeries(native with { Points = points }, nativeCurrency, dropped, last,
+            dropped == 0 ? null : new FxMissing(before, inGaps, after, first, lastRate));
     }
 }
 
@@ -71,33 +101,39 @@ public static class CurrencyConverter
 /// excluded symbol with its reason – never a rate of 1.0 or today's rate for historical dates.
 /// </summary>
 /// <summary>Remembers recent fetch attempts per range (singleton per host) so that a range the provider has no data for yet
-/// (e.g. a holiday) is not requested again on every call.</summary>
+/// (e.g. a holiday) or that just failed is not requested again on every call; holds how long callers wait for a download.</summary>
 public sealed class FxFetchThrottle
 {
-    public static readonly TimeSpan Interval = TimeSpan.FromHours(1);
+    /// <summary>A range that failed or had no data is requested again after this interval.</summary>
+    public TimeSpan RetryInterval { get; init; } = TimeSpan.FromHours(1);
     private readonly ConcurrentDictionary<string, DateTime> _attempts = new();
-    private readonly ConcurrentDictionary<string, SemaphoreSlim> _gates = new();
 
-    /// <summary>One fetch per provider at a time: concurrent requests for the same missing rates wait for it instead of
-    /// each calling the provider (single flight; one API instance, see decision D-33).</summary>
-    public SemaphoreSlim Gate(string provider) => _gates.GetOrAdd(provider, _ => new SemaphoreSlim(1, 1));
-
-    /// <summary>Longest wait for the provider inside one request (incl. waiting for a concurrent fetch); stored rates are used after it.</summary>
+    /// <summary>Longest wait for a download inside one web request; stored rates are used after it (the download continues).</summary>
     public TimeSpan ProviderWait { get; init; } = TimeSpan.FromSeconds(25);
+
+    /// <summary>Longest wait inside a background job (ML experiment, backtest, comparison), which would otherwise exclude
+    /// assets for rates that are still arriving.</summary>
+    public TimeSpan BackgroundProviderWait { get; init; } = TimeSpan.FromMinutes(5);
 
     /// <summary>True when the range may be fetched now (and records the attempt).</summary>
     public bool TryBegin(string key, DateTime now)
     {
-        if (_attempts.TryGetValue(key, out var last) && now - last < Interval) return false;
+        if (_attempts.TryGetValue(key, out var last) && now - last < RetryInterval) return false;
         _attempts[key] = now;
         return true;
     }
 }
 
 public sealed class FxService(IApplicationDbContext db, IEnumerable<IFxRateProvider> providers, PriceQueryService prices, IMarketDataProviderRegistry marketData,
-    FxFetchThrottle throttle, TimeProvider clock,
+    FxFetchThrottle throttle, FxDownloader downloader, TimeProvider clock,
     ILogger<FxService> logger)
 {
+    private bool _backgroundWait;
+    /// <summary>Unfinished or failed downloads met by this scope (user-facing sentences, added to conversion notes).</summary>
+    private readonly List<string> _downloadNotes = [];
+
+    /// <summary>Called for background-job scopes: wait up to <see cref="FxFetchThrottle.BackgroundProviderWait"/> for missing rates.</summary>
+    public void UseBackgroundWait() => _backgroundWait = true;
 
     /// <summary>Simulated prices are converted with simulated rates, real prices with the ECB reference rates.</summary>
     public IFxRateProvider ProviderFor(bool simulatedPrices)
@@ -143,7 +179,7 @@ public sealed class FxService(IApplicationDbContext db, IEnumerable<IFxRateProvi
         var start = from.AddDays(-(FxTable.DefaultMaxCarryForwardDays + 3));
         var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
         var end = to > today ? today : to;
-        if (needed.Count > 0) await EnsureAsync(provider, needed, start, end, today, ct);
+        if (needed.Count > 0) await EnsureAsync(provider, needed, start, end, ct);
 
         var rows = await db.FxRates.AsNoTracking()
             .Where(r => r.Source == provider.Name && needed.Contains(r.Currency) && r.Date >= start && r.Date <= end)
@@ -194,10 +230,10 @@ public sealed class FxService(IApplicationDbContext db, IEnumerable<IFxRateProvi
             var c = CurrencyConverter.Convert(series, native, baseCurrency, native == baseCurrency ? null : fx);
             if (series.Points.Count > 0 && c.DroppedPoints > series.Points.Count * CurrencyConverter.MaxDroppedShare)
             {
-                excluded[symbol] = $"{c.DroppedPoints} of {series.Points.Count} prices have no {native}→{baseCurrency} rate within {FxTable.DefaultMaxCarryForwardDays} days.";
+                excluded[symbol] = $"{c.DroppedPoints} of {series.Points.Count} prices have no {native}→{baseCurrency} rate within {FxTable.DefaultMaxCarryForwardDays} days ({c.Missing!.Describe()}).";
                 continue;
             }
-            if (c.DroppedPoints > 0) notes.Add($"{symbol}: {c.DroppedPoints} price(s) dropped – no {native}→{baseCurrency} rate within {FxTable.DefaultMaxCarryForwardDays} days.");
+            if (c.DroppedPoints > 0) notes.Add($"{symbol}: {c.DroppedPoints} price(s) dropped – no {native}→{baseCurrency} rate within {FxTable.DefaultMaxCarryForwardDays} days ({c.Missing!.Describe()}).");
             converted[symbol] = c;
         }
 
@@ -206,6 +242,7 @@ public sealed class FxService(IApplicationDbContext db, IEnumerable<IFxRateProvi
             notes.Insert(0, $"Prices in {string.Join(", ", nativeCurrencies)} were converted to {baseCurrency} with the reference rate of each price date " +
                             $"(units of {baseCurrency} per unit of the local currency; weekends/holidays use the previous rate, at most {FxTable.DefaultMaxCarryForwardDays} days old). " +
                             "Returns in the base currency include currency movements. Closing prices of different markets are not simultaneous.");
+        notes.AddRange(_downloadNotes.Distinct());
         return new CurrencyConversionResult(baseCurrency, converted, excluded, notes, fx?.Source, fx?.IsSimulated ?? false);
     }
 
@@ -294,104 +331,106 @@ public sealed class FxService(IApplicationDbContext db, IEnumerable<IFxRateProvi
         return table.Rate(from, to, today);
     }
 
-    private async Task EnsureAsync(IFxRateProvider provider, List<string> currencies, DateOnly start, DateOnly end, DateOnly today, CancellationToken ct)
+    /// <summary>
+    /// Rate ranges not stored yet for converting prices from <paramref name="from"/> to <paramref name="to"/> (incl. the
+    /// carry-forward window before the start), per currency; nothing is downloaded. Used to ask before an analysis.
+    /// </summary>
+    public async Task<IReadOnlyList<FxGap>> MissingRatesAsync(IEnumerable<string> currencies, DateOnly from, DateOnly to, bool simulatedPrices, CancellationToken ct)
     {
-        if ((await GapsAsync(provider, currencies, start, end, ct)).Count == 0) return;
+        var (provider, needed, start, end) = Window(currencies, from, to, simulatedPrices);
+        return needed.Count == 0 ? [] : await GapsAsync(provider, needed, start, end, ct);
+    }
 
-        // Bounded wait: a slow provider never holds a request longer than ProviderWait; stored rates are used instead.
-        using var wait = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        wait.CancelAfter(throttle.ProviderWait);
-        var gate = throttle.Gate(provider.Name);
-        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-        try
+    /// <summary>Starts (or joins) the download of the missing rates without waiting; true when one is running afterwards.</summary>
+    public async Task<bool> StartDownloadAsync(IEnumerable<string> currencies, DateOnly from, DateOnly to, bool simulatedPrices, CancellationToken ct)
+    {
+        var (provider, needed, start, end) = Window(currencies, from, to, simulatedPrices);
+        if (needed.Count == 0) return false;
+        var gaps = await GapsAsync(provider, needed, start, end, ct);
+        if (gaps.Count > 0) downloader.Start(provider.Name, gaps);
+        return downloader.IsRunning(provider.Name);
+    }
+
+    /// <summary>True while rates of the source used with these prices are being downloaded.</summary>
+    public bool IsDownloading(bool simulatedPrices) => downloader.IsRunning(ProviderFor(simulatedPrices).Name);
+
+    /// <summary>Provider, convertible non-EUR currencies and the stored-rate window GetTableAsync would need.</summary>
+    private (IFxRateProvider Provider, List<string> Needed, DateOnly Start, DateOnly End) Window(IEnumerable<string> currencies, DateOnly from, DateOnly to, bool simulatedPrices)
+    {
+        var provider = ProviderFor(simulatedPrices);
+        var needed = currencies.Select(Domain.Currencies.Normalize).Where(c => c != FxTable.Pivot && HasRates(provider, c)).Distinct().ToList();
+        var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
+        return (provider, needed, from.AddDays(-(FxTable.DefaultMaxCarryForwardDays + 3)), to > today ? today : to);
+    }
+
+    /// <summary>
+    /// Makes sure the rates for [start, end] are stored: starts (or joins) the download of what is missing and waits for it up
+    /// to the request's budget. After the budget the stored rates are used – lookups beyond them fail explicitly – and the
+    /// download continues in the background, so the next request finds the rates.
+    /// </summary>
+    private async Task EnsureAsync(IFxRateProvider provider, List<string> currencies, DateOnly start, DateOnly end, CancellationToken ct)
+    {
+        var budget = _backgroundWait ? throttle.BackgroundProviderWait : throttle.ProviderWait;
+        var waited = System.Diagnostics.Stopwatch.StartNew();
+        // A joined download was started for someone else: check again when it ends (at most twice, then start our own).
+        for (var round = 0; round < 3; round++)
         {
-            await gate.WaitAsync(wait.Token);
-        }
-        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
-        {
-            logger.LogWarning("FX fetch from {Provider} for {Currencies} skipped: another fetch was still running after {Seconds:0} s; stored rates used",
-                provider.Name, string.Join(",", currencies), throttle.ProviderWait.TotalSeconds);
-            return;
-        }
-        try
-        {
-            // Re-check after the wait: a concurrent request may just have stored the same rates.
             var gaps = await GapsAsync(provider, currencies, start, end, ct);
-            if (gaps.Count == 0)
+            if (gaps.Count == 0) return;
+            var (download, joined) = downloader.Start(provider.Name, gaps);
+            var remaining = budget - waited.Elapsed;
+            FxDownloadReport report;
+            try
             {
-                logger.LogInformation("FX rates for {Currencies} stored by a concurrent request (waited {Ms} ms)", string.Join(",", currencies), stopwatch.ElapsedMilliseconds);
+                report = await download.WaitAsync(remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero, ct);
+            }
+            catch (TimeoutException)
+            {
+                var what = string.Join(", ", gaps.Select(g => g.Currency).Distinct().Order());
+                logger.LogWarning("FX download from {Provider} for {Currencies} not finished after {Seconds:0} s; stored rates used, the download continues",
+                    provider.Name, what, waited.Elapsed.TotalSeconds);
+                _downloadNotes.Add($"{what} exchange rates for {start:yyyy-MM-dd} – {end:yyyy-MM-dd} were still being downloaded from {provider.Name} after " +
+                                   $"{budget.TotalSeconds:0} s; the download continues in the background. Until it has finished, prices without a rate are left out – run again in a few minutes.");
                 return;
             }
-            // One request per distinct range – a currency missing only its last days is not downloaded again for years.
-            foreach (var group in gaps.GroupBy(g => (g.From, g.End)))
+            if (!joined)
             {
-                var (from, to) = group.Key;
-                var missing = group.Select(g => g.Currency).ToList();
-                var key = $"{provider.Name}:{string.Join(",", missing.Order())}:{from}:{to}";
-                var now = clock.GetUtcNow().UtcDateTime;
-                if (!throttle.TryBegin(key, now)) continue;
-                var codes = to.DayNumber - from.DayNumber <= FetchAllCurrenciesMaxDays
-                    ? missing.Union(provider.SupportedCurrencies).ToList()
-                    : missing;
-                var fetch = System.Diagnostics.Stopwatch.StartNew();
-                IReadOnlyList<FxObservation> observations;
-                try
-                {
-                    observations = await provider.GetRatesAsync(codes, from, to, wait.Token);
-                }
-                catch (FxProviderException ex)
-                {
-                    // Stored rates (if any) are still used; lookups beyond them fail explicitly.
-                    logger.LogWarning("FX provider {Provider} failed for {Currencies} after {Ms} ms: {Message}", provider.Name, string.Join(",", missing), fetch.ElapsedMilliseconds, ex.Message);
-                    continue;
-                }
-                catch (OperationCanceledException) when (!ct.IsCancellationRequested)
-                {
-                    logger.LogWarning("FX provider {Provider} did not answer within {Seconds:0} s for {Currencies}; stored rates used", provider.Name, throttle.ProviderWait.TotalSeconds, string.Join(",", missing));
-                    return;
-                }
-                var wanted = codes.ToHashSet();
-                var rows = observations.Where(o => o.UnitsPerEur > 0 && wanted.Contains(o.Currency))
-                    .Select(o => new FxRate
-                    {
-                        Source = provider.Name, Currency = o.Currency, Date = o.Date, UnitsPerEur = o.UnitsPerEur,
-                        IsSimulated = provider.IsSimulated, RetrievedAtUtc = now,
-                    })
-                    .ToList();
-                await db.UpsertFxRatesAsync(rows, ct);
-                logger.LogInformation("Stored {Count} {Provider} FX observations for {Currencies} ({From}–{To}) in {Ms} ms; missing were {Missing}",
-                    rows.Count, provider.Name, codes.Count == missing.Count ? string.Join(",", codes) : $"{codes.Count} currencies", from, to, fetch.ElapsedMilliseconds, string.Join(",", missing));
+                _downloadNotes.AddRange(report.Problems);
+                return;
             }
-        }
-        finally
-        {
-            gate.Release();
         }
     }
 
     /// <summary>
-    /// Per currency, the part of [start, end] not yet stored. Covered when stored data reaches back to the start and forward to
-    /// the end. Nothing is published on weekends and TARGET holidays: the first stored rate may lie up to the carry-forward
-    /// window after the start (longest closure: Good Friday–Easter Monday), and data up to the previous weekday counts as
-    /// complete at the end. Without that tolerance a range starting on a Saturday was never "covered" and refetched every
-    /// hour. A discontinued currency is only expected up to its last publication, so its ended series is never requested again.
+    /// Per currency, the parts of [start, end] not stored yet: older history before the first stored rate (backward) and
+    /// days after the latest (forward). Stored rates of a currency form one continuous range – the download only extends it
+    /// at its ends (<see cref="FxDownloadPlan.Connected"/>) – so its first and last date describe it. Nothing is published on
+    /// weekends and TARGET holidays: the first stored rate may lie up to the carry-forward window after the start (longest
+    /// closure: Good Friday–Easter Monday), and data up to the previous weekday counts as complete at the end. Without that
+    /// tolerance a range starting on a Saturday was never "covered" and refetched every hour. A discontinued currency is only
+    /// expected up to its last publication, so its ended series is never requested again.
     /// </summary>
-    private async Task<List<(string Currency, DateOnly From, DateOnly End)>> GapsAsync(IFxRateProvider provider, List<string> currencies, DateOnly start, DateOnly end, CancellationToken ct)
+    private async Task<List<FxGap>> GapsAsync(IFxRateProvider provider, List<string> currencies, DateOnly start, DateOnly end, CancellationToken ct)
     {
         var coverage = await db.FxRates.AsNoTracking()
             .Where(r => r.Source == provider.Name && currencies.Contains(r.Currency))
             .GroupBy(r => r.Currency)
             .Select(g => new { Currency = g.Key, Min = g.Min(r => r.Date), Max = g.Max(r => r.Date) })
             .ToListAsync(ct);
-        var gaps = new List<(string, DateOnly, DateOnly)>();
+        var gaps = new List<FxGap>();
         foreach (var c in currencies)
         {
             var last = provider.DiscontinuedCurrencies.TryGetValue(c, out var until) && until < end ? until : end;
             if (last < start) continue;
             var cov = coverage.FirstOrDefault(x => x.Currency == c);
-            var reachesStart = cov is not null && cov.Min <= start.AddDays(FxTable.DefaultMaxCarryForwardDays);
-            if (reachesStart && cov!.Max >= (last < end ? last : PreviousWeekday(last))) continue;
-            gaps.Add((c, reachesStart ? cov!.Max.AddDays(1) : start, last));
+            if (cov is null)
+            {
+                gaps.Add(new FxGap(c, start, last, Backward: true));
+                continue;
+            }
+            // Older history is downloaded up to the stored range, even when [start, end] ends earlier, so no hole remains.
+            if (cov.Min > start.AddDays(FxTable.DefaultMaxCarryForwardDays)) gaps.Add(new FxGap(c, start, cov.Min.AddDays(-1), Backward: true));
+            if (cov.Max < (last < end ? last : PreviousWeekday(last))) gaps.Add(new FxGap(c, cov.Max.AddDays(1), last, Backward: false));
         }
         return gaps;
     }

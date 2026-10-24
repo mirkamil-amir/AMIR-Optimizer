@@ -179,3 +179,38 @@ public sealed record UpdateSettingsRequest
     [Required, StringLength(15)] public string DefaultBenchmark { get; init; } = "SPY";
     [Range(1, 60)] public int StalePriceDays { get; init; } = 5;
 }
+
+/// <summary>The data an analysis is about to use: stocks (and benchmark) over [From, To], converted into Currency.</summary>
+public sealed record DataCheckRequest
+{
+    public List<string> Symbols { get; init; } = [];
+    public string? BenchmarkSymbol { get; init; }
+    public DateOnly From { get; init; }
+    /// <summary>Defaults to today.</summary>
+    public DateOnly? To { get; init; }
+    /// <summary>Analysis currency; null = resolved like the analysis does (portfolio base currency or the selection's).</summary>
+    public string? Currency { get; init; }
+}
+
+/// <summary>
+/// One stock's stored prices against the requested period. <see cref="NeedsOlder"/>: history starts later than requested;
+/// <see cref="NeedsRecent"/>: the latest price is older than the stale threshold; <see cref="OlderUnavailable"/>: older
+/// prices were already requested from the data source and it has none (e.g. the listing is younger), so downloading again
+/// would not help.
+/// </summary>
+public sealed record MissingPriceDto(string Symbol, DateOnly? StoredFrom, DateOnly? StoredTo, int StoredPrices, bool NeedsOlder, bool NeedsRecent,
+    bool OlderUnavailable, bool Downloadable, string Explanation);
+
+/// <summary>Exchange rates of one currency not stored for the period (stored range and what is missing).</summary>
+public sealed record MissingRateDto(string Currency, DateOnly? StoredFrom, DateOnly? StoredTo, DateOnly MissingFrom, DateOnly MissingTo, bool Downloadable,
+    string Explanation);
+
+/// <summary>
+/// What is missing for an analysis, before it runs. <see cref="Complete"/>: nothing is missing. <see cref="Downloading"/>:
+/// price downloads are queued/running or exchange rates are being downloaded – check again shortly.
+/// </summary>
+public sealed record DataCheckDto(string Currency, DateOnly From, DateOnly To, bool Complete, bool Downloadable, bool Downloading,
+    IReadOnlyList<MissingPriceDto> Prices, IReadOnlyList<MissingRateDto> Rates, IReadOnlyList<string> Notes);
+
+/// <summary>Downloads started for a data check: price jobs (poll /market-data/jobs/{id}) and currencies whose rates load in the background.</summary>
+public sealed record DataDownloadDto(IReadOnlyList<Guid> SyncJobIds, IReadOnlyList<string> PriceSymbols, IReadOnlyList<string> Currencies);

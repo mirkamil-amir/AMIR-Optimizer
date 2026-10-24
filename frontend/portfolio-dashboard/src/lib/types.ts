@@ -916,6 +916,22 @@ export interface MlResults {
   totalSamples: number
   droppedSamples: number
   validationMethodology: string
+  /** Per-stock path from stored prices to target weight; absent for experiments run before 2026-10-23. */
+  eligibility?: AssetEligibility[] | null
+}
+export interface AssetEligibility {
+  symbol: string
+  storedPrices: number
+  pricesInBenchmarkSpan: number
+  pricesWithoutFx: number
+  usablePrices: number
+  samples: number | null
+  labeledSamples: number | null
+  droppedSamples: number | null
+  rank: number | null
+  targetWeight: number
+  stage: string
+  reason: string | null
 }
 export interface MlModelVersion {
   id: string; version: number; role: string; modelFamily: string; trainedFrom: string; trainedThrough: string; trainingSamples: number
@@ -1590,3 +1606,44 @@ export interface MarketDataSummary {
   stalePriceDays: number
   asOfUtc: string
 }
+
+/** The data an analysis will use; checked before it starts (POST /market-data/check). */
+export interface DataCheckRequest {
+  symbols: string[]
+  benchmarkSymbol?: string | null
+  from: string
+  to?: string | null
+  currency?: string | null
+}
+export interface MissingPrice {
+  symbol: string
+  storedFrom: string | null
+  storedTo: string | null
+  storedPrices: number
+  needsOlder: boolean
+  needsRecent: boolean
+  olderUnavailable: boolean
+  downloadable: boolean
+  explanation: string
+}
+export interface MissingRate {
+  currency: string
+  storedFrom: string | null
+  storedTo: string | null
+  missingFrom: string
+  missingTo: string
+  downloadable: boolean
+  explanation: string
+}
+export interface DataCheck {
+  currency: string
+  from: string
+  to: string
+  complete: boolean
+  downloadable: boolean
+  downloading: boolean
+  prices: MissingPrice[]
+  rates: MissingRate[]
+  notes: string[]
+}
+export interface DataDownload { syncJobIds: string[]; priceSymbols: string[]; currencies: string[] }

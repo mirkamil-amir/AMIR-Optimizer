@@ -20,6 +20,8 @@ import { DataBadge, EmptyState, ErrorState, LoadingBlock, MetricValue, PageHeade
 import { errorMessage } from '@/lib/api'
 import { usePortfolioContext } from '@/lib/portfolio-context'
 import { useAssets, useBacktest, useBacktests, useCreateBacktest, usePortfolio } from '@/lib/queries'
+import { useMissingDataGuard } from '@/components/missing-data-dialog'
+import { lookbackStart } from '@/lib/data-check'
 import type { Backtest } from '@/lib/types'
 import { date, dateTime, money, num, objectiveLabels, pct } from '@/lib/format'
 
@@ -98,6 +100,7 @@ function BacktestForm() {
   const portfolio = usePortfolio(portfolioId)
   const create = useCreateBacktest()
   const navigate = useNavigate()
+  const missingData = useMissingDataGuard()
   const today = new Date().toISOString().slice(0, 10)
   const { register, control, handleSubmit, watch, reset, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -113,7 +116,12 @@ function BacktestForm() {
   const objective = watch('objective')
   const enabled = (assets.data ?? []).filter((a) => a.isEnabled)
 
-  const onSubmit = handleSubmit(async (v) => {
+  // Missing prices or exchange rates for the period (incl. the lookback before it) are offered for download first.
+  const onSubmit = handleSubmit((v) => missingData.guard({
+    symbols: v.universe, benchmarkSymbol: v.benchmarkSymbol || null, from: lookbackStart(new Date(v.startDate), v.lookbackDays), to: v.endDate,
+    currency: portfolio.data?.baseCurrency ?? null,
+  }, () => start(v)))
+  const start = async (v: FormValues) => {
     try {
       const b = await create.mutateAsync({
         name: v.name || undefined, universe: v.universe, startDate: v.startDate, endDate: v.endDate, initialCapital: v.initialCapital,
@@ -127,7 +135,7 @@ function BacktestForm() {
     } catch (e) {
       toast.error('Could not start backtest', { description: errorMessage(e) })
     }
-  })
+  }
 
   if (!assets.data) return <LoadingBlock height="h-[560px]" />
   return (
@@ -187,8 +195,9 @@ function BacktestForm() {
             </F>
             <F label="Name (optional)"><Input {...register('name')} placeholder="Auto" /></F>
           </div>
-          <Button type="submit" className="w-full" disabled={create.isPending}>{create.isPending ? <Loader2 className="animate-spin" /> : <Play />} Run backtest</Button>
+          <Button type="submit" className="w-full" disabled={create.isPending || missingData.checking}>{create.isPending || missingData.checking ? <Loader2 className="animate-spin" /> : <Play />} Run backtest</Button>
         </form>
+        {missingData.dialog}
       </CardContent>
     </Card>
   )

@@ -28,6 +28,8 @@ import { guideForObjective } from '@/lib/strategy-guide'
 import { errorMessage } from '@/lib/api'
 import { portfolioPath, usePortfolioContext } from '@/lib/portfolio-context'
 import { useAssets, useCreateProposal, useFetchPrices, useHoldings, useMarketStatus, usePortfolio, useRun, useRunOptimization, useRuns, useStocks } from '@/lib/queries'
+import { useMissingDataGuard } from '@/components/missing-data-dialog'
+import { lookbackStart } from '@/lib/data-check'
 import { useSelection } from '@/lib/selection'
 import { CurrencyExposureList } from '@/components/currency'
 import type { Allocation, Asset, ObjectiveKind, OptimizationRun, Portfolio, PortfolioSettings, TradeProposal } from '@/lib/types'
@@ -188,6 +190,7 @@ function ConfigFormInner({ portfolio: portfolioData, assets: assetList }: { port
   const [persistSettings, setPersistSettings] = useState(false)
   const fetchPrices = useFetchPrices()
 
+  const missingData = useMissingDataGuard()
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     mode: 'onBlur',
@@ -208,7 +211,12 @@ function ConfigFormInner({ portfolio: portfolioData, assets: assetList }: { port
   const insufficient = (universeStocks.data?.items ?? []).filter((s) => s.observations < 61).map((s) => s.symbol)
   const sectors = [...new Set(watchedUniverse.map((s) => assetBySymbol.get(s)?.sector).filter((x): x is string => !!x))].sort()
 
-  const onSubmit = handleSubmit(async (values) => {
+  // Missing prices or exchange rates for the lookback window are offered for download first.
+  const onSubmit = handleSubmit((values) => missingData.guard({
+    symbols: values.universe, benchmarkSymbol: values.benchmarkSymbol || null, from: lookbackStart(new Date(), values.lookbackDays),
+    currency: portfolio.data.baseCurrency,
+  }, () => run(values)))
+  const run = async (values: FormValues) => {
     try {
       const result = await runMutation.mutateAsync({
         settings: fromForm(values, portfolio.data.settings.excludedSymbols.filter((s) => values.universe.includes(s))),
@@ -220,7 +228,7 @@ function ConfigFormInner({ portfolio: portfolioData, assets: assetList }: { port
     } catch (e) {
       toast.error('Optimization request failed', { description: errorMessage(e) })
     }
-  })
+  }
 
   const totalValue = holdings.data?.summary.totalValue
 
@@ -391,12 +399,13 @@ function ConfigFormInner({ portfolio: portfolioData, assets: assetList }: { port
             <p className="text-xs text-warn">The benchmark has no price data – synchronize it on the Market data page.</p>
           )}
 
-          <Button type="submit" className="w-full" disabled={runMutation.isPending}>
-            {runMutation.isPending ? <Loader2 className="animate-spin" /> : <Play />}
+          <Button type="submit" className="w-full" disabled={runMutation.isPending || missingData.checking}>
+            {runMutation.isPending || missingData.checking ? <Loader2 className="animate-spin" /> : <Play />}
             {runMutation.isPending ? 'Optimizing…' : 'Run optimization'}
           </Button>
           <p className="text-[11px] text-muted-foreground">Saves these settings to the portfolio and stores the run for reproducibility.</p>
         </form>
+        {missingData.dialog}
       </CardContent>
     </Card>
   )

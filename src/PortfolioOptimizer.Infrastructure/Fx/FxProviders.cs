@@ -11,8 +11,11 @@ public sealed class EcbFxOptions
 {
     public const string Section = "Fx:Ecb";
     public string BaseUrl { get; set; } = "https://data-api.ecb.europa.eu/service/";
-    /// <summary>Per attempt; FxService additionally bounds the whole wait (FxService.ProviderWait), so a retry fits in it.</summary>
-    public int TimeoutSeconds { get; set; } = 10;
+    /// <summary>
+    /// Per attempt. Two-year requests (FxDownloader chunks) took up to 20 s (measured 2026-10-23); the former 10 s cut every
+    /// long download off. Callers wait only for their own budget (FxFetchThrottle); the download runs on in the background.
+    /// </summary>
+    public int TimeoutSeconds { get; set; } = 45;
     public int MinRequestIntervalMs { get; set; } = 250;
 }
 

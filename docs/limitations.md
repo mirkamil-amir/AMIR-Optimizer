@@ -52,7 +52,16 @@
   fixed after creation (a reporting currency can be chosen per view).
 * Rates older than 4 days are not used: around long market closures values can be "not available" until new rates arrive.
 * BGN is history-only (ECB rates until 2025-12-31; Bulgaria uses the euro since 2026-01-01): no current BGN conversions or BGN portfolios.
-* A provider failure or timeout blocks re-fetching the same range for an hour; until then stored rates are used.
+* A provider failure blocks re-fetching the same two-year chunk for an hour; until then stored rates are used (a timeout of
+  the caller's wait does not – the download continues in the background, D-35).
+* A web request waits at most 25 s for a long rate history: the first interactive analysis needing years of new rates may
+  exclude stocks with a note; a later run (or any background job, which waits up to 5 min) has them.
+* The missing-data dialog covers ML experiments, backtests and optimizations; strategy comparisons (universe from stored
+  runs) still queue missing history automatically without asking. A stock whose latest price stays old after a download
+  (e.g. delisted) is offered again on the next check.
+* ML experiments use only the benchmark's stored span. Missing benchmark history is downloaded only when it has fewer than
+  300 prices, so a benchmark with 5 stored years limits an 8-year experiment to 5 years (the experiment says so); fetch
+  older benchmark prices to use the full period.
 * No Swiss market in the catalogue yet (CHF portfolios work; CHF stocks cannot be selected).
 * Monitoring (scheduled reviews, alerts) is not implemented; review and rebalance are user-triggered.
 

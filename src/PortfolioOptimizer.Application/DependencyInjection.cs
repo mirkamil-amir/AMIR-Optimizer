@@ -31,7 +31,9 @@ public static class DependencyInjection
         services.AddScoped<PriceQueryService>();
         services.AddScoped<Fx.FxService>();
         services.AddSingleton<Fx.FxFetchThrottle>();
+        services.AddSingleton<Fx.FxDownloader>();
         services.AddScoped<MarketDataService>();
+        services.AddScoped<DataReadinessService>();
         services.AddScoped<SettingsService>();
         services.AddScoped<PortfolioService>();
         services.AddScoped<PortfolioTransactionService>();

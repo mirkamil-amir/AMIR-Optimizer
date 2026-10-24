@@ -68,6 +68,10 @@ public sealed class FxTable
     public int MaxCarryForwardDays { get; }
     public IReadOnlyCollection<string> Currencies => [Pivot, .. _series.Keys];
 
+    /// <summary>Earliest observation date of <paramref name="currency"/>, or null without data (EUR: <see cref="DateOnly.MinValue"/>).</summary>
+    public DateOnly? FirstObservation(string currency) =>
+        currency == Pivot ? DateOnly.MinValue : _series.TryGetValue(currency, out var s) && s.Dates.Length > 0 ? s.Dates[0] : null;
+
     /// <summary>Latest observation date of <paramref name="currency"/> (today for EUR), or null without data.</summary>
     public DateOnly? LastObservation(string currency) =>
         currency == Pivot ? null : _series.TryGetValue(currency, out var s) && s.Dates.Length > 0 ? s.Dates[^1] : null;
