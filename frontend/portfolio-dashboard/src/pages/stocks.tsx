@@ -162,10 +162,11 @@ export function StocksPage() {
         description="Create a new portfolio: describe it, choose the stocks it may invest in, and create it. The stock selection is temporary – it stays in this browser tab and is stored only when you create a portfolio or start an analysis."
       />
       <div className="mb-6"><CreatePortfolioPanel /></div>
-      <h2 className="mb-3 text-base font-semibold">Choose stocks</h2>
+      <h2 className="heading-display mb-3 text-[1.3rem]">Choose stocks</h2>
 
       <div className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
-        <div className="hidden lg:block">
+        {/* On a near-solid panel: the list sits next to the background map and must stay readable. */}
+        <div className="map-surface hidden self-start rounded-xl p-2 lg:block">
           <UniverseNav markets={markets.data} sectors={sectors.data} scope={scope} onChange={changeScope} loading={markets.isLoading} />
         </div>
         {/* Small screens: the navigation is collapsed so the stock list stays visible. */}

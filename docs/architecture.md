@@ -110,14 +110,25 @@ limits, least-privilege database role, audit trail.
   `machine-learning`, `strategy-comparison`, `learn`, `admin`, `admin-overview`, …); `components/` – shared UI (`universe-nav`, `stock-selection`, `strategy-insights`, charts,
   tables, shadcn/Base UI primitives).
 * Portfolios: `/` = `pages/portfolios.tsx` (all of the user's portfolios); `/portfolios/:id/…` = `pages/portfolio-workspace.tsx`
-  with sections (overview, optimize, holdings, transactions, performance); `PortfolioScope` makes the URL's portfolio the
-  context of everything below it; `components/create-portfolio.tsx` and `transaction-form.tsx`. See [portfolios.md](portfolios.md).
+  with tabs Overview (all charts of the portfolio, incl. the former Performance page), Math Optimization, ML Optimization,
+  Holdings, Transactions, Optimization runs (`history.tsx`), Backtest (`backtest.tsx`) and Strategy comparison
+  (`strategy-comparison.tsx`) – the last three read the portfolio from the URL and list only its work; `PortfolioScope` makes
+  the URL's portfolio the context of everything below it; `components/create-portfolio.tsx` and `transaction-form.tsx`.
+  See [portfolios.md](portfolios.md).
+* Background map (D-38): `components/world-map.tsx` (dotted Natural Earth 1:50m countries from the generated
+  `world-map-geo.ts`, exchange markers, header `MapControl`), `lib/world-map.tsx` (highlighted markets, focus, view –
+  no camera state), `lib/map-camera.ts` (pure framing and camera math), `lib/markets.ts` (venues, exchange cities,
+  region frames, symbol → market). The camera is a CSS transform applied imperatively; pages call `useMapHighlight`,
+  stock interactions `useMapSignal`.
+* Look (D-39): Sora for the wordmark, page titles and section headings (`.heading-display`), Geist for everything else,
+  both self-hosted (`@fontsource-variable`); map and surface tokens in `index.css` (content veil, translucent cards,
+  `.map-surface` for dense text next to the map).
 * Navigation: `components/app-shell.tsx` renders the primary top bar and the sidebar from `lib/navigation.ts`
   (primary areas, Optimizer sections, administration; route-to-area matching) – see D-31.
 * `lib/` – pure, unit-tested logic: `api.ts` (fetch + antiforgery), `auth.tsx`, `selection.tsx` (memory only),
   `queries.ts` (TanStack Query hooks), `identity.ts` (header labels), `quote-status.ts`, `interpretation.ts`
   (result explanations), `strategy-guide.ts` + `worked-examples.ts` (12-part strategy explanations), `glossary.ts`,
-  `news.ts` (news labels and link safety).
+  `news.ts` (news labels and link safety), `markets.ts`, `map-camera.ts`, `strategies.ts`.
 * Business logic stays out of React components; components render what `lib/` computes.
 
 See also [decisions.md](decisions.md).

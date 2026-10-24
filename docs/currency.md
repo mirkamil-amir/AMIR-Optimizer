@@ -8,7 +8,7 @@ one **base currency** with dated exchange rates. Root-cause analysis of the prev
 
 | Concept | Where | Meaning |
 |---|---|---|
-| **Trading currency** | `Asset.Currency` (ISO 4217, from the listing's venue: `.DE` → EUR, `.T` → JPY, `.L` → GBP, no suffix → USD) | The currency the instrument is quoted in. Prices are stored in it (pence normalized to GBP). Never changed by any conversion. |
+| **Trading currency** | `Asset.Currency` (ISO 4217, from the listing's venue: `.DE` → EUR, `.T` → JPY, `.L` → GBP, `.SW` → CHF, `.ST` → SEK, `.CO` → DKK, `.TO` → CAD, `.AX` → AUD, `.HK` → HKD, `.NS` → INR, `.SI` → SGD, no suffix → USD; listings quoted in another currency are named in `Markets.ForeignCurrencyListings`, e.g. `J36.SI` in USD) | The currency the instrument is quoted in. Prices are stored in it (pence normalized to GBP). Never changed by any conversion. |
 | **Portfolio (account) currency** | `Portfolio.BaseCurrency`, fixed at creation | The paper account's cash, cost basis, realized P&L, fees and returns. Any currency with exchange rates can be chosen. |
 | **Reporting currency** | `?currency=` on holdings and performance | How values are *shown*. A reporting conversion; nothing is exchanged and nothing stored changes. |
 

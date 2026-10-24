@@ -16,8 +16,8 @@ export interface Venue {
   city: string
   lat: number
   lon: number
-  /** ISO 3166-1 numeric code of the country outline on the map; null when the market is too small for the map's scale. */
-  iso: string | null
+  /** ISO 3166-1 numeric code of the country outline on the map (Natural Earth 1:50m). */
+  iso: string
   /** Region the map frames when this market is selected on its own (a European listing brings Europe into view). */
   frame: GeoBox
   /** Side of the marker the city label is drawn on (keeps the dense European labels apart). */
@@ -40,9 +40,9 @@ export const venues: Venue[] = [
   { country: 'DK', countryName: 'Denmark', exchange: 'Nasdaq Copenhagen', suffix: '.CO', city: 'Copenhagen', lat: 55.68, lon: 12.57, iso: '208', frame: EUROPE, label: 'right' },
   { country: 'CA', countryName: 'Canada', exchange: 'Toronto Stock Exchange', suffix: '.TO', city: 'Toronto', lat: 43.65, lon: -79.38, iso: '124', frame: [-128, 41, -55, 60], label: 'above' },
   { country: 'AU', countryName: 'Australia', exchange: 'Australian Securities Exchange', suffix: '.AX', city: 'Sydney', lat: -33.87, lon: 151.21, iso: '036', frame: [112, -44, 155, -10], label: 'right' },
-  { country: 'HK', countryName: 'Hong Kong', exchange: 'Hong Kong Stock Exchange', suffix: '.HK', city: 'Hong Kong', lat: 22.32, lon: 114.17, iso: null, frame: [104, 14, 126, 32], label: 'right' },
+  { country: 'HK', countryName: 'Hong Kong', exchange: 'Hong Kong Stock Exchange', suffix: '.HK', city: 'Hong Kong', lat: 22.32, lon: 114.17, iso: '344', frame: [104, 14, 126, 32], label: 'right' },
   { country: 'IN', countryName: 'India', exchange: 'National Stock Exchange of India', suffix: '.NS', city: 'Mumbai', lat: 19.08, lon: 72.88, iso: '356', frame: [67, 6, 92, 32], label: 'left' },
-  { country: 'SG', countryName: 'Singapore', exchange: 'Singapore Exchange', suffix: '.SI', city: 'Singapore', lat: 1.35, lon: 103.82, iso: null, frame: [96, -7, 112, 9], label: 'below' },
+  { country: 'SG', countryName: 'Singapore', exchange: 'Singapore Exchange', suffix: '.SI', city: 'Singapore', lat: 1.35, lon: 103.82, iso: '702', frame: [96, -7, 112, 9], label: 'below' },
 ]
 
 export const venueByCountry: ReadonlyMap<string, Venue> = new Map(venues.map((v) => [v.country, v]))

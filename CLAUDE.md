@@ -15,6 +15,8 @@
   once). The background world map (`components/world-map.tsx`) is decorative and `aria-hidden` (its text counterpart is the
   header's `MapControl`); pages light markets with `useMapHighlight`, stock interactions use `useMapSignal`. The camera is a
   CSS transform set imperatively (`lib/map-camera.ts`) – never put camera positions into React state or context.
+- Typography: `.heading-display` (Sora) only for page titles, section headings and the wordmark; body,
+  tables and figures stay Geist. Text outside cards must stay readable over the map: put dense lists on `.map-surface`.
 - Disk: the Podman VM disk file (`~/.local/share/containers/podman/machine`) grows with every image build and never
   shrinks by itself; when the Mac runs out of space, `podman machine ssh sudo fstrim -av` returns the VM's free blocks
   (2026-10-24: 47 → 20 GB) without deleting anything. Never prune volumes (the development database lives in one).

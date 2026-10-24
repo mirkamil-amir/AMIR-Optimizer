@@ -253,7 +253,7 @@ export function AppShell() {
           </div>
           <PrimaryNav />
         </header>
-        <main id="main" className="mx-auto max-w-7xl px-4 py-6 lg:px-8">
+        <main id="main" className="mx-auto min-h-[calc(100svh-6.25rem)] max-w-7xl px-4 py-6 lg:px-8">
           <Suspense fallback={<LoadingBlock height="h-96" />}>
             <Outlet />
           </Suspense>

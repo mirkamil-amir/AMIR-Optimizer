@@ -118,7 +118,7 @@ function WorkspaceHeader({ portfolio }: { portfolio: PortfolioSummary }) {
         <div className="min-w-0 space-y-1">
           <Link to="/" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="size-3" /> My portfolios</Link>
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="truncate text-2xl font-semibold tracking-tight">{portfolio.name}</h1>
+            <h1 className="heading-display truncate text-[1.8rem]">{portfolio.name}</h1>
             <Badge variant="outline" className="tabular">{ccy}</Badge>
             {archived && <Badge variant="secondary"><Archive className="size-3" /> Archived</Badge>}
             {portfolio.usesSimulatedData && <DataBadge kind="simulated" />}

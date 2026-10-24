@@ -16,7 +16,7 @@ function prefersReducedMotion() {
 }
 
 /**
- * Background of the app: a cool-toned world map (Natural Earth countries) with the catalogue's exchange cities. The
+ * Background of the app: a dotted, cool-toned world map (Natural Earth 1:50m countries) with the catalogue's exchange cities. The
  * markets the current page is about are highlighted and framed by a camera that moves smoothly as stocks are selected or
  * a portfolio changes (one market → its region, several → their combined extent, none → the world). A selected stock's
  * city ripples once, an opened stock's city blinks. Decorative and `aria-hidden`: the same information is in the page and
@@ -30,6 +30,9 @@ export function WorldMapBackdrop({ className }: { className?: string }) {
   const signals = map?.signals ?? []
   const view = map?.view ?? 'auto'
   const [paths, setPaths] = useState<Record<string, string> | null>(null)
+  // Zoom of the current camera target: the dot grid is drawn this much finer, so dots keep their size on screen and the
+  // coastlines their detail at every zoom (updated once per move, never per frame).
+  const [zoom, setZoom] = useState(1)
 
   const viewportRef = useRef<HTMLDivElement>(null)
   const cameraRef = useRef<HTMLDivElement>(null)
@@ -44,7 +47,7 @@ export function WorldMapBackdrop({ className }: { className?: string }) {
 
   useEffect(() => {
     let alive = true
-    // A separate chunk (≈105 KB, ≈35 KB compressed), loaded after the page so it never delays content; loaded once.
+    // A separate chunk (≈270 KB, ≈100 KB compressed), loaded after the page so it never delays content; loaded once.
     void import('./world-map-geo').then((m) => { if (alive) setPaths(m.COUNTRY_PATHS) })
     return () => { alive = false }
   }, [])
@@ -66,6 +69,7 @@ export function WorldMapBackdrop({ className }: { className?: string }) {
       marker.style.transform = `translate(${x}px, ${y}px)`
     }
     current.current = camera
+    setZoom(Math.round(camera.k * 100) / 100)
   }, [])
 
   // Size of the map area; a layout change (sidebar, window) re-frames the same target without animation.
@@ -103,7 +107,7 @@ export function WorldMapBackdrop({ className }: { className?: string }) {
       data-targets={targetKey}>
       <div ref={viewportRef} className="absolute inset-x-0 top-24 bottom-0 overflow-hidden">
         <div ref={cameraRef} className="world-map-camera absolute inset-0 origin-top-left">
-          {paths && <Countries paths={paths} lit={isoLit} focus={isoFocus} />}
+          {paths && <Countries paths={paths} lit={isoLit} focus={isoFocus} zoom={zoom} />}
         </div>
         {venues.map((v) => {
           const lit = highlighted.includes(v.country)
@@ -125,16 +129,36 @@ export function WorldMapBackdrop({ className }: { className?: string }) {
   )
 }
 
-/** The countries as SVG paths (rendered again only when the highlighted or focused markets change, never per frame). */
-const Countries = memo(function Countries({ paths, lit, focus }: { paths: Record<string, string>; lit: Set<string>; focus: string | null }) {
+/** Dot spacing at zoom 1, in degrees (≈3 px on a desktop screen). */
+const DOT = 0.9
+
+/**
+ * The countries filled with a dot grid (land, highlighted, focused), without borders. Rendered again
+ * only when the highlighted or focused markets or the target zoom change – never per animation frame.
+ */
+const Countries = memo(function Countries({ paths, lit, focus, zoom }: {
+  paths: Record<string, string>; lit: Set<string>; focus: string | null; zoom: number
+}) {
+  const d = DOT / zoom
+  const dots = (id: string, r: number, className: string) => (
+    <pattern id={id} width={d} height={d} patternUnits="userSpaceOnUse">
+      <circle cx={d / 2} cy={d / 2} r={d * r} className={className} />
+    </pattern>
+  )
   return (
     <svg viewBox="0 0 360 142" preserveAspectRatio="xMidYMid meet" className="h-full w-full">
-      {Object.entries(paths).map(([iso, d]) => (
-        <path key={iso} d={d} data-iso={iso}
+      <defs>
+        {dots('world-map-dots', 0.3, 'world-map-dot')}
+        {dots('world-map-dots-lit', 0.36, 'world-map-dot-lit')}
+        {dots('world-map-dots-focus', 0.44, 'world-map-dot-focus')}
+      </defs>
+      {Object.entries(paths).map(([iso, path]) => (
+        <path key={iso} d={path} data-iso={iso}
+          fill={focus === iso ? 'url(#world-map-dots-focus)' : lit.has(iso) ? 'url(#world-map-dots-lit)' : 'url(#world-map-dots)'}
           className={cn('world-map-country', lit.has(iso) && 'world-map-country-lit', focus === iso && 'world-map-country-focus')} />
       ))}
-      {/* Focused market drawn last, with a heavier outline – it stands out without relying on colour alone. */}
-      {focus && paths[focus] && <path d={paths[focus]} className="world-map-country world-map-country-lit world-map-country-focus" />}
+      {/* Focused market drawn last, so its larger dots are never covered by a neighbour's. */}
+      {focus && paths[focus] && <path d={paths[focus]} fill="url(#world-map-dots-focus)" className="world-map-country world-map-country-lit world-map-country-focus" />}
     </svg>
   )
 })

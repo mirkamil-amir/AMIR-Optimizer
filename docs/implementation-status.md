@@ -1,10 +1,18 @@
 # Implementation status
 
+## 2026-10-24 (8): typography and contrast (D-39)
+
+* Sora for the AMIR wordmark, page titles, portfolio names and section headings (chosen from seven rendered options); Geist
+  for everything else.
+* Readability over the map: veil behind the content column, halo for text directly on it, near-solid panel for the
+  Portfolio Creation market/sector list; buttons and badges excluded from the halo. Checked in light and dark screenshots.
+
 ## 2026-10-24 (7): background map – cool palette and selection-aware camera (D-38)
 
-* Map: Natural Earth countries in an ice-blue/blue-grey palette (navy/slate/cyan in dark mode), hairline borders, selected
-  markets teal with a dark outline, the focused market (last selected or opened stock) with a heavier outline and a
-  double-ring marker. Exchange cities as markers; labels only for highlighted markets.
+* Map: dotted Natural Earth 1:50m countries (incl. Hong Kong and Singapore) on an ice-blue ocean (navy/slate/cyan in dark
+  mode); dot spacing follows the zoom so coastlines stay precise; no country borders; selected markets with teal dots,
+  the focused market (last selected or opened stock) with larger, stronger dots, a bold label and a double-ring marker.
+  Exchange cities as markers; labels only for highlighted markets. Content cards are 82 % opaque so the map shows through.
 * Camera: frames the highlighted markets plus the focused one – one market → its region, several → their combined extent,
   none → world; smooth CSS transition timed by distance, rapid selections combined (220 ms), resizes re-framed instantly,
   reduced motion respected. Header globe control: markets in view as text, "Fit selected markets", "World view", one market.

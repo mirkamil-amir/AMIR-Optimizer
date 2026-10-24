@@ -27,8 +27,8 @@
   Index and the Hang Seng "Commerce & Industry" members the sector is a maintainer assignment (the sources list none).
 - The index-ETF lists of the ten newer markets are curated (1–2 funds per market, checked 2026-10-24), not a complete
   ETF catalogue. Wikipedia tables can lag index reviews (e.g. the ASX 50 table had 49 rows and listed a fund, removed).
-- The background map shows where a security is listed (exchange), not its headquarters or revenue footprint. Hong Kong
-  and Singapore have no country outline at the map's 1:110m scale (marker only). Frames are fixed regions per market.
+- The background map shows where a security is listed (exchange), not its headquarters or revenue footprint. Outlines are
+  Natural Earth 1:50m, simplified (≈0.07°); frames are fixed regions per market.
 - Trading sessions of the newer markets are the regular continuous sessions without lunch breaks (Hong Kong, Singapore)
   or holiday calendars; they only label quote times.
 - Alpha Vantage (configured free key): 25 requests/day, no Tokyo, no index levels – Yahoo remains the default.
