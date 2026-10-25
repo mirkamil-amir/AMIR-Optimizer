@@ -29,8 +29,8 @@
   stocks from pinned Wikipedia revisions plus 18 index ETFs (curated); all 441 symbols and their currencies were checked
   against the price provider on 2026-10-24 (three SGX listings trade in USD and are recorded so). Venues, sessions, index
   benchmarks, Alpha Vantage `.TRT` for Toronto, research-brief markets; symbols may contain `&` (`M&M.NS`).
-* Portfolio workspace: tabs Overview · Math Optimization · ML Optimization · Holdings · Transactions · Optimization runs ·
-  Backtest · Strategy comparison. Performance merged into the Overview (date range, efficient frontier right under portfolio
+* Portfolio workspace: tabs Overview · Holdings · Math Optimization · ML Optimization · Optimization runs ·
+  Backtest · Strategy comparison · Transactions. Performance merged into the Overview (date range, efficient frontier right under portfolio
   vs benchmark, recorded performance, risk, allocation over time – duplicates removed). Optimization runs (Math and ML),
   Backtest and Strategy comparison stay inside the portfolio and list only its work; the portfolio is fixed there.
 * Background world map: dotted Natural Earth land, exchange cities; lit for the open portfolio's holdings and universe,
@@ -364,7 +364,7 @@ nothing exposed secrets (verified: key never in responses, logs redact it).
 | Criterion | Status | Evidence |
 |---|---|---|
 | Prices load automatically after sign-in | Done | sign-in cycle refreshed 914/916 instruments in 29 s (2 delisted); integration test `SignIn_StartsOneSharedRefreshCycle…`; e2e `stock selection loads prices automatically` |
-| Working refresh control per stock | Done | row icon + detail button; integration + e2e tests |
+| Working refresh control per stock | Done | row Refresh button + detail button; integration + e2e tests |
 | US, DE, FR, UK, JP universes from maintainable sources | Done | 503 / 40 + 30 historical / 40 / 100 / 224; builder script, admin upload, override directory |
 | Availability, timestamps, currencies, caching, provider limits shown correctly | Done | quote states; admin overview; [market-data.md](market-data.md) |
 | Test artifacts removed and hidden from administrators | Done | section 2; admin list/overview exclude `.test` |

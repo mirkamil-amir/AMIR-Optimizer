@@ -37,7 +37,7 @@ export const keys = {
   backtests: ['backtests'] as const,
   backtest: (id: string) => ['backtest', id] as const,
   job: (id: string) => ['job', id] as const,
-  history: (page: number, portfolioId?: string, status?: string) => ['history', page, portfolioId ?? '', status ?? ''] as const,
+  history: (page: number, portfolioId?: string, status?: string, pageSize = 25) => ['history', page, portfolioId ?? '', status ?? '', pageSize] as const,
   sectors: ['sectors'] as const,
   stocks: (params: string) => ['stocks', params] as const,
   stock: (symbol: string) => ['stock', symbol] as const,
@@ -244,11 +244,11 @@ export function useRunOptimization(portfolioId: string) {
 }
 
 /** Optimization history of the signed-in user across portfolios. */
-export const useOptimizationHistory = (page: number, portfolioId?: string, status?: RunStatus) =>
+export const useOptimizationHistory = (page: number, portfolioId?: string, status?: RunStatus, pageSize = 25) =>
   useQuery({
-    queryKey: keys.history(page, portfolioId, status),
+    queryKey: keys.history(page, portfolioId, status, pageSize),
     queryFn: () => api.get<PagedResult<OptimizationRunSummary>>(
-      `${V1}/optimization-runs?page=${page}&pageSize=25${portfolioId ? `&portfolioId=${portfolioId}` : ''}${status ? `&status=${status}` : ''}`),
+      `${V1}/optimization-runs?page=${page}&pageSize=${pageSize}${portfolioId ? `&portfolioId=${portfolioId}` : ''}${status ? `&status=${status}` : ''}`),
     placeholderData: keepPreviousData,
   })
 
@@ -603,11 +603,11 @@ const isActive = (s?: string) => s === 'Queued' || s === 'Running'
 export const useMlCatalog = () => useQuery({ queryKey: ['ml-catalog'], queryFn: () => api.get<MlCatalog>(`${V1}/ml/models`), staleTime: Infinity })
 
 /** The user's ML experiments; `filter.portfolioId` = of one portfolio, `filter.unlinked` = those without a portfolio. */
-export const useMlExperiments = (page = 1, filter: { portfolioId?: string; unlinked?: boolean } = {}) =>
+export const useMlExperiments = (page = 1, filter: { portfolioId?: string; unlinked?: boolean; pageSize?: number } = {}) =>
   useQuery({
-    queryKey: ['ml-experiments', page, filter.portfolioId ?? '', filter.unlinked ?? false],
+    queryKey: ['ml-experiments', page, filter.portfolioId ?? '', filter.unlinked ?? false, filter.pageSize ?? 20],
     queryFn: () => api.get<PagedResult<MlExperimentSummary>>(
-      `${V1}/ml/experiments?page=${page}&pageSize=20${filter.portfolioId ? `&portfolioId=${filter.portfolioId}` : ''}${filter.unlinked ? '&unlinked=true' : ''}`),
+      `${V1}/ml/experiments?page=${page}&pageSize=${filter.pageSize ?? 20}${filter.portfolioId ? `&portfolioId=${filter.portfolioId}` : ''}${filter.unlinked ? '&unlinked=true' : ''}`),
     placeholderData: keepPreviousData,
     refetchInterval: (q) => (q.state.data?.items.some((e) => isActive(e.status)) ? 2000 : false),
   })
@@ -656,7 +656,23 @@ export function useDeleteMlExperiment() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => api.delete<void>(`${V1}/ml/experiments/${id}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['ml-experiments'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['ml-experiments'] })
+      qc.invalidateQueries({ queryKey: ['portfolio-strategies'] })
+    },
+  })
+}
+
+/** Deletes a Math Optimization (proposals made from it stay; backtests and comparisons keep their frozen settings). */
+export function useDeleteOptimizationRun() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => api.delete<void>(`${V1}/optimization-runs/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['history'] })
+      qc.invalidateQueries({ queryKey: ['runs'] })
+      qc.invalidateQueries({ queryKey: ['portfolio-strategies'] })
+    },
   })
 }
 

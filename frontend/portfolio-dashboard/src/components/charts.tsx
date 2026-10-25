@@ -3,7 +3,6 @@ import {
   Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ReferenceLine,
   ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis,
 } from 'recharts'
-import { Table2, LineChart as LineIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { InfoTip } from '@/components/common'
@@ -47,8 +46,7 @@ export function ChartCard({
       <CardHeader className="flex flex-row items-start justify-between gap-2">
         <div>
           <CardTitle className="flex items-center gap-1.5 text-sm">
-            {title}
-            {hint && <InfoTip>{hint}</InfoTip>}
+            <InfoTip of={title}>{hint}</InfoTip>
           </CardTitle>
           {description && <CardDescription className="mt-1 text-xs">{description}</CardDescription>}
         </div>
@@ -57,13 +55,13 @@ export function ChartCard({
           {table && (
             <Button
               variant="ghost"
-              size="icon-sm"
+              size="xs"
               aria-pressed={showTable}
               aria-label={showTable ? 'Show chart' : 'Show data table'}
               title={showTable ? 'Show chart' : 'Show data table'}
               onClick={() => setShowTable((s) => !s)}
             >
-              {showTable ? <LineIcon /> : <Table2 />}
+              {showTable ? 'Chart' : 'Table'}
             </Button>
           )}
         </div>

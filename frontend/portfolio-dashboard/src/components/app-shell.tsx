@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router'
-import { Briefcase, FlaskConical, ListChecks, LogOut, Menu, Palette, ScrollText, Settings, ShieldCheck, Sigma, UserRound } from 'lucide-react'
+import { Menu } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -33,7 +33,6 @@ function SidebarLink({ entry, active, onNavigate }: { entry: NavEntry; active: b
         active && 'bg-muted font-medium text-foreground shadow-[inset_2px_0_0_var(--sidebar-primary)]',
       )}
     >
-      <entry.icon className="size-4" aria-hidden />
       {entry.label}
     </Link>
   )
@@ -57,7 +56,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
     <div className="flex flex-col gap-4">
       <nav className="flex flex-col gap-4" aria-label="Optimizer sections">
         <div className="flex items-center gap-2 px-2.5 text-xs font-semibold text-foreground">
-          <Sigma className="size-3.5" aria-hidden /> Optimizer workspace
+          Optimizer workspace
         </div>
         <SidebarGroups sections={optimizerSections} activeTo={activeTo} onNavigate={onNavigate} />
       </nav>
@@ -99,7 +98,6 @@ export function PrimaryNav() {
                     : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground',
                 )}
               >
-                <p.icon className="size-4" aria-hidden />
                 {p.label}
               </Link>
             </li>
@@ -142,7 +140,7 @@ function SelectionIndicator() {
   const { count } = useSelection()
   return (
     <Button variant="outline" size="sm" render={<Link to="/stocks" />} aria-label={`Portfolio Creation: ${count} stock${count === 1 ? '' : 's'} selected`}>
-      <ListChecks /> <span className="hidden sm:inline">Selection</span>
+      <span className="hidden sm:inline">Selection</span>
       <Badge variant="secondary" className="tabular">{count}</Badge>
     </Button>
   )
@@ -167,7 +165,6 @@ function IdentityBadge() {
       <div className="min-w-0 leading-tight">
         <div className="truncate text-sm font-semibold text-foreground">{id.name}</div>
         <div className="flex items-center gap-1 truncate text-[11px] text-muted-foreground">
-          {user.isAdministrator && <ShieldCheck className="size-3" aria-hidden />}
           {id.role}
         </div>
       </div>
@@ -183,7 +180,7 @@ function UserMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger render={<Button variant="ghost" size="sm" aria-label="Account menu" />}>
-        <UserRound /> <span className="hidden md:inline">Account</span>
+        Account
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-60">
         <DropdownMenuGroup>
@@ -194,12 +191,12 @@ function UserMenu() {
           </DropdownMenuLabel>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => navigate('/')}><Briefcase /> My portfolios</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => navigate('/settings')}><Settings /> Account settings</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => navigate('/settings#appearance')}><Palette /> Appearance &amp; themes</DropdownMenuItem>
-        {user.isAdministrator && <DropdownMenuItem onClick={() => navigate('/admin')}><ScrollText /> Administration</DropdownMenuItem>}
+        <DropdownMenuItem onClick={() => navigate('/')}>My portfolios</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => navigate('/settings')}>Account settings</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => navigate('/settings#appearance')}>Appearance &amp; themes</DropdownMenuItem>
+        {user.isAdministrator && <DropdownMenuItem onClick={() => navigate('/admin')}>Administration</DropdownMenuItem>}
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => void logout()}><LogOut /> Sign out</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => void logout()}>Sign out</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   )
@@ -244,7 +241,7 @@ export function AppShell() {
             </Button>
             <IdentityBadge />
             <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
-              <span className="hidden items-center gap-1 2xl:flex"><FlaskConical className="size-3.5" aria-hidden /> Simulated trading only</span>
+              <span className="hidden items-center gap-1 2xl:flex">Simulated trading only</span>
                 <SelectionIndicator />
               <MapControl />
               <ThemeQuickToggle />

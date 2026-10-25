@@ -1,4 +1,3 @@
-import { ChevronRight, History } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { LoadingBlock } from '@/components/common'
 import type { Market, Sector } from '@/lib/types'
@@ -39,7 +38,6 @@ export function UniverseNav({
                 onClick={() => onChange({ country: m.country })}
                 label={m.name}
                 count={m.indices.filter((i) => !i.isHistorical).reduce((n, i) => n + i.members, 0)}
-                icon={<ChevronRight className={cn('size-3.5 shrink-0 transition-transform', open && 'rotate-90')} aria-hidden />}
                 ariaExpanded={open}
               />
               {open && (
@@ -52,7 +50,7 @@ export function UniverseNav({
                       label={i.name}
                       title={i.description ?? undefined}
                       count={i.members}
-                      icon={i.isHistorical ? <History className="size-3.5 shrink-0" aria-label="historical composition" /> : undefined}
+                      icon={i.isHistorical ? <span className="text-[10px] text-muted-foreground">historical</span> : undefined}
                     />
                   ))}
                 </div>

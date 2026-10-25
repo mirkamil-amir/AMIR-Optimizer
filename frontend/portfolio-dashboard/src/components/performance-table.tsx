@@ -31,7 +31,7 @@ export function PerformanceTable({ items, colors }: { items: StrategyPerformance
         </thead>
         <tbody>{metricRows.map(([name, fn, hint]) => (
           <tr key={name} className="border-t">
-            <td className="py-1.5 text-muted-foreground"><span className="inline-flex items-center gap-1">{name}<InfoTip>{hint}</InfoTip></span></td>
+            <td className="py-1.5 text-muted-foreground"><InfoTip of={name}>{hint}</InfoTip></td>
             {items.map((p) => <td key={p.name} className="px-2">{fn(p)}</td>)}
           </tr>
         ))}</tbody>

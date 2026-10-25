@@ -431,3 +431,6 @@
 }
 /* A near-solid panel for dense text next to the map (e.g. the market and sector list of Portfolio Creation). */
 .map-surface { background-color: color-mix(in oklch, var(--card) 94%, transparent); box-shadow: 0 0 0 1px color-mix(in oklch, var(--foreground) 10%, transparent); }
+
+/* Toasts carry no status icon (no decorative icons anywhere): the title says what happened. */
+[data-sonner-toast] [data-icon] { display: none !important; }

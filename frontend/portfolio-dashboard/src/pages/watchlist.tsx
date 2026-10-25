@@ -1,6 +1,6 @@
 import { useDeferredValue, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { Eye, Loader2, Plus, RefreshCw, Search, Trash2 } from 'lucide-react'
+import { Loader2, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -45,7 +45,7 @@ export function WatchlistPage() {
           <>
             <RangePicker value={range} onChange={setRange} ranges={listRanges} label="Change period" />
             <Button variant="outline" size="sm" onClick={refreshAll} disabled={refresh.isPending || items.length === 0}>
-              <RefreshCw className={refresh.isPending ? 'animate-spin' : undefined} /> Refresh prices
+              Refresh prices
             </Button>
           </>
         }
@@ -55,7 +55,6 @@ export function WatchlistPage() {
 
       {list.error ? <ErrorState error={list.error} onRetry={() => list.refetch()} /> : list.isLoading ? <LoadingBlock /> : items.length === 0 ? (
         <EmptyState
-          icon={<Eye className="size-8" />}
           title="Your watchlist is empty"
           description="Search above by company name or ticker (e.g. “Siemens”, “AAPL”, “7203.T”) and add stocks to follow their prices and news."
         />
@@ -160,8 +159,7 @@ function AddStock() {
   return (
     <div className="relative mb-5">
       <label htmlFor="watch-search" className="sr-only">Search stocks to add</label>
-      <Search className="pointer-events-none absolute top-2.5 left-2.5 size-4 text-muted-foreground" aria-hidden />
-      <Input id="watch-search" value={term} onChange={(e) => setTerm(e.target.value)} placeholder="Add a stock: company name or ticker…" className="pl-8" autoComplete="off" />
+      <Input id="watch-search" value={term} onChange={(e) => setTerm(e.target.value)} placeholder="Add a stock: company name or ticker…" autoComplete="off" />
       {search && (
         <Card className="absolute z-20 mt-1 w-full gap-0 py-1 shadow-lg">
           {results.isLoading ? <div className="p-3 text-sm text-muted-foreground">Searching…</div> :
@@ -178,7 +176,7 @@ function AddStock() {
                       <Badge variant="outline">Watching</Badge>
                     ) : (
                       <Button size="sm" variant="outline" onClick={() => addNow(s.symbol)} disabled={add.isPending}>
-                        <Plus /> Add
+                        Add
                       </Button>
                     )}
                   </li>

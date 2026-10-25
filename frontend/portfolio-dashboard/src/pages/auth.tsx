@@ -3,7 +3,7 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { CheckCircle2, Clock, Loader2, LogOut, ShieldAlert } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { AmirWordmark } from '@/components/brand'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -83,7 +83,6 @@ export function LoginPage() {
       <form onSubmit={onSubmit} className="space-y-4" noValidate>
         {error && (
           <Alert variant="destructive">
-            <ShieldAlert />
             <AlertTitle>Sign-in failed</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
           </Alert>
@@ -140,7 +139,6 @@ export function RegisterPage() {
       <AuthLayout title="Application received" description="An administrator reviews new accounts before they can be used.">
         <div className="space-y-4">
           <Alert>
-            <CheckCircle2 />
             <AlertTitle>Pending approval</AlertTitle>
             <AlertDescription>{done}</AlertDescription>
           </Alert>
@@ -159,7 +157,6 @@ export function RegisterPage() {
       <form onSubmit={onSubmit} className="space-y-4" noValidate>
         {error && (
           <Alert variant="destructive">
-            <ShieldAlert />
             <AlertTitle>Registration failed</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
           </Alert>
@@ -186,10 +183,10 @@ export function RegisterPage() {
   )
 }
 
-const statusText: Record<string, { title: string; body: string; icon: ReactNode }> = {
-  Pending: { title: 'Waiting for approval', body: 'An administrator has not reviewed your application yet. Check back later.', icon: <Clock /> },
-  Rejected: { title: 'Application declined', body: 'An administrator declined this application. Contact the administrator if you think this is a mistake.', icon: <ShieldAlert /> },
-  Suspended: { title: 'Account suspended', body: 'This account is currently suspended. Contact the administrator to have it reactivated.', icon: <ShieldAlert /> },
+const statusText: Record<string, { title: string; body: string }> = {
+  Pending: { title: 'Waiting for approval', body: 'An administrator has not reviewed your application yet. Check back later.' },
+  Rejected: { title: 'Application declined', body: 'An administrator declined this application. Contact the administrator if you think this is a mistake.' },
+  Suspended: { title: 'Account suspended', body: 'This account is currently suspended. Contact the administrator to have it reactivated.' },
 }
 
 /** Shown to signed-in accounts that are not (or no longer) approved. */
@@ -203,7 +200,6 @@ export function AccountStatusPage() {
     <AuthLayout title={s.title} description={`Signed in as ${user.email}`}>
       <div className="space-y-4">
         <Alert variant={user.status === 'Pending' ? 'default' : 'destructive'}>
-          {s.icon}
           <AlertTitle>Status: {user.status}</AlertTitle>
           <AlertDescription>{s.body}</AlertDescription>
         </Alert>
@@ -211,7 +207,7 @@ export function AccountStatusPage() {
         <div className="flex gap-2">
           <Button variant="outline" className="flex-1" onClick={refresh}>Check again</Button>
           <Button variant="outline" className="flex-1" onClick={() => void logout()}>
-            <LogOut /> Sign out
+            Sign out
           </Button>
         </div>
       </div>

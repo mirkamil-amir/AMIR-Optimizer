@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { toast } from 'sonner'
-import { AlertTriangle, CheckCircle2, ShieldCheck } from 'lucide-react'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
   AlertDialogHeader, AlertDialogTitle,
@@ -103,7 +102,6 @@ export function TradeProposalView({ proposal, currency, allowExecute = true }: {
 
       {proposal.notes.length > 0 && (
         <Alert>
-          <AlertTriangle className="text-warn" />
           <AlertTitle>Why the result deviates from target weights</AlertTitle>
           <AlertDescription>
             <ul className="list-disc space-y-0.5 pl-4">{proposal.notes.map((n) => <li key={n}>{n}</li>)}</ul>
@@ -121,11 +119,10 @@ export function TradeProposalView({ proposal, currency, allowExecute = true }: {
       {allowExecute && proposal.status === 'Pending' && (
         <div className="flex flex-col gap-3 rounded-lg border bg-muted/40 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-2 text-sm">
-            <ShieldCheck className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
             <span>This is a <strong>proposal</strong>. Nothing has been bought. Executing creates <strong>simulated</strong> orders in the paper portfolio at the latest stored prices – no real orders are sent.</span>
           </div>
           <Button disabled={trades.length === 0 || execute.isPending} onClick={() => setConfirmOpen(true)}>
-            <CheckCircle2 /> Review & execute ({trades.length})
+            Review & execute ({trades.length})
           </Button>
         </div>
       )}

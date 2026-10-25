@@ -1,7 +1,7 @@
 import { useRef, useState, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Download, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { errorMessage } from '@/lib/api'
@@ -116,7 +116,7 @@ export function useMissingDataGuard(): { guard: (request: DataCheckRequest, proc
           {state.phase !== 'downloading' && <Button variant="outline" onClick={continueWithout}>Continue without</Button>}
           {state.phase === 'review' && (
             <Button onClick={download} disabled={!state.check.downloadable && !state.check.downloading}>
-              <Download className="size-4" /> Download and continue
+              Download and continue
             </Button>
           )}
           {state.phase === 'downloading' && <Button disabled><Loader2 className="size-4 animate-spin" /> Downloading…</Button>}

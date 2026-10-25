@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
-import { ArrowLeft, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/common'
 import { StockChooser } from '@/components/stock-chooser'
@@ -40,7 +39,7 @@ export function ChooseStocksPage({ section }: { section: keyof typeof labels }) 
   const back = portfolioPath(id, section)
   const use = (
     <Button size="sm" disabled={selection.count === 0} onClick={() => navigate(`${back}?from=selection`)}>
-      <Check /> Use {selection.count} stock{selection.count === 1 ? '' : 's'}
+      Use {selection.count} stock{selection.count === 1 ? '' : 's'}
     </Button>
   )
 
@@ -50,7 +49,7 @@ export function ChooseStocksPage({ section }: { section: keyof typeof labels }) 
         level={2}
         title="Choose stocks"
         info={`Pick the stocks the ${labels[section]} of “${portfolio?.name ?? 'this portfolio'}” may invest in, then use them – they replace its equity universe. Nothing is saved until you run the optimization.`}
-        actions={<Button variant="outline" size="sm" render={<Link to={back} />}><ArrowLeft /> Back to {labels[section]}</Button>}
+        actions={<Button variant="outline" size="sm" render={<Link to={back} />}>Back to {labels[section]}</Button>}
       />
       <StockChooser trayActions={use} />
     </>

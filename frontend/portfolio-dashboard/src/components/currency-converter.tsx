@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ArrowLeftRight, Coins, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -77,9 +77,8 @@ export function CurrencyConverterCard({ base, className }: { base: string; class
     <Card className={className} role="region" aria-label="Currency converter">
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
         <CardTitle className="flex items-center gap-2 text-sm">
-          <Coins className="size-4" aria-hidden /> Currency converter
           {/* The rate basis lives in the tip; the result line below still names the date of the rate used. */}
-          <InfoTip label="About these rates">
+          <InfoTip of="Currency converter">
             {board.data?.note ?? 'Reference rates, published once per business day.'} For analysis and reporting only – not a rate at which money can be
             exchanged; banks and brokers add spreads and fees.
             {historical.length > 0 && ` No longer published: ${historical.map((d) => `${d.currency} (until ${date(d.lastRateDate)}, chart history only)`).join(', ')}.`}
@@ -100,7 +99,7 @@ export function CurrencyConverterCard({ base, className }: { base: string; class
             <Label>From</Label>
             <CurrencySelect value={fromCcy} onChange={setFrom} supported={supported} first={base} label="Convert from" className="w-full" />
           </div>
-          <Button variant="ghost" size="icon" aria-label="Swap currencies" onClick={() => { setFrom(toCcy); setTo(fromCcy) }}><ArrowLeftRight /></Button>
+          <Button variant="ghost" size="sm" aria-label="Swap currencies" onClick={() => { setFrom(toCcy); setTo(fromCcy) }}>Swap</Button>
           <div className="space-y-1.5">
             <Label>To</Label>
             <CurrencySelect value={toCcy} onChange={setTo} supported={supported} first={base} label="Convert to" className="w-full" />

@@ -34,6 +34,11 @@ explanation instead of producing unreliable numbers.
 
 ## Features (`features-2026.10-v1`, 20 features)
 
+Each experiment's Explainability section has a folded plain-language guide to the features it used ("What the N features
+mean"): the meaning, how to read high and low values, why a model may use it (a common hypothesis, not a result) and the
+catalogue formula. The texts live in `frontend/…/lib/ml-features.ts`; `ml-features.test.ts` fails if they no longer cover
+exactly the features of `FeatureCatalog.cs` – a new or changed feature needs a new text (and a new `FeatureCatalog.Version`).
+
 | Group | Features |
 |---|---|
 | Price momentum | `ret_5`, `mom_21`, `mom_63`, `mom_126`, `mom_12_1` (skips the last month), `ma_gap_50`, `ma_gap_200` |

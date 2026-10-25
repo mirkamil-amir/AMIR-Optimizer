@@ -80,7 +80,7 @@ GB, JP), date range, publisher (click a publisher), headline/ticker/company sear
 ## Images
 
 `News:ShowImages` is off by default because the display rights of publisher thumbnails delivered by Yahoo were not
-verified. With it off, a neutral icon is shown (never a stand-in photo). With it on, the provider's thumbnail for that
+verified. With it off, no image is shown (never a stand-in photo). With it on, the provider's thumbnail for that
 article is shown with a credit line, lazy-loaded with `referrerpolicy=no-referrer`; a broken image falls back to the
 placeholder.
 

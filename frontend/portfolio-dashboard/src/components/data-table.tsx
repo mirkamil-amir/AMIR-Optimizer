@@ -14,9 +14,12 @@ export interface Column<T> {
   className?: string
 }
 
-/** Accessible sortable table (sort buttons in headers, keyboard-activatable rows). */
+/**
+ * Accessible sortable table (sort buttons in headers, keyboard-activatable rows). `maxRows`: about that many rows are
+ * visible; the rest scroll inside the table under a header that stays in place.
+ */
 export function DataTable<T>({
-  rows, columns, rowKey, onRowClick, initialSort, empty, dense, caption,
+  rows, columns, rowKey, onRowClick, initialSort, empty, dense, caption, maxRows,
 }: {
   rows: T[]
   columns: Column<T>[]
@@ -26,6 +29,7 @@ export function DataTable<T>({
   empty?: ReactNode
   dense?: boolean
   caption?: string
+  maxRows?: number
 }) {
   const [sort, setSort] = useState(initialSort)
   const sorted = useMemo(() => {
@@ -46,10 +50,11 @@ export function DataTable<T>({
   if (rows.length === 0 && empty) return <>{empty}</>
 
   return (
-    <div className="overflow-x-auto rounded-lg border">
-      <Table>
+    <div className={cn('overflow-x-auto rounded-lg border', maxRows && 'overflow-y-auto')}
+      style={maxRows ? { maxHeight: `calc(2.25rem + ${maxRows} * ${dense ? 2.3 : 2.85}rem)` } : undefined}>
+      <Table containerClassName={maxRows ? 'overflow-visible' : undefined}>
         {caption && <caption className="sr-only">{caption}</caption>}
-        <TableHeader>
+        <TableHeader className={maxRows ? 'sticky top-0 z-10 bg-popover' : undefined}>
           <TableRow className="bg-muted/40 hover:bg-muted/40">
             {columns.map((c) => {
               const active = sort?.key === c.key

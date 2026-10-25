@@ -1,95 +1,73 @@
+import type { ReactNode } from 'react'
 import { Link } from 'react-router'
-import { AlertTriangle, BookOpen, Calculator, FlaskConical, Lightbulb } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import type { Insight, InsightKind } from '@/lib/interpretation'
 import { guideById } from '@/lib/strategy-guide'
 import { Collapsible } from '@/components/common'
-import { cn } from '@/lib/utils'
-
-const kinds: Record<InsightKind, { label: string; icon: React.ReactNode; className: string; title: string }> = {
-  fact: { label: 'Calculated', icon: <Calculator className="size-3" />, className: 'border-border text-foreground', title: 'A number the system calculated from the data and settings.' },
-  estimate: { label: 'Estimate', icon: <FlaskConical className="size-3" />, className: 'border-series-7/50 text-foreground', title: 'A statistical estimate – uncertain, not a forecast.' },
-  interpretation: { label: 'What it means', icon: <Lightbulb className="size-3" />, className: 'border-series-1/50 text-foreground', title: 'An educational reading of the numbers.' },
-  caution: { label: 'Caution', icon: <AlertTriangle className="size-3" />, className: 'border-warn/50 text-warn', title: 'A limitation you should keep in mind.' },
-}
 
 /**
- * "What your result means": interpretation built only from the run's own numbers, with every statement labelled as a
- * calculated fact, a model estimate, an educational interpretation or a caution. Links to the strategy guide.
+ * Statements of one kind form one paragraph, in this order; the kind is named in plain text at the start (every statement
+ * stays labelled as calculated, estimated, interpreted or a caution – without badges).
  */
-export function StrategyInsights({ insights, guideId, title = 'What your result means', className, collapsible = false }: {
+const paragraphs: { kind: InsightKind; label: string }[] = [
+  { kind: 'fact', label: 'Calculated from the data' },
+  { kind: 'estimate', label: 'Estimates' },
+  { kind: 'interpretation', label: 'What it means' },
+  { kind: 'caution', label: 'Keep in mind' },
+]
+
+/** Further parts of the same box, e.g. "Inputs & methodology" and "Data notes"; a part without content is left out. */
+export interface InsightSection { title: string; content: ReactNode }
+
+/**
+ * "What your result means": one folded box at the end of a result page. It starts with the interpretation built only from
+ * the run's own numbers (grouped into paragraphs by kind), followed by the optional `sections` – how the run was computed
+ * and the notes about its data – so the page has a single reference box instead of several. Links to the strategy guide.
+ */
+export function StrategyInsights({ insights, guideId, title = 'What your result means', sections = [], className }: {
   insights: Insight[]
   guideId?: string
   title?: string
+  sections?: InsightSection[]
   className?: string
-  /** Folded until the title is clicked; "How this strategy works" stays visible in the title row. */
-  collapsible?: boolean
 }) {
   const guide = guideId ? guideById(guideId) : undefined
-  if (insights.length === 0 && !guide) return null
+  const parts = sections.filter((s) => s.content)
+  if (insights.length === 0 && !guide && parts.length === 0) return null
   const howItWorks = guide && (
     <Button size="sm" variant="outline" render={<Link to={`/learn/${guide.id}`} />}>
-      <BookOpen /> How {guide.name.toLowerCase().startsWith('from') ? 'it' : 'this strategy'} works
+      How {guide.name.toLowerCase().startsWith('from') ? 'it' : 'this strategy'} works
     </Button>
   )
-  const list = (
-    <ul className="space-y-2.5">
-      {insights.map((i, n) => {
-        const k = kinds[i.kind]
-        return (
-          <li key={n} className="flex gap-2.5 text-sm leading-relaxed">
-            <Badge variant="outline" title={k.title} className={cn('mt-0.5 h-5 shrink-0 gap-1 px-1.5 text-[10px]', k.className)}>
-              {k.icon}{k.label}
-            </Badge>
-            <span>{i.text}</span>
-          </li>
-        )
-      })}
-    </ul>
-  )
-  if (collapsible) {
-    return (
-      <Collapsible title={title} summary={`${insights.length} statements`} actions={howItWorks} className={className}>
-        <p className="mb-3 text-muted-foreground">
-          {guide ? <>About this strategy: {guide.tagline} </> : null}Statements are generated from this run&apos;s numbers and labelled by type.
-        </p>
-        {list}
-      </Collapsible>
-    )
-  }
+  const summary = ['interpretation', ...parts.map((p) => p.title.toLowerCase())].join(' · ')
   return (
-    <Card className={className}>
-      <CardHeader className="flex flex-row items-start justify-between gap-3">
-        <div>
-          <CardTitle className="text-base">{title}</CardTitle>
-          <CardDescription>
-            {guide ? <>About this strategy: {guide.tagline} </> : null}
-            Statements are generated from this run&apos;s numbers and labelled by type.
-          </CardDescription>
-        </div>
-        {guide && (
-          <Button size="sm" variant="outline" render={<Link to={`/learn/${guide.id}`} />}>
-            <BookOpen /> How {guide.name.toLowerCase().startsWith('from') ? 'it' : 'this strategy'} works
-          </Button>
-        )}
-      </CardHeader>
-      <CardContent>
-        <ul className="space-y-2.5">
-          {insights.map((i, n) => {
-            const k = kinds[i.kind]
-            return (
-              <li key={n} className="flex gap-2.5 text-sm leading-relaxed">
-                <Badge variant="outline" title={k.title} className={cn('mt-0.5 h-5 shrink-0 gap-1 px-1.5 text-[10px]', k.className)}>
-                  {k.icon}{k.label}
-                </Badge>
-                <span>{i.text}</span>
-              </li>
-            )
-          })}
-        </ul>
-      </CardContent>
-    </Card>
+    <Collapsible title={title} summary={summary} actions={howItWorks} className={className}>
+      <div className="space-y-3 leading-relaxed">
+        <p className="text-muted-foreground">
+          {guide ? <>About this strategy: {guide.tagline} </> : null}Generated from this run&apos;s numbers only.
+        </p>
+        {paragraphs.map(({ kind, label }) => {
+          const texts = insights.filter((i) => i.kind === kind).map((i) => i.text)
+          if (texts.length === 0) return null
+          return (
+            <p key={kind} data-kind={kind} className={kind === 'caution' ? 'text-warn' : undefined}>
+              <span className="font-semibold">{label}. </span>{texts.join(' ')}
+            </p>
+          )
+        })}
+      </div>
+      {parts.map((p) => (
+        <section key={p.title} aria-label={p.title} className="mt-5 border-t pt-4">
+          <h4 className="mb-2 font-semibold">{p.title}</h4>
+          {p.content}
+        </section>
+      ))}
+    </Collapsible>
   )
+}
+
+/** Notes about a run's data as a plain list (null when there are none, so the section is left out). */
+export function DataNotesList({ items }: { items: string[] | null | undefined }) {
+  if (!items?.length) return null
+  return <ul className="list-disc space-y-0.5 pl-5 text-muted-foreground">{items.map((w) => <li key={w}>{w}</li>)}</ul>
 }

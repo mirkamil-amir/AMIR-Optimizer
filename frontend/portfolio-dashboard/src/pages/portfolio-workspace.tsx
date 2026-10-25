@@ -1,6 +1,5 @@
 import { Suspense, useEffect, useState } from 'react'
 import { Link, Navigate, Outlet, useLocation, useNavigate, useParams } from 'react-router'
-import { Archive, ArchiveRestore, ArrowLeft, FolderSearch, MoreHorizontal, Pencil, Plus, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -27,13 +26,13 @@ import { cn } from '@/lib/utils'
 /** Sections of one portfolio, in the order of the tab bar; every one stays inside `/portfolios/:id/…`. */
 const SECTIONS = [
   { path: '', label: 'Overview' },
+  { path: 'holdings', label: 'Holdings' },
   { path: 'optimize', label: 'Math Optimization' },
   { path: 'ml-optimize', label: 'ML Optimization' },
-  { path: 'holdings', label: 'Holdings' },
-  { path: 'transactions', label: 'Transactions' },
   { path: 'runs', label: 'Optimization runs' },
   { path: 'backtest', label: 'Backtest' },
   { path: 'comparison', label: 'Strategy comparison' },
+  { path: 'transactions', label: 'Transactions' },
 ] as const
 
 /** The section of the current URL inside `/portfolios/:id/…` (run and experiment pages belong to their optimization section). */
@@ -61,10 +60,9 @@ export function PortfolioWorkspace() {
     // Unknown, deleted or another user's id: the same safe answer (the server returns 404 for all of them).
     return (
       <EmptyState
-        icon={<FolderSearch className="size-8" />}
         title="Portfolio not found"
         description="It may have been deleted, or the link does not belong to your account."
-        action={<Button render={<Link to="/" />}><ArrowLeft /> My portfolios</Button>}
+        action={<Button render={<Link to="/" />}>My portfolios</Button>}
       />
     )
   }
@@ -115,11 +113,11 @@ function WorkspaceHeader({ portfolio }: { portfolio: PortfolioSummary }) {
     <section aria-label="Current portfolio" className="mb-6 space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 space-y-1">
-          <Link to="/" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="size-3" /> My portfolios</Link>
+          <Link to="/" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">My portfolios</Link>
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="heading-display truncate text-[1.8rem]">{portfolio.name}</h1>
             <Badge variant="outline" className="tabular">{ccy}</Badge>
-            {archived && <Badge variant="secondary"><Archive className="size-3" /> Archived</Badge>}
+            {archived && <Badge variant="secondary">Archived</Badge>}
             {portfolio.usesSimulatedData && <DataBadge kind="simulated" />}
           </div>
           {portfolio.description && <p className="text-sm text-muted-foreground">{portfolio.description}</p>}
@@ -141,15 +139,15 @@ function WorkspaceHeader({ portfolio }: { portfolio: PortfolioSummary }) {
               </SelectContent>
             </Select>
           )}
-          {!archived && <Button onClick={() => setRecording(true)}><Plus /> Record transaction</Button>}
+          {!archived && <Button onClick={() => setRecording(true)}>Record transaction</Button>}
           <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="outline" size="icon" aria-label="More portfolio actions" />}><MoreHorizontal /></DropdownMenuTrigger>
+            <DropdownMenuTrigger render={<Button variant="outline" aria-label="More portfolio actions" />}>More</DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuItem onClick={() => setEditing(true)}><Pencil /> Rename or describe</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate(`/research?portfolio=${portfolio.id}`)}><Sparkles /> Research for this portfolio</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setEditing(true)}>Rename or describe</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate(`/research?portfolio=${portfolio.id}`)}>Research for this portfolio</DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => (archived ? void toggleArchive() : setConfirmArchive(true))}>
-                {archived ? <><ArchiveRestore /> Restore</> : <><Archive /> Archive</>}
+                {archived ? <>Restore</> : <>Archive</>}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -282,7 +280,7 @@ export function ExperimentRedirect() {
   const { portfolioId, isLoading } = usePortfolioContext()
   if (experiment.error) {
     return (
-      <EmptyState icon={<FolderSearch className="size-8" />} title="ML experiment not found"
+      <EmptyState title="ML experiment not found"
         description="It may have been deleted, or the link does not belong to your account."
         action={<Button render={<Link to="/ml-optimize" />}>ML Optimization</Button>} />
     )
@@ -298,7 +296,7 @@ export function RunRedirect() {
   const run = useRun(runId)
   if (run.error) {
     return (
-      <EmptyState icon={<FolderSearch className="size-8" />} title="Optimization run not found"
+      <EmptyState title="Optimization run not found"
         description="It may have been deleted with its portfolio, or the link does not belong to your account."
         action={<Button render={<Link to="/history" />}>Optimization history</Button>} />
     )

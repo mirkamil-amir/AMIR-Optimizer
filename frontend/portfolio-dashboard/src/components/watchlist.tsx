@@ -1,4 +1,4 @@
-import { Eye, EyeOff, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { ChartCard, TimeSeriesChart, timeSeriesTable } from '@/components/charts'
@@ -94,14 +94,14 @@ export function WatchToggle({ symbol, size = 'sm' }: { symbol: string; size?: 's
   const label = watched ? `Remove ${symbol} from watchlist` : `Add ${symbol} to watchlist`
   if (size === 'icon-xs') {
     return (
-      <Button size="icon-xs" variant="ghost" onClick={run} disabled={busy} aria-label={label} title={label} aria-pressed={watched}>
-        {busy ? <Loader2 className="animate-spin" /> : watched ? <EyeOff /> : <Eye />}
+      <Button size="xs" variant="ghost" onClick={run} disabled={busy} aria-label={label} title={label} aria-pressed={watched}>
+        {busy ? <Loader2 className="animate-spin" /> : watched ? 'Unwatch' : 'Watch'}
       </Button>
     )
   }
   return (
     <Button size="sm" variant="outline" onClick={run} disabled={busy} aria-pressed={watched}>
-      {busy ? <Loader2 className="animate-spin" /> : watched ? <EyeOff /> : <Eye />}
+      {busy && <Loader2 className="animate-spin" />}
       {watched ? 'Unwatch' : 'Watch'}
     </Button>
   )

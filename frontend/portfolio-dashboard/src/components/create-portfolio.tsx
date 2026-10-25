@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
-import { Loader2, Plus } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -139,7 +139,7 @@ export function CreatePortfolioPanel() {
               <p className="text-xs text-muted-foreground">Stocks in {foreign.join(', ')} are valued in {currency} with dated reference rates.</p>
             )}
             <Button type="submit" className="w-full" disabled={create.isPending}>
-              {create.isPending ? <Loader2 className="animate-spin" /> : <Plus />} Create portfolio
+              {create.isPending && <Loader2 className="animate-spin" />} Create portfolio
             </Button>
           </div>
         </form>

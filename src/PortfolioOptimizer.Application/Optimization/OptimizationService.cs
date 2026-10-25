@@ -245,6 +245,19 @@ public sealed class OptimizationService(
 
     public async Task<IReadOnlyList<AllocationDto>> GetAllocationAsync(Guid runId, CancellationToken ct) => (await GetAsync(runId, ct)).Allocation;
 
+    /// <summary>
+    /// Deletes one Math Optimization of an active portfolio of the current user (another user's run → 404, archived portfolio →
+    /// business-rule error). Its weights go with it; trade proposals made from it stay but lose the link, backtests and comparisons keep
+    /// their frozen copy of its settings, and holdings and transactions never change.
+    /// </summary>
+    public async Task DeleteAsync(Guid runId, CancellationToken ct)
+    {
+        var run = await LoadRunAsync(runId, ct);
+        var portfolio = await portfolios.LoadAsync(run.PortfolioId, ct);
+        portfolio.EnsureActive();
+        await db.OptimizationRuns.Where(r => r.Id == runId && r.OwnerId == run.OwnerId).ExecuteDeleteAsync(ct);
+    }
+
     /// <summary>Loads one of the current user's runs; runs of other users are reported as not found.</summary>
     public async Task<OptimizationRun> LoadRunAsync(Guid runId, CancellationToken ct)
     {

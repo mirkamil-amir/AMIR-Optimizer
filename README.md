@@ -136,7 +136,7 @@ figures Geist (both bundled with the app). Details: [portfolios.md](docs/portfol
 2. **Portfolio Creation (stock selection).** Navigate market → index → sector, search by company or ticker, sort. Every sign-in starts a
    shared background price refresh for all markets; the page shows cached prices immediately and refreshes the visible
    ones. Each price shows its currency, kind (*Delayed quote* / *Last close*, never "live"), when it applies, when it was
-   retrieved and whether it is cached, stale or SIMULATED; a refresh icon updates a single stock. Select stocks across
+   retrieved and whether it is cached, stale or SIMULATED; a Refresh button updates a single stock. Select stocks across
    sectors – the selection lives **only in browser memory** (not saved, survives navigation, discarded on reload or
    sign-out). Fetch price history for selected stocks from the selection tray. Stocks of different currencies can be
    combined (converted into the portfolio currency). When an analysis would miss stored prices or exchange rates, a window

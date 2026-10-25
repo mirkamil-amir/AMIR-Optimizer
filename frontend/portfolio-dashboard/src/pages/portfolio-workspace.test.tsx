@@ -66,7 +66,7 @@ describe('portfolio workspace', () => {
     const nav = await screen.findByRole('navigation', { name: 'Portfolio sections' })
     const links = within(nav).getAllByRole('link')
     expect(links.map((l) => l.textContent)).toEqual([
-      'Overview', 'Math Optimization', 'ML Optimization', 'Holdings', 'Transactions', 'Optimization runs', 'Backtest', 'Strategy comparison',
+      'Overview', 'Holdings', 'Math Optimization', 'ML Optimization', 'Optimization runs', 'Backtest', 'Strategy comparison', 'Transactions',
     ])
     for (const link of links) expect(link.getAttribute('href')).toMatch(/^\/portfolios\/a(\/|$)/)
     expect(within(nav).getByRole('link', { name: 'Optimization runs' })).toHaveAttribute('href', '/portfolios/a/runs')

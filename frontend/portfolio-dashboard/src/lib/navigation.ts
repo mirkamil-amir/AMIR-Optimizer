@@ -1,8 +1,3 @@
-import {
-  Activity, BookOpen, BrainCircuit, Database, Eye, Gauge, GitCompareArrows, GraduationCap, LayoutDashboard, ListChecks, Newspaper,
-  Plus, Search, Settings, ShieldCheck, Sigma, Sparkles, Users,
-} from 'lucide-react'
-
 /**
  * The single navigation model of the application shell. Primary destinations form the top bar; the Optimizer
  * workspace's sections and the administration area form the left sidebar. Routes are defined in `main.tsx`; this file
@@ -12,7 +7,6 @@ import {
 export interface NavEntry {
   to: string
   label: string
-  icon: typeof Search
   /** `to` matches only the exact path (needed for `/`); `match` prefixes still apply. */
   end?: boolean
   /** Further path prefixes that belong to this entry (e.g. detail pages reached from it); `*` matches one path segment. */
@@ -31,26 +25,26 @@ export const optimizerSections: NavSection[] = [
     title: 'Portfolios',
     items: [
       // The overview lists all of the user's portfolios; each portfolio's workspace (/portfolios/:id/…) belongs to it.
-      { to: '/', label: 'Portfolios Overview', icon: LayoutDashboard, end: true, match: ['/portfolios'] },
-      { to: '/stocks', label: 'Portfolio Creation', icon: Plus },
+      { to: '/', label: 'Portfolios Overview', end: true, match: ['/portfolios'] },
+      { to: '/stocks', label: 'Portfolio Creation' },
     ],
   },
   {
     title: 'Optimize',
     items: [
       // Opens the optimizer of the most recently opened portfolio; inside a workspace its own optimizer is highlighted.
-      { to: '/optimize', label: 'Math Optimization', icon: Sigma, match: ['/portfolios/*/optimize'] },
+      { to: '/optimize', label: 'Math Optimization', match: ['/portfolios/*/optimize'] },
       // Like Math Optimization: the ML Optimization of the current portfolio (earlier /machine-learning URLs redirect).
-      { to: '/ml-optimize', label: 'ML Optimization', icon: BrainCircuit, match: ['/portfolios/*/ml-optimize', '/machine-learning'] },
-      { to: '/history', label: 'Optimization history', icon: ListChecks, match: ['/reality-check', '/portfolios/*/runs'] },
+      { to: '/ml-optimize', label: 'ML Optimization', match: ['/portfolios/*/ml-optimize', '/machine-learning'] },
+      { to: '/history', label: 'Optimization history', match: ['/reality-check', '/portfolios/*/runs'] },
     ],
   },
   {
     title: 'Test & compare',
     items: [
       // All of the user's backtests and comparisons; a portfolio's own tabs (/portfolios/:id/backtest, …/comparison) belong here too.
-      { to: '/backtest', label: 'Backtest', icon: Gauge, match: ['/portfolios/*/backtest'] },
-      { to: '/strategy-comparison', label: 'Strategy comparison', icon: GitCompareArrows, match: ['/portfolios/*/comparison'] },
+      { to: '/backtest', label: 'Backtest', match: ['/portfolios/*/backtest'] },
+      { to: '/strategy-comparison', label: 'Strategy comparison', match: ['/portfolios/*/comparison'] },
     ],
   },
 ]
@@ -59,9 +53,9 @@ export const optimizerSections: NavSection[] = [
 export const adminSection: NavSection = {
   title: 'Administration',
   items: [
-    { to: '/admin', label: 'Admin overview', icon: Activity, end: true },
-    { to: '/admin/users', label: 'Users', icon: Users },
-    { to: '/admin/settings', label: 'Admin settings', icon: ShieldCheck },
+    { to: '/admin', label: 'Admin overview', end: true },
+    { to: '/admin/users', label: 'Users' },
+    { to: '/admin/settings', label: 'Admin settings' },
   ],
 }
 
@@ -70,18 +64,18 @@ const optimizerEntries = optimizerSections.flatMap((s) => s.items)
 /** Top navigation, in this order. Optimizer owns every route of its sidebar sections. */
 export const primaryNav: PrimaryEntry[] = [
   {
-    id: 'optimizer', to: '/', label: 'Optimizer', icon: Sigma, end: true,
+    id: 'optimizer', to: '/', label: 'Optimizer', end: true,
     // Earlier portfolio-less URLs (/holdings, /trades, /analytics) redirect into a portfolio workspace.
     match: [...optimizerEntries.flatMap((e) => [...(e.end ? [] : [e.to]), ...(e.match ?? [])]), '/holdings', '/trades', '/analytics'],
   },
-  { id: 'research', to: '/research', label: 'AI Research', icon: Sparkles },
-  { id: 'news', to: '/news', label: 'Financial News', icon: Newspaper },
-  { id: 'watchlist', to: '/watchlist', label: 'Watchlist', icon: Eye },
-  { id: 'market-data', to: '/market-data', label: 'Market Data', icon: Database },
+  { id: 'research', to: '/research', label: 'AI Research' },
+  { id: 'news', to: '/news', label: 'Financial News' },
+  { id: 'watchlist', to: '/watchlist', label: 'Watchlist' },
+  { id: 'market-data', to: '/market-data', label: 'Market Data' },
   // Strategy pages (/learn/:strategyId) belong to the guide; the longer /learn/glossary wins for the glossary.
-  { id: 'strategy-guide', to: '/learn', label: 'Strategy Guide', icon: GraduationCap },
-  { id: 'glossary', to: '/learn/glossary', label: 'Glossary', icon: BookOpen },
-  { id: 'settings', to: '/settings', label: 'Settings', icon: Settings },
+  { id: 'strategy-guide', to: '/learn', label: 'Strategy Guide' },
+  { id: 'glossary', to: '/learn/glossary', label: 'Glossary' },
+  { id: 'settings', to: '/settings', label: 'Settings' },
 ]
 
 /** Sidebar sections for the current user: Optimizer sections, plus Administration for administrators. */

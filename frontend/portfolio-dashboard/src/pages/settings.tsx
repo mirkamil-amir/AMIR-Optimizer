@@ -4,7 +4,6 @@ import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { Plus } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -208,7 +207,7 @@ function PortfoliosCard() {
       </CardHeader>
       <CardContent className="flex flex-wrap gap-2">
         <Button render={<Link to="/" />}>My portfolios</Button>
-        <Button variant="outline" render={<Link to="/stocks" />}><Plus /> Portfolio Creation</Button>
+        <Button variant="outline" render={<Link to="/stocks" />}>Portfolio Creation</Button>
       </CardContent>
     </Card>
   )

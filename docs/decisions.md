@@ -21,8 +21,30 @@ is collected at the end (Holdings likewise). Math and ML Optimization: the form 
 (the portfolio's total value today) and Holdings · cash before expected return. **Optimization history** (formerly Run
 history) sits above the form on both pages; choosing a run scrolls its results into view. Math Optimization adds views of
 the stored run (`lib/run-charts.ts`, no new estimates): weight vs equal weight, weight by sector, expected return and
-volatility per stock (in-sample) and the in-sample drawdown next to the in-sample cumulative return. The allocation table sits between the donut and the two weight charts. The workspace header keeps only name, currency, badges, description and
-actions; its figures live in the Value row and the valuation date beside the Value title, above the Holdings card.
+volatility per stock (in-sample) and the in-sample drawdown next to the in-sample cumulative return. The allocation table sits between the donut and the two weight charts.
+Both pages: the trade proposal sits right under the key figures; the page ends with ONE folded box "What your result
+means" (`StrategyInsights` with `sections`): the interpretation first – statements grouped into one paragraph per kind,
+named in plain text ("Calculated from the data", "Estimates", "What it means", "Keep in mind") instead of badges, so every
+statement stays labelled – then **Inputs & methodology** (how the run was set up and computed; ML: disclaimer, setup,
+model versions, eligibility) and **Data notes** (only data problems; left out when there are none). The strategy comparison
+uses the same paragraphs. ML Explainability has one folded box for the model's features and the per-prediction drivers
+(`lib/ml-features.ts`: meaning, how to read it, why a model may use it – labelled a hypothesis – plus the catalogue formula);
+a unit test keeps it in sync with `FeatureCatalog.cs`. The workspace header keeps only name, currency, badges, description and
+actions; its figures live in the Value row and the valuation date beside the Value title, above the Holdings card. The Holdings
+tab follows the Overview (before Math and ML Optimization); its currency exposure, search, sector filter and table use the
+same 82 % card surface as its key figures.
+Transactions is the last tab; its Executions, Orders and Cash ledger sub-tabs sit on the same card as Recorded. Optimization
+runs: no pages – the latest runs scroll inside each list (about ten visible) with search and filters. Backtest: no
+"Hypothetical results" banner (the caveat is in the title tip and in each result's folded "Data notes & methodology" box,
+together with the data notes, the simulated settings and the methodology); the optimization is picked from an inline list
+of all the portfolio's optimizations instead of a window; the custom-strategy form was removed – a backtest is always of a
+stored optimization, so its settings are the ones that were optimized, compared and proposed (the API endpoint for ad-hoc
+settings stays for scripts and tests). The duplicate settings line under a backtest's name was removed.
+No decorative icons (the owner found them childish): buttons, navigation, badges, alerts, empty states and toasts are
+text only; icon-only controls became text buttons (Table/Chart, Swap, Watch, Refresh, Show, More, theme name). Icons remain
+only where they are the control itself: fold arrows, sort arrows, pager arrows, close/remove ×, the phone menu, loading
+spinners and the delete bin. Explanations (`InfoTip`) have no ⓘ either: the title or label they explain is the trigger, marked
+by a dotted underline (hover or keyboard focus); where no label fits, a small "About" text is. Math and ML Optimizations can be deleted from the Optimization runs tab (bin + confirmation).
 
 ## D-39 Typography and readability over the map (2026-10-24)
 **Context:** text placed directly on the background map (e.g. the market list of Portfolio Creation) became hard to read

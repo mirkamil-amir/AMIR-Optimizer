@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
-import { ArrowRight, CircleCheck, Sigma } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -80,7 +79,7 @@ export function OverviewPage() {
               <Button key={r.key} size="sm" variant={range === r.key ? 'secondary' : 'ghost'} aria-pressed={range === r.key} onClick={() => setRange(r.key)}>{r.key}</Button>
             ))}
           </div>
-          <Button render={<Link to={portfolioPath(id, 'optimize')} />}><Sigma /> Optimize</Button>
+          <Button render={<Link to={portfolioPath(id, 'optimize')} />}>Optimize</Button>
         </div>
       </div>
       {created && <NextSteps id={id} />}
@@ -154,7 +153,7 @@ export function OverviewPage() {
                     description={hasHoldings
                       ? 'Realized performance accumulates with each new daily close after your first simulated execution. Meanwhile, see the in-sample comparison in the optimizer or run a backtest.'
                       : 'Optimize the portfolio and confirm the simulated purchases, or record your own transactions, to start tracking performance.'}
-                    action={<Button variant="outline" render={<Link to={portfolioPath(id, hasHoldings ? 'backtest' : 'optimize')} />}>{hasHoldings ? 'Run a backtest' : 'Go to optimizer'} <ArrowRight /></Button>}
+                    action={<Button variant="outline" render={<Link to={portfolioPath(id, hasHoldings ? 'backtest' : 'optimize')} />}>{hasHoldings ? 'Run a backtest' : 'Go to optimizer'} </Button>}
                   />
                 </CardContent>
               </Card>
@@ -214,7 +213,7 @@ export function OverviewPage() {
             <CardHeader><CardTitle className="text-sm">Efficient frontier</CardTitle></CardHeader>
             <CardContent>
               <EmptyState title="No successful Math Optimization yet" description="The frontier of the latest successful Math Optimization of this portfolio appears here."
-                action={<Button render={<Link to={portfolioPath(id, 'optimize')} />}><Sigma /> Optimize</Button>} />
+                action={<Button render={<Link to={portfolioPath(id, 'optimize')} />}>Optimize</Button>} />
             </CardContent>
           </Card>
         )}
@@ -377,7 +376,7 @@ export function OverviewPage() {
 function NextSteps({ id }: { id: string }) {
   return (
     <section aria-label="Next steps" className="mb-5 rounded-xl border border-primary/30 bg-primary/5 p-4">
-      <h3 className="flex items-center gap-2 text-sm font-semibold"><CircleCheck className="size-4 text-gain" /> Portfolio created – it holds only simulated cash so far</h3>
+      <h3 className="flex items-center gap-2 text-sm font-semibold">Portfolio created – it holds only simulated cash so far</h3>
       <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
         <li><Link className="underline underline-offset-4" to={portfolioPath(id, 'optimize')}>Run an optimization</Link> on the stocks you chose, then review and confirm the simulated purchases.</li>
         <li>Or record your own buys, deposits and dividends with <span className="font-medium text-foreground">Record transaction</span> above.</li>

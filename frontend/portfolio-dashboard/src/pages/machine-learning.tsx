@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
-import { AlertTriangle, ArrowRight, BrainCircuit, FileText, Loader2, Play } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -15,11 +15,12 @@ import { Switch } from '@/components/ui/switch'
 import { AllocationDonut, ChartCard, TimeSeriesChart, seriesColor, timeSeriesTable } from '@/components/charts'
 import { CalibrationChart, SignedBarChart } from '@/components/analysis-charts'
 import { DataTable, Pager, type Column } from '@/components/data-table'
-import { DataBadge, EmptyState, ErrorState, InfoTip, LoadingBlock, MetricCard, PageHeader, ResultSection, SectionTitle, Warnings } from '@/components/common'
+import { Collapsible, DataBadge, EmptyState, ErrorState, InfoTip, LoadingBlock, MetricCard, PageHeader, ResultSection, SectionTitle, Warnings } from '@/components/common'
+import { featureMeanings } from '@/lib/ml-features'
 import { UniverseField } from '@/components/universe-field'
 import { TradeProposalView } from '@/components/proposal'
 import { PerformanceTable } from '@/components/performance-table'
-import { StrategyInsights } from '@/components/strategy-insights'
+import { DataNotesList, StrategyInsights } from '@/components/strategy-insights'
 import { interpretMlExperiment } from '@/lib/interpretation'
 import { guideForModel } from '@/lib/strategy-guide'
 import { errorMessage } from '@/lib/api'
@@ -72,7 +73,7 @@ export function MlOptimizePage() {
         </div>
         <div className="min-w-0 scroll-mt-4" id="optimization-results">
           {activeId ? <ExperimentResults id={activeId} portfolioId={portfolioId!} /> : list.isLoading ? <LoadingBlock height="h-96" /> : (
-            <EmptyState icon={<BrainCircuit className="size-8" />} title="No ML optimization yet"
+            <EmptyState title="No ML optimization yet"
               description="Configure the model on the left and click Run ML optimization." />
           )}
         </div>
@@ -265,7 +266,7 @@ function NewExperimentForm({ catalog, portfolio }: { catalog: MlCatalog; portfol
         </details>
 
         <Button className="w-full" onClick={submit} disabled={create.isPending || missingData.checking || universe.length < 5}>
-          {create.isPending || missingData.checking ? <Loader2 className="animate-spin" /> : <Play />} {create.isPending ? 'Starting…' : 'Run ML optimization'}
+          {create.isPending || missingData.checking && <Loader2 className="animate-spin" />} {create.isPending ? 'Starting…' : 'Run ML optimization'}
         </Button>
         {missingData.dialog}
         {universe.length > 0 && universe.length < 5 && <p className="text-xs text-warn">Select at least 5 stocks.</p>}
@@ -277,7 +278,7 @@ function NewExperimentForm({ catalog, portfolio }: { catalog: MlCatalog; portfol
 function Field({ label, hint, children }: { label: string; hint?: ReactNode; children: ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <Label className="flex items-center gap-1 text-xs">{label}{hint && <InfoTip>{hint}</InfoTip>}</Label>
+      <Label className="flex items-center gap-1 text-xs"><InfoTip of={label}>{hint}</InfoTip></Label>
       {children}
     </div>
   )
@@ -289,7 +290,7 @@ function NumberField({ label, value, onChange, min, max, step, hint, optional }:
   const id = label.replace(/\W+/g, '-').toLowerCase()
   return (
     <div className="space-y-1.5">
-      <Label htmlFor={id} className="flex items-center gap-1 text-xs">{label}{hint && <InfoTip>{hint}</InfoTip>}</Label>
+      <Label htmlFor={id} className="flex items-center gap-1 text-xs"><InfoTip of={label}>{hint}</InfoTip></Label>
       <Input id={id} type="number" value={value} min={min} max={max} step={step ?? 1} placeholder={optional ? 'None' : undefined}
         onChange={(e) => onChange(e.target.value === '' ? NaN : Number(e.target.value))} />
     </div>
@@ -380,20 +381,19 @@ function ExperimentResults({ id, portfolioId }: { id: string; portfolioId: strin
         </div>
       )}
       {s.status === 'Failed' && (
-        <Alert variant="destructive"><AlertTriangle /><AlertTitle>The ML optimization did not complete</AlertTitle><AlertDescription>{s.error}</AlertDescription></Alert>
+        <Alert variant="destructive"><AlertTitle>The ML optimization did not complete</AlertTitle><AlertDescription>{s.error}</AlertDescription></Alert>
       )}
 
       {ok && <HeadlineMetrics e={e} />}
+      {/* Next step right under the key figures, as on Math Optimization. */}
+      {ok && <MlTradeProposal e={e} portfolioId={portfolioId} />}
       {/* Every result is visible at once (no tabs); the same section order as Math Optimization. */}
       {ok && <ResultSection title="Allocation" hint={<AllocationBasis e={e} />}><AllocationSection e={e} /></ResultSection>}
       {ok && <ResultSection title="Validation & test" hint={e.results!.validationMethodology}><EvaluationSection e={e} /></ResultSection>}
       {ok && <ResultSection title="Walk-forward backtest (test period)"><BacktestSection id={id} /></ResultSection>}
       {ok && <ResultSection title="Explainability"><ExplainSection e={e} /></ResultSection>}
-      {ok && <ResultSection title="Inputs & methodology" collapsible><SetupSection e={e} /></ResultSection>}
-      {ok && <MlTradeProposal e={e} portfolioId={portfolioId} />}
-      <Warnings items={e.warnings} title="Data and methodology notes" collapsible />
-      <p className="text-[11px] text-muted-foreground">{e.disclaimer}</p>
-      {ok && <MlInsights e={e} />}
+      {/* One reference box, last: what the numbers mean → how the run was computed → notes about its data. */}
+      {ok ? <MlInsights e={e} /> : e.warnings.length > 0 && <Warnings items={e.warnings} title="Data notes" collapsible />}
     </div>
   )
 }
@@ -434,7 +434,7 @@ function MlTradeProposal({ e, portfolioId }: { e: MlExperiment; portfolioId: str
     <Card>
       <CardHeader className="flex flex-row items-center justify-between gap-2">
         <div>
-          <CardTitle className="flex items-center gap-2 text-sm"><FileText className="size-4" /> Trade proposal</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-sm">Trade proposal</CardTitle>
           <CardDescription className="text-xs">Translate the ML target weights into whole-share orders for “{portfolio?.name ?? 'this portfolio'}” at the latest stored prices, after costs. Nothing is executed until you confirm.</CardDescription>
         </div>
         <Button variant={proposal ? 'outline' : 'default'} disabled={preview.isPending || Object.keys(weights).length === 0} onClick={async () => {
@@ -444,7 +444,7 @@ function MlTradeProposal({ e, portfolioId }: { e: MlExperiment; portfolioId: str
             toast.error('Could not create trade proposal', { description: errorMessage(err) })
           }
         }}>
-          {preview.isPending ? <Loader2 className="animate-spin" /> : <ArrowRight />}
+          {preview.isPending && <Loader2 className="animate-spin" />}
           {proposal ? 'Recalculate' : 'Create trade proposal'}
         </Button>
       </CardHeader>
@@ -483,10 +483,18 @@ function ExperimentPortfolio({ id, experimentPortfolioId, currency, portfolioId 
   )
 }
 
-/** Interpretation of this experiment's own numbers (test metrics, portfolio, backtest) with a link to the model guide. */
+/**
+ * The page's one reference box: interpretation of this experiment's own numbers (test metrics, portfolio, backtest), then its
+ * inputs & methodology and its data notes, with a link to the model guide.
+ */
 function MlInsights({ e }: { e: MlExperiment }) {
   const bt = useMlBacktest(e.summary.id, !!e.results)
-  return <StrategyInsights insights={interpretMlExperiment(e, bt.data)} guideId={guideForModel(e.configuration.modelFamily)} collapsible />
+  return (
+    <StrategyInsights insights={interpretMlExperiment(e, bt.data)} guideId={guideForModel(e.configuration.modelFamily)} sections={[
+      { title: 'Inputs & methodology', content: <SetupSection e={e} /> },
+      { title: 'Data notes', content: e.warnings.length ? <DataNotesList items={e.warnings} /> : null },
+    ]} />
+  )
 }
 
 const f3 = (v: number | null | undefined) => (v === null || v === undefined ? '—' : num(v, 3))
@@ -725,11 +733,47 @@ function ExplainSection({ e }: { e: MlExperiment }) {
         <SignedBarChart items={native.values.map((v) => ({ name: v.name, value: v.value }))} signed={signed} format={(v) => (signed ? v.toPrecision(2) : pct(v, 0))} />
         <p className="mt-2 text-xs text-muted-foreground">{native.interpretation}</p>
       </ChartCard>
-      <Card className="lg:col-span-2"><CardContent className="py-4 text-sm">
-        <SectionTitle>Per-prediction drivers</SectionTitle>
-        <p className="text-muted-foreground">{r.contributionMethod} Drivers for each stock are listed in the predictions table. They describe what the model associates with its output, not why prices move.</p>
-      </CardContent></Card>
+      <FeatureGuide names={r.featureNames} contributionMethod={r.contributionMethod} />
     </div>
+  )
+}
+
+/**
+ * The features of this model – what each measures, how to read it and why a model may use it (the names in the charts
+ * above) – and how they become the per-prediction drivers of the predictions table, in one folded box.
+ */
+function FeatureGuide({ names, contributionMethod }: { names: string[]; contributionMethod: string }) {
+  const catalog = useMlCatalog()
+  const formula = new Map((catalog.data?.features ?? []).map((f) => [f.name, f]))
+  return (
+    // Folded like the reference cards: 20 explanations would otherwise push the rest of the page far down.
+    <Collapsible className="lg:col-span-2" title={`What the ${names.length} features mean`} summary="plain-language guide · per-prediction drivers"
+      hint={`Feature set ${catalog.data?.featureSetVersion ?? ''}. Every value uses only prices up to the decision date. "Why" is a common hypothesis, not a result of this model – the test metrics and the importance charts show whether a feature helped here.`}>
+      <p className="mb-2 text-muted-foreground">
+        <span className="font-medium text-foreground">Per-prediction drivers. </span>{contributionMethod} Each stock&apos;s main drivers are listed in the
+        predictions table above. They describe what the model associates with its output, not why prices move.
+      </p>
+      <ul className="divide-y border-t" aria-label="Features of this model">
+        {names.map((name) => {
+          const m = featureMeanings[name]
+          const f = formula.get(name)
+          return (
+            <li key={name} className="grid gap-1 py-2.5 md:grid-cols-[14rem_minmax(0,1fr)] md:gap-4">
+              <div>
+                <div className="font-medium">{m?.label ?? name}</div>
+                <code className="text-xs text-muted-foreground">{name}</code>
+                {f && <div className="text-xs text-muted-foreground">{f.windowDays}-day window · {f.group.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase()}</div>}
+              </div>
+              <div className="space-y-0.5">
+                {m && <p>{m.meaning} <span className="text-muted-foreground">{m.reading}</span></p>}
+                {m && <p className="text-muted-foreground"><span className="font-medium text-foreground">Why a model may use it: </span>{m.why}</p>}
+                {f && <p className="text-xs text-muted-foreground">Formula: {f.definition}</p>}
+              </div>
+            </li>
+          )
+        })}
+      </ul>
+    </Collapsible>
   )
 }
 
@@ -743,7 +787,7 @@ function BacktestSection({ id }: { id: string }) {
   const dd = names.map((n, i) => ({ name: n, values: bt.data.drawdowns[n], color: colors[i] }))
   return (
     <>
-      <Alert><AlertTriangle /><AlertTitle>Hypothetical walk-forward backtest</AlertTitle><AlertDescription>{bt.data.methodology}</AlertDescription></Alert>
+      <Alert><AlertTitle>Hypothetical walk-forward backtest</AlertTitle><AlertDescription>{bt.data.methodology}</AlertDescription></Alert>
       <ChartCard title="Cumulative return (test period)" legend={series.map((s) => ({ name: s.name, color: s.color }))} table={timeSeriesTable(bt.data.dates, series, (v) => pct(v))}>
         <TimeSeriesChart dates={bt.data.dates} series={series} format={(v) => pct(v, 0)} zeroLine />
       </ChartCard>
@@ -771,7 +815,8 @@ function BacktestSection({ id }: { id: string }) {
 function SetupSection({ e }: { e: MlExperiment }) {
   const r = e.results!
   return (
-    <>
+    <div className="space-y-4">
+      <p className="leading-relaxed text-muted-foreground">{e.disclaimer}</p>
       <Card><CardContent className="grid gap-3 py-4 text-sm sm:grid-cols-2">
         <Info label="Feature set" value={`${e.featureSetVersion} · ${r.featureNames.length} features`} />
         <Info label="Selected hyperparameters" value={Object.entries(r.selectedHyperparameters).map(([k, v]) => `${k}=${v}`).join(', ')} />
@@ -779,7 +824,6 @@ function SetupSection({ e }: { e: MlExperiment }) {
         <Info label="Samples" value={`${num(r.totalSamples, 0)} total · ${num(r.droppedSamples, 0)} dropped for missing features`} />
         <Info label="Duration" value={e.durationMs ? `${num(e.durationMs / 1000, 1)} s` : '—'} />
         <Info label="Universe" value={e.symbols.join(', ')} />
-        <Info label="Features" value={r.featureNames.join(', ')} />
       </CardContent></Card>
       <Card><CardContent className="py-4">
         <SectionTitle hint="Artifacts are stored outside the database and verified by SHA-256 before loading. The evaluation model produced the out-of-sample metrics; the deployment model (all realized labels) produces current predictions.">Model versions</SectionTitle>
@@ -792,7 +836,7 @@ function SetupSection({ e }: { e: MlExperiment }) {
         </table>
       </CardContent></Card>
       {r.eligibility && r.eligibility.length > 0 && <EligibilityTable rows={r.eligibility} />}
-    </>
+    </div>
   )
 }
 

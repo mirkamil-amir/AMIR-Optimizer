@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
-import { ChevronDown, ChevronRight, RefreshCcw } from 'lucide-react'
+import { ChevronDown, ChevronRight } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -44,7 +44,7 @@ export function TradesPage() {
             Recorded transactions, trade proposals, simulated orders, executions and the cash ledger. Append-only: corrections are new entries.
           </p>
         </div>
-        {!archived && <Button variant="outline" onClick={onRebalance} disabled={rebalance.isPending}><RefreshCcw /> Rebalance to latest run</Button>}
+        {!archived && <Button variant="outline" onClick={onRebalance} disabled={rebalance.isPending}>Rebalance to latest run</Button>}
       </div>
       <Tabs value={tab} onValueChange={(v) => setTab(String(v))}>
         <TabsList className="nav-scroll max-w-full overflow-x-auto">
@@ -71,7 +71,7 @@ function Proposals({ currency }: { currency: string }) {
   if (isLoading) return <LoadingBlock />
   if (error) return <ErrorState error={error} />
   if (!data || data.items.length === 0)
-    return <EmptyState title="No trade proposals" description="Run an optimization and create a trade proposal, or rebalance to the latest run." />
+    return <TabCard><EmptyState title="No trade proposals" description="Run an optimization and create a trade proposal, or rebalance to the latest run." /></TabCard>
   const expanded = open ?? data.items.find((p) => p.status === 'Pending')?.id ?? null
   return (
     <div className="space-y-2">
@@ -107,7 +107,7 @@ function Transactions({ currency }: { currency: string }) {
   if (isLoading) return <LoadingBlock />
   if (error) return <ErrorState error={error} />
   return (
-    <>
+    <TabCard>
       <DataTable
         caption="Simulated executions"
         rows={data?.items ?? []}
@@ -134,7 +134,7 @@ function Transactions({ currency }: { currency: string }) {
         ]}
       />
       {data && <Pager page={page} totalPages={data.totalPages} onChange={setPage} />}
-    </>
+    </TabCard>
   )
 }
 
@@ -145,7 +145,7 @@ function Orders({ currency }: { currency: string }) {
   if (isLoading) return <LoadingBlock />
   if (error) return <ErrorState error={error} />
   return (
-    <>
+    <TabCard>
       <DataTable
         caption="Simulated orders"
         rows={data?.items ?? []}
@@ -163,7 +163,7 @@ function Orders({ currency }: { currency: string }) {
         ]}
       />
       {data && <Pager page={page} totalPages={data.totalPages} onChange={setPage} />}
-    </>
+    </TabCard>
   )
 }
 
@@ -174,7 +174,7 @@ function Cash({ currency }: { currency: string }) {
   if (isLoading) return <LoadingBlock />
   if (error) return <ErrorState error={error} />
   return (
-    <>
+    <TabCard>
       <DataTable
         caption="Cash ledger"
         rows={data?.items ?? []}
@@ -188,8 +188,13 @@ function Cash({ currency }: { currency: string }) {
         ]}
       />
       {data && <Pager page={page} totalPages={data.totalPages} onChange={setPage} />}
-    </>
+    </TabCard>
   )
+}
+
+/** The surface of every sub-tab: the same translucent card as the key figures elsewhere. */
+function TabCard({ children }: { children: ReactNode }) {
+  return <Card className="py-4"><CardContent className="space-y-3 px-4">{children}</CardContent></Card>
 }
 
 const REVERSIBLE = new Set(['Deposit', 'Withdrawal', 'Dividend', 'Fee'])

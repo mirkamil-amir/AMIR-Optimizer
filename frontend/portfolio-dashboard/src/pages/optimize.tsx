@@ -4,7 +4,7 @@ import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { AlertTriangle, ArrowRight, Download, FileText, Loader2, Play, ShieldCheck } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -23,7 +23,7 @@ import { GroupedBarChart, groupedBarTable } from '@/components/analysis-charts'
 import { drawdownFromCumulative, equalWeight, weightsBySector } from '@/lib/run-charts'
 import { DataBadge, EmptyState, ErrorState, InfoTip, LoadingBlock, MetricCard, PageHeader, ResultSection } from '@/components/common'
 import { TradeProposalView } from '@/components/proposal'
-import { StrategyInsights } from '@/components/strategy-insights'
+import { DataNotesList, StrategyInsights } from '@/components/strategy-insights'
 import { interpretOptimization } from '@/lib/interpretation'
 import { guideForObjective } from '@/lib/strategy-guide'
 import { errorMessage } from '@/lib/api'
@@ -261,7 +261,7 @@ function ConfigFormInner({ portfolio: portfolioData, assets: assetList }: { port
                     }
                   }}
                 >
-                  {fetchPrices.isPending ? <Loader2 className="animate-spin" /> : <Download />} Fetch prices
+                  {fetchPrices.isPending && <Loader2 className="animate-spin" />} Fetch prices
                 </Button>
               </div>
             )}
@@ -361,7 +361,7 @@ function ConfigFormInner({ portfolio: portfolioData, assets: assetList }: { port
           )}
 
           <Button type="submit" className="w-full" disabled={runMutation.isPending || missingData.checking}>
-            {runMutation.isPending || missingData.checking ? <Loader2 className="animate-spin" /> : <Play />}
+            {runMutation.isPending || missingData.checking && <Loader2 className="animate-spin" />}
             {runMutation.isPending ? 'Optimizing…' : 'Run optimization'}
           </Button>
           <p className="text-[11px] text-muted-foreground">Saves these settings to the portfolio and stores the run for reproducibility.</p>
@@ -375,7 +375,7 @@ function ConfigFormInner({ portfolio: portfolioData, assets: assetList }: { port
 function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <Label className="flex items-center gap-1 text-xs">{label}{hint && <InfoTip>{hint}</InfoTip>}</Label>
+      <Label className="flex items-center gap-1 text-xs"><InfoTip of={label}>{hint}</InfoTip></Label>
       {children}
     </div>
   )
@@ -385,7 +385,7 @@ function NumField({ label, hint, error, ...props }: { label: string; hint?: stri
   const id = `f-${props.name}`
   return (
     <div className="space-y-1.5">
-      <Label htmlFor={id} className="flex items-center gap-1 text-xs">{label}{hint && <InfoTip>{hint}</InfoTip>}</Label>
+      <Label htmlFor={id} className="flex items-center gap-1 text-xs"><InfoTip of={label}>{hint}</InfoTip></Label>
       <Input id={id} type="number" inputMode="decimal" step="any" aria-invalid={!!error} aria-describedby={error ? `${id}-err` : undefined} {...props} />
       {error && <FieldError id={`${id}-err`} msg={error} />}
     </div>
@@ -452,6 +452,7 @@ function RunResults({ run }: { run: OptimizationRun }) {
     { name: 'Expected return', color: 'var(--series-1)', values: a.assetStatistics.map((x) => x.expectedReturn) },
     { name: 'Volatility', color: 'var(--series-2)', values: a.assetStatistics.map((x) => x.volatility) },
   ]
+  const dataNotes = [...(a.excludedForData.length ? [`Excluded for missing or too short price history: ${a.excludedForData.join(', ')}.`] : []), ...run.diagnostics]
   const inSampleDrawdowns = Object.entries(a.inSample?.cumulativeReturns ?? {}).map(([name, values]) => ({ name, values: drawdownFromCumulative(values) }))
 
   async function makeProposal() {
@@ -476,7 +477,7 @@ function RunResults({ run }: { run: OptimizationRun }) {
           <span className="text-xs text-muted-foreground tabular">{dateTime(run.createdAtUtc)}</span>
           {ok && (
             <Button size="sm" variant="outline" render={<Link to={`/reality-check/${run.id}`} />}>
-              <ShieldCheck /> Portfolio reality check
+              Portfolio reality check
             </Button>
           )}
         </div>
@@ -484,7 +485,6 @@ function RunResults({ run }: { run: OptimizationRun }) {
 
       {!ok && (
         <Alert variant="destructive">
-          <AlertTriangle />
           <AlertTitle>{run.status === 'Infeasible' ? 'The constraints cannot all be satisfied' : 'Optimization did not produce an allocation'}</AlertTitle>
           <AlertDescription>
             <p>{run.message}</p>
@@ -501,6 +501,27 @@ function RunResults({ run }: { run: OptimizationRun }) {
           <MetricCard label="Volatility" value={pct(run.volatility)} sub="Annualized" hint="sqrt(wᵀΣw) with Σ the annualized covariance matrix." />
           <MetricCard label="Sharpe ratio" value={num(run.sharpeRatio)} sub={`rf = ${pct(run.settings.riskFreeRate)}`} hint="(Expected return − risk-free rate) / volatility." />
         </div>
+      )}
+
+      {/* Next step right under the key figures: turn the weights into orders. */}
+      {ok && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-2">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-sm">Trade proposal</CardTitle>
+              <CardDescription className="text-xs">Translate the target weights into whole-share orders at the latest stored prices, after costs.</CardDescription>
+            </div>
+            <Button variant={proposal ? 'outline' : 'default'} onClick={makeProposal} disabled={createProposal.isPending}>
+              {createProposal.isPending && <Loader2 className="animate-spin" />}
+              {proposal ? 'Recalculate' : 'Create trade proposal'}
+            </Button>
+          </CardHeader>
+          {proposal && (
+            <CardContent>
+              <TradeProposalView proposal={proposal} currency={ccy} />
+            </CardContent>
+          )}
+        </Card>
       )}
 
       {/* Every result is visible at once (no tabs); the same section order as ML Optimization. */}
@@ -635,9 +656,10 @@ function RunResults({ run }: { run: OptimizationRun }) {
         </ResultSection>
       )}
 
-      <ResultSection title="Inputs & methodology" collapsible>
-        <Card>
-          <CardContent className="space-y-4 pt-2 text-sm">
+      {/* One reference box, last: what the numbers mean → how the run was computed → notes about its data. */}
+      <StrategyInsights insights={interpretOptimization(run)} guideId={guideForObjective(run.objective)} sections={[
+        { title: 'Inputs & methodology', content: (
+          <div className="space-y-4">
             <p className="leading-relaxed text-muted-foreground">{run.methodology}</p>
             <dl className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
               <Def k="Run ID" v={<code className="text-xs">{run.id}</code>} />
@@ -646,7 +668,6 @@ function RunResults({ run }: { run: OptimizationRun }) {
               <Def k="Estimation window" v={`${date(run.periodStart)} – ${date(run.periodEnd)} (${run.observations} daily returns)`} />
               <Def k="Data snapshot hash" v={<code className="text-xs">{run.dataSnapshotHash || '—'}</code>} />
               <Def k="Universe" v={run.symbols.join(', ') || '—'} />
-              <Def k="Excluded for data" v={a.excludedForData.join(', ') || 'none'} />
               <Def k="Covariance" v={`${run.settings.covarianceMethod}${run.settings.covarianceMethod === 'LedoitWolf' ? ` (shrinkage ${pct(a.covarianceShrinkage, 1)})` : ''}`} />
               <Def k="Weights" v={`min ${pct(run.settings.minWeight, 0)} · max ${pct(run.settings.maxWeight, 0)} · cash ${pct(run.settings.cashReserve, 1)}`} />
               <Def k="Holdings / min position" v={`${run.settings.maxHoldings ?? 'no limit'} / ${run.settings.minPositionWeight !== null ? pct(run.settings.minPositionWeight) : 'none'}`} />
@@ -655,37 +676,10 @@ function RunResults({ run }: { run: OptimizationRun }) {
               <Def k="Risk-free rate · benchmark" v={`${pct(run.settings.riskFreeRate)} · ${run.settings.benchmarkSymbol}`} />
               <Def k="Solver" v={`${run.solverCalls} QP solve(s), ${run.solverIterations} ADMM iterations, ${num(run.durationMs, 0)} ms`} />
             </dl>
-            {run.diagnostics.length > 0 && (
-              <div>
-                <h3 className="mb-1 font-medium">Diagnostics</h3>
-                <ul className="list-disc space-y-0.5 pl-5 text-muted-foreground">{run.diagnostics.map((d) => <li key={d}>{d}</li>)}</ul>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </ResultSection>
-
-      {ok && (
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
-            <div>
-              <CardTitle className="flex items-center gap-2 text-sm"><FileText className="size-4" /> Trade proposal</CardTitle>
-              <CardDescription className="text-xs">Translate the target weights into whole-share orders at the latest stored prices, after costs.</CardDescription>
-            </div>
-            <Button variant={proposal ? 'outline' : 'default'} onClick={makeProposal} disabled={createProposal.isPending}>
-              {createProposal.isPending ? <Loader2 className="animate-spin" /> : <ArrowRight />}
-              {proposal ? 'Recalculate' : 'Create trade proposal'}
-            </Button>
-          </CardHeader>
-          {proposal && (
-            <CardContent>
-              <TradeProposalView proposal={proposal} currency={ccy} />
-            </CardContent>
-          )}
-        </Card>
-      )}
-
-      <StrategyInsights insights={interpretOptimization(run)} guideId={guideForObjective(run.objective)} collapsible />
+          </div>
+        ) },
+        { title: 'Data notes', content: dataNotes.length ? <DataNotesList items={dataNotes} /> : null },
+      ]} />
     </div>
   )
 }

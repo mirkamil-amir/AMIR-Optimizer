@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
-import { AlertTriangle, CheckCircle2, GitCompareArrows, Loader2, Play, Trash2 } from 'lucide-react'
+import { Loader2, Trash2 } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -62,7 +62,7 @@ export function StrategyComparisonPage() {
         level={scoped ? 2 : 1}
         title="Strategy comparison"
         info={description}
-        actions={<Badge variant="outline" className="gap-1"><GitCompareArrows className="size-3" /> Shared evaluation engine</Badge>}
+        actions={<Badge variant="outline" className="gap-1">Shared evaluation engine</Badge>}
       />
       <div className="grid gap-6 xl:grid-cols-[380px_minmax(0,1fr)]">
         <div className="space-y-4">
@@ -71,7 +71,7 @@ export function StrategyComparisonPage() {
         </div>
         <div className="min-w-0">
           {activeId ? <ComparisonDetail id={activeId} portfolioId={scoped} /> : list.isLoading ? <LoadingBlock height="h-96" /> : (
-            <EmptyState icon={<GitCompareArrows className="size-8" />} title="No comparisons yet"
+            <EmptyState title="No comparisons yet"
               description={scoped ? 'Choose two of this portfolio’s Math or ML Optimizations on the left.' : 'Choose a portfolio and two of its Math or ML Optimizations on the left.'} />
           )}
         </div>
@@ -154,7 +154,7 @@ function NewComparisonCard({ fixedPortfolioId }: { fixedPortfolioId?: string }) 
         ))}
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label htmlFor="cmp-start" className="flex items-center gap-1 text-xs">Start<InfoTip>Default: the latest start of an ML strategy's test period, so no strategy's choices used the evaluation data (without ML: three years ago). Earlier starts are flagged as partly in-sample.</InfoTip></Label>
+            <Label htmlFor="cmp-start" className="flex items-center gap-1 text-xs"><InfoTip of="Start">Default: the latest start of an ML strategy's test period, so no strategy's choices used the evaluation data (without ML: three years ago). Earlier starts are flagged as partly in-sample.</InfoTip></Label>
             <Input id="cmp-start" type="date" value={start} onChange={(e) => setStart(e.target.value)} />
           </div>
           <div className="space-y-1.5">
@@ -177,7 +177,7 @@ function NewComparisonCard({ fixedPortfolioId }: { fixedPortfolioId?: string }) 
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label className="flex items-center gap-1 text-xs">Universe<InfoTip>Intersection: only stocks in both strategies (like-for-like). Union: every strategy may invest in all stocks of either.</InfoTip></Label>
+            <Label className="flex items-center gap-1 text-xs"><InfoTip of="Universe">Intersection: only stocks in both strategies (like-for-like). Union: every strategy may invest in all stocks of either.</InfoTip></Label>
             <Select value={universe} onValueChange={(v) => setUniverse(v as 'Intersection' | 'Union')} items={[{ value: 'Intersection', label: 'Intersection' }, { value: 'Union', label: 'Union' }]}>
               <SelectTrigger className="w-full" aria-label="Universe"><SelectValue /></SelectTrigger>
               <SelectContent><SelectItem value="Intersection">Intersection</SelectItem><SelectItem value="Union">Union</SelectItem></SelectContent>
@@ -190,7 +190,7 @@ function NewComparisonCard({ fixedPortfolioId }: { fixedPortfolioId?: string }) 
           <InfoTip>Only for one mathematical and one ML optimization: a separate, clearly labelled extra strategy. The two strategies themselves stay unchanged.</InfoTip>
         </div>
         <Button className="w-full" onClick={submit} disabled={!strategyA || !strategyB || create.isPending || missingData.checking}>
-          {create.isPending || missingData.checking ? <Loader2 className="animate-spin" /> : <Play />} Compare strategies
+          {create.isPending || missingData.checking && <Loader2 className="animate-spin" />} Compare strategies
         </Button>
         {missingData.dialog}
       </CardContent>
@@ -264,7 +264,7 @@ function ComparisonDetail({ id, portfolioId }: { id: string; portfolioId?: strin
           </div>
         </div>
         {active && <div className="space-y-1" aria-live="polite"><Progress value={s.progressPercent} aria-label="Comparison progress" /><p className="text-xs text-muted-foreground">{s.progressMessage}</p></div>}
-        {s.status === 'Failed' && <Alert variant="destructive"><AlertTriangle /><AlertTitle>Comparison failed</AlertTitle><AlertDescription>{s.error}</AlertDescription></Alert>}
+        {s.status === 'Failed' && <Alert variant="destructive"><AlertTitle>Comparison failed</AlertTitle><AlertDescription>{s.error}</AlertDescription></Alert>}
         <p className="text-[11px] text-muted-foreground">{c.disclaimer}</p>
       </CardContent></Card>
       {c.result && <ComparisonResultView c={c} />}
@@ -289,11 +289,11 @@ function ComparisonResultView({ c }: { c: StrategyComparison }) {
   return (
     <>
       {r.fairness.isFair ? (
-        <Alert className="border-gain/40"><CheckCircle2 className="text-gain" /><AlertTitle>Like-for-like comparison</AlertTitle><AlertDescription>
+        <Alert className="border-gain/40"><AlertTitle>Like-for-like comparison</AlertTitle><AlertDescription>
           <ul className="list-disc pl-4">{r.fairness.sharedConventions.map((x) => <li key={x}>{x}</li>)}</ul>
         </AlertDescription></Alert>
       ) : (
-        <Alert variant="destructive"><AlertTriangle /><AlertTitle>Not a fair comparison – no ranking is shown</AlertTitle><AlertDescription>
+        <Alert variant="destructive"><AlertTitle>Not a fair comparison – no ranking is shown</AlertTitle><AlertDescription>
           <ul className="list-disc pl-4">{r.fairness.issues.map((x) => <li key={x}>{x}</li>)}</ul>
         </AlertDescription></Alert>
       )}
@@ -378,7 +378,7 @@ function ComparisonResultView({ c }: { c: StrategyComparison }) {
         </div>
       </Collapsible>
       <Warnings items={[...r.universeNotes, ...r.warnings]} title="Universe and data notes" collapsible />
-      <StrategyInsights insights={interpretComparison(c)} guideId="strategy-comparison" title="What the comparison shows" collapsible />
+      <StrategyInsights insights={interpretComparison(c)} guideId="strategy-comparison" title="What the comparison shows" />
     </>
   )
 }

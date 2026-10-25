@@ -1,5 +1,5 @@
 import { Link } from 'react-router'
-import { AlertTriangle, CheckCircle2, KeyRound, Loader2, RefreshCw, Users } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -63,7 +63,7 @@ export function AdminOverviewPage() {
       <PageHeader
         title="Admin overview"
         info="Accounts, analysis activity and market-data health. Counts include genuine accounts only: automated-test accounts (reserved .test domain) are excluded and listed separately."
-        actions={<Button size="sm" variant="outline" render={<Link to="/admin/users" />}><Users /> Manage users</Button>}
+        actions={<Button size="sm" variant="outline" render={<Link to="/admin/users" />}>Manage users</Button>}
       />
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -74,7 +74,6 @@ export function AdminOverviewPage() {
       </div>
       {o.accounts.testAccounts > 0 && (
         <p className="mt-2 flex items-center gap-1.5 text-xs text-warn">
-          <AlertTriangle className="size-3.5" aria-hidden />
           {o.accounts.testAccounts} automated-test account(s) exist in this database. They are excluded above; remove them with
           <code className="rounded bg-muted px-1">PortfolioOptimizer.Api purge-test-data --apply</code> (see docs/testing.md).
         </p>
@@ -102,7 +101,7 @@ export function AdminOverviewPage() {
               <CardDescription>Active: {o.marketData.activeProvider}. Keys are never shown, only whether they are configured.</CardDescription>
             </div>
             <Button size="sm" variant="outline" onClick={refreshNow} disabled={startRefresh.isPending}>
-              {startRefresh.isPending ? <Loader2 className="animate-spin" /> : <RefreshCw />} Refresh prices now
+              {startRefresh.isPending && <Loader2 className="animate-spin" />} Refresh prices now
             </Button>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -115,7 +114,7 @@ export function AdminOverviewPage() {
                     {p.isSimulated && <Badge variant="outline">Simulated</Badge>}
                     {p.requiresApiKey && (
                       <Badge variant="outline" className={p.isConfigured ? 'border-gain/40 text-gain' : 'border-loss/40 text-loss'}>
-                        <KeyRound className="size-3" /> {p.isConfigured ? 'Key configured' : 'No key'}
+                        {p.isConfigured ? 'Key configured' : 'No key'}
                       </Badge>
                     )}
                   </div>
@@ -168,9 +167,7 @@ function RefreshRow({ run }: { run: QuoteRefreshRun }) {
   const running = run.status === 'Queued' || run.status === 'Running'
   return (
     <li className="flex items-start gap-2 text-xs">
-      {running ? <Loader2 className="mt-0.5 size-3.5 animate-spin" aria-hidden /> : run.status === 'Succeeded'
-        ? <CheckCircle2 className="mt-0.5 size-3.5 text-gain" aria-hidden />
-        : <AlertTriangle className="mt-0.5 size-3.5 text-warn" aria-hidden />}
+      {running && <Loader2 className="mt-0.5 size-3.5 animate-spin" aria-hidden />}
       <span>
         {run.trigger} · {age(run.requestedAtUtc)} · {running ? 'running' : `${run.updated} updated, ${run.unchanged} current, ${run.failed} without price`}
       </span>

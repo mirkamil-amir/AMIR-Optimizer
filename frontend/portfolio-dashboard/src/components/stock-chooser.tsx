@@ -1,6 +1,6 @@
 import { useDeferredValue, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, CheckCircle2, CheckSquare, Loader2, Minus, RefreshCw, Search } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -180,12 +180,10 @@ export function StockChooser({ trayActions }: { trayActions?: ReactNode }) {
               {/* Wraps instead of squeezing: the search keeps a usable width in the narrower portfolio layout too. */}
               <div className="flex flex-wrap items-center gap-3">
                 <div className="relative min-w-64 flex-[1_1_18rem]">
-                  <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
                   <Input
                     value={searchText}
                     onChange={(e) => { setSearchText(e.target.value); setPage(1) }}
                     placeholder="Search company name or ticker (e.g. Siemens, 7203)"
-                    className="pl-8"
                     aria-label="Search company name or ticker"
                   />
                 </div>
@@ -200,7 +198,7 @@ export function StockChooser({ trayActions }: { trayActions?: ReactNode }) {
                     <InfoTip label="Price history">Stocks with stored daily prices can be used in analyses right away. Others need their history fetched first (selection tray → Fetch prices).</InfoTip>
                   </div>
                   <Button variant="outline" size="sm" onClick={refreshPage} disabled={items.length === 0 || refreshQuotes.isPending}>
-                    <RefreshCw className={refreshQuotes.isPending ? 'animate-spin' : undefined} /> Refresh prices
+                    Refresh prices
                   </Button>
                   <Button
                     variant="outline"
@@ -208,7 +206,6 @@ export function StockChooser({ trayActions }: { trayActions?: ReactNode }) {
                     disabled={items.length === 0}
                     onClick={() => allOnPageSelected ? pageSymbols.forEach(selection.remove) : selection.addMany(items.map(toSelected))}
                   >
-                    {allOnPageSelected ? <Minus /> : <CheckSquare />}
                     {allOnPageSelected ? 'Deselect page' : 'Select page'}
                   </Button>
                 </div>
@@ -259,7 +256,6 @@ function PriceStatus({ run, pageRefreshing }: { run: QuoteRefreshRun | undefined
         <><Loader2 className="size-3.5 animate-spin" aria-hidden /> Requesting current prices for this page…</>
       ) : run ? (
         <>
-          {run.status === 'Succeeded' ? <CheckCircle2 className="size-3.5 text-gain" aria-hidden /> : <AlertTriangle className="size-3.5 text-warn" aria-hidden />}
           <span>
             Prices last updated {age(run.completedAtUtc)}: {num(run.updated, 0)} refreshed, {num(run.unchanged, 0)} already current
             {run.failed > 0 && `, ${num(run.failed, 0)} unavailable`}.

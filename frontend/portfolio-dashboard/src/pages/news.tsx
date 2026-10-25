@@ -1,6 +1,6 @@
 import { useDeferredValue } from 'react'
 import { useSearchParams } from 'react-router'
-import { Newspaper, Search, X, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -91,8 +91,7 @@ export function NewsPage() {
 
       <div className="mb-4 grid grid-cols-2 items-end gap-2 lg:grid-cols-6">
         <div className="relative col-span-2">
-          <Search className="pointer-events-none absolute top-2.5 left-2.5 size-4 text-muted-foreground" aria-hidden />
-          <Input value={searchInput} onChange={(e) => set({ q: e.target.value })} placeholder="Headline, ticker or company" aria-label="Search news" className="pl-8" />
+          <Input value={searchInput} onChange={(e) => set({ q: e.target.value })} placeholder="Headline, ticker or company" aria-label="Search news" />
         </div>
         <Select value={category ?? ALL} onValueChange={(v) => set({ category: v as string })}
           items={[{ value: ALL, label: 'All categories' }, ...Object.entries(categoryLabels).map(([value, label]) => ({ value, label }))]}>
@@ -121,7 +120,7 @@ export function NewsPage() {
         <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           {symbol && <span>Stock: <strong className="text-foreground">{symbol}</strong></span>}
           {publisher && <span>Publisher: <strong className="text-foreground">{publisher}</strong></span>}
-          <Button size="sm" variant="ghost" onClick={() => setParams(view === 'latest' ? {} : { view }, { replace: true })}><X /> Clear filters</Button>
+          <Button size="sm" variant="ghost" onClick={() => setParams(view === 'latest' ? {} : { view }, { replace: true })}>Clear filters</Button>
         </div>
       )}
 
@@ -134,11 +133,11 @@ export function NewsPage() {
           )}
           {failing.length > 0 && <SourceProblems sources={failing} />}
           {configured.length === 0 && (
-            <EmptyState icon={<Newspaper className="size-8" />} title="No news source is configured"
+            <EmptyState title="No news source is configured"
               description={isAdministrator ? 'Enable the company-news and official central-bank sources (News:Yahoo:Enabled, News:OfficialFeeds:Enabled). See docs/financial-news.md.' : 'An administrator can enable news sources.'} />
           )}
           {configured.length > 0 && data.items.length === 0 && (
-            <EmptyState icon={<Newspaper className="size-8" />}
+            <EmptyState
               title={view === 'watchlist' ? 'No news about your watched stocks yet' : 'No articles match these filters'}
               description={view === 'watchlist'
                 ? 'Add stocks to your watchlist, or check back later – company news is fetched from the providers on demand and outside the US coverage is sparse.'

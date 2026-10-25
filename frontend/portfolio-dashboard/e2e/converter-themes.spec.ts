@@ -25,7 +25,7 @@ test('currency converter (overview only) shows dated reference rates, a chart an
     await expect(card.getByText(/reference rate of/)).toBeVisible()               // the result names its rate's date
     // The rate basis is in the title's tip, not on the card.
     await expect(card.getByText(/not live/)).toHaveCount(0)
-    await card.getByRole('button', { name: 'About these rates' }).hover()
+    await card.getByRole('button', { name: 'Currency converter' }).hover()
     await expect(page.getByText(/not live/)).toBeVisible()
     await page.mouse.move(0, 0)
   }
@@ -69,7 +69,7 @@ test('currency converter (overview only) shows dated reference rates, a chart an
   await pick(page, /^BGN.*Bulgarian Lev/)
   await card.getByRole('radio', { name: '5Y' }).click()
   await expect(card.getByText(/published rates, until/)).toBeVisible()
-  await card.getByRole('button', { name: 'About these rates' }).hover()
+  await card.getByRole('button', { name: 'Currency converter' }).hover()
   await expect(page.getByText(/No longer published: BGN/)).toBeVisible()
   await page.mouse.move(0, 0)
 })

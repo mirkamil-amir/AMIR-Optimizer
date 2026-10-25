@@ -1,5 +1,4 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { Search } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -111,7 +110,7 @@ export function HoldingsPage() {
         <ValuationProblems problems={s?.valuationProblems} />
         {s && <ReportingNote currency={s.currency} accountCurrency={s.accountCurrency} rate={s.accountToReportingRate} />}
         {s?.currencyExposure && s.currencyExposure.length > 1 && (
-          <div className="rounded-xl border p-4">
+          <div className="rounded-xl border bg-card p-4">
             <h2 className="mb-2 text-sm font-semibold">Currency exposure</h2>
             <CurrencyExposureList items={s.currencyExposure} />
             <p className="mt-2 text-xs text-muted-foreground">Share of total value by the currency the holdings trade in. Positions are unhedged: their value in {ccy} moves with the exchange rate.</p>
@@ -121,11 +120,10 @@ export function HoldingsPage() {
 
       <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative sm:w-72">
-          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-          <Input placeholder="Search symbol or name" aria-label="Search holdings" className="pl-8" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Input placeholder="Search symbol or name" aria-label="Search holdings" className="bg-card" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
         <Select value={sector} onValueChange={(v) => setSector(String(v))} items={[{ value: 'all', label: 'All sectors' }, ...sectors.map((x) => ({ value: x, label: x }))]}>
-          <SelectTrigger className="sm:w-56" aria-label="Filter by sector"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="bg-card sm:w-56" aria-label="Filter by sector"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All sectors</SelectItem>
             {sectors.map((x) => <SelectItem key={x} value={x}>{x}</SelectItem>)}
@@ -137,7 +135,8 @@ export function HoldingsPage() {
         </div>
       </div>
 
-      <div className="mt-4">
+      {/* Same translucent surface as the cards above. */}
+      <div className="mt-4 rounded-lg bg-card">
         {loading ? <LoadingBlock /> : (
           <DataTable
             caption="Holdings"

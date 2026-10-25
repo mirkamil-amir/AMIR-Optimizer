@@ -1,6 +1,5 @@
 import { useDeferredValue, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router'
-import { ArrowLeft, ArrowRight, BookOpen, BrainCircuit, GitCompareArrows, Search, Sigma } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -9,10 +8,10 @@ import { EmptyState, PageHeader } from '@/components/common'
 import { glossary, glossaryCategories } from '@/lib/glossary'
 import { guideById, strategyGuides, type StrategyGuide } from '@/lib/strategy-guide'
 
-const families: { id: StrategyGuide['family']; title: string; description: string; icon: React.ReactNode }[] = [
-  { id: 'optimization', title: 'Mathematical optimization', description: 'Weights from estimated returns, volatilities and correlations (mean-variance theory).', icon: <Sigma className="size-4" /> },
-  { id: 'machine-learning', title: 'Machine-learning models', description: 'Models that learn from past features and outcomes to rank stocks.', icon: <BrainCircuit className="size-4" /> },
-  { id: 'evaluation', title: 'From signals to portfolios, and fair testing', description: 'How predictions become weights and how strategies are compared honestly.', icon: <GitCompareArrows className="size-4" /> },
+const families: { id: StrategyGuide['family']; title: string; description: string }[] = [
+  { id: 'optimization', title: 'Mathematical optimization', description: 'Weights from estimated returns, volatilities and correlations (mean-variance theory).' },
+  { id: 'machine-learning', title: 'Machine-learning models', description: 'Models that learn from past features and outcomes to rank stocks.' },
+  { id: 'evaluation', title: 'From signals to portfolios, and fair testing', description: 'How predictions become weights and how strategies are compared honestly.' },
 ]
 
 export function LearnIndexPage() {
@@ -21,12 +20,12 @@ export function LearnIndexPage() {
       <PageHeader
         title="Strategy guide"
         info="How every strategy in this app works: the idea, the theory, the mathematics, a worked example and how to read your own results. Start with equal weight and minimum variance, then compare them with the return-seeking and ML strategies."
-        actions={<Button size="sm" variant="outline" render={<Link to="/learn/glossary" />}><BookOpen /> Glossary</Button>}
+        actions={<Button size="sm" variant="outline" render={<Link to="/learn/glossary" />}>Glossary</Button>}
       />
       <div className="space-y-8">
         {families.map((f) => (
           <section key={f.id} aria-labelledby={`family-${f.id}`}>
-            <h2 id={`family-${f.id}`} className="mb-1 flex items-center gap-2 text-base font-semibold">{f.icon}{f.title}</h2>
+            <h2 id={`family-${f.id}`} className="mb-1 flex items-center gap-2 text-base font-semibold">{f.title}</h2>
             <p className="mb-3 text-sm text-muted-foreground">{f.description}</p>
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {strategyGuides.filter((g) => g.family === f.id).map((g) => (
@@ -37,7 +36,7 @@ export function LearnIndexPage() {
                       <CardDescription>{g.tagline}</CardDescription>
                     </CardHeader>
                     <CardContent className="text-xs text-muted-foreground">
-                      <span className="inline-flex items-center gap-1 font-medium text-foreground">Read the guide <ArrowRight className="size-3" /></span>
+                      <span className="inline-flex items-center gap-1 font-medium text-foreground">Read the guide </span>
                     </CardContent>
                   </Card>
                 </Link>
@@ -124,7 +123,7 @@ export function StrategyGuidePage() {
       body: (
         <div className="space-y-3">
           <List items={g.results} />
-          <Button size="sm" render={<Link to={g.appLink.to} />}>{g.appLink.label} <ArrowRight /></Button>
+          <Button size="sm" render={<Link to={g.appLink.to} />}>{g.appLink.label} </Button>
         </div>
       ),
     },
@@ -133,8 +132,8 @@ export function StrategyGuidePage() {
 
   return (
     <>
-      <Button size="sm" variant="ghost" className="mb-2 -ml-2" render={<Link to="/learn" />}><ArrowLeft /> Strategy guide</Button>
-      <PageHeader title={g.name} description={g.tagline} actions={<Button size="sm" render={<Link to={g.appLink.to} />}>Try it <ArrowRight /></Button>} />
+      <Button size="sm" variant="ghost" className="mb-2 -ml-2" render={<Link to="/learn" />}>Strategy guide</Button>
+      <PageHeader title={g.name} description={g.tagline} actions={<Button size="sm" render={<Link to={g.appLink.to} />}>Try it </Button>} />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_220px]">
         <div className="space-y-2">
           {sections.map((s, i) => (
@@ -180,11 +179,10 @@ export function GlossaryPage() {
   const entries = useMemo(() => glossary.filter((e) => !query || e.term.toLowerCase().includes(query) || e.definition.toLowerCase().includes(query)), [query])
   return (
     <>
-      <Button size="sm" variant="ghost" className="mb-2 -ml-2" render={<Link to="/learn" />}><ArrowLeft /> Strategy guide</Button>
+      <Button size="sm" variant="ghost" className="mb-2 -ml-2" render={<Link to="/learn" />}>Strategy guide</Button>
       <PageHeader title="Glossary" info="Finance and machine-learning terms used in this app, in plain language." />
       <div className="relative mb-4 max-w-md">
-        <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-        <Input value={text} onChange={(e) => setText(e.target.value)} placeholder="Search terms, e.g. Sharpe, leakage" className="pl-8" aria-label="Search glossary" />
+        <Input value={text} onChange={(e) => setText(e.target.value)} placeholder="Search terms, e.g. Sharpe, leakage" aria-label="Search glossary" />
       </div>
       {entries.length === 0 && <EmptyState title="No matching term" />}
       <div className="space-y-6">

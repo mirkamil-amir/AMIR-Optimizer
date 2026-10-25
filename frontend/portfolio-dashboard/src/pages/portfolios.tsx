@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { Archive, ArchiveRestore, Briefcase, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -41,23 +40,21 @@ export function PortfoliosPage() {
     <>
       <PageHeader
         title="My portfolios"
-        actions={<Button render={<Link to="/stocks" />}><Plus /> Create portfolio</Button>}
+        actions={<Button render={<Link to="/stocks" />}>Create portfolio</Button>}
       />
 
       {overview.error ? <ErrorState error={overview.error} onRetry={() => overview.refetch()} /> : !data ? <LoadingBlock height="h-72" /> : data.portfolios.length === 0 ? (
         <EmptyState
-          icon={<Briefcase className="size-8" />}
           title="No portfolios yet"
           description="Create your first portfolio: give it a name, a currency and simulated starting cash, pick the stocks it may invest in, then run an optimization or record transactions."
-          action={<Button render={<Link to="/stocks" />}><Plus /> Create your first portfolio</Button>}
+          action={<Button render={<Link to="/stocks" />}>Create your first portfolio</Button>}
         />
       ) : (
         <>
           <section aria-label="Totals across active portfolios" className="mb-6 space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="flex items-center gap-1.5 text-sm font-medium">
-                Across {data.activePortfolios} active portfolio{data.activePortfolios === 1 ? '' : 's'}
-                <InfoTip label="How totals are calculated">{data.methodology}</InfoTip>
+                <InfoTip of={`Across ${data.activePortfolios} active portfolio${data.activePortfolios === 1 ? '' : 's'}`}>{data.methodology}</InfoTip>
               </h2>
               <CurrencySelect value={ccy} onChange={setCurrency} supported={fx.data?.currencies} label="Currency of the totals" className="w-28" />
             </div>
@@ -78,7 +75,7 @@ export function PortfoliosPage() {
           <section aria-label="Active portfolios">
             {active.length === 0 ? (
               <EmptyState title="No active portfolio" description="All your portfolios are archived. Restore one below or create a new one."
-                action={<Button render={<Link to="/stocks" />}><Plus /> Create portfolio</Button>} />
+                action={<Button render={<Link to="/stocks" />}>Create portfolio</Button>} />
             ) : (
               // Equal rows: every card has the height of the tallest one, with or without a description.
               <ul className="grid auto-rows-fr gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -157,10 +154,10 @@ function PortfolioCard({ p }: { p: PortfolioSummary }) {
         <Button size="sm" render={<Link to={portfolioPath(p.id)} />} aria-label={`Open ${p.name}`}>Open</Button>
         <Button size="sm" variant="outline" onClick={() => void refreshPrices()} disabled={refresh.isPending || p.holdings === 0}
           title={p.holdings === 0 ? 'No positions to refresh' : 'Refresh the latest quotes of the positions'} aria-label={`Refresh prices of ${p.name}`}>
-          <RefreshCw className={refresh.isPending ? 'animate-spin' : undefined} /> Refresh prices
+          Refresh prices
         </Button>
         <Button size="sm" variant="ghost" className="ml-auto text-destructive hover:text-destructive" onClick={() => setDeleting(true)}
-          aria-label={`Delete ${p.name}`}><Trash2 /> Delete</Button>
+          aria-label={`Delete ${p.name}`}>Delete</Button>
       </CardFooter>
       <DeletePortfolioDialog portfolio={deleting ? p : null} onClose={() => setDeleting(false)} />
     </Card>
@@ -225,7 +222,7 @@ function ArchivedList({ items }: { items: PortfolioSummary[] }) {
 
   return (
     <section aria-label="Archived portfolios" className="mt-8">
-      <h2 className="mb-2 flex items-center gap-1.5 text-sm font-medium"><Archive className="size-4" /> Archived ({items.length})</h2>
+      <h2 className="mb-2 flex items-center gap-1.5 text-sm font-medium">Archived ({items.length})</h2>
       <ul className="divide-y rounded-lg border bg-background">
         {items.map((p) => (
           <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm">
@@ -236,8 +233,8 @@ function ArchivedList({ items }: { items: PortfolioSummary[] }) {
               </div>
             </div>
             <div className="flex gap-1.5">
-              <Button size="sm" variant="outline" onClick={() => void restore(p)} aria-label={`Restore ${p.name}`}><ArchiveRestore /> Restore</Button>
-              <Button size="sm" variant="ghost" onClick={() => setToDelete(p)} aria-label={`Delete ${p.name} permanently`}><Trash2 /> Delete</Button>
+              <Button size="sm" variant="outline" onClick={() => void restore(p)} aria-label={`Restore ${p.name}`}>Restore</Button>
+              <Button size="sm" variant="ghost" onClick={() => setToDelete(p)} aria-label={`Delete ${p.name} permanently`}>Delete</Button>
             </div>
           </li>
         ))}

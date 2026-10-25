@@ -1,5 +1,5 @@
 import { Link } from 'react-router'
-import { ListChecks, Search, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useStocks } from '@/lib/queries'
@@ -22,7 +22,7 @@ export function UniverseField({ symbols, onChange, browseTo }: { symbols: string
       <legend className="mb-1 flex w-full items-center justify-between text-sm font-medium">
         <span className="flex items-center gap-2">Equity universe <Badge variant="secondary" className="tabular">{symbols.length}</Badge></span>
         {symbols.length > 0 && (
-          <Button type="button" size="xs" variant="ghost" onClick={() => onChange([])}><X /> Clear</Button>
+          <Button type="button" size="xs" variant="ghost" onClick={() => onChange([])}>Clear</Button>
         )}
       </legend>
 
@@ -45,9 +45,9 @@ export function UniverseField({ symbols, onChange, browseTo }: { symbols: string
       )}
 
       <div className="flex flex-wrap gap-1.5">
-        <Button type="button" size="sm" variant="outline" render={<Link to={browseTo} state={{ universe: symbols }} />}><Search /> Browse stocks</Button>
+        <Button type="button" size="sm" variant="outline" render={<Link to={browseTo} state={{ universe: symbols }} />}>Browse stocks</Button>
         {selection.count > 0 && !sameAsSelection && (
-          <Button type="button" size="sm" variant="ghost" onClick={() => onChange(selection.symbols)}><ListChecks /> Use stock selection ({selection.count})</Button>
+          <Button type="button" size="sm" variant="ghost" onClick={() => onChange(selection.symbols)}>Use stock selection ({selection.count})</Button>
         )}
       </div>
     </fieldset>

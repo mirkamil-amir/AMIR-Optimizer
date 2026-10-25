@@ -363,6 +363,28 @@ public sealed class MultiPortfolioTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task MathOptimization_CanBeDeleted_ProposalsStayWithoutTheLink()
+    {
+        var p = await CreateAsync(_alice, "Runs", ["AAPL", "MSFT", "JPM", "XOM"], cash: 10_000m);
+        var minVar = new RunOptimizationRequest { Settings = p.Settings with { Objective = ObjectiveKind.MinimumVariance } };
+        var run = await (await _alice.PostJsonAsync($"/api/v1/portfolios/{p.Id}/optimization-runs", minVar)).ReadAsync<OptimizationRunDto>();
+        Assert.True(run.Status == OptimizationRunStatus.Succeeded, run.Message);
+        var kept = await (await _alice.PostJsonAsync($"/api/v1/portfolios/{p.Id}/optimization-runs", minVar)).ReadAsync<OptimizationRunDto>();
+        var proposal = await (await _alice.PostJsonAsync($"/api/v1/optimization-runs/{run.Id}/trade-proposals", new { })).ReadAsync<TradeProposalDto>();
+
+        Assert.Equal(HttpStatusCode.NotFound, (await _bob.DeleteAsync($"/api/v1/optimization-runs/{run.Id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await _alice.DeleteAsync($"/api/v1/optimization-runs/{run.Id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await _alice.GetAsync($"/api/v1/optimization-runs/{run.Id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await _alice.GetAsync($"/api/v1/optimization-runs/{kept.Id}")).StatusCode);
+        var after = await (await _alice.GetAsync($"/api/v1/trade-proposals/{proposal.Id}")).ReadAsync<TradeProposalDto>();
+        Assert.Null(after.OptimizationRunId);
+
+        // An archived portfolio is read-only: its runs cannot be deleted.
+        Assert.True((await _alice.PostJsonAsync($"/api/v1/portfolios/{p.Id}/archive", new { })).IsSuccessStatusCode);
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, (await _alice.DeleteAsync($"/api/v1/optimization-runs/{kept.Id}")).StatusCode);
+    }
+
+    [Fact]
     public async Task QuoteRefresh_CoversOnlyTheOpenPositions()
     {
         var p = await CreateAsync(_alice, "Refresh", ["AAPL", "MSFT"], cash: 10_000m);
