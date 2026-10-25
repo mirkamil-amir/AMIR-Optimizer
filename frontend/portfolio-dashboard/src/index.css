@@ -10,6 +10,7 @@
     --font-heading: var(--font-sans);
     --font-display: 'Sora Variable', 'Geist Variable', sans-serif;
     --font-sans: 'Geist Variable', sans-serif;
+    --font-nav: 'Sora Variable', 'Geist Variable', sans-serif;
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -330,14 +331,32 @@
 
 /* ------------------------------------------------------------------ typography
    Two OFL families, served from the app (no external font service; the CSP allows fonts from 'self' only):
-   – AMIR Display = Sora (variable): a wide, confident modern sans – chosen by the owner from seven options – for the
+   – Display = Sora (variable): a wide, confident modern sans – chosen by the owner from seven options – for the
      wordmark (spaced capitals), page titles, portfolio names and section headings only; weight 600, tightened.
-   – AMIR Text = Geist (variable): body text, labels, tables and every figure (tabular digits via .tabular), which stays
+   – Text = Geist (variable): body text, labels, tables and every figure (tabular digits via .tabular), which stays
      legible at 11–14 px. Card and dialog titles stay in Geist (small sizes). */
 .font-brand { font-family: var(--font-display); }
 .heading-display {
   font-family: var(--font-display); font-weight: 600; letter-spacing: -0.03em; line-height: 1.2; text-wrap: balance;
 }
+
+/* Nav = Sora as well (chosen by the owner from nine rendered options): the top bar and the sidebar share the
+   display face, at text weights, so titles and navigation read as one family. */
+.font-nav { font-family: var(--font-nav); letter-spacing: -0.01em; }
+
+/* Navigation magnification (lib/nav-zoom.ts), sidebar and top bar: the entries near the pointer grow like a dock; the
+   selected entry keeps the largest size. The scale is a CSS variable set imperatively on each link – never React state.
+   Sidebar entries grow from their left edge, top-bar entries from their bottom centre (they sit on the tab line). */
+.nav-zoom { --nav-zoom: 1; }
+.nav-zoom[data-zoom-active] { --nav-zoom: var(--nav-zoom-max); }
+.nav-zoom > span {
+  display: inline-block; transform: scale(var(--nav-zoom)); transform-origin: left center;
+  transition: transform 140ms ease-out; will-change: transform;
+}
+.nav-zoom-row .nav-zoom > span { transform-origin: center bottom; }
+:root { --nav-zoom-max: 1.2; }
+.nav-zoom-row { --nav-zoom-max: 1.14; }
+@media (prefers-reduced-motion: reduce) { .nav-zoom > span { transition: none; } }
 
 /* Primary navigation scrolls horizontally on narrow screens; a thin scrollbar shows that more items follow. */
 .nav-scroll { scrollbar-width: thin; }
@@ -431,3 +450,6 @@
 }
 /* A near-solid panel for dense text next to the map (e.g. the market and sector list of Portfolio Creation). */
 .map-surface { background-color: color-mix(in oklch, var(--card) 94%, transparent); box-shadow: 0 0 0 1px color-mix(in oklch, var(--foreground) 10%, transparent); }
+
+/* Toasts carry no status icon (no decorative icons anywhere): the title says what happened. */
+[data-sonner-toast] [data-icon] { display: none !important; }

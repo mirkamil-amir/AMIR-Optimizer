@@ -32,6 +32,17 @@ public sealed class OptimizationRunsController(OptimizationService optimization,
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public Task<OptimizationRunDto> Get(Guid runId, CancellationToken ct) => optimization.GetAsync(runId, ct);
 
+    /// <summary>Deletes a Math Optimization; proposals made from it stay, backtests and comparisons keep their frozen settings.</summary>
+    [HttpDelete("{runId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> Delete(Guid runId, CancellationToken ct)
+    {
+        await optimization.DeleteAsync(runId, ct);
+        return NoContent();
+    }
+
     /// <summary>
     /// Portfolio Reality Check of a successful run: concentration, risk contributions, correlation on stress days, in-sample
     /// and out-of-sample behaviour, sensitivity of the weights to the assumptions and implementation costs, with labelled findings.

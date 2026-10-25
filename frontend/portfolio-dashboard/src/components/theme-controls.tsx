@@ -1,14 +1,13 @@
-import { Check, Monitor, Moon, Sun } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { AmirMark } from '@/components/brand'
+import { MatrixMark } from '@/components/brand'
 import { skins, useTheme, type ThemeMode } from '@/lib/theme'
 import { cn } from '@/lib/utils'
 
-const modes: { value: ThemeMode; label: string; icon: typeof Sun }[] = [
-  { value: 'light', label: 'Light', icon: Sun },
-  { value: 'dark', label: 'Dark', icon: Moon },
-  { value: 'system', label: 'System', icon: Monitor },
+const modes: { value: ThemeMode; label: string }[] = [
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+  { value: 'system', label: 'System' },
 ]
 
 /** Header button: cycles light → dark → system. */
@@ -16,10 +15,9 @@ export function ThemeQuickToggle() {
   const { mode, setMode } = useTheme()
   const current = modes.find((m) => m.value === mode)!
   const next = modes[(modes.indexOf(current) + 1) % modes.length]
-  const Icon = current.icon
   return (
-    <Button variant="ghost" size="icon-sm" aria-label={`Theme: ${current.label}. Switch to ${next.label}`} title={`Theme: ${current.label}`} onClick={() => setMode(next.value)}>
-      <Icon />
+    <Button variant="ghost" size="sm" aria-label={`Theme: ${current.label}. Switch to ${next.label}`} title={`Theme: ${current.label}`} onClick={() => setMode(next.value)}>
+      {current.label}
     </Button>
   )
 }
@@ -37,7 +35,7 @@ export function AppearanceCard() {
         <div role="radiogroup" aria-label="Theme mode" className="flex flex-wrap gap-2">
           {modes.map((m) => (
             <Button key={m.value} role="radio" aria-checked={mode === m.value} variant={mode === m.value ? 'default' : 'outline'} size="sm" onClick={() => setMode(m.value)}>
-              <m.icon /> {m.label}
+              {m.label}
             </Button>
           ))}
         </div>
@@ -52,12 +50,11 @@ export function AppearanceCard() {
                 <span className="block text-sm font-medium">{s.label}</span>
                 <span className="block truncate text-xs text-muted-foreground">{s.description}</span>
               </span>
-              {skin === s.value && <Check className="size-3.5 shrink-0" aria-hidden />}
             </button>
           ))}
         </div>
         <div className="flex items-center gap-3 rounded-lg border p-3">
-          <AmirMark className="size-10" />
+          <MatrixMark className="size-10" />
           <div className="text-sm">
             <Button size="sm">Primary action</Button>
             <span className="ml-3 text-muted-foreground">Preview of the current skin</span>

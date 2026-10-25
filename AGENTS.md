@@ -1,6 +1,6 @@
 # AGENTS.md – instructions for coding agents
 
-AMIR Optimizer: an educational portfolio-research platform. Students browse stocks and index ETFs from fifteen markets, optimize
+MaTrix: an educational portfolio-research platform. Students browse stocks and index ETFs from fifteen markets, optimize
 portfolios (mean-variance), train ML ranking models, compare strategies fairly and paper-trade. .NET 10 API +
 PostgreSQL + React/Vite. **No real orders, not investment advice, never claim profitability or real-time prices.**
 Read this file before changing code; details are in `docs/` (linked below).
@@ -65,7 +65,7 @@ Secrets live in `.env` (gitignored) – load with `set -a; . ./.env; set +a`; ne
   **working universe** (`Settings.Universe`), **target allocation** (a run) and **transactions** (journal/executions).
   Optimization never executes trades or mutates holdings; only a confirmed proposal or a recorded transaction does.
   Bookings are atomic, idempotent, in time order and never edited – corrections are reversing entries. Archived portfolios
-  are read-only; only archived ones can be deleted. Never fabricate history: performance starts at the first booking, is
+  are read-only; deleting (active or archived, after a confirmation) removes every record of the portfolio (runs, ML Optimizations, backtests, comparisons, research) but never shared prices. Never fabricate history: performance starts at the first booking, is
   rebuilt from ledger + stored prices, and deposits/withdrawals are flows, not returns. Frontend: portfolio pages live under
   `/portfolios/:id/…` (the URL decides the portfolio, `PortfolioScope`); never act on a remembered portfolio silently.
 * **Prices:** never fabricate or zero-fill; label kind (Delayed quote / Last close), as-of time, retrieval time,

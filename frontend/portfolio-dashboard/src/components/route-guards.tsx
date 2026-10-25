@@ -1,6 +1,5 @@
 import { Suspense } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router'
-import { ShieldAlert } from 'lucide-react'
 import { EmptyState, LoadingBlock } from '@/components/common'
 import { useAuth } from '@/lib/auth'
 import { PortfolioProvider } from '@/lib/portfolio-context'
@@ -29,7 +28,6 @@ export function RequireAdministrator() {
   if (!isAdministrator) {
     return (
       <EmptyState
-        icon={<ShieldAlert className="size-8" />}
         title="Administrators only"
         description="This area is restricted to administrators. The server rejects these requests for other accounts."
       />

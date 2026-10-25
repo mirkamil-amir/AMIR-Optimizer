@@ -22,6 +22,7 @@ const ToCurrentPortfolio = lazy(() => import('@/pages/portfolio-workspace').then
 const RunRedirect = lazy(() => import('@/pages/portfolio-workspace').then((m) => ({ default: m.RunRedirect })))
 const HoldingsPage = lazy(() => import('@/pages/holdings').then((m) => ({ default: m.HoldingsPage })))
 const OptimizePage = lazy(() => import('@/pages/optimize').then((m) => ({ default: m.OptimizePage })))
+const ChooseStocksPage = lazy(() => import('@/pages/choose-stocks').then((m) => ({ default: m.ChooseStocksPage })))
 const TradesPage = lazy(() => import('@/pages/trades').then((m) => ({ default: m.TradesPage })))
 const BacktestPage = lazy(() => import('@/pages/backtest').then((m) => ({ default: m.BacktestPage })))
 const MarketDataPage = lazy(() => import('@/pages/market-data').then((m) => ({ default: m.MarketDataPage })))
@@ -75,6 +76,9 @@ const router = createBrowserRouter([
             children: [
               { index: true, element: <OverviewPage /> },
               { path: 'optimize', element: <OptimizePage /> },
+              // The stock list of Portfolio Creation without the creation form, to choose an optimization's universe.
+              { path: 'optimize/stocks', element: <ChooseStocksPage section="optimize" /> },
+              { path: 'ml-optimize/stocks', element: <ChooseStocksPage section="ml-optimize" /> },
               { path: 'optimize/:runId', element: <OptimizePage /> },
               { path: 'ml-optimize', element: <MlOptimizePage /> },
               { path: 'ml-optimize/:experimentId', element: <MlOptimizePage /> },

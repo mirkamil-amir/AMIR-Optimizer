@@ -158,7 +158,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             e.Property(x => x.PendingRefinementJson).HasColumnType("jsonb");
             e.Property(x => x.Version).IsConcurrencyToken();
             e.HasIndex(x => new { x.OwnerId, x.UpdatedAtUtc });
-            // Deleting a portfolio keeps the research; it just loses its portfolio link.
+            // PortfolioService.DeleteAsync removes the portfolio's research first; SET NULL only guards other deletions.
             e.HasOne<Portfolio>().WithMany().HasForeignKey(x => x.PortfolioId).OnDelete(DeleteBehavior.SetNull);
             // Private research of the user: removed with the account.
             e.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Cascade);
@@ -318,7 +318,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         b.Entity<BacktestRun>(e => { e.Property(x => x.Currency).HasMaxLength(3); e.Property(x => x.FxSource).HasMaxLength(40); });
         b.Entity<StrategyComparison>(e => { e.Property(x => x.Currency).HasMaxLength(3); e.Property(x => x.FxSource).HasMaxLength(40); });
         b.Entity<MlExperiment>(e => { e.Property(x => x.Currency).HasMaxLength(3); e.Property(x => x.FxSource).HasMaxLength(40); });
-        // Optional portfolio link of ML experiments, backtests and comparisons: deleting a portfolio keeps them, unlinked.
+        // Optional portfolio link of ML experiments, backtests and comparisons: PortfolioService.DeleteAsync removes them with the portfolio.
         b.Entity<MlExperiment>(e =>
         {
             e.HasOne<Portfolio>().WithMany().HasForeignKey(x => x.PortfolioId).OnDelete(DeleteBehavior.SetNull);

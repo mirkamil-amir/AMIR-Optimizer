@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { Check, Loader2, Search, ShieldCheck, ShieldOff, Upload, UserCheck, UserX } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
@@ -109,21 +109,21 @@ export function AdminUsersPage() {
           <div className="flex flex-wrap justify-end gap-1">
             {u.status === 'Pending' && (
               <>
-                <Button size="xs" onClick={() => setPending({ user: u, kind: 'status', status: 'Approved' })}><Check /> Approve</Button>
-                <Button size="xs" variant="outline" onClick={() => setPending({ user: u, kind: 'status', status: 'Rejected' })}><UserX /> Reject</Button>
+                <Button size="xs" onClick={() => setPending({ user: u, kind: 'status', status: 'Approved' })}>Approve</Button>
+                <Button size="xs" variant="outline" onClick={() => setPending({ user: u, kind: 'status', status: 'Rejected' })}>Reject</Button>
               </>
             )}
             {u.status === 'Approved' && (
               <>
-                <Button size="xs" variant="outline" onClick={() => setPending({ user: u, kind: 'status', status: 'Suspended' })}><ShieldOff /> Suspend</Button>
+                <Button size="xs" variant="outline" onClick={() => setPending({ user: u, kind: 'status', status: 'Suspended' })}>Suspend</Button>
                 <Button size="xs" variant="ghost" onClick={() => setPending({ user: u, kind: 'roles', makeAdmin: !isAdmin })}>
-                  <ShieldCheck /> {isAdmin ? 'Remove admin' : 'Make admin'}
+                  {isAdmin ? 'Remove admin' : 'Make admin'}
                 </Button>
               </>
             )}
             {(u.status === 'Suspended' || u.status === 'Rejected') && (
               <Button size="xs" variant="outline" onClick={() => setPending({ user: u, kind: 'status', status: 'Approved' })}>
-                <UserCheck /> {u.status === 'Suspended' ? 'Reactivate' : 'Approve'}
+                {u.status === 'Suspended' ? 'Reactivate' : 'Approve'}
               </Button>
             )}
           </div>
@@ -134,7 +134,7 @@ export function AdminUsersPage() {
 
   return (
     <>
-      <PageHeader title="User management" description="Review applications, approve or reject accounts, suspend access and assign the administrator role. Every action is audited." />
+      <PageHeader title="User management" info="Review applications, approve or reject accounts, suspend access and assign the administrator role. Every action is audited." />
       <Card className="py-4">
         <CardContent className="space-y-3 px-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -146,8 +146,7 @@ export function AdminUsersPage() {
               <Label htmlFor="show-test" className="font-normal">Show test accounts</Label>
             </div>
             <div className="relative sm:w-72">
-              <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-              <Input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }} placeholder="Search e-mail or name" className="pl-8" aria-label="Search users" />
+              <Input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }} placeholder="Search e-mail or name" aria-label="Search users" />
             </div>
           </div>
           {users.error ? <ErrorState error={users.error} /> : users.isLoading ? <LoadingBlock /> : (
@@ -199,7 +198,7 @@ export function AdminUsersPage() {
 export function AdminSettingsPage() {
   return (
     <>
-      <PageHeader title="Administration" description="Data provider and defaults, the shared instrument catalogue and the audit trail. Administrators only – enforced by the server." />
+      <PageHeader title="Administration" info="Data provider and defaults, the shared instrument catalogue and the audit trail. Administrators only – enforced by the server." />
       <Tabs defaultValue="settings">
         <TabsList>
           <TabsTrigger value="settings">Data &amp; defaults</TabsTrigger>
@@ -268,7 +267,7 @@ function CatalogueImportCard() {
           </div>
         </div>
         <Button onClick={submit} disabled={!csv || source.trim().length < 3 || importCatalogue.isPending}>
-          {importCatalogue.isPending ? <Loader2 className="animate-spin" /> : <Upload />} Import
+          {importCatalogue.isPending && <Loader2 className="animate-spin" />} Import
         </Button>
         {result && (
           <div className="space-y-2 text-sm">

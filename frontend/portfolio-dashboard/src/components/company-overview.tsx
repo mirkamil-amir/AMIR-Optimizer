@@ -1,4 +1,3 @@
-import { AlertTriangle, ExternalLink, FileQuestion } from 'lucide-react'
 import { DataBadge, ErrorState, InfoTip } from '@/components/common'
 import { Skeleton } from '@/components/ui/skeleton'
 import { date } from '@/lib/format'
@@ -17,8 +16,7 @@ export function CompanyOverview({ symbol, className }: { symbol: string; classNa
   return (
     <section aria-labelledby={`overview-${symbol}`} className={cn('space-y-2', className)}>
       <h3 id={`overview-${symbol}`} className="flex items-center gap-1.5 text-sm font-semibold">
-        Company overview
-        <InfoTip label="About the company overview">
+        <InfoTip of="Company overview">
           The lead section of the company's encyclopedia article linked from the index constituent list. Text is shown as published by the
           source, never generated.
         </InfoTip>
@@ -39,7 +37,7 @@ export function CompanyOverview({ symbol, className }: { symbol: string; classNa
             <span>Source:</span>
             {p.sourceUrl ? (
               <a href={p.sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 underline underline-offset-2 hover:text-foreground">
-                {p.sourceName ?? 'source'} article <ExternalLink className="size-3" aria-label="(opens in a new tab)" />
+                {p.sourceName ?? 'source'} article 
               </a>
             ) : <span>{p.sourceName}</span>}
             {p.licence && <span>· {p.licence}</span>}
@@ -47,12 +45,11 @@ export function CompanyOverview({ symbol, className }: { symbol: string; classNa
             {p.language && p.language !== 'en' && <span>· language: {p.language}</span>}
           </p>
           {p.isStale && p.message && (
-            <p className="flex items-start gap-1.5 text-xs text-warn"><AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden />{p.message}</p>
+            <p className="flex items-start gap-1.5 text-xs text-warn">{p.message}</p>
           )}
         </div>
       ) : (
         <div className={cn('flex items-start gap-2 rounded-md border border-dashed p-3 text-sm', p.status === 'Error' && 'border-warn/50')} role="status">
-          {p.status === 'Error' ? <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warn" aria-hidden /> : <FileQuestion className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />}
           <div>
             <p className="font-medium">{p.status === 'Error' ? 'Company description temporarily unavailable' : 'Company description is currently unavailable.'}</p>
             {p.message && <p className="text-xs text-muted-foreground">{p.message}</p>}

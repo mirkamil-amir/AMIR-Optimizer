@@ -1,5 +1,6 @@
+import type { ReactNode } from 'react'
 import { Link } from 'react-router'
-import { BrainCircuit, Coins, Download, Loader2, RefreshCw, Sigma, Trash2, X } from 'lucide-react'
+import { Loader2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -75,11 +76,11 @@ export function RefreshQuoteButton({ symbol, size = 'icon-xs' }: { symbol: strin
   const label = `Refresh price of ${symbol}`
   return size === 'sm' ? (
     <Button size="sm" variant="outline" onClick={run} disabled={refresh.isPending} aria-label={label}>
-      <RefreshCw className={cn(refresh.isPending && 'animate-spin')} /> Refresh price
+      Refresh price
     </Button>
   ) : (
-    <Button size="icon-xs" variant="ghost" onClick={run} disabled={refresh.isPending} aria-label={label} title={label}>
-      <RefreshCw className={cn(refresh.isPending && 'animate-spin')} />
+    <Button size="xs" variant="ghost" onClick={run} disabled={refresh.isPending} aria-label={label} title={label}>
+      {refresh.isPending ? <Loader2 className="animate-spin" /> : 'Refresh'}
     </Button>
   )
 }
@@ -94,7 +95,8 @@ function describeQuote(quote?: StockQuote) {
  * Review of the temporary selection (memory only) with actions to fetch missing prices and continue to the
  * mathematical optimizer or the ML workspace. Nothing is stored until a run is submitted.
  */
-export function SelectionTray({ className }: { className?: string }) {
+/** The temporary selection. `actions` replaces the default links into the current portfolio's optimizations. */
+export function SelectionTray({ className, actions }: { className?: string; actions?: ReactNode }) {
   const { portfolio } = usePortfolioContext()
   const analysisCurrency = portfolio?.baseCurrency ?? 'USD'
   const selection = useSelection()
@@ -118,37 +120,36 @@ export function SelectionTray({ className }: { className?: string }) {
     <div className={cn('rounded-xl border bg-background p-3 shadow-sm', className)} role="region" aria-label="Selected stocks">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-sm font-medium">
-          Selection <Badge variant="secondary" className="tabular">{selection.count}</Badge>
-          <InfoTip>Your selection is kept in this browser tab only and is not saved. It is stored when you create a portfolio from it, or as part of a run when you start an optimization or ML experiment.</InfoTip>
+          <InfoTip of="Selection">Your selection is kept in this browser tab only and is not saved. It is stored when you create a portfolio from it, or as part of a run when you start an optimization or ML experiment.</InfoTip>
+          <Badge variant="secondary" className="tabular">{selection.count}</Badge>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
           {missing.length > 0 && (
             <Button size="sm" variant="outline" onClick={fetchMissing} disabled={fetchPrices.isPending || coverage.isFetching}>
-              {fetchPrices.isPending ? <Loader2 className="animate-spin" /> : <Download />}
+              {fetchPrices.isPending && <Loader2 className="animate-spin" />}
               {fetchPrices.isPending ? 'Downloading history…' : `Fetch prices (${Math.min(missing.length, 50)})`}
             </Button>
           )}
           <Button size="sm" variant="ghost" onClick={selection.clear}>
-            <Trash2 /> Clear all
+            Clear all
           </Button>
-          {portfolio && (
+          {actions ?? (portfolio && (
             // Both name the target, so the selection is never applied to a portfolio by accident.
             <>
               <Button size="sm" variant="outline" render={<Link to={`/portfolios/${portfolio.id}/optimize?from=selection`} />}
                 title={`Use this selection as the universe in the Math Optimization of “${portfolio.name}”`}>
-                <Sigma /> Math Optimization in “{portfolio.name}”
+                Math Optimization in “{portfolio.name}”
               </Button>
               <Button size="sm" variant="outline" render={<Link to={`/portfolios/${portfolio.id}/ml-optimize?from=selection`} />}
                 title={`Use this selection as the universe in the ML Optimization of “${portfolio.name}”`}>
-                <BrainCircuit /> ML Optimization in “{portfolio.name}”
+                ML Optimization in “{portfolio.name}”
               </Button>
             </>
-          )}
+          ))}
         </div>
       </div>
       {selection.currencies.some((c) => c !== analysisCurrency) && (
         <p className="mt-2 flex items-start gap-1.5 text-xs text-muted-foreground" role="status" aria-label="Currency conversion">
-          <Coins className="mt-0.5 size-3.5 shrink-0" aria-hidden />
           Your selection trades in {selection.currencies.join(', ')}. Analyses for “{portfolio?.name ?? 'your portfolio'}” are computed in {analysisCurrency}:
           prices are converted with the reference rate of each date, so returns include currency movements (unhedged).
         </p>

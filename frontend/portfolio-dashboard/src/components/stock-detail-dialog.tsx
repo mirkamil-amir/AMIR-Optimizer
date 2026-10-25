@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
-import { ChevronLeft, ChevronRight, Download, ExternalLink, Loader2, Minus, Plus, X } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -127,14 +127,14 @@ function StockDetailBody({ symbol, listItem, markets, position, range, onRangeCh
             </span>
             <Button variant="outline" size="sm" onClick={onPrevious} disabled={!position.previous}
               title={position.previous ? `Previous: ${position.previous} (←)` : 'This is the first stock in the list'}>
-              <ChevronLeft /> Previous
+              Previous
             </Button>
             <Button variant="outline" size="sm" onClick={onNext} disabled={!position.next}
               title={position.next ? `Next: ${position.next} (→)` : 'This is the last stock in the list'}>
-              Next <ChevronRight />
+              Next
             </Button>
             <Button variant="ghost" size="sm" onClick={onClose} title="Close (Esc)">
-              <X /> Close
+              Close
             </Button>
           </nav>
         </div>
@@ -157,7 +157,6 @@ function StockDetailBody({ symbol, listItem, markets, position, range, onRangeCh
               <WatchToggle symbol={symbol} />
               <Button size="sm" variant={selection.has(symbol) ? 'outline' : 'default'}
                 onClick={() => selection.toggle({ symbol, name: s.name, sector: s.sector, currency: s.currency })}>
-                {selection.has(symbol) ? <Minus /> : <Plus />}
                 {selection.has(symbol) ? 'Remove from selection' : 'Add to selection'}
               </Button>
             </div>
@@ -175,7 +174,7 @@ function StockDetailBody({ symbol, listItem, markets, position, range, onRangeCh
                 <div className="flex flex-col items-start gap-3 rounded-xl border border-dashed p-6 text-sm">
                   <p><strong>No daily prices are stored for {symbol} yet.</strong> The chart needs its history from the configured provider.</p>
                   <Button variant="outline" size="sm" onClick={fetchHistory} disabled={fetchPrices.isPending}>
-                    {fetchPrices.isPending ? <Loader2 className="animate-spin" /> : <Download />} Download price history
+                    {fetchPrices.isPending && <Loader2 className="animate-spin" />} Download price history
                   </Button>
                 </div>
               ) : (
@@ -217,7 +216,7 @@ function KeyFacts({ symbol, s, d, markets }: {
       )}
       {d?.metadataSource && <p className="text-xs text-muted-foreground">Classification source: {d.metadataSource}.</p>}
       <Button size="sm" variant="ghost" className="-ml-2" render={<Link to={`/stocks/${encodeURIComponent(symbol)}`} />}>
-        Open full page <ExternalLink />
+        Open full page 
       </Button>
     </aside>
   )

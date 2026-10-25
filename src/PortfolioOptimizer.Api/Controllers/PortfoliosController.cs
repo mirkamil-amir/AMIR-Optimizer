@@ -1,8 +1,10 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using PortfolioOptimizer.Api.Security;
 using PortfolioOptimizer.Application.Analytics;
 using PortfolioOptimizer.Application.Dtos;
+using PortfolioOptimizer.Application.MarketData;
 using PortfolioOptimizer.Application.Optimization;
 using PortfolioOptimizer.Application.Portfolios;
 using PortfolioOptimizer.Application.Trading;
@@ -18,7 +20,8 @@ public sealed class PortfoliosController(
     OptimizationService optimization,
     TradingService trading,
     PortfolioAnalyticsService analytics,
-    PortfolioOptimizer.Application.Comparisons.PortfolioStrategyService strategies) : ControllerBase
+    PortfolioOptimizer.Application.Comparisons.PortfolioStrategyService strategies,
+    StockDiscoveryService stocks) : ControllerBase
 {
     /// <summary>Lists the current user's portfolios (active and archived) with current valuation.</summary>
     [HttpGet]
@@ -84,15 +87,25 @@ public sealed class PortfoliosController(
     [ProducesResponseType<PortfolioDto>(StatusCodes.Status200OK)]
     public Task<PortfolioDto> Restore(Guid id, CancellationToken ct) => portfolios.RestoreAsync(id, ct);
 
-    /// <summary>Permanently deletes an ARCHIVED portfolio and its entire simulated history (409 for an active portfolio).</summary>
+    /// <summary>Permanently deletes a portfolio (active or archived) and its entire simulated history.</summary>
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         await portfolios.DeleteAsync(id, ct);
         return NoContent();
+    }
+
+    /// <summary>Refreshes the quotes of the portfolio's open positions; quotes inside the cache window are reused, not re-requested.</summary>
+    [HttpPost("{id:guid}/quotes/refresh")]
+    [EnableRateLimiting(RateLimitPolicies.Quotes)]
+    [ProducesResponseType<QuoteRefreshResultDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<QuoteRefreshResultDto> RefreshQuotes(Guid id, CancellationToken ct)
+    {
+        var symbols = await portfolios.HeldSymbolsAsync(id, ct);
+        return symbols.Count == 0 ? new QuoteRefreshResultDto([], []) : await stocks.RefreshQuotesAsync(symbols, force: false, ct);
     }
 
     /// <summary>

@@ -1,10 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
-import {
-  ArrowLeft, Bot, Check, CircleDashed, CircleDot, ClipboardList, Cpu, ExternalLink, GitCompareArrows, Loader2, MessageSquareText, Play,
-  Save, Sigma, Sparkles, Trash2, Wrench, X,
-} from 'lucide-react'
+import { Loader2, Trash2 } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -70,8 +67,8 @@ export function ResearchHomePage() {
     <>
       <PageHeader
         title="AI research assistant"
-        description="Describe what you want to research. The assistant turns it into a brief you can edit, researches a universe, runs the real optimizer and explains the results with the evidence."
-        actions={<Button variant="outline" render={<Link to="/optimize" />}><Sigma /> Optimize manually</Button>}
+        info="Describe what you want to research. The assistant turns it into a brief you can edit, researches a universe, runs the real optimizer and explains the results with the evidence."
+        actions={<Button variant="outline" render={<Link to="/optimize" />}>Optimize manually</Button>}
       />
 
       <Card>
@@ -104,7 +101,7 @@ export function ResearchHomePage() {
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <Button onClick={submit} disabled={objective.trim().length < 3 || start.isPending}>
-              {start.isPending ? <Loader2 className="animate-spin" /> : <Sparkles />} Start research
+              {start.isPending && <Loader2 className="animate-spin" />} Start research
             </Button>
             <p className="text-xs text-muted-foreground">
               Runs on the server while you wait. Nothing is saved to your portfolios unless you confirm it. Educational research – not investment advice.
@@ -115,7 +112,7 @@ export function ResearchHomePage() {
 
       <h2 className="mt-8 mb-3 text-sm font-semibold">Your research sessions</h2>
       {sessions.error ? <ErrorState error={sessions.error} onRetry={() => sessions.refetch()} /> : sessions.isLoading ? <LoadingBlock height="h-32" /> : !sessions.data?.length ? (
-        <EmptyState title="No research yet" description="Start with an objective above. Sessions stay private to your account." icon={<Bot className="size-8" />} />
+        <EmptyState title="No research yet" description="Start with an objective above. Sessions stay private to your account." />
       ) : (
         <div className="overflow-x-auto rounded-xl border">
           <Table>
@@ -171,7 +168,7 @@ function Workspace({ session: s }: { session: ResearchSession }) {
   const [companySymbol, setCompanySymbol] = useState<string>()
   return (
     <div className="space-y-6">
-      <Button variant="ghost" size="sm" className="-ml-2" render={<Link to="/research" />}><ArrowLeft /> All research</Button>
+      <Button variant="ghost" size="sm" className="-ml-2" render={<Link to="/research" />}>All research</Button>
       <PageHeader
         title={s.title}
         description={<>
@@ -204,7 +201,6 @@ function AssistantBadge({ session: s }: { session: ResearchSession }) {
   const a = s.assistant
   return (
     <Badge variant="outline" className="gap-1" title={a.note}>
-      {a.available ? <Bot /> : <Cpu />}
       {a.available ? `Language model: ${a.model ?? a.provider}` : 'Deterministic rules (no language model)'}
     </Badge>
   )
@@ -220,7 +216,6 @@ function Steps({ session: s }: { session: ResearchSession }) {
             st.status === 'current' && 'border-primary bg-primary/10 font-medium',
             st.status === 'waiting' && 'border-warn/50 text-warn',
             st.status === 'pending' && 'text-muted-foreground')}>
-          {st.status === 'done' ? <Check className="size-3" /> : st.status === 'current' ? <CircleDot className="size-3" /> : <CircleDashed className="size-3" />}
           <span>{i + 1}. {st.title}</span>
           <span className="sr-only">({st.status})</span>
         </li>
@@ -246,14 +241,13 @@ function BriefCard({ session: s }: { session: ResearchSession }) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between gap-2">
-        <CardTitle className="flex items-center gap-2"><ClipboardList className="size-4" /> Research brief</CardTitle>
+        <CardTitle className="flex items-center gap-2">Research brief</CardTitle>
         <Button size="sm" variant="outline" onClick={() => setEditing((e) => !e)}>{editing ? 'Close editor' : 'Edit brief'}</Button>
       </CardHeader>
       <CardContent className="space-y-4">
         <blockquote className="border-l-2 pl-3 text-sm text-muted-foreground">“{b.question}”</blockquote>
         {b.missingInformation.length > 0 && (
           <Alert className={s.state === 'AwaitingInput' ? 'border-warn/50' : ''}>
-            <MessageSquareText />
             <AlertTitle>{s.state === 'AwaitingInput' ? 'One answer needed before research can start' : 'Not stated – you may want to add'}</AlertTitle>
             <AlertDescription><ul className="list-disc space-y-0.5 pl-4">{b.missingInformation.map((m) => <li key={m}>{m}</li>)}</ul></AlertDescription>
           </Alert>
@@ -354,7 +348,7 @@ function BriefEditor({ session: s, onDone }: { session: ResearchSession; onDone:
       </fieldset>
       <div className="flex gap-2">
         <Button onClick={save} disabled={Object.keys(form).length === 0 || update.isPending}>
-          {update.isPending ? <Loader2 className="animate-spin" /> : <Check />} Save brief and research universe
+          {update.isPending && <Loader2 className="animate-spin" />} Save brief and research universe
         </Button>
         <Button variant="ghost" onClick={() => { setForm({}); onDone() }}>Cancel</Button>
       </div>
@@ -442,7 +436,7 @@ function UniverseCard({ session: s, onCompany }: { session: ResearchSession; onC
             )}
             <Button disabled={changed || evaluate.isPending}
               onClick={() => evaluate.mutate(undefined, { onError: (e) => toast.error(errorMessage(e)) })}>
-              {evaluate.isPending ? <Loader2 className="animate-spin" /> : <Play />} {s.hypotheses.length ? 'Run analysis again' : 'Run analysis'}
+              {evaluate.isPending && <Loader2 className="animate-spin" />} {s.hypotheses.length ? 'Run analysis again' : 'Run analysis'}
             </Button>
           </div>
         </div>
@@ -477,7 +471,7 @@ function Hypotheses({ session: s, onCompany }: { session: ResearchSession; onCom
       <div role="tablist" aria-label="Hypotheses" className="flex flex-wrap gap-2">
         {s.hypotheses.map((x) => (
           <Button key={x.id} role="tab" aria-selected={x.id === h.id} size="sm" variant={x.id === h.id ? 'default' : 'outline'} onClick={() => setActive(x.id)}>
-            {x.label}{x.savedRunId && <Save className="size-3" />}
+            {x.label}
           </Button>
         ))}
       </div>
@@ -555,7 +549,7 @@ function HypothesisCard({ session: s, h, onCompany }: { session: ResearchSession
               {h.suggestions.map((sg) => (
                 <Button key={sg.text} size="sm" variant="outline" className="h-auto py-1 text-left whitespace-normal" disabled={propose.isPending}
                   onClick={() => propose.mutate({ hypothesisId: h.id, changes: sg.changes as RefinementChange[] }, { onError: (e) => toast.error(errorMessage(e)) })}>
-                  <Wrench /> {sg.text}
+                  {sg.text}
                 </Button>
               ))}
             </div>
@@ -570,7 +564,7 @@ function HypothesisCard({ session: s, h, onCompany }: { session: ResearchSession
 function Stat({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
     <div className="rounded-lg border p-3">
-      <div className="flex items-center gap-1 text-xs text-muted-foreground">{label}<InfoTip>{hint}</InfoTip></div>
+      <div className="flex items-center gap-1 text-xs text-muted-foreground"><InfoTip of={label}>{hint}</InfoTip></div>
       <div className="mt-1 font-semibold tabular">{value}</div>
     </div>
   )
@@ -583,7 +577,7 @@ function InterpretationView({ h }: { h: Hypothesis }) {
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <h3 className="text-sm font-semibold">Interpretation</h3>
         <Badge variant="outline" title={i.note ?? undefined}>
-          {i.source === 'model' ? <><Bot /> Written by {i.model ?? 'the language model'} · numbers verified</> : <><Cpu /> Generated from the computed values</>}
+          {i.source === 'model' ? <>Written by {i.model ?? 'the language model'} · numbers verified</> : <>Generated from the computed values</>}
         </Badge>
       </div>
       {i.note && <p className="mb-3 text-xs text-muted-foreground">{i.note}</p>}
@@ -603,11 +597,11 @@ function SaveButton({ session: s, h }: { session: ResearchSession; h: Hypothesis
   const save = useSaveHypothesis(s.id)
   const [open, setOpen] = useState(false)
   if (h.savedRunId)
-    return <Button size="sm" variant="outline" render={<Link to={`/optimize/${h.savedRunId}`} />}><ExternalLink /> Open saved run</Button>
+    return <Button size="sm" variant="outline" render={<Link to={`/optimize/${h.savedRunId}`} />}>Open saved run</Button>
   if (h.result.status !== 'Succeeded') return null
   return (
     <>
-      <Button size="sm" onClick={() => setOpen(true)}><Save /> Save as optimization run</Button>
+      <Button size="sm" onClick={() => setOpen(true)}>Save as optimization run</Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
@@ -624,7 +618,7 @@ function SaveButton({ session: s, h }: { session: ResearchSession; h: Hypothesis
                 onSuccess: () => { setOpen(false); toast.success('Saved as an optimization run') },
                 onError: (e) => toast.error(errorMessage(e)),
               })}>
-              {save.isPending ? <Loader2 className="animate-spin" /> : <Save />} Confirm and save
+              {save.isPending && <Loader2 className="animate-spin" />} Confirm and save
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -645,7 +639,7 @@ function RefineCard({ session: s }: { session: ResearchSession }) {
   const onError = (e: unknown) => toast.error(errorMessage(e))
   return (
     <Card>
-      <CardHeader><CardTitle className="flex items-center gap-2"><MessageSquareText className="size-4" /> Ask or refine</CardTitle></CardHeader>
+      <CardHeader><CardTitle className="flex items-center gap-2">Ask or refine</CardTitle></CardHeader>
       <CardContent className="space-y-3">
         <div className="grid gap-3 sm:grid-cols-[1fr_240px]">
           <textarea aria-label="Your question or change" className={textareaClass} maxLength={500} value={text} onChange={(e) => setText(e.target.value)}
@@ -659,7 +653,7 @@ function RefineCard({ session: s }: { session: ResearchSession }) {
         </div>
         <Button disabled={text.trim().length < 2 || propose.isPending}
           onClick={() => propose.mutate({ text, hypothesisId: base }, { onSuccess: () => setText(''), onError })}>
-          {propose.isPending ? <Loader2 className="animate-spin" /> : <Sparkles />} Interpret
+          {propose.isPending && <Loader2 className="animate-spin" />} Interpret
         </Button>
 
         {p && (
@@ -676,11 +670,11 @@ function RefineCard({ session: s }: { session: ResearchSession }) {
             <div className="mt-3 flex gap-2">
               {p.changes.length > 0 && (
                 <Button disabled={apply.isPending} onClick={() => apply.mutate(p.id, { onError })}>
-                  {apply.isPending ? <Loader2 className="animate-spin" /> : <Check />} Apply and recalculate
+                  {apply.isPending && <Loader2 className="animate-spin" />} Apply and recalculate
                 </Button>
               )}
               <Button variant="ghost" disabled={discard.isPending} onClick={() => discard.mutate(undefined, { onError })}>
-                <X /> {p.changes.length > 0 ? 'Discard' : 'Dismiss'}
+                {p.changes.length > 0 ? 'Discard' : 'Dismiss'}
               </Button>
             </div>
           </div>
@@ -706,7 +700,7 @@ function CompareCard({ session: s }: { session: ResearchSession }) {
   ] : [], [c])
   return (
     <Card>
-      <CardHeader><CardTitle className="flex items-center gap-2"><GitCompareArrows className="size-4" /> Compare alternatives</CardTitle></CardHeader>
+      <CardHeader><CardTitle className="flex items-center gap-2">Compare alternatives</CardTitle></CardHeader>
       <CardContent className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-2">
           {[['A', a, setA], ['B', b, setB]].map(([label, value, set]) => (
@@ -789,7 +783,6 @@ function ActivityLog({ session: s }: { session: ResearchSession }) {
             <li key={i} className="rounded-lg border p-2 text-xs">
               <div className="flex items-center justify-between gap-2">
                 <span className="flex items-center gap-1 font-medium">
-                  {e.kind === 'tool' ? <Wrench className="size-3" /> : e.kind === 'model' ? <Bot className="size-3" /> : e.kind === 'user' ? <MessageSquareText className="size-3" /> : <Cpu className="size-3" />}
                   {eventLabel(e)}
                 </span>
                 <Badge variant="outline" className={statusStyle[e.status]}>{e.status}</Badge>

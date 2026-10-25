@@ -1,7 +1,8 @@
-# AMIR Optimizer – Portfolio Research Platform
+# MaTrix – Portfolio Viewer
 
-**AMIR = Allocation · Modelling · Investment · Research.** The logo is a geometric “A” standing over three ascending gold bars
-(allocation and growth) on a graded tile with a fine gold frame; the name is set in a classic serif
+**MaTrix** (formerly AMIR Optimizer) is named after the covariance matrix at the heart of the optimizer. The logo
+is a 4×4 correlation matrix – the risk model at the core
+of the optimizer – with its diagonal in gold on a graded navy tile; the name is set in Sora
 (`frontend/…/src/components/brand.tsx`, `public/favicon.svg`).
 
 An educational portfolio-research platform. An **AI research assistant** turns an investment objective into an
@@ -136,7 +137,7 @@ figures Geist (both bundled with the app). Details: [portfolios.md](docs/portfol
 2. **Portfolio Creation (stock selection).** Navigate market → index → sector, search by company or ticker, sort. Every sign-in starts a
    shared background price refresh for all markets; the page shows cached prices immediately and refreshes the visible
    ones. Each price shows its currency, kind (*Delayed quote* / *Last close*, never "live"), when it applies, when it was
-   retrieved and whether it is cached, stale or SIMULATED; a refresh icon updates a single stock. Select stocks across
+   retrieved and whether it is cached, stale or SIMULATED; a Refresh button updates a single stock. Select stocks across
    sectors – the selection lives **only in browser memory** (not saved, survives navigation, discarded on reload or
    sign-out). Fetch price history for selected stocks from the selection tray. Stocks of different currencies can be
    combined (converted into the portfolio currency). When an analysis would miss stored prices or exchange rates, a window

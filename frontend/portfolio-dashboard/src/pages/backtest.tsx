@@ -1,56 +1,31 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
-import { Controller, useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
 import { toast } from 'sonner'
-import { AlertTriangle, BrainCircuit, Loader2, Play, Sigma } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ChartCard, TimeSeriesChart, WeightsOverTimeChart, seriesColor, timeSeriesTable } from '@/components/charts'
 import { DataTable } from '@/components/data-table'
-import { Collapsible, DataBadge, EmptyState, ErrorState, LoadingBlock, MetricValue, PageHeader, Warnings } from '@/components/common'
+import { Collapsible, DataBadge, EmptyState, ErrorState, InfoTip, LoadingBlock, MetricValue, PageHeader } from '@/components/common'
+import { DataNotesList } from '@/components/strategy-insights'
 import { errorMessage } from '@/lib/api'
 import { portfolioPath, usePortfolioContext } from '@/lib/portfolio-context'
-import { useAssets, useBacktest, useBacktests, useCreateBacktest, useCreateStrategyBacktest, usePortfolio, usePortfolioStrategies } from '@/lib/queries'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { NoStrategies, PortfolioPicker, StrategySelect } from '@/components/strategy-picker'
+import { useBacktest, useBacktests, useCreateStrategyBacktest, usePortfolioStrategies } from '@/lib/queries'
+import { NoStrategies, PortfolioPicker } from '@/components/strategy-picker'
 import { dataNeeded, strategyKey, strategyRef } from '@/lib/strategies'
 import { useMissingDataGuard } from '@/components/missing-data-dialog'
-import { lookbackStart } from '@/lib/data-check'
-import type { Backtest } from '@/lib/types'
-import { date, dateTime, money, num, objectiveLabels, pct } from '@/lib/format'
+import type { Backtest, PortfolioStrategy } from '@/lib/types'
+import { date, dateTime, money, num, objectiveLabels, pct, relativeTime } from '@/lib/format'
+import { cn } from '@/lib/utils'
 
-const schema = z.object({
-  name: z.string().max(100).optional(),
-  universe: z.array(z.string()).min(1, 'Select at least one asset'),
-  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Required'),
-  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Required'),
-  initialCapital: z.number().min(100),
-  rebalanceFrequency: z.enum(['None', 'Monthly', 'Quarterly']),
-  objective: z.enum(['MinimumVariance', 'MaximumSharpe', 'TargetReturn', 'MaximumReturnForRisk', 'EqualWeight']),
-  lookbackDays: z.number().int().min(60).max(2520),
-  transactionCostBps: z.number().min(0).max(500),
-  riskFreeRate: z.number().min(-5).max(25),
-  benchmarkSymbol: z.string(),
-  maxWeight: z.number().min(1).max(100),
-  targetReturn: z.number().optional(),
-  maxVolatility: z.number().optional(),
-}).superRefine((v, ctx) => {
-  if (v.endDate <= v.startDate) ctx.addIssue({ code: 'custom', path: ['endDate'], message: 'Must be after the start date' })
-  if (v.objective === 'TargetReturn' && v.targetReturn === undefined) ctx.addIssue({ code: 'custom', path: ['targetReturn'], message: 'Required' })
-  if (v.objective === 'MaximumReturnForRisk' && v.maxVolatility === undefined) ctx.addIssue({ code: 'custom', path: ['maxVolatility'], message: 'Required' })
-  if ((v.maxWeight / 100) * v.universe.length < 1) ctx.addIssue({ code: 'custom', path: ['maxWeight'], message: 'Too low to be fully invested with this universe' })
-})
-type FormValues = z.infer<typeof schema>
-const asNum = { setValueAs: (v: unknown) => (v === '' || v === null || v === undefined ? undefined : Number(v)) }
+/** Backtests are hypothetical; shown in the page's tip and in every result's notes. */
+const HYPOTHETICAL = 'Backtests use today’s list of symbols (survivorship bias) and historical estimates. They are hypothetical, not forecasts, and do not guarantee future returns.'
 
 /** Where backtests open: inside a portfolio's workspace (`/portfolios/:id/backtest`) or on the page of all backtests. */
 function backtestBase(portfolioId: string | undefined) {
@@ -71,17 +46,11 @@ export function BacktestPage() {
   return (
     <>
       {scoped
-        ? <PageHeader level={2} title="Backtest" description="Walk-forward historical simulation of this portfolio's Math and ML Optimizations – or of a custom strategy – with periodic rebalancing, transaction costs and benchmark comparison." />
-        : <PageHeader title="Backtesting" description="Walk-forward historical simulation of any optimization – Math or ML – or of a custom strategy, with periodic rebalancing, transaction costs and benchmark comparison." />}
-      <Alert className="mb-6">
-        <AlertTriangle className="text-warn" />
-        <AlertTitle>Hypothetical results</AlertTitle>
-        <AlertDescription>Backtests use today’s list of symbols (survivorship bias) and historical estimates. They are not forecasts and do not guarantee future returns.</AlertDescription>
-      </Alert>
-      <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
-        <div className="space-y-4">
-          <StrategyBacktestCard portfolioId={scoped} />
-          <BacktestForm portfolioId={scoped} />
+        ? <PageHeader level={2} title="Backtest" info={`Walk-forward historical simulation of one of this portfolio's Math or ML Optimizations, with periodic rebalancing, transaction costs and benchmark comparison. ${HYPOTHETICAL}`} />
+        : <PageHeader title="Backtesting" info={`Walk-forward historical simulation of any Math or ML Optimization of your portfolios, with periodic rebalancing, transaction costs and benchmark comparison. ${HYPOTHETICAL}`} />}
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
+        <div className="min-w-0 space-y-4">
+          <BacktestAnOptimization fixedPortfolioId={scoped} />
           {list.data && list.data.items.length > 0 && (
             <Card>
               <CardHeader><CardTitle className="text-sm">Previous backtests</CardTitle></CardHeader>
@@ -99,7 +68,7 @@ export function BacktestPage() {
         </div>
         <div className="min-w-0">
           {bt.isLoading || list.isLoading ? <LoadingBlock height="h-96" /> : bt.error ? <ErrorState error={bt.error} /> : bt.data ? <BacktestResults bt={bt.data} /> : (
-            <EmptyState title="No backtests yet" description={scoped ? 'Backtest one of this portfolio’s optimizations or a custom strategy on the left.' : 'Configure a strategy on the left and run it.'} />
+            <EmptyState title="No backtests yet" description={scoped ? 'Choose one of this portfolio’s optimizations on the left and run its backtest.' : 'Choose a portfolio and one of its optimizations on the left.'} />
           )}
         </div>
       </div>
@@ -109,33 +78,25 @@ export function BacktestPage() {
 
 const isoDate = (d: Date) => d.toISOString().slice(0, 10)
 
-/** Opens the window that chooses which optimization of which portfolio is backtested. */
-function StrategyBacktestCard({ portfolioId }: { portfolioId?: string }) {
-  const [open, setOpen] = useState(false)
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-sm">Backtest an optimization</CardTitle>
-        <CardDescription className="text-xs">
-          Any Math or ML Optimization of a portfolio, re-simulated walk-forward over a period you choose with its stored settings.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Button className="w-full" variant="outline" onClick={() => setOpen(true)}><Sigma /> <BrainCircuit /> Choose optimization…</Button>
-        {open && <StrategyBacktestDialog fixedPortfolioId={portfolioId} onClose={() => setOpen(false)} />}
-      </CardContent>
-    </Card>
-  )
-}
+const kindOptions = [
+  { value: 'all', label: 'All' },
+  { value: 'Mathematical', label: 'Math' },
+  { value: 'MachineLearning', label: 'ML' },
+] as const
 
-/** `fixedPortfolioId`: opened inside a portfolio – its optimizations only, no portfolio choice. */
-function StrategyBacktestDialog({ fixedPortfolioId, onClose }: { fixedPortfolioId?: string; onClose: () => void }) {
+/**
+ * Chooses one optimization – every Math and ML Optimization of the portfolio is listed and can be picked on its own – and
+ * the simulation's period, capital, costs and rebalancing. `fixedPortfolioId`: inside a portfolio – its optimizations only,
+ * no portfolio choice.
+ */
+function BacktestAnOptimization({ fixedPortfolioId }: { fixedPortfolioId?: string }) {
   const { portfolioId: defaultPortfolio, portfolios } = usePortfolioContext()
   const [portfolioId, setPortfolioId] = useState<string | undefined>(fixedPortfolioId ?? defaultPortfolio)
   const strategies = usePortfolioStrategies(portfolioId)
   const create = useCreateStrategyBacktest()
   const missingData = useMissingDataGuard()
   const navigate = useNavigate()
+  const [kind, setKind] = useState<(typeof kindOptions)[number]['value']>('all')
   const [key, setKey] = useState<string | null>(null)
   const [end, setEnd] = useState(() => isoDate(new Date()))
   const [start, setStart] = useState(() => { const d = new Date(); d.setFullYear(d.getFullYear() - 3); return isoDate(d) })
@@ -143,6 +104,7 @@ function StrategyBacktestDialog({ fixedPortfolioId, onClose }: { fixedPortfolioI
   const [costs, setCosts] = useState(10)
   const [rebalance, setRebalance] = useState<'Monthly' | 'Quarterly'>('Monthly')
   const list = strategies.data ?? []
+  const shown = list.filter((s) => kind === 'all' || s.kind === kind)
   const chosen = list.find((s) => strategyKey(s) === key)
   const portfolio = portfolios.find((p) => p.id === portfolioId)
 
@@ -153,7 +115,6 @@ function StrategyBacktestDialog({ fixedPortfolioId, onClose }: { fixedPortfolioI
       try {
         const b = await create.mutateAsync({ portfolioId, strategy: ref, startDate: start, endDate: end, initialCapital: capital, transactionCostBps: costs, rebalanceFrequency: rebalance })
         toast.success('Backtest queued', { description: 'It runs in the background; results appear automatically.' })
-        onClose()
         navigate(`${backtestBase(fixedPortfolioId)}/${b.id}`)
       } catch (e) {
         toast.error('Could not start backtest', { description: errorMessage(e) })
@@ -162,173 +123,81 @@ function StrategyBacktestDialog({ fixedPortfolioId, onClose }: { fixedPortfolioI
   }
 
   return (
-    <Dialog open onOpenChange={(o) => { if (!o) onClose() }}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Backtest an optimization</DialogTitle>
-          <DialogDescription>
-            Choose the portfolio and one of its optimizations. A Math Optimization is re-optimized with its settings at every rebalance; an ML
-            Optimization is retrained walk-forward with its selected hyperparameters. Results before an ML experiment's test period are marked as partly in-sample.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-3">
-          {fixedPortfolioId
-            ? <p className="text-xs text-muted-foreground">Portfolio: <span className="font-medium text-foreground">{portfolio?.name}</span> ({portfolio?.baseCurrency})</p>
-            : <PortfolioPicker value={portfolioId} onChange={(id) => { setPortfolioId(id); setKey(null) }} id="bt-portfolio" />}
-          {portfolioId && (strategies.error ? <ErrorState error={strategies.error} /> : !strategies.data ? <LoadingBlock height="h-16" /> : list.length === 0
-            ? <NoStrategies portfolioId={portfolioId} />
-            : <StrategySelect strategies={list} value={key} onChange={setKey} label="Optimization" />)}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5"><Label htmlFor="bt-s-start" className="text-xs">Start</Label><Input id="bt-s-start" type="date" value={start} onChange={(e) => setStart(e.target.value)} /></div>
-            <div className="space-y-1.5"><Label htmlFor="bt-s-end" className="text-xs">End</Label><Input id="bt-s-end" type="date" value={end} onChange={(e) => setEnd(e.target.value)} /></div>
-            <div className="space-y-1.5"><Label htmlFor="bt-s-capital" className="text-xs">Initial capital</Label><Input id="bt-s-capital" type="number" value={capital} min={100} step={1000} onChange={(e) => setCapital(Number(e.target.value))} /></div>
-            <div className="space-y-1.5"><Label htmlFor="bt-s-costs" className="text-xs">Transaction cost (bps)</Label><Input id="bt-s-costs" type="number" value={costs} min={0} max={500} onChange={(e) => setCosts(Number(e.target.value))} /></div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Rebalancing</Label>
-              <Select value={rebalance} onValueChange={(v) => setRebalance(v as 'Monthly' | 'Quarterly')} items={[{ value: 'Monthly', label: 'Monthly' }, { value: 'Quarterly', label: 'Quarterly' }]}>
-                <SelectTrigger className="w-full" aria-label="Rebalancing"><SelectValue /></SelectTrigger>
-                <SelectContent><SelectItem value="Monthly">Monthly</SelectItem><SelectItem value="Quarterly">Quarterly</SelectItem></SelectContent>
-              </Select>
-            </div>
-          </div>
-          {end <= start && <p className="text-xs text-destructive">The end must be after the start.</p>}
-        </div>
-        <DialogFooter>
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button onClick={submit} disabled={!chosen || end <= start || create.isPending || missingData.checking}>
-            {create.isPending || missingData.checking ? <Loader2 className="animate-spin" /> : <Play />} Run backtest
-          </Button>
-        </DialogFooter>
-        {missingData.dialog}
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-function StatusBadge({ status }: { status: string }) {
-  return <Badge variant={status === 'Failed' ? 'destructive' : status === 'Succeeded' ? 'secondary' : 'outline'} className="text-[10px]">{status}</Badge>
-}
-
-/** Custom strategy. Inside a portfolio the backtest belongs to it; elsewhere it uses the current portfolio's settings as defaults only. */
-function BacktestForm({ portfolioId: scoped }: { portfolioId?: string }) {
-  const assets = useAssets()
-  const { portfolioId: current } = usePortfolioContext()
-  const portfolioId = scoped ?? current
-  const portfolio = usePortfolio(portfolioId)
-  const create = useCreateBacktest()
-  const navigate = useNavigate()
-  const missingData = useMissingDataGuard()
-  const today = new Date().toISOString().slice(0, 10)
-  const { register, control, handleSubmit, watch, reset, formState: { errors } } = useForm<FormValues>({
-    resolver: zodResolver(schema),
-    defaultValues: {
-      universe: [], startDate: `${new Date().getFullYear() - 3}-01-01`, endDate: today, initialCapital: 100000, rebalanceFrequency: 'Monthly',
-      objective: 'MaximumSharpe', lookbackDays: 252, transactionCostBps: 5, riskFreeRate: 4, benchmarkSymbol: 'SPY', maxWeight: 35,
-    },
-  })
-  useEffect(() => {
-    const s = portfolio.data?.settings
-    if (s) reset((v) => ({ ...v, universe: s.universe, riskFreeRate: s.riskFreeRate * 100, benchmarkSymbol: s.benchmarkSymbol, maxWeight: s.maxWeight * 100, objective: s.objective, transactionCostBps: s.transactionCostBps }))
-  }, [portfolio.data, reset])
-  const objective = watch('objective')
-  const enabled = (assets.data ?? []).filter((a) => a.isEnabled)
-
-  // Missing prices or exchange rates for the period (incl. the lookback before it) are offered for download first.
-  const onSubmit = handleSubmit((v) => missingData.guard({
-    symbols: v.universe, benchmarkSymbol: v.benchmarkSymbol || null, from: lookbackStart(new Date(v.startDate), v.lookbackDays), to: v.endDate,
-    currency: portfolio.data?.baseCurrency ?? null,
-  }, () => start(v)))
-  const start = async (v: FormValues) => {
-    try {
-      const b = await create.mutateAsync({
-        name: v.name || undefined, universe: v.universe, startDate: v.startDate, endDate: v.endDate, initialCapital: v.initialCapital,
-        rebalanceFrequency: v.rebalanceFrequency, objective: v.objective, covarianceMethod: 'LedoitWolf', lookbackDays: v.lookbackDays,
-        transactionCostBps: v.transactionCostBps, riskFreeRate: v.riskFreeRate / 100, benchmarkSymbol: v.benchmarkSymbol || null,
-        minWeight: 0, maxWeight: v.maxWeight / 100, cashReserve: 0, maxHoldings: null, currency: portfolio.data?.baseCurrency ?? null,
-        portfolioId: scoped ?? null,
-        targetReturn: v.targetReturn !== undefined ? v.targetReturn / 100 : null, maxVolatility: v.maxVolatility !== undefined ? v.maxVolatility / 100 : null,
-      })
-      toast.success('Backtest queued', { description: 'It runs in the background; results appear automatically.' })
-      navigate(`${backtestBase(scoped)}/${b.id}`)
-    } catch (e) {
-      toast.error('Could not start backtest', { description: errorMessage(e) })
-    }
-  }
-
-  if (!assets.data) return <LoadingBlock height="h-[560px]" />
-  return (
-    <Card>
-      <CardHeader><CardTitle className="text-sm">Custom strategy</CardTitle><CardDescription className="text-xs">Mean-variance settings entered here. Defaults are taken from the selected portfolio.</CardDescription></CardHeader>
-      <CardContent>
-        <form onSubmit={onSubmit} className="space-y-4" noValidate>
-          <Controller control={control} name="universe" render={({ field }) => (
-            <fieldset>
-              <legend className="mb-1.5 text-xs font-medium">Universe ({field.value.length})</legend>
-              <div className="grid max-h-40 grid-cols-3 gap-1 overflow-y-auto rounded-md border p-2">
-                {enabled.map((a) => (
-                  <label key={a.symbol} className="flex cursor-pointer items-center gap-1.5 text-sm">
-                    <Checkbox checked={field.value.includes(a.symbol)} onCheckedChange={(on) => field.onChange(on ? [...field.value, a.symbol] : field.value.filter((s) => s !== a.symbol))} aria-label={a.symbol} />
-                    {a.symbol}
-                  </label>
-                ))}
+    <Card role="region" aria-label="Backtest an optimization">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-1.5 text-sm">
+          <InfoTip of="Backtest an optimization">
+            A Math Optimization is re-optimized with its stored settings at every rebalance; an ML Optimization is retrained
+            walk-forward with its selected hyperparameters. Results before an ML Optimization&apos;s test period are marked as partly in-sample.
+          </InfoTip>
+        </CardTitle>
+        <CardDescription className="text-xs">Pick one optimization, then the period to simulate.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {!fixedPortfolioId && <PortfolioPicker value={portfolioId} onChange={(id) => { setPortfolioId(id); setKey(null) }} id="bt-portfolio" />}
+        {portfolioId && (strategies.error ? <ErrorState error={strategies.error} /> : !strategies.data ? <LoadingBlock height="h-32" /> : list.length === 0
+          ? <NoStrategies portfolioId={portfolioId} />
+          : (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-medium">Optimization</span>
+                <div className="flex gap-1" role="group" aria-label="Show optimizations">
+                  {kindOptions.map((o) => {
+                    const count = o.value === 'all' ? list.length : list.filter((s) => s.kind === o.value).length
+                    return (
+                      <Button key={o.value} type="button" size="xs" variant={kind === o.value ? 'secondary' : 'ghost'} aria-pressed={kind === o.value} onClick={() => setKind(o.value)}>
+                        {o.label} <span className="text-muted-foreground tabular">{count}</span>
+                      </Button>
+                    )
+                  })}
+                </div>
               </div>
-              {errors.universe && <p className="mt-1 text-xs text-destructive">{errors.universe.message}</p>}
-            </fieldset>
-          )} />
-          <div className="grid grid-cols-2 gap-3">
-            <F label="Start date" error={errors.startDate?.message}><Input type="date" {...register('startDate')} /></F>
-            <F label="End date" error={errors.endDate?.message}><Input type="date" max={today} {...register('endDate')} /></F>
-            <F label="Initial capital" error={errors.initialCapital?.message}><Input type="number" {...register('initialCapital', asNum)} /></F>
-            <F label="Rebalancing">
-              <Controller control={control} name="rebalanceFrequency" render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange} items={[{ value: 'Monthly', label: 'Monthly' }, { value: 'Quarterly', label: 'Quarterly' }, { value: 'None', label: 'Buy & hold' }]}>
-                  <SelectTrigger className="w-full" aria-label="Rebalancing"><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="Monthly">Monthly</SelectItem><SelectItem value="Quarterly">Quarterly</SelectItem><SelectItem value="None">Buy & hold</SelectItem></SelectContent>
-                </Select>
-              )} />
-            </F>
+              <div role="radiogroup" aria-label="Optimization" className="max-h-80 divide-y overflow-y-auto rounded-lg border">
+                {shown.length === 0 && <p className="px-3 py-4 text-center text-xs text-muted-foreground">None of this kind yet.</p>}
+                {shown.map((s) => <OptimizationOption key={strategyKey(s)} strategy={s} checked={strategyKey(s) === key} onSelect={() => setKey(strategyKey(s))} />)}
+              </div>
+            </div>
+          ))}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5"><Label htmlFor="bt-s-start" className="text-xs">Start</Label><Input id="bt-s-start" type="date" value={start} onChange={(e) => setStart(e.target.value)} /></div>
+          <div className="space-y-1.5"><Label htmlFor="bt-s-end" className="text-xs">End</Label><Input id="bt-s-end" type="date" value={end} onChange={(e) => setEnd(e.target.value)} /></div>
+          <div className="space-y-1.5"><Label htmlFor="bt-s-capital" className="text-xs">Initial capital</Label><Input id="bt-s-capital" type="number" value={capital} min={100} step={1000} onChange={(e) => setCapital(Number(e.target.value))} /></div>
+          <div className="space-y-1.5"><Label htmlFor="bt-s-costs" className="text-xs">Transaction cost (bps)</Label><Input id="bt-s-costs" type="number" value={costs} min={0} max={500} onChange={(e) => setCosts(Number(e.target.value))} /></div>
+          <div className="col-span-2 space-y-1.5">
+            <Label className="text-xs">Rebalancing</Label>
+            <Select value={rebalance} onValueChange={(v) => setRebalance(v as 'Monthly' | 'Quarterly')} items={[{ value: 'Monthly', label: 'Monthly' }, { value: 'Quarterly', label: 'Quarterly' }]}>
+              <SelectTrigger className="w-full" aria-label="Rebalancing"><SelectValue /></SelectTrigger>
+              <SelectContent><SelectItem value="Monthly">Monthly</SelectItem><SelectItem value="Quarterly">Quarterly</SelectItem></SelectContent>
+            </Select>
           </div>
-          <F label="Objective">
-            <Controller control={control} name="objective" render={({ field }) => (
-              <Select value={field.value} onValueChange={field.onChange} items={Object.entries(objectiveLabels).map(([value, label]) => ({ value, label }))}>
-                <SelectTrigger className="w-full" aria-label="Objective"><SelectValue /></SelectTrigger>
-                <SelectContent>{Object.entries(objectiveLabels).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}</SelectContent>
-              </Select>
-            )} />
-          </F>
-          <div className="grid grid-cols-2 gap-3">
-            {objective === 'TargetReturn' && <F label="Target return (%)" error={errors.targetReturn?.message}><Input type="number" step="any" {...register('targetReturn', asNum)} /></F>}
-            {objective === 'MaximumReturnForRisk' && <F label="Volatility limit (%)" error={errors.maxVolatility?.message}><Input type="number" step="any" {...register('maxVolatility', asNum)} /></F>}
-            <F label="Lookback (days)" error={errors.lookbackDays?.message}><Input type="number" {...register('lookbackDays', asNum)} /></F>
-            <F label="Max weight (%)" error={errors.maxWeight?.message}><Input type="number" step="any" {...register('maxWeight', asNum)} /></F>
-            <F label="Costs (bps)" error={errors.transactionCostBps?.message}><Input type="number" step="any" {...register('transactionCostBps', asNum)} /></F>
-            <F label="Risk-free (%)" error={errors.riskFreeRate?.message}><Input type="number" step="any" {...register('riskFreeRate', asNum)} /></F>
-            <F label="Benchmark">
-              <Controller control={control} name="benchmarkSymbol" render={({ field }) => (
-                <Select value={field.value} onValueChange={(v) => field.onChange(String(v))} items={enabled.map((a) => ({ value: a.symbol, label: a.symbol }))}>
-                  <SelectTrigger className="w-full" aria-label="Benchmark"><SelectValue /></SelectTrigger>
-                  <SelectContent>{enabled.map((a) => <SelectItem key={a.symbol} value={a.symbol}>{a.symbol}</SelectItem>)}</SelectContent>
-                </Select>
-              )} />
-            </F>
-            <F label="Name (optional)"><Input {...register('name')} placeholder="Auto" /></F>
-          </div>
-          <Button type="submit" className="w-full" disabled={create.isPending || missingData.checking}>{create.isPending || missingData.checking ? <Loader2 className="animate-spin" /> : <Play />} Run backtest</Button>
-        </form>
+        </div>
+        {end <= start && <p className="text-xs text-destructive">The end must be after the start.</p>}
+        <Button className="w-full" onClick={submit} disabled={!chosen || end <= start || create.isPending || missingData.checking}>
+          {create.isPending || missingData.checking && <Loader2 className="animate-spin" />} Run backtest
+        </Button>
         {missingData.dialog}
       </CardContent>
     </Card>
   )
 }
 
-function F({ label, error, children }: { label: string; error?: string; children: ReactNode }) {
+/** One optimization in the list: kind, label, its settings in short, stock count and age. */
+function OptimizationOption({ strategy: s, checked, onSelect }: { strategy: PortfolioStrategy; checked: boolean; onSelect: () => void }) {
+  const ml = s.kind === 'MachineLearning'
   return (
-    <div className="space-y-1.5">
-      <Label className="text-xs">{label}</Label>
-      {children}
-      {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
-    </div>
+    <button type="button" role="radio" aria-checked={checked} onClick={onSelect}
+      className={cn('flex w-full items-start gap-2 border-l-2 border-transparent px-3 py-2 text-left text-sm hover:bg-muted', checked && 'border-primary bg-muted')}>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-medium">{ml ? 'ML' : 'Math'} · {s.label}</span>
+        <span className="block truncate text-xs text-muted-foreground">{s.detail} · {s.stocks} stocks · {relativeTime(s.createdAtUtc)}</span>
+      </span>
+      {s.usesSimulatedData && <DataBadge kind="simulated" />}
+    </button>
   )
+}
+
+function StatusBadge({ status }: { status: string }) {
+  return <Badge variant={status === 'Failed' ? 'destructive' : status === 'Succeeded' ? 'secondary' : 'outline'} className="text-[10px]">{status}</Badge>
 }
 
 function BacktestResults({ bt }: { bt: Backtest }) {
@@ -343,16 +212,17 @@ function BacktestResults({ bt }: { bt: Backtest }) {
         <StatusBadge status={bt.status} />
         <DataBadge kind="backtest" />
         {bt.usesSimulatedData && <DataBadge kind="simulated" />}
-        <span className="text-xs text-muted-foreground">{date(bt.config.startDate)} – {date(bt.config.endDate)} · {bt.config.strategy ? `${bt.config.strategy.kind === 'MachineLearning' ? 'ML' : 'Math'}: ${bt.config.strategy.label}` : objectiveLabels[bt.config.objective]} · {bt.config.rebalanceFrequency === 'None' ? 'buy & hold' : bt.config.rebalanceFrequency.toLowerCase()}</span>
       </div>
 
       {running && (
         <Card><CardContent className="space-y-2 py-6 text-center text-sm text-muted-foreground"><Loader2 className="mx-auto size-6 animate-spin" />Running in the background…<Progress value={null} className="mx-auto max-w-xs" /></CardContent></Card>
       )}
-      {bt.status === 'Failed' && <Alert variant="destructive"><AlertTriangle /><AlertTitle>Backtest failed</AlertTitle><AlertDescription>{bt.error}</AlertDescription></Alert>}
+      {bt.status === 'Failed' && <Alert variant="destructive"><AlertTitle>Backtest failed</AlertTitle><AlertDescription>{bt.error}</AlertDescription></Alert>}
 
       {r && (
         <>
+          {/* The same translucent surface as the cards below. */}
+          <div className="rounded-lg bg-card">
           <DataTable
             caption="Backtest summary"
             rows={r.metrics}
@@ -370,6 +240,7 @@ function BacktestResults({ bt }: { bt: Backtest }) {
               { key: 'c', header: 'Costs', align: 'right', cell: (m) => money(m.totalTransactionCosts, ccy, { decimals: 0 }) },
             ]}
           />
+          </div>
           <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
             <span>Strategy beta: <MetricValue metric={r.beta} format={(v) => num(v)} /></span>
             <span>Tracking error: <MetricValue metric={r.trackingError} format={(v) => pct(v)} /></span>
@@ -419,11 +290,38 @@ function BacktestResults({ bt }: { bt: Backtest }) {
               ]}
             />
           </Collapsible>
-          <Warnings items={r.warnings} collapsible />
-          <p className="text-xs leading-relaxed text-muted-foreground">{r.methodology}</p>
+          <BacktestNotes bt={bt} warnings={r.warnings} methodology={r.methodology} />
         </>
       )}
     </div>
+  )
+}
+
+/** The run's data notes, how it was simulated and why its results are hypothetical – one folded box at the end. */
+function BacktestNotes({ bt, warnings, methodology }: { bt: Backtest; warnings: string[]; methodology: string }) {
+  const c = bt.config
+  const what = c.strategy ? `${c.strategy.kind === 'MachineLearning' ? 'ML' : 'Math'} Optimization “${c.strategy.label}”` : objectiveLabels[c.objective]
+  const summary = [warnings.length > 0 && `${warnings.length} ${warnings.length === 1 ? 'note' : 'notes'}`, 'methodology'].filter(Boolean).join(' · ')
+  return (
+    <Collapsible title="Data notes & methodology" summary={summary}>
+      <div className="space-y-3 leading-relaxed">
+        <p>
+          <span className="font-semibold">Simulated: </span>{what}, {date(c.startDate)} – {date(c.endDate)},
+          {' '}{c.rebalanceFrequency === 'None' ? 'buy & hold' : `${c.rebalanceFrequency.toLowerCase()} rebalancing`}, {num(c.transactionCostBps, 0)} bps costs.
+        </p>
+        <p className="text-warn"><span className="font-semibold">Keep in mind. </span>{HYPOTHETICAL}</p>
+        {warnings.length > 0 && (
+          <section aria-label="Data notes" className="border-t pt-3">
+            <h4 className="mb-1.5 font-semibold">Data notes</h4>
+            <DataNotesList items={warnings} />
+          </section>
+        )}
+        <section aria-label="Methodology" className="border-t pt-3">
+          <h4 className="mb-1.5 font-semibold">Methodology</h4>
+          <p className="text-muted-foreground">{methodology}</p>
+        </section>
+      </div>
+    </Collapsible>
   )
 }
 

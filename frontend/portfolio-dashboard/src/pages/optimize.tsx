@@ -4,12 +4,11 @@ import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { AlertTriangle, ArrowRight, Download, FileText, ListChecks, Loader2, Play, ShieldCheck, X } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -19,21 +18,24 @@ import {
   AllocationDonut, ChartCard, CorrelationHeatmap, FrontierChart, RiskContributionChart, TimeSeriesChart, timeSeriesTable,
 } from '@/components/charts'
 import { DataTable } from '@/components/data-table'
+import { UniverseField } from '@/components/universe-field'
+import { GroupedBarChart, groupedBarTable } from '@/components/analysis-charts'
+import { drawdownFromCumulative, equalWeight, weightsBySector } from '@/lib/run-charts'
 import { DataBadge, EmptyState, ErrorState, InfoTip, LoadingBlock, MetricCard, PageHeader, ResultSection } from '@/components/common'
 import { TradeProposalView } from '@/components/proposal'
-import { StrategyInsights } from '@/components/strategy-insights'
+import { DataNotesList, StrategyInsights } from '@/components/strategy-insights'
 import { interpretOptimization } from '@/lib/interpretation'
 import { guideForObjective } from '@/lib/strategy-guide'
 import { errorMessage } from '@/lib/api'
 import { portfolioPath, usePortfolioContext } from '@/lib/portfolio-context'
-import { useAssets, useCreateProposal, useFetchPrices, useHoldings, useMarketStatus, usePortfolio, useRun, useRunOptimization, useRuns, useStocks } from '@/lib/queries'
+import { useAssets, useCreateProposal, useFetchPrices, useMarketStatus, usePortfolio, useRun, useRunOptimization, useRuns, useStocks } from '@/lib/queries'
 import { useMissingDataGuard } from '@/components/missing-data-dialog'
 import { lookbackStart } from '@/lib/data-check'
 import { useSelection } from '@/lib/selection'
 import { CurrencyExposureList } from '@/components/currency'
 import type { Allocation, Asset, ObjectiveKind, OptimizationRun, Portfolio, PortfolioSettings, TradeProposal } from '@/lib/types'
-import { date, dateTime, money, num, objectiveLabels, pct } from '@/lib/format'
-import { NoPortfolio } from './shared'
+import { date, dateTime, num, objectiveLabels, pct } from '@/lib/format'
+import { InvestableValueCard, NoPortfolio } from './shared'
 
 // ------------------------------------------------------------------ form schema (percent units in the UI)
 
@@ -147,14 +149,15 @@ export function OptimizePage() {
       <PageHeader
         level={2}
         title="Math Optimization"
-        description="Configure the universe and constraints of this portfolio, run a mean-variance optimization, then review its allocation and confirm a simulated trade proposal. A result never changes holdings by itself."
+        info="Configure the universe and constraints of this portfolio, run a mean-variance optimization, then review its allocation and confirm a simulated trade proposal. A result never changes holdings by itself."
       />
       <div className="grid gap-6 xl:grid-cols-[400px_minmax(0,1fr)]">
         <div className="space-y-4">
-          {portfolioId && <ConfigForm portfolioId={portfolioId} />}
+          {/* History first: picking an earlier run is the first thing many visits do. */}
           <RunHistory activeId={activeRunId} />
+          {portfolioId && <ConfigForm portfolioId={portfolioId} />}
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0 scroll-mt-4" id="optimization-results">
           {run.isLoading || runs.isLoading ? <LoadingBlock height="h-96" /> : run.error ? <ErrorState error={run.error} /> : run.data ? (
             <RunResults run={run.data} />
           ) : (
@@ -179,7 +182,6 @@ function ConfigFormInner({ portfolio: portfolioData, assets: assetList }: { port
   const portfolio = { data: portfolioData }
   const assets = { data: assetList }
   const status = useMarketStatus()
-  const holdings = useHoldings(portfolioId)
   const runMutation = useRunOptimization(portfolioId)
   const navigate = useNavigate()
   const selection = useSelection()
@@ -203,9 +205,6 @@ function ConfigFormInner({ portfolio: portfolioData, assets: assetList }: { port
   const coverage = useMemo(() => new Map((status.data?.coverage ?? []).map((c) => [c.symbol, c])), [status.data])
   const enabledAssets = (assets.data ?? []).filter((a) => a.isEnabled)
   const assetBySymbol = useMemo(() => new Map((assets.data ?? []).map((a) => [a.symbol, a])), [assets.data])
-  // Options: tracked instruments plus anything already in the universe or in the current selection.
-  const universeOptions = [...new Set([...enabledAssets.map((a) => a.symbol), ...watchedUniverse, ...selection.symbols])]
-    .sort().map((s) => assetBySymbol.get(s)).filter((a): a is Asset => !!a)
   const universeStocks = useStocks({ symbols: watchedUniverse, pageSize: 200 }, watchedUniverse.length > 0)
   const insufficient = (universeStocks.data?.items ?? []).filter((s) => s.observations < 61).map((s) => s.symbol)
   const sectors = [...new Set(watchedUniverse.map((s) => assetBySymbol.get(s)?.sector).filter((x): x is string => !!x))].sort()
@@ -229,54 +228,17 @@ function ConfigFormInner({ portfolio: portfolioData, assets: assetList }: { port
     }
   }
 
-  const totalValue = holdings.data?.summary.totalValue
-
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-sm">Configuration</CardTitle>
-        <CardDescription className="text-xs">
-          Investable value {money(totalValue, portfolio.data.baseCurrency)} ({portfolio.data.name}). To invest a different amount, create a new portfolio in Settings.
-        </CardDescription>
-      </CardHeader>
       <CardContent>
         <form onSubmit={onSubmit} className="space-y-5" noValidate>
-          <fieldset className="space-y-2">
-            <legend className="mb-1 flex w-full items-center justify-between text-sm font-medium">
-              Equity universe <span className="text-xs font-normal text-muted-foreground">{watchedUniverse.length} selected</span>
-            </legend>
-            <div className="flex flex-wrap gap-1.5">
-              {selection.count > 0 && (
-                <Button type="button" size="xs" variant="outline" onClick={() => setValue('universe', selection.symbols, { shouldDirty: true, shouldValidate: true })}>
-                  <ListChecks /> Use stock selection ({selection.count})
-                </Button>
-              )}
-              <Button type="button" size="xs" variant="ghost" render={<Link to="/stocks" />}>Browse stocks</Button>
-              {watchedUniverse.length > 0 && (
-                <Button type="button" size="xs" variant="ghost" onClick={() => setValue('universe', [], { shouldDirty: true })}><X /> Clear</Button>
-              )}
-            </div>
+          <div className="space-y-2">
             <Controller
               control={control}
               name="universe"
               render={({ field }) => (
-                <div className="grid max-h-56 grid-cols-2 gap-1 overflow-y-auto rounded-md border p-2">
-                  {universeOptions.map((a) => {
-                    const c = coverage.get(a.symbol)
-                    const checked = field.value?.includes(a.symbol) ?? false
-                    return (
-                      <label key={a.symbol} className="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-sm hover:bg-muted">
-                        <Checkbox
-                          checked={checked}
-                          onCheckedChange={(on) => field.onChange(on ? [...(field.value ?? []), a.symbol] : (field.value ?? []).filter((s) => s !== a.symbol))}
-                          aria-label={`${a.symbol} ${a.name ?? ''}`}
-                        />
-                        <span className="font-medium">{a.symbol}</span>
-                        {c && c.freshness !== 'Fresh' && <span className="text-[10px] text-warn">{c.freshness.toLowerCase()}</span>}
-                      </label>
-                    )
-                  })}
-                </div>
+                <UniverseField symbols={field.value ?? []} onChange={(v) => setValue('universe', v, { shouldDirty: true, shouldValidate: true })}
+                  browseTo={portfolioPath(portfolioId, 'optimize/stocks')} />
               )}
             />
             {errors.universe && <FieldError msg={errors.universe.message} />}
@@ -299,11 +261,11 @@ function ConfigFormInner({ portfolio: portfolioData, assets: assetList }: { port
                     }
                   }}
                 >
-                  {fetchPrices.isPending ? <Loader2 className="animate-spin" /> : <Download />} Fetch prices
+                  {fetchPrices.isPending && <Loader2 className="animate-spin" />} Fetch prices
                 </Button>
               </div>
             )}
-          </fieldset>
+          </div>
 
           <div className="grid grid-cols-2 gap-3">
             <Field label="Lookback period" hint="Trailing window of daily returns used to estimate expected returns and covariances.">
@@ -399,7 +361,7 @@ function ConfigFormInner({ portfolio: portfolioData, assets: assetList }: { port
           )}
 
           <Button type="submit" className="w-full" disabled={runMutation.isPending || missingData.checking}>
-            {runMutation.isPending || missingData.checking ? <Loader2 className="animate-spin" /> : <Play />}
+            {runMutation.isPending || missingData.checking && <Loader2 className="animate-spin" />}
             {runMutation.isPending ? 'Optimizing…' : 'Run optimization'}
           </Button>
           <p className="text-[11px] text-muted-foreground">Saves these settings to the portfolio and stores the run for reproducibility.</p>
@@ -413,7 +375,7 @@ function ConfigFormInner({ portfolio: portfolioData, assets: assetList }: { port
 function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <Label className="flex items-center gap-1 text-xs">{label}{hint && <InfoTip>{hint}</InfoTip>}</Label>
+      <Label className="flex items-center gap-1 text-xs"><InfoTip of={label}>{hint}</InfoTip></Label>
       {children}
     </div>
   )
@@ -423,7 +385,7 @@ function NumField({ label, hint, error, ...props }: { label: string; hint?: stri
   const id = `f-${props.name}`
   return (
     <div className="space-y-1.5">
-      <Label htmlFor={id} className="flex items-center gap-1 text-xs">{label}{hint && <InfoTip>{hint}</InfoTip>}</Label>
+      <Label htmlFor={id} className="flex items-center gap-1 text-xs"><InfoTip of={label}>{hint}</InfoTip></Label>
       <Input id={id} type="number" inputMode="decimal" step="any" aria-invalid={!!error} aria-describedby={error ? `${id}-err` : undefined} {...props} />
       {error && <FieldError id={`${id}-err`} msg={error} />}
     </div>
@@ -440,17 +402,23 @@ function RunHistory({ activeId }: { activeId?: string }) {
   if (!runs.data || runs.data.items.length === 0) return null
   return (
     <Card>
-      <CardHeader><CardTitle className="text-sm">Run history</CardTitle></CardHeader>
-      <CardContent className="max-h-72 space-y-1 overflow-y-auto">
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle className="text-sm">Optimization history</CardTitle>
+        <Badge variant="secondary" className="tabular">{runs.data.items.length}</Badge>
+      </CardHeader>
+      <CardContent className="max-h-64 space-y-1 overflow-y-auto">
         {runs.data.items.map((r) => (
           <Link key={r.id} to={portfolioPath(r.portfolioId, `optimize/${r.id}`)}
-            className={`block rounded-md px-2.5 py-1.5 text-sm hover:bg-muted ${r.id === activeId ? 'bg-muted' : ''}`} aria-current={r.id === activeId ? 'true' : undefined}>
+            // The results change on the right (below on narrow screens): bring them into view.
+            onClick={() => requestAnimationFrame(() => document.getElementById('optimization-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))}
+            className={`block rounded-md border-l-2 px-2.5 py-1.5 text-sm hover:bg-muted ${r.id === activeId ? 'border-primary bg-muted' : 'border-transparent'}`} aria-current={r.id === activeId ? 'true' : undefined}>
             <div className="flex items-center justify-between">
               <span className="font-medium">{objectiveLabels[r.objective]}</span>
               <Badge variant={r.status === 'Succeeded' ? 'secondary' : 'destructive'} className="text-[10px]">{r.status}</Badge>
             </div>
             <div className="text-xs text-muted-foreground tabular">
-              {dateTime(r.createdAtUtc)}{r.status === 'Succeeded' && ` · SR ${num(r.sharpeRatio)}`}
+              {dateTime(r.createdAtUtc)}
+              {r.status === 'Succeeded' && ` · E[r] ${pct(r.expectedReturn, 1)} · σ ${pct(r.volatility, 1)} · SR ${num(r.sharpeRatio)}`}
             </div>
           </Link>
         ))}
@@ -473,6 +441,19 @@ function RunResults({ run }: { run: OptimizationRun }) {
   const a = run.analytics
   const allocation = run.allocation.filter((x) => x.weight > 1e-6)
   const cashWeight = 1 - run.allocation.reduce((s, x) => s + x.weight, 0)
+  // More views of the same stored run (reshaped, no new estimates).
+  const sectors = weightsBySector(run.allocation)
+  const ew = equalWeight(run.allocation.length, 1 - cashWeight)
+  const vsEqual = [
+    { name: 'Optimized', color: 'var(--series-1)', values: run.allocation.map((x) => x.weight) },
+    { name: 'Equal weight', color: 'var(--series-3)', values: run.allocation.map(() => ew) },
+  ]
+  const stockStats = [
+    { name: 'Expected return', color: 'var(--series-1)', values: a.assetStatistics.map((x) => x.expectedReturn) },
+    { name: 'Volatility', color: 'var(--series-2)', values: a.assetStatistics.map((x) => x.volatility) },
+  ]
+  const dataNotes = [...(a.excludedForData.length ? [`Excluded for missing or too short price history: ${a.excludedForData.join(', ')}.`] : []), ...run.diagnostics]
+  const inSampleDrawdowns = Object.entries(a.inSample?.cumulativeReturns ?? {}).map(([name, values]) => ({ name, values: drawdownFromCumulative(values) }))
 
   async function makeProposal() {
     try {
@@ -485,23 +466,25 @@ function RunResults({ run }: { run: OptimizationRun }) {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
+        {/* Like ML Optimization: the status only when it is not a success; currency and date on the right. */}
         <h2 className="text-lg font-semibold">{objectiveLabels[run.objective]}</h2>
-        <Badge variant={ok ? 'secondary' : 'destructive'}>{run.status}</Badge>
-        {run.usesSimulatedData ? <DataBadge kind="simulated" /> : <DataBadge kind="estimate" label="Historical estimate" />}
-        <Badge variant="outline" title={run.fxSource ? `Prices in other currencies converted to ${run.currency} with the reference rate of each date` : `All prices in ${run.currency}`}>
-          In {run.currency}{run.fxSource ? ' · FX converted' : ''}
-        </Badge>
-        <span className="text-xs text-muted-foreground">{dateTime(run.createdAtUtc)}</span>
-        {ok && (
-          <Button size="sm" variant="outline" className="ml-auto" render={<Link to={`/reality-check/${run.id}`} />}>
-            <ShieldCheck /> Portfolio reality check
-          </Button>
-        )}
+        {!ok && <Badge variant="destructive">{run.status}</Badge>}
+        {run.usesSimulatedData && <DataBadge kind="simulated" />}
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <Badge variant="outline" title={run.fxSource ? `Prices in other currencies converted to ${run.currency} with the reference rate of each date` : `All prices in ${run.currency}`}>
+            In {run.currency}{run.fxSource ? ' · FX converted' : ''}
+          </Badge>
+          <span className="text-xs text-muted-foreground tabular">{dateTime(run.createdAtUtc)}</span>
+          {ok && (
+            <Button size="sm" variant="outline" render={<Link to={`/reality-check/${run.id}`} />}>
+              Portfolio reality check
+            </Button>
+          )}
+        </div>
       </div>
 
       {!ok && (
         <Alert variant="destructive">
-          <AlertTriangle />
           <AlertTitle>{run.status === 'Infeasible' ? 'The constraints cannot all be satisfied' : 'Optimization did not produce an allocation'}</AlertTitle>
           <AlertDescription>
             <p>{run.message}</p>
@@ -511,12 +494,34 @@ function RunResults({ run }: { run: OptimizationRun }) {
       )}
 
       {ok && (
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-5">
+          <InvestableValueCard portfolioId={run.portfolioId} />
+          <MetricCard label="Holdings · cash" value={`${allocation.length} · ${pct(cashWeight, 1)}`} sub={`${date(run.periodStart)} – ${date(run.periodEnd)} · ${run.observations} days`} />
           <MetricCard label="Expected return" value={pct(run.expectedReturn)} sub="Annualized historical mean" hint="Arithmetic mean of daily returns × 252 over the estimation window. A historical estimate, not a forecast." />
           <MetricCard label="Volatility" value={pct(run.volatility)} sub="Annualized" hint="sqrt(wᵀΣw) with Σ the annualized covariance matrix." />
           <MetricCard label="Sharpe ratio" value={num(run.sharpeRatio)} sub={`rf = ${pct(run.settings.riskFreeRate)}`} hint="(Expected return − risk-free rate) / volatility." />
-          <MetricCard label="Holdings · cash" value={`${allocation.length} · ${pct(cashWeight, 1)}`} sub={`${date(run.periodStart)} – ${date(run.periodEnd)} · ${run.observations} days`} />
         </div>
+      )}
+
+      {/* Next step right under the key figures: turn the weights into orders. */}
+      {ok && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-2">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-sm">Trade proposal</CardTitle>
+              <CardDescription className="text-xs">Translate the target weights into whole-share orders at the latest stored prices, after costs.</CardDescription>
+            </div>
+            <Button variant={proposal ? 'outline' : 'default'} onClick={makeProposal} disabled={createProposal.isPending}>
+              {createProposal.isPending && <Loader2 className="animate-spin" />}
+              {proposal ? 'Recalculate' : 'Create trade proposal'}
+            </Button>
+          </CardHeader>
+          {proposal && (
+            <CardContent>
+              <TradeProposalView proposal={proposal} currency={ccy} />
+            </CardContent>
+          )}
+        </Card>
       )}
 
       {/* Every result is visible at once (no tabs); the same section order as ML Optimization. */}
@@ -528,6 +533,17 @@ function RunResults({ run }: { run: OptimizationRun }) {
             </CardContent>
           </Card>
           <AllocationTable rows={run.allocation} currency={run.currency} />
+          <div className="grid gap-4 lg:grid-cols-2">
+            <ChartCard title="Weight vs equal weight" description={`Each stock's optimized weight next to 1/${run.allocation.length} of the invested share`}
+              legend={[{ name: 'Optimized', color: 'var(--series-1)' }, { name: 'Equal weight', color: 'var(--series-3)' }]}
+              table={groupedBarTable(run.allocation.map((x) => x.symbol), vsEqual, (v) => pct(v, 1))}>
+              <GroupedBarChart categories={run.allocation.map((x) => x.symbol)} series={vsEqual} format={(v) => pct(v, 0)} legend={false} />
+            </ChartCard>
+            <ChartCard title="Weight by sector" description="Sum of the optimized weights per sector (cash excluded)"
+              table={{ columns: ['Sector', 'Weight'], rows: sectors.map((x) => [x.sector, pct(x.weight, 1)]) }}>
+              <GroupedBarChart categories={sectors.map((x) => x.sector)} series={[{ name: 'Weight', color: 'var(--series-1)', values: sectors.map((x) => x.weight) }]} format={(v) => pct(v, 0)} legend={false} />
+            </ChartCard>
+          </div>
           {run.currencyExposure && run.currencyExposure.length > 1 && (
             <Card>
               <CardContent className="space-y-2 pt-2">
@@ -557,6 +573,18 @@ function RunResults({ run }: { run: OptimizationRun }) {
               selected={ok ? { volatility: run.volatility!, expectedReturn: run.expectedReturn!, sharpeRatio: run.sharpeRatio } : undefined}
               references={a.references}
             />
+          </ChartCard>
+        </ResultSection>
+      )}
+
+      {a.assetStatistics.length > 0 && (
+        <ResultSection title="Return and risk of each stock">
+          <ChartCard title="Expected return and volatility per stock"
+            description={`Annualized, estimation window ${date(run.periodStart)} – ${date(run.periodEnd)} · in-sample estimates, not forecasts`}
+            hint="The inputs the optimizer worked with: each stock's historical mean return and volatility over the estimation window."
+            legend={[{ name: 'Expected return', color: 'var(--series-1)' }, { name: 'Volatility', color: 'var(--series-2)' }]}
+            table={groupedBarTable(a.assetStatistics.map((x) => x.symbol), stockStats, (v) => pct(v, 1))}>
+            <GroupedBarChart categories={a.assetStatistics.map((x) => x.symbol)} series={stockStats} format={(v) => pct(v, 0)} zeroLine legend={false} />
           </ChartCard>
         </ResultSection>
       )}
@@ -615,12 +643,23 @@ function RunResults({ run }: { run: OptimizationRun }) {
               />
             </ChartCard>
           )}
+          {a.inSample && (
+            <ChartCard
+              title="In-sample drawdown"
+              description="Decline from the running peak of each curve above, same window and same caveat: in-sample, not a backtest."
+              legend={Object.keys(a.inSample.cumulativeReturns).map((k, i) => ({ name: k, color: `var(--series-${i + 1})` }))}
+              table={timeSeriesTable(a.inSample.dates, inSampleDrawdowns, (v) => pct(v))}
+            >
+              <TimeSeriesChart dates={a.inSample.dates} series={inSampleDrawdowns} format={(v) => pct(v, 0)} yDomain={['dataMin', 0]} height={220} />
+            </ChartCard>
+          )}
         </ResultSection>
       )}
 
-      <ResultSection title="Inputs & methodology" collapsible>
-        <Card>
-          <CardContent className="space-y-4 pt-2 text-sm">
+      {/* One reference box, last: what the numbers mean → how the run was computed → notes about its data. */}
+      <StrategyInsights insights={interpretOptimization(run)} guideId={guideForObjective(run.objective)} sections={[
+        { title: 'Inputs & methodology', content: (
+          <div className="space-y-4">
             <p className="leading-relaxed text-muted-foreground">{run.methodology}</p>
             <dl className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
               <Def k="Run ID" v={<code className="text-xs">{run.id}</code>} />
@@ -629,7 +668,6 @@ function RunResults({ run }: { run: OptimizationRun }) {
               <Def k="Estimation window" v={`${date(run.periodStart)} – ${date(run.periodEnd)} (${run.observations} daily returns)`} />
               <Def k="Data snapshot hash" v={<code className="text-xs">{run.dataSnapshotHash || '—'}</code>} />
               <Def k="Universe" v={run.symbols.join(', ') || '—'} />
-              <Def k="Excluded for data" v={a.excludedForData.join(', ') || 'none'} />
               <Def k="Covariance" v={`${run.settings.covarianceMethod}${run.settings.covarianceMethod === 'LedoitWolf' ? ` (shrinkage ${pct(a.covarianceShrinkage, 1)})` : ''}`} />
               <Def k="Weights" v={`min ${pct(run.settings.minWeight, 0)} · max ${pct(run.settings.maxWeight, 0)} · cash ${pct(run.settings.cashReserve, 1)}`} />
               <Def k="Holdings / min position" v={`${run.settings.maxHoldings ?? 'no limit'} / ${run.settings.minPositionWeight !== null ? pct(run.settings.minPositionWeight) : 'none'}`} />
@@ -638,37 +676,10 @@ function RunResults({ run }: { run: OptimizationRun }) {
               <Def k="Risk-free rate · benchmark" v={`${pct(run.settings.riskFreeRate)} · ${run.settings.benchmarkSymbol}`} />
               <Def k="Solver" v={`${run.solverCalls} QP solve(s), ${run.solverIterations} ADMM iterations, ${num(run.durationMs, 0)} ms`} />
             </dl>
-            {run.diagnostics.length > 0 && (
-              <div>
-                <h3 className="mb-1 font-medium">Diagnostics</h3>
-                <ul className="list-disc space-y-0.5 pl-5 text-muted-foreground">{run.diagnostics.map((d) => <li key={d}>{d}</li>)}</ul>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </ResultSection>
-
-      {ok && (
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
-            <div>
-              <CardTitle className="flex items-center gap-2 text-sm"><FileText className="size-4" /> Trade proposal</CardTitle>
-              <CardDescription className="text-xs">Translate the target weights into whole-share orders at the latest stored prices, after costs.</CardDescription>
-            </div>
-            <Button variant={proposal ? 'outline' : 'default'} onClick={makeProposal} disabled={createProposal.isPending}>
-              {createProposal.isPending ? <Loader2 className="animate-spin" /> : <ArrowRight />}
-              {proposal ? 'Recalculate' : 'Create trade proposal'}
-            </Button>
-          </CardHeader>
-          {proposal && (
-            <CardContent>
-              <TradeProposalView proposal={proposal} currency={ccy} />
-            </CardContent>
-          )}
-        </Card>
-      )}
-
-      <StrategyInsights insights={interpretOptimization(run)} guideId={guideForObjective(run.objective)} collapsible />
+          </div>
+        ) },
+        { title: 'Data notes', content: dataNotes.length ? <DataNotesList items={dataNotes} /> : null },
+      ]} />
     </div>
   )
 }

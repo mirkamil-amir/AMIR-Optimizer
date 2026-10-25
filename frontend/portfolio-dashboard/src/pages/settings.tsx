@@ -4,7 +4,6 @@ import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { Plus } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -36,7 +35,7 @@ export function SettingsPage() {
   }, [hash])
   return (
     <>
-      <PageHeader title="Settings" description="Your account and appearance. Portfolios are managed under My portfolios; data-provider settings are managed by administrators." />
+      <PageHeader title="Settings" info="Your account and appearance. Portfolios are managed under My portfolios; data-provider settings are managed by administrators." />
       <div className="grid gap-6 lg:grid-cols-2">
         <PortfoliosCard />
         <AccountCard />
@@ -208,7 +207,7 @@ function PortfoliosCard() {
       </CardHeader>
       <CardContent className="flex flex-wrap gap-2">
         <Button render={<Link to="/" />}>My portfolios</Button>
-        <Button variant="outline" render={<Link to="/stocks" />}><Plus /> Portfolio Creation</Button>
+        <Button variant="outline" render={<Link to="/stocks" />}>Portfolio Creation</Button>
       </CardContent>
     </Card>
   )

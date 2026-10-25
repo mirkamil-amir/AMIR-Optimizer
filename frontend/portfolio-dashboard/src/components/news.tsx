@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { AlertTriangle, ExternalLink, FlaskConical, Landmark, LineChart, Newspaper } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -40,26 +39,23 @@ export function NewsCard({ article, imagesEnabled, compact = false }: { article:
             <time dateTime={article.publishedAtUtc} title={`Published ${published.toISOString().replace('T', ' ').slice(0, 16)} UTC · retrieved ${dateTime(article.retrievedAtUtc)}`}>
               {publishedLabel(article.publishedAtUtc)}
             </time>
-            {article.isOfficialSource && <Badge variant="outline" className="gap-1"><Landmark className="size-3" />Official source</Badge>}
-            {article.isSimulated && <Badge variant="outline" className="gap-1 border-series-2/60 bg-series-2/10"><FlaskConical className="size-3" />SIMULATED</Badge>}
+            {article.isOfficialSource && <Badge variant="outline" className="gap-1">Official source</Badge>}
+            {article.isSimulated && <Badge variant="outline" className="gap-1 border-series-2/60 bg-series-2/10">SIMULATED</Badge>}
           </div>
           <h3 className="text-sm leading-snug font-semibold">
             {href ? (
               <a href={href} target="_blank" rel="noopener noreferrer nofollow" className="hover:underline">
                 {article.headline}
-                <ExternalLink className="ml-1 inline size-3 align-baseline text-muted-foreground" aria-label="(opens the original article in a new tab)" />
               </a>
             ) : article.headline}
           </h3>
           {article.summary && !compact && <p className="text-sm text-muted-foreground">{article.summary}</p>}
           <div className="flex flex-wrap items-center gap-1.5 text-xs">
             <Badge variant="outline" className="gap-1">
-              {categoryLabels[article.category]}
-              <InfoTip label="Why this category">Rule-based: {article.categoryBasis}.</InfoTip>
+              <InfoTip of={categoryLabels[article.category]}>Rule-based: {article.categoryBasis}.</InfoTip>
             </Badge>
             <Badge variant="outline" className={cn('gap-1', relevanceStyles[article.relevance.level])}>
-              Potential relevance: {article.relevance.level}
-              <InfoTip label="How relevance is assessed">
+              <InfoTip of={`Potential relevance: ${article.relevance.level}`}>
                 <span className="block font-medium">{article.relevance.points} points</span>
                 <ul className="list-disc pl-4">{article.relevance.reasons.map((r) => <li key={r}>{r}</li>)}</ul>
                 <span className="mt-1 block">{article.relevance.note}</span>
@@ -71,9 +67,9 @@ export function NewsCard({ article, imagesEnabled, compact = false }: { article:
                   title={`${a.name ?? a.symbol} – linked via ${a.matchMethod}${a.onWatchlist ? ' · on your watchlist' : ''}`}>
                   {a.symbol}
                 </Link>
-                <Button size="icon-xs" variant="ghost" onClick={() => setCompare(a.symbol)} aria-label={`Compare ${a.symbol} price movement around this article`}
+                <Button size="xs" variant="ghost" onClick={() => setCompare(a.symbol)} aria-label={`Compare ${a.symbol} price movement around this article`}
                   title="Event and price-movement comparison">
-                  <LineChart />
+                  Compare
                 </Button>
               </span>
             ))}
@@ -98,11 +94,7 @@ function Thumbnail({ article, imagesEnabled }: { article: NewsArticle; imagesEna
       </figure>
     )
   }
-  return (
-    <div className="hidden h-20 w-28 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground sm:flex" aria-hidden>
-      {article.isOfficialSource ? <Landmark className="size-6" /> : <Newspaper className="size-6" />}
-    </div>
-  )
+  return null
 }
 
 /** Company news on a stock page: articles the provider tagged with this listing. */
@@ -121,7 +113,7 @@ export function CompanyNews({ symbol }: { symbol: string }) {
         <div className="space-y-2">
           {failing.length > 0 && <SourceProblems sources={failing} />}
           {news.data.items.length === 0 ? (
-            <EmptyState icon={<Newspaper className="size-8" />} title="No tagged articles found"
+            <EmptyState title="No tagged articles found"
               description="The configured providers returned no articles tagged with this listing. Coverage outside the US is sparse." />
           ) : news.data.items.map((a) => <NewsCard key={a.id} article={a} imagesEnabled={news.data!.imagesEnabled} compact />)}
         </div>
@@ -135,7 +127,6 @@ export function SourceProblems({ sources }: { sources: NewsSourceStatus[] }) {
   const { isAdministrator } = useAuth()
   return (
     <p className="flex items-start gap-1.5 rounded-md border border-warn/40 p-2 text-xs text-muted-foreground">
-      <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-warn" aria-hidden />
       <span>
         Some sources could not be reached; stored articles are shown.{' '}
         {isAdministrator && sources.map((s) => `${s.displayName}: ${s.lastError}`).join(' · ')}

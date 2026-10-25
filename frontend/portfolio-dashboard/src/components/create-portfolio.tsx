@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
-import { Loader2, Plus } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { errorMessage } from '@/lib/api'
@@ -82,14 +82,8 @@ export function CreatePortfolioPanel() {
   }
 
   return (
-    <Card aria-labelledby="new-portfolio-title">
-      <CardHeader>
-        <CardTitle id="new-portfolio-title" className="text-base">New portfolio</CardTitle>
-        <CardDescription>
-          1 · Describe it. 2 · Choose the stocks it may invest in below. 3 · Create it. Nothing is saved until you click Create portfolio;
-          it then holds only simulated cash – nothing is bought until you confirm a trade proposal or record a transaction.
-        </CardDescription>
-      </CardHeader>
+    // The steps (describe, choose stocks, create) are in the page title's tip; the card holds only the form.
+    <Card aria-label="New portfolio">
       <CardContent>
         <form onSubmit={submit} noValidate className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)]">
           <div className="grid gap-3 sm:grid-cols-2">
@@ -145,7 +139,7 @@ export function CreatePortfolioPanel() {
               <p className="text-xs text-muted-foreground">Stocks in {foreign.join(', ')} are valued in {currency} with dated reference rates.</p>
             )}
             <Button type="submit" className="w-full" disabled={create.isPending}>
-              {create.isPending ? <Loader2 className="animate-spin" /> : <Plus />} Create portfolio
+              {create.isPending && <Loader2 className="animate-spin" />} Create portfolio
             </Button>
           </div>
         </form>

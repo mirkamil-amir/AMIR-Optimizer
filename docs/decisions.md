@@ -2,6 +2,67 @@
 
 Short records of decisions that are not obvious from the code. Newest first. Format: context → decision → consequences.
 
+## D-40 Portfolios Overview cleanup; active portfolios can be deleted (2026-10-25)
+**Context:** the owner asked for a calmer, more professional interface: every page title carried a sentence of explanation,
+the portfolio cards had six buttons and different heights, and the converter repeated its rate basis twice. Deleting
+required archiving first. **Decision:** the sidebar entry is **Portfolios Overview**; cards share one height (two
+description lines reserved, `auto-rows-fr`) and offer Open, Refresh prices (`POST /portfolios/{id}/quotes/refresh`, open
+positions only, cache window reused) and Delete (confirmation dialog, active or archived – replaces "archive before delete"
+from D-32). What a page is for moves into an (i) tip beside the title (`PageHeader info`); visible
+subtitles are kept for facts about the shown data and required caveats (in-sample estimates on Optimization history). The
+converter's rate basis is in its title tip; the result line still names the rate's date. **Consequences:** one confirmed action
+removes every record of the portfolio – holdings, ledger, transactions, proposals, Math and ML Optimizations (with model
+artifacts), backtests, comparisons and research sessions (owner's request, 2026-10-25); shared instruments, prices, quotes
+and FX rates are never touched. Refused (409) while one of its optimizations, backtests or comparisons is queued or running. The
+portfolio Overview follows the same idea: its key figures form one story in three titled rows (`MetricGroup`: Value →
+Performance → [portfolio vs benchmark and allocation] → Risk, basis in each row's tip, covered dates beside the title), charts follow, and every data note of the page
+is collected at the end (Holdings likewise). Math and ML Optimization: the form starts with the equity universe as a list
+(name, remove, "Browse stocks" → Choose stocks page), no Configuration header; the results start with **Investable value**
+(the portfolio's total value today) and Holdings · cash before expected return. **Optimization history** (formerly Run
+history) sits above the form on both pages; choosing a run scrolls its results into view. Math Optimization adds views of
+the stored run (`lib/run-charts.ts`, no new estimates): weight vs equal weight, weight by sector, expected return and
+volatility per stock (in-sample) and the in-sample drawdown next to the in-sample cumulative return. The allocation table sits between the donut and the two weight charts.
+Both pages: the trade proposal sits right under the key figures; the page ends with ONE folded box "What your result
+means" (`StrategyInsights` with `sections`): the interpretation first – statements grouped into one paragraph per kind,
+named in plain text ("Calculated from the data", "Estimates", "What it means", "Keep in mind") instead of badges, so every
+statement stays labelled – then **Inputs & methodology** (how the run was set up and computed; ML: disclaimer, setup,
+model versions, eligibility) and **Data notes** (only data problems; left out when there are none). The strategy comparison
+uses the same paragraphs. ML Explainability has one folded box for the model's features and the per-prediction drivers
+(`lib/ml-features.ts`: meaning, how to read it, why a model may use it – labelled a hypothesis – plus the catalogue formula);
+a unit test keeps it in sync with `FeatureCatalog.cs`. The workspace header keeps only name, currency, badges, description and
+actions; its figures live in the Value row and the valuation date beside the Value title, above the Holdings card. The Holdings
+tab follows the Overview (before Math and ML Optimization); its currency exposure, search, sector filter and table use the
+same 82 % card surface as its key figures.
+Transactions is the last tab; its Executions, Orders and Cash ledger sub-tabs sit on the same card as Recorded. Optimization
+runs: no pages – the latest runs scroll inside each list (about ten visible) with search and filters. Backtest: no
+"Hypothetical results" banner (the caveat is in the title tip and in each result's folded "Data notes & methodology" box,
+together with the data notes, the simulated settings and the methodology); the optimization is picked from an inline list
+of all the portfolio's optimizations instead of a window; the custom-strategy form was removed – a backtest is always of a
+stored optimization, so its settings are the ones that were optimized, compared and proposed (the API endpoint for ad-hoc
+settings stays for scripts and tests). The duplicate settings line under a backtest's name was removed.
+No decorative icons (the owner found them childish): buttons, navigation, badges, alerts, empty states and toasts are
+text only; icon-only controls became text buttons (Table/Chart, Swap, Watch, Refresh, Show, More, theme name). Icons remain
+only where they are the control itself: fold arrows, sort arrows, pager arrows, close/remove ×, the phone menu, loading
+spinners and the delete bin. Explanations (`InfoTip`) have no ⓘ either: the title or label they explain is the trigger (hover or
+keyboard focus), with no underline or other mark; where no label fits, a small "About" text is. Math and ML Optimizations can be deleted from the Optimization runs tab (bin + confirmation).
+Navigation: the sidebar's group headings (Portfolios, Optimize, Test & compare) were dropped – spacing separates the
+groups; the top bar and sidebar use Sora as well (chosen by the owner from nine rendered
+options after Space Grotesk was rejected), and sidebar entries magnify like a
+dock as the pointer approaches (up to 1.2×, the selected entry stays at 1.2×; off with reduced motion); the top-bar entries
+do the same along the row (up to 1.14×). The currency
+converter shows amount, from, swap, to and the converted amount in one line, with the rate used beneath it. On phones the
+header keeps Selection and Account only (map and theme are on larger screens and under Account › Appearance).
+Logo: a 4×4 correlation matrix with a gold diagonal (the risk model at the core of the optimizer), chosen by the owner
+from nine rendered concepts; it replaces the "A over three bars" mark in the sidebar, sign-in pages, settings and favicon.
+Name: the product is renamed **MaTrix** (the owner's spelling; after the covariance matrix and the logo); the wordmark reads
+"MaTrix" only, the page title is "MaTrix - Portfolio Viewer", and the tagline "Portfolio Viewer" replaces the AMIR acronym.
+The header shows the user's name without the role. Currency converter: the rate list and the chart follow the From box
+(list = rates per one From unit, chart = To per From; clicking a row makes it To; To never equals From and falls back to
+the first listed currency, so the chart is drawn without a click); the separate base and chart selectors
+and the line under the calculator are gone – the rate used and its date stay in the result's tooltip, as every rate must
+keep its date. The sidebar has no headings at all
+("Optimizer workspace" and "Administration" removed); a rule separates the administration entries.
+
 ## D-39 Typography and readability over the map (2026-10-24)
 **Context:** text placed directly on the background map (e.g. the market list of Portfolio Creation) became hard to read
 where dots or highlighted countries ran through it, and the interface used one generic sans-serif. **Decision:** a
@@ -107,7 +168,7 @@ of portfolio A under B, created portfolios only in Settings, had no manual trans
 portfolio (remounted on switch); old URLs redirect. "Stock selection" became **Portfolio Creation** (details + universe +
 review; nothing stored before Create). A typed, idempotent, append-only journal records buys, sells, deposits,
 withdrawals, dividends and fees in time order; cash events are corrected by reversals, trades by opposite trades.
-Portfolios are archived before they can be deleted. History is not snapshotted but rebuilt from ledger + stored prices
+Portfolios were archived before they could be deleted (dropped in D-40). History is not snapshotted but rebuilt from ledger + stored prices
 (deterministic, nothing redundant); deposits/withdrawals are external flows in the time-weighted return. Research sessions
 may carry an owner-checked portfolio context. **Consequences:** additive migration only; no back-dated imports, no trade
 reversal, no money-weighted or combined return; backtests/ML/comparisons stay per user. Details: [portfolios.md](portfolios.md).

@@ -1,5 +1,4 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { Search } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -89,7 +88,7 @@ export function HoldingsPage() {
       <PageHeader
         level={2}
         title="Holdings"
-        description={`Positions in the simulated portfolio, valued at the latest stored price in ${ccy}. Prices stay in each stock's own currency.`}
+        info={`Positions in the simulated portfolio, valued at the latest stored price in ${ccy}. Prices stay in each stock's own currency.`}
         actions={
           <>
             <ReportingCurrencySelect value={reporting} accountCurrency={account} onChange={setReporting} />
@@ -99,19 +98,19 @@ export function HoldingsPage() {
       />
       {error && <ErrorState error={error} onRetry={() => refetch()} />}
 
+      {/* Read left to right: total = cash + market value; market value − cost basis = unrealized P&L. */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-        <MetricCard label="Market value" loading={!s} value={s?.marketValue === null ? 'Not available' : money(s?.marketValue, ccy)} />
-        <MetricCard label="Cash" loading={!s} value={money(s?.cashBalance, ccy)} sub={s?.totalValue === null ? `${account} account` : `${pct(1 - (s?.investedFraction ?? 0), 1)} of total`} />
         <MetricCard label="Total value" loading={!s} value={s?.totalValue === null ? 'Not available' : money(s?.totalValue, ccy)} />
+        <MetricCard label="Cash" loading={!s} value={money(s?.cashBalance, ccy)} sub={s?.totalValue === null ? `${account} account` : `${pct(1 - (s?.investedFraction ?? 0), 1)} of total`} />
+        <MetricCard label="Market value" loading={!s} value={s?.marketValue === null ? 'Not available' : money(s?.marketValue, ccy)} />
         <MetricCard label="Cost basis" loading={!s} value={money(s?.totalCostBasis, ccy)} hint="Weighted-average cost of open positions including buy commissions." />
         <MetricCard label="Unrealized P&L" loading={!s} tone="signed" numeric={s?.unrealizedPnl} value={money(s?.unrealizedPnl, ccy, { signed: true })} />
       </div>
       <div className="mt-4 space-y-3">
         <ValuationProblems problems={s?.valuationProblems} />
         {s && <ReportingNote currency={s.currency} accountCurrency={s.accountCurrency} rate={s.accountToReportingRate} />}
-        <Warnings items={s?.warnings.filter((w) => !s.valuationProblems?.includes(w) && !w.startsWith('Reporting view'))} />
         {s?.currencyExposure && s.currencyExposure.length > 1 && (
-          <div className="rounded-xl border p-4">
+          <div className="rounded-xl border bg-card p-4">
             <h2 className="mb-2 text-sm font-semibold">Currency exposure</h2>
             <CurrencyExposureList items={s.currencyExposure} />
             <p className="mt-2 text-xs text-muted-foreground">Share of total value by the currency the holdings trade in. Positions are unhedged: their value in {ccy} moves with the exchange rate.</p>
@@ -121,11 +120,10 @@ export function HoldingsPage() {
 
       <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative sm:w-72">
-          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-          <Input placeholder="Search symbol or name" aria-label="Search holdings" className="pl-8" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Input placeholder="Search symbol or name" aria-label="Search holdings" className="bg-card" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
         <Select value={sector} onValueChange={(v) => setSector(String(v))} items={[{ value: 'all', label: 'All sectors' }, ...sectors.map((x) => ({ value: x, label: x }))]}>
-          <SelectTrigger className="sm:w-56" aria-label="Filter by sector"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="bg-card sm:w-56" aria-label="Filter by sector"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All sectors</SelectItem>
             {sectors.map((x) => <SelectItem key={x} value={x}>{x}</SelectItem>)}
@@ -137,7 +135,8 @@ export function HoldingsPage() {
         </div>
       </div>
 
-      <div className="mt-4">
+      {/* Same translucent surface as the cards above. */}
+      <div className="mt-4 rounded-lg bg-card">
         {loading ? <LoadingBlock /> : (
           <DataTable
             caption="Holdings"
@@ -149,6 +148,11 @@ export function HoldingsPage() {
             empty={<EmptyState title={search || sector !== 'all' ? 'No matching holdings' : 'No holdings yet'} description="Positions appear here after you confirm a simulated trade proposal." />}
           />
         )}
+      </div>
+
+      {/* Data notes last, as on the Overview. */}
+      <div className="mt-6">
+        <Warnings items={s?.warnings.filter((w) => !s.valuationProblems?.includes(w) && !w.startsWith('Reporting view'))} />
       </div>
 
       <HoldingSheet holding={selected} onClose={() => setSelected(null)} currency={ccy} account={account} portfolioId={portfolioId} />

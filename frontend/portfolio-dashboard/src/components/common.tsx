@@ -1,5 +1,5 @@
 import { useId, useState, type ReactNode } from 'react'
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, ChevronDown, Database, FlaskConical, Info, Inbox, RefreshCw } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -10,13 +10,20 @@ import { errorMessage } from '@/lib/api'
 import type { Metric } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
-/** Page title. Inside a portfolio workspace (whose name is the page's h1) sections pass `level={2}`. */
-export function PageHeader({ title, description, actions, level = 1 }: { title: string; description?: ReactNode; actions?: ReactNode; level?: 1 | 2 }) {
+/**
+ * Page title. Inside a portfolio workspace (whose name is the page's h1) sections pass `level={2}`. What a page is for goes
+ * into `info` (a tip beside the title); `description` is kept for facts about the shown data and required caveats.
+ */
+export function PageHeader({ title, description, info, actions, level = 1 }: {
+  title: string; description?: ReactNode; info?: ReactNode; actions?: ReactNode; level?: 1 | 2
+}) {
   const Heading = level === 1 ? 'h1' : 'h2'
   return (
     <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <Heading className={cn('heading-display', level === 1 ? 'text-[1.7rem]' : 'text-[1.3rem]')}>{title}</Heading>
+        <div className="flex items-center gap-2">
+          <Heading className={cn('heading-display', level === 1 ? 'text-[1.7rem]' : 'text-[1.3rem]')}><InfoTip of={title}>{info}</InfoTip></Heading>
+        </div>
         {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
@@ -24,17 +31,42 @@ export function PageHeader({ title, description, actions, level = 1 }: { title: 
   )
 }
 
-/** Small (i) icon with an explanatory tooltip – used for every financial metric. */
-export function InfoTip({ children, label = 'More information' }: { children: ReactNode; label?: string }) {
+/**
+ * An explanation shown on hover or keyboard focus – used for every financial metric. No icon and no underline: with `of`
+ * the label itself (a title, a field name) is the trigger; without it a small "About" text is. Without an
+ * explanation only `of` is rendered.
+ */
+export function InfoTip({ children, of, label = 'More information' }: { children?: ReactNode; of?: ReactNode; label?: string }) {
+  if (!children) return <>{of}</>
   return (
     <Tooltip>
       <TooltipTrigger
-        render={<button type="button" aria-label={label} className="inline-flex text-muted-foreground hover:text-foreground focus-visible:outline-2" />}
+        render={of
+          ? <button type="button" className="cursor-help text-left focus-visible:outline-2" />
+          : <button type="button" aria-label={label} className="cursor-help text-xs font-normal text-muted-foreground hover:text-foreground focus-visible:outline-2" />}
       >
-        <Info className="size-3.5" />
+        {of ?? 'About'}
       </TooltipTrigger>
       <TooltipContent className="max-w-xs text-xs leading-relaxed">{children}</TooltipContent>
     </Tooltip>
+  )
+}
+
+/**
+ * A titled row of key figures (four per row on wide screens). Pages tell a story with consecutive groups – e.g. value →
+ * performance → risk – and put each group's basis in its tip; `period` states the dates the figures cover.
+ */
+export function MetricGroup({ title, hint, period, columns = 4, children }: {
+  title: string; hint?: ReactNode; period?: ReactNode; columns?: 4 | 5; children: ReactNode
+}) {
+  return (
+    <section aria-label={title} className="space-y-2">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <h3 className="flex items-center gap-1.5 text-sm font-medium"><InfoTip of={title}>{hint}</InfoTip></h3>
+        {period && <span className="text-xs text-muted-foreground tabular">{period}</span>}
+      </div>
+      <div className={cn('grid grid-cols-2 gap-3', columns === 5 ? 'md:grid-cols-3 xl:grid-cols-5' : 'md:grid-cols-4')}>{children}</div>
+    </section>
   )
 }
 
@@ -59,15 +91,12 @@ export function MetricCard({
     <Card className={cn('gap-0 py-4', className)}>
       <CardContent className="px-4">
         <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-          {label}
-          {hint && <InfoTip label={`About ${label}`}>{hint}</InfoTip>}
+          <InfoTip of={label}>{hint}</InfoTip>
         </div>
         {loading ? (
           <Skeleton className="mt-2 h-7 w-28" />
         ) : (
           <div className={cn('mt-1.5 flex items-center gap-1 text-xl font-semibold', tone !== 'neutral' && good > 0 && 'text-gain', tone !== 'neutral' && good < 0 && 'text-loss')}>
-            {tone !== 'neutral' && sign > 0 && <ArrowUpRight className="size-4" aria-hidden />}
-            {tone !== 'neutral' && sign < 0 && <ArrowDownRight className="size-4" aria-hidden />}
             {value}
           </div>
         )}
@@ -83,7 +112,7 @@ export function MetricValue({ metric, format }: { metric: Metric | undefined; fo
   if (metric.value === null) {
     return (
       <Tooltip>
-        <TooltipTrigger render={<span className="cursor-help text-muted-foreground underline decoration-dotted underline-offset-4" />}>n/a</TooltipTrigger>
+        <TooltipTrigger render={<span className="cursor-help text-muted-foreground" />}>n/a</TooltipTrigger>
         <TooltipContent className="max-w-xs text-xs">{metric.unavailableReason}</TooltipContent>
       </Tooltip>
     )
@@ -93,30 +122,28 @@ export function MetricValue({ metric, format }: { metric: Metric | undefined; fo
 
 export type DataKind = 'live' | 'cached' | 'stale' | 'simulated' | 'backtest' | 'estimate' | 'missing'
 
-const dataKindStyles: Record<DataKind, { label: string; className: string; icon: ReactNode; title: string }> = {
-  live: { label: 'Market data', className: 'border-gain/40 text-gain', icon: <Database className="size-3" />, title: 'Real market data (delayed or end-of-day, not live).' },
-  cached: { label: 'Cached', className: 'border-border text-muted-foreground', icon: <Database className="size-3" />, title: 'Stored market data from the last synchronization.' },
-  stale: { label: 'Stale', className: 'border-warn/50 text-warn', icon: <AlertTriangle className="size-3" />, title: 'The latest price is older than the staleness threshold.' },
-  simulated: { label: 'SIMULATED', className: 'border-series-2/60 bg-series-2/10 text-foreground', icon: <FlaskConical className="size-3" />, title: 'Synthetic prices – not real market data.' },
-  backtest: { label: 'Backtest', className: 'border-series-7/50 text-foreground', icon: <RefreshCw className="size-3" />, title: 'Hypothetical historical simulation – not a forecast.' },
-  estimate: { label: 'Estimate', className: 'border-border text-muted-foreground', icon: <Info className="size-3" />, title: 'Historical estimate used as model input – not a forecast.' },
-  missing: { label: 'No data', className: 'border-loss/40 text-loss', icon: <AlertTriangle className="size-3" />, title: 'No price data stored for this asset.' },
+const dataKindStyles: Record<DataKind, { label: string; className: string; title: string }> = {
+  live: { label: 'Market data', className: 'border-gain/40 text-gain', title: 'Real market data (delayed or end-of-day, not live).' },
+  cached: { label: 'Cached', className: 'border-border text-muted-foreground', title: 'Stored market data from the last synchronization.' },
+  stale: { label: 'Stale', className: 'border-warn/50 text-warn', title: 'The latest price is older than the staleness threshold.' },
+  simulated: { label: 'SIMULATED', className: 'border-series-2/60 bg-series-2/10 text-foreground', title: 'Synthetic prices – not real market data.' },
+  backtest: { label: 'Backtest', className: 'border-series-7/50 text-foreground', title: 'Hypothetical historical simulation – not a forecast.' },
+  estimate: { label: 'Estimate', className: 'border-border text-muted-foreground', title: 'Historical estimate used as model input – not a forecast.' },
+  missing: { label: 'No data', className: 'border-loss/40 text-loss', title: 'No price data stored for this asset.' },
 }
 
 export function DataBadge({ kind, label }: { kind: DataKind; label?: string }) {
   const s = dataKindStyles[kind]
   return (
-    <Badge variant="outline" title={s.title} className={cn('gap-1 font-medium', s.className)}>
-      {s.icon}
+    <Badge variant="outline" title={s.title} className={cn('font-medium', s.className)}>
       {label ?? s.label}
     </Badge>
   )
 }
 
-export function EmptyState({ title, description, action, icon }: { title: string; description?: ReactNode; action?: ReactNode; icon?: ReactNode }) {
+export function EmptyState({ title, description, action }: { title: string; description?: ReactNode; action?: ReactNode }) {
   return (
     <div className="flex flex-col items-center justify-center rounded-xl border border-dashed px-6 py-12 text-center">
-      <div className="mb-3 text-muted-foreground">{icon ?? <Inbox className="size-8" />}</div>
       <h3 className="font-medium">{title}</h3>
       {description && <p className="mt-1 max-w-md text-sm text-muted-foreground">{description}</p>}
       {action && <div className="mt-4">{action}</div>}
@@ -127,7 +154,6 @@ export function EmptyState({ title, description, action, icon }: { title: string
 export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
   return (
     <Alert variant="destructive">
-      <AlertTriangle />
       <AlertTitle>Something went wrong</AlertTitle>
       <AlertDescription>
         <p>{errorMessage(error)}</p>
@@ -148,7 +174,7 @@ export function Warnings({ items, title = 'Data notes', collapsible = false }: {
   if (!items || items.length === 0) return null
   if (collapsible) {
     return (
-      <Collapsible title={title} icon={<AlertTriangle className="size-4 text-warn" />} summary={`${items.length} ${items.length === 1 ? 'note' : 'notes'}`} className="ring-warn/40">
+      <Collapsible title={title} summary={`${items.length} ${items.length === 1 ? 'note' : 'notes'}`} className="ring-warn/40">
         <ul className="list-disc space-y-0.5 pl-5 text-muted-foreground">
           {items.map((w) => <li key={w}>{w}</li>)}
         </ul>
@@ -157,7 +183,6 @@ export function Warnings({ items, title = 'Data notes', collapsible = false }: {
   }
   return (
     <Alert className="border-warn/40">
-      <AlertTriangle className="text-warn" />
       <AlertTitle>{title}</AlertTitle>
       <AlertDescription>
         <ul className="list-disc space-y-0.5 pl-4">
@@ -225,7 +250,7 @@ export function ResultSection({ title, hint, collapsible = false, children }: { 
   }
   return (
     <section className="space-y-3" aria-label={title}>
-      <h3 className="heading-display flex items-center gap-1.5 border-b pb-1 text-[1.15rem]">{title}{hint && <InfoTip>{hint}</InfoTip>}</h3>
+      <h3 className="heading-display flex items-center gap-1.5 border-b pb-1 text-[1.15rem]"><InfoTip of={title}>{hint}</InfoTip></h3>
       {children}
     </section>
   )
@@ -235,8 +260,7 @@ export function SectionTitle({ children, hint, right }: { children: ReactNode; h
   return (
     <div className="mb-3 flex items-center justify-between gap-2">
       <h2 className="flex items-center gap-1.5 text-sm font-semibold">
-        {children}
-        {hint && <InfoTip>{hint}</InfoTip>}
+        <InfoTip of={children}>{hint}</InfoTip>
       </h2>
       {right}
     </div>

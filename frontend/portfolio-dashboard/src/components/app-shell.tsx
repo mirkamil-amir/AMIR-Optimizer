@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router'
-import { Briefcase, FlaskConical, ListChecks, LogOut, Menu, Palette, ScrollText, Settings, ShieldCheck, Sigma, UserRound } from 'lucide-react'
+import { Menu } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { DataBadge, LoadingBlock } from '@/components/common'
-import { AmirWordmark } from '@/components/brand'
+import { BRAND, MatrixWordmark } from '@/components/brand'
 import { ThemeQuickToggle } from '@/components/theme-controls'
 import { MapControl, SelectionOnMap, WorldMapBackdrop } from '@/components/world-map'
 import { useAuth } from '@/lib/auth'
@@ -21,6 +21,7 @@ import { useSelection } from '@/lib/selection'
 import { relativeTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { WorldMapProvider } from '@/lib/world-map'
+import { attachNavZoom } from '@/lib/nav-zoom'
 
 function SidebarLink({ entry, active, onNavigate }: { entry: NavEntry; active: boolean; onNavigate?: () => void }) {
   return (
@@ -28,21 +29,21 @@ function SidebarLink({ entry, active, onNavigate }: { entry: NavEntry; active: b
       to={entry.to}
       onClick={onNavigate}
       aria-current={active ? 'page' : undefined}
+      data-zoom-active={active ? '' : undefined}
       className={cn(
-        'flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
-        active && 'bg-muted font-medium text-foreground shadow-[inset_2px_0_0_var(--sidebar-primary)]',
+        'nav-zoom font-nav flex items-center rounded-md px-2.5 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
+        active && 'bg-muted font-semibold text-foreground shadow-[inset_2px_0_0_var(--sidebar-primary)]',
       )}
     >
-      <entry.icon className="size-4" aria-hidden />
-      {entry.label}
+      <span>{entry.label}</span>
     </Link>
   )
 }
 
+/** Groups of entries, separated by space only (no headings; the administration area by a rule). */
 function SidebarGroups({ sections, activeTo, onNavigate }: { sections: NavSection[]; activeTo?: string; onNavigate?: () => void }) {
   return sections.map((section) => (
     <div key={section.title} className="flex flex-col gap-0.5">
-      <div className="px-2.5 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">{section.title}</div>
       {section.items.map((n) => <SidebarLink key={n.to} entry={n} active={n.to === activeTo} onNavigate={onNavigate} />)}
     </div>
   ))
@@ -53,12 +54,15 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const { isAdministrator } = useAuth()
   const { pathname } = useLocation()
   const activeTo = sidebarEntryForPath(pathname, isAdministrator)?.to
+  // Magnification follows the pointer anywhere over the sidebar, not only over the links.
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const area = ref.current?.parentElement
+    return area ? attachNavZoom(area) : undefined
+  }, [])
   return (
-    <div className="flex flex-col gap-4">
+    <div ref={ref} className="flex flex-col gap-4">
       <nav className="flex flex-col gap-4" aria-label="Optimizer sections">
-        <div className="flex items-center gap-2 px-2.5 text-xs font-semibold text-foreground">
-          <Sigma className="size-3.5" aria-hidden /> Optimizer workspace
-        </div>
         <SidebarGroups sections={optimizerSections} activeTo={activeTo} onNavigate={onNavigate} />
       </nav>
       {isAdministrator && (
@@ -75,11 +79,14 @@ export function PrimaryNav() {
   const { pathname } = useLocation()
   const current = primaryForPath(pathname)
   const activeRef = useRef<HTMLAnchorElement>(null)
+  const navRef = useRef<HTMLElement>(null)
   useEffect(() => {
     activeRef.current?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
   }, [current?.id])
+  // Magnification along the row, like the sidebar's.
+  useEffect(() => (navRef.current ? attachNavZoom(navRef.current, 'x') : undefined), [])
   return (
-    <nav aria-label="Primary" className="nav-scroll overflow-x-auto px-2 lg:px-6">
+    <nav ref={navRef} aria-label="Primary" className="nav-zoom-row nav-scroll overflow-x-auto px-2 lg:px-6">
       <ul className="flex min-w-max items-stretch gap-0.5">
         {primaryNav.map((p) => {
           const active = current?.id === p.id
@@ -92,15 +99,15 @@ export function PrimaryNav() {
                 aria-current={active ? (pathname === p.to ? 'page' : 'true') : undefined}
                 // Inside the Optimizer workspace the item does nothing, so the open section and its inputs are kept.
                 onClick={(e) => { if (active && p.id === 'optimizer') e.preventDefault() }}
+                data-zoom-active={active ? '' : undefined}
                 className={cn(
-                  'inline-flex items-center gap-2 border-b-2 px-3 py-2.5 text-sm whitespace-nowrap transition-colors focus-visible:rounded-t-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset',
+                  'nav-zoom font-nav inline-flex items-center gap-2 border-b-2 px-3 py-2.5 text-[0.95rem] whitespace-nowrap transition-colors focus-visible:rounded-t-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset',
                   active
                     ? 'border-primary font-semibold text-foreground'
                     : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground',
                 )}
               >
-                <p.icon className="size-4" aria-hidden />
-                {p.label}
+                <span>{p.label}</span>
               </Link>
             </li>
           )
@@ -112,8 +119,8 @@ export function PrimaryNav() {
 
 function Brand() {
   return (
-    <Link to="/" className="block rounded-md px-2.5 focus-visible:ring-2 focus-visible:ring-ring" aria-label="AMIR Optimizer – home">
-      <AmirWordmark compact />
+    <Link to="/" className="block rounded-md px-2.5 focus-visible:ring-2 focus-visible:ring-ring" aria-label={`${BRAND.name} – home`}>
+      <MatrixWordmark compact />
     </Link>
   )
 }
@@ -142,7 +149,7 @@ function SelectionIndicator() {
   const { count } = useSelection()
   return (
     <Button variant="outline" size="sm" render={<Link to="/stocks" />} aria-label={`Portfolio Creation: ${count} stock${count === 1 ? '' : 's'} selected`}>
-      <ListChecks /> <span className="hidden sm:inline">Selection</span>
+      <span>Selection</span>
       <Badge variant="secondary" className="tabular">{count}</Badge>
     </Button>
   )
@@ -164,13 +171,8 @@ function IdentityBadge() {
       >
         {id.initials}
       </span>
-      <div className="min-w-0 leading-tight">
-        <div className="truncate text-sm font-semibold text-foreground">{id.name}</div>
-        <div className="flex items-center gap-1 truncate text-[11px] text-muted-foreground">
-          {user.isAdministrator && <ShieldCheck className="size-3" aria-hidden />}
-          {id.role}
-        </div>
-      </div>
+      {/* The role is not shown (only read out by screen readers via the label above). */}
+      <div className="min-w-0 truncate text-sm font-semibold text-foreground">{id.name}</div>
     </div>
   )
 }
@@ -183,7 +185,7 @@ function UserMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger render={<Button variant="ghost" size="sm" aria-label="Account menu" />}>
-        <UserRound /> <span className="hidden md:inline">Account</span>
+        Account
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-60">
         <DropdownMenuGroup>
@@ -194,12 +196,12 @@ function UserMenu() {
           </DropdownMenuLabel>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => navigate('/')}><Briefcase /> My portfolios</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => navigate('/settings')}><Settings /> Account settings</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => navigate('/settings#appearance')}><Palette /> Appearance &amp; themes</DropdownMenuItem>
-        {user.isAdministrator && <DropdownMenuItem onClick={() => navigate('/admin')}><ScrollText /> Administration</DropdownMenuItem>}
+        <DropdownMenuItem onClick={() => navigate('/')}>My portfolios</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => navigate('/settings')}>Account settings</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => navigate('/settings#appearance')}>Appearance &amp; themes</DropdownMenuItem>
+        {user.isAdministrator && <DropdownMenuItem onClick={() => navigate('/admin')}>Administration</DropdownMenuItem>}
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => void logout()}><LogOut /> Sign out</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => void logout()}>Sign out</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   )
@@ -244,10 +246,13 @@ export function AppShell() {
             </Button>
             <IdentityBadge />
             <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
-              <span className="hidden items-center gap-1 2xl:flex"><FlaskConical className="size-3.5" aria-hidden /> Simulated trading only</span>
-                <SelectionIndicator />
-              <MapControl />
-              <ThemeQuickToggle />
+              <span className="hidden items-center gap-1 2xl:flex">Simulated trading only</span>
+              <SelectionIndicator />
+              {/* Text-only controls need room: on phones the map and theme stay off the header (theme: Account › Appearance). */}
+              <div className="hidden items-center gap-2 sm:flex">
+                <MapControl />
+                <ThemeQuickToggle />
+              </div>
               <UserMenu />
             </div>
           </div>

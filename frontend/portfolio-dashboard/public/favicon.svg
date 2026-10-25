@@ -1,12 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
-  <title>AMIR – Allocation · Modelling · Investment · Research</title>
+  <title>MaTrix</title>
   <defs>
     <linearGradient id="t" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#26407a"/><stop offset="1" stop-color="#14234a"/></linearGradient>
   </defs>
   <rect x="1" y="1" width="38" height="38" rx="10" fill="url(#t)"/>
-  <rect x="3.5" y="3.5" width="33" height="33" rx="7.5" fill="none" stroke="#d9b25a" stroke-opacity="0.5" stroke-width="0.8"/>
-  <path d="M9.5 31 L18.4 8.5 L21.6 8.5 L30.5 31 L27.2 31 L20 12.6 L12.8 31 Z" fill="#ffffff"/>
-  <rect x="16.4" y="28" width="2" height="3" rx="0.4" fill="#d9b25a"/>
-  <rect x="19" y="25.6" width="2" height="5.4" rx="0.4" fill="#d9b25a"/>
-  <rect x="21.6" y="23.2" width="2" height="7.8" rx="0.4" fill="#d9b25a"/>
+  <circle cx="11" cy="11" r="2.4" fill="#d9b25a"/>
+  <circle cx="17" cy="11" r="1.9" fill="#ffffff" fill-opacity="0.85"/>
+  <circle cx="23" cy="11" r="1.9" fill="#ffffff" fill-opacity="0.55"/>
+  <circle cx="29" cy="11" r="1.9" fill="#ffffff" fill-opacity="0.3"/>
+  <circle cx="11" cy="17" r="1.9" fill="#ffffff" fill-opacity="0.85"/>
+  <circle cx="17" cy="17" r="2.4" fill="#d9b25a"/>
+  <circle cx="23" cy="17" r="1.9" fill="#ffffff" fill-opacity="0.85"/>
+  <circle cx="29" cy="17" r="1.9" fill="#ffffff" fill-opacity="0.55"/>
+  <circle cx="11" cy="23" r="1.9" fill="#ffffff" fill-opacity="0.55"/>
+  <circle cx="17" cy="23" r="1.9" fill="#ffffff" fill-opacity="0.85"/>
+  <circle cx="23" cy="23" r="2.4" fill="#d9b25a"/>
+  <circle cx="29" cy="23" r="1.9" fill="#ffffff" fill-opacity="0.85"/>
+  <circle cx="11" cy="29" r="1.9" fill="#ffffff" fill-opacity="0.3"/>
+  <circle cx="17" cy="29" r="1.9" fill="#ffffff" fill-opacity="0.55"/>
+  <circle cx="23" cy="29" r="1.9" fill="#ffffff" fill-opacity="0.85"/>
+  <circle cx="29" cy="29" r="2.4" fill="#d9b25a"/>
 </svg>

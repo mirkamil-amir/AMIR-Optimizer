@@ -1,6 +1,6 @@
 import { Fragment, useState } from 'react'
 import { Link, useParams } from 'react-router'
-import { ArrowLeft, ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -34,10 +34,10 @@ export function RealityCheckPage() {
 
   return (
     <div className="space-y-6">
-      <Button variant="ghost" size="sm" className="-ml-2" render={<Link to={runId ? `/optimize/${runId}` : '/optimize'} />}><ArrowLeft /> Optimization result</Button>
+      <Button variant="ghost" size="sm" className="-ml-2" render={<Link to={runId ? `/optimize/${runId}` : '/optimize'} />}>Optimization result</Button>
       <PageHeader
         title="Portfolio reality check"
-        description="Challenges a saved optimization: concentration, risk, behaviour in bad periods, sensitivity to assumptions and costs. Every statement is computed from stored data and labelled by how it is supported."
+        info="Challenges a saved optimization: concentration, risk, behaviour in bad periods, sensitivity to assumptions and costs. Every statement is computed from stored data and labelled by how it is supported."
       />
       {check.error ? <ErrorState error={check.error} onRetry={() => check.refetch()} /> : !r ? <LoadingBlock height="h-96" /> : <Report r={r} />}
     </div>
@@ -213,8 +213,7 @@ function Sensitivity({ r }: { r: RealityCheck }) {
   return (
     <section aria-labelledby="sensitivity" className="space-y-2">
       <h2 id="sensitivity" className="flex items-center gap-1.5 text-base font-semibold">
-        Sensitivity to assumptions
-        <InfoTip>Each row solves the same objective and constraints again with one assumption changed. Turnover = ½Σ|Δw| versus the saved weights: the share of the portfolio that would change. Risk and return are measured with the run's own estimates.</InfoTip>
+        <InfoTip of="Sensitivity to assumptions">Each row solves the same objective and constraints again with one assumption changed. Turnover = ½Σ|Δw| versus the saved weights: the share of the portfolio that would change. Risk and return are measured with the run's own estimates.</InfoTip>
       </h2>
       <Card className="py-2">
         <CardContent className="overflow-x-auto px-2">

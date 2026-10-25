@@ -1,5 +1,4 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Crosshair, Globe2, Maximize2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -192,7 +191,7 @@ export function MapControl() {
   return (
     <Popover>
       <PopoverTrigger render={<Button variant="ghost" size="sm" aria-label={`Market map: ${markets.length} market${markets.length === 1 ? '' : 's'} in view`} />}>
-        <Globe2 /> <span className="hidden tabular xl:inline">{markets.length}</span>
+        Map <span className="tabular text-muted-foreground">{markets.length}</span>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80">
         <div>
@@ -209,8 +208,8 @@ export function MapControl() {
                     <span className="font-medium">{v.countryName}</span> · {v.exchange}, {v.city}
                     {focus === c && <Badge variant="outline" className="ml-1.5 h-4 px-1 text-[10px]">focused</Badge>}
                   </span>
-                  <Button size="icon-sm" variant="ghost" aria-label={`Show ${v.countryName} on the map`} aria-pressed={view === c} onClick={() => setView(c)}>
-                    <Crosshair />
+                  <Button size="xs" variant="ghost" aria-label={`Show ${v.countryName} on the map`} aria-pressed={view === c} onClick={() => setView(c)}>
+                    Show
                   </Button>
                 </li>
               )
@@ -219,10 +218,10 @@ export function MapControl() {
         )}
         <div className="flex gap-2">
           <Button size="sm" variant={view === 'auto' ? 'secondary' : 'outline'} aria-pressed={view === 'auto'} onClick={() => setView('auto')} className="flex-1">
-            <Maximize2 /> Fit selected markets
+            Fit selected markets
           </Button>
           <Button size="sm" variant={view === 'world' ? 'secondary' : 'outline'} aria-pressed={view === 'world'} onClick={() => setView('world')} className="flex-1">
-            <Globe2 /> World view
+            World view
           </Button>
         </div>
       </PopoverContent>

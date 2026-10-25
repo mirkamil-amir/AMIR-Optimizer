@@ -1,8 +1,25 @@
 # Implementation status
 
+## 2026-10-25: MaTrix – UI polish, deletable optimizations, new brand (D-40)
+
+* Brand: renamed **MaTrix** (page title "MaTrix - Portfolio Viewer"); logo = 4×4 correlation matrix with a gold diagonal
+  (chosen from nine concepts), also the favicon. Navigation (top bar and sidebar) in Sora (chosen from nine fonts); entries
+  magnify near the pointer like a dock (`lib/nav-zoom.ts`), the selected one stays enlarged. Sidebar without headings.
+* No decorative icons anywhere; explanations open from their label (no ⓘ, no underline). Header shows the name only.
+* Portfolio tabs: Overview · Holdings · Math Optimization · ML Optimization · Optimization runs · Backtest · Strategy
+  comparison · Transactions. Optimization runs: scrolling lists with search and filters; Math and ML Optimizations can be
+  deleted (bin + confirmation; `DELETE /api/v1/optimization-runs/{id}`, integration-tested incl. cross-user and archived).
+* Math/ML Optimization: one "What your result means" box (paragraphs by kind, inputs & methodology, data notes); ML feature
+  guide in plain language, checked against `FeatureCatalog.cs`. Backtest: inline choice of any optimization, no custom
+  strategy form, one "Data notes & methodology" box.
+* Currency converter: one calculator line; list and chart follow From (chart = To per From, drawn without a click); To
+  never equals From; the rate and its date in the result's tooltip.
+* Verified: `./scripts/test.sh` (unit, ML, integration) earlier in this change set; Vitest 183; Playwright 35 on the
+  disposable stack; screenshots of sidebar, header, converter, backtest and overview.
+
 ## 2026-10-24 (8): typography and contrast (D-39)
 
-* Sora for the AMIR wordmark, page titles, portfolio names and section headings (chosen from seven rendered options); Geist
+* Sora for the wordmark, page titles, portfolio names and section headings (chosen from seven rendered options); Geist
   for everything else.
 * Readability over the map: veil behind the content column, halo for text directly on it, near-solid panel for the
   Portfolio Creation market/sector list; buttons and badges excluded from the halo. Checked in light and dark screenshots.
@@ -29,8 +46,8 @@
   stocks from pinned Wikipedia revisions plus 18 index ETFs (curated); all 441 symbols and their currencies were checked
   against the price provider on 2026-10-24 (three SGX listings trade in USD and are recorded so). Venues, sessions, index
   benchmarks, Alpha Vantage `.TRT` for Toronto, research-brief markets; symbols may contain `&` (`M&M.NS`).
-* Portfolio workspace: tabs Overview · Math Optimization · ML Optimization · Holdings · Transactions · Optimization runs ·
-  Backtest · Strategy comparison. Performance merged into the Overview (date range, efficient frontier right under portfolio
+* Portfolio workspace: tabs Overview · Holdings · Math Optimization · ML Optimization · Optimization runs ·
+  Backtest · Strategy comparison · Transactions. Performance merged into the Overview (date range, efficient frontier right under portfolio
   vs benchmark, recorded performance, risk, allocation over time – duplicates removed). Optimization runs (Math and ML),
   Backtest and Strategy comparison stay inside the portfolio and list only its work; the portfolio is fixed there.
 * Background world map: dotted Natural Earth land, exchange cities; lit for the open portfolio's holdings and universe,
@@ -61,13 +78,14 @@
 
 * Renamed "Mathematical Optimization" → "Math Optimization". ML Optimization moved into the portfolio workspace
   (`/portfolios/:id/ml-optimize[/:experimentId]`, tab next to Math Optimization); `/ml-optimize` and the earlier
-  `/machine-learning[/:id]` URLs redirect. Both pages share one layout: configuration (portfolio universe, "Use stock
-  selection", Browse, Clear; Run optimization / Run ML optimization) and run history on the left; header with badges and
-  actions, four headline metrics, every result section visible at once (`ResultSection`, no tabs), the trade proposal card
+  `/machine-learning[/:id]` URLs redirect. Both pages share one layout: Optimization history, then the form (equity universe
+  list with Browse stocks → Choose stocks page, "Use stock selection", Clear; Run optimization / Run ML optimization) on
+  the left; header with badges, currency and date on the right, five headline metrics starting with Investable value, every result section visible at once (`ResultSection`, no tabs), the trade proposal card
   (Create trade proposal / Recalculate), and "What your result means" with "How this strategy works" last.
-* Experiments without a portfolio are listed in each portfolio of their currency ("Earlier ML experiments without a
-  portfolio", `GET /ml/experiments?unlinked=true`) and linked with one click; ML trade proposals always target the
-  portfolio in the URL. Selection tray: "Math Optimization in …" and "ML Optimization in …".
+* Experiments without a portfolio are no longer listed on the ML Optimization page (card removed 2026-10-25, owner's
+  request); one opened by its link (`/machine-learning/:id` opens it in the current portfolio) can still be linked there
+  (`ExperimentPortfolio`, same currency only), and `GET /ml/experiments?unlinked=true` remains. ML trade proposals always
+  target the portfolio in the URL. Selection tray: "Math Optimization in …" and "ML Optimization in …".
 * Tests: Playwright `optimizations.spec.ts` checks both pages (no tabs, named sections visible, interpretation below the
   proposal) and a backtest window with two Math runs and one ML Optimization; other specs updated for names and URLs.
 
@@ -191,7 +209,7 @@
 
 * Converter card (rates board, pair chart, calculator) on the overview and stock-selection pages, backed by
   `/fx/history` and `/fx/board`; labelled reference rates with dates, never "live".
-* AMIR = Allocation · Modelling · Investment · Research; SVG mark in the sidebar, sign-in pages, favicon, tab title.
+* Brand: MaTrix (formerly AMIR Optimizer); SVG mark (a correlation matrix with a gold diagonal) in the sidebar, sign-in pages, favicon, tab title.
 * Light / dark / system mode and five colour skins; header toggle and Settings → Appearance; persisted per browser.
 * Verified by unit, integration, Vitest and e2e tests and by screenshots (light, dark Ocean, Violet).
 
@@ -363,7 +381,7 @@ nothing exposed secrets (verified: key never in responses, logs redact it).
 | Criterion | Status | Evidence |
 |---|---|---|
 | Prices load automatically after sign-in | Done | sign-in cycle refreshed 914/916 instruments in 29 s (2 delisted); integration test `SignIn_StartsOneSharedRefreshCycle…`; e2e `stock selection loads prices automatically` |
-| Working refresh control per stock | Done | row icon + detail button; integration + e2e tests |
+| Working refresh control per stock | Done | row Refresh button + detail button; integration + e2e tests |
 | US, DE, FR, UK, JP universes from maintainable sources | Done | 503 / 40 + 30 historical / 40 / 100 / 224; builder script, admin upload, override directory |
 | Availability, timestamps, currencies, caching, provider limits shown correctly | Done | quote states; admin overview; [market-data.md](market-data.md) |
 | Test artifacts removed and hidden from administrators | Done | section 2; admin list/overview exclude `.test` |

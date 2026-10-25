@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
-import { ArrowRight, CircleCheck, Sigma } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -8,7 +7,7 @@ import {
   AllocationDonut, ChartCard, CorrelationHeatmap, FrontierChart, MonthlyReturnsGrid, RiskContributionChart, TimeSeriesChart,
   WeightsOverTimeChart, timeSeriesTable,
 } from '@/components/charts'
-import { DataBadge, EmptyState, ErrorState, LoadingBlock, MetricCard, MetricValue, ResultSection, Signed, Warnings } from '@/components/common'
+import { DataBadge, EmptyState, ErrorState, LoadingBlock, MetricCard, MetricGroup, MetricValue, ResultSection, Signed, Warnings } from '@/components/common'
 import { ValuationProblems } from '@/components/currency'
 import { portfolioPath, usePortfolioContext } from '@/lib/portfolio-context'
 import { useHoldings, useMarketSummary, usePerformance, useProposals, useRisk, useRun, useRuns, useTransactions } from '@/lib/queries'
@@ -34,9 +33,9 @@ function rangeStart(key: string): string | undefined {
 
 /**
  * Overview of one portfolio – everything about its state and recorded history on one page (it replaced the separate
- * Performance section on 2026-10-24): key figures, portfolio vs benchmark with the efficient frontier of the latest
- * successful Math Optimization right below, then recorded performance, ex-ante risk and allocation over time. Every chart
- * appears once. Recorded history is not a backtest.
+ * Performance section on 2026-10-24). Key figures first, as one story: Value → Performance → portfolio vs benchmark and
+ * allocation → Risk; then the efficient frontier of the latest successful Math Optimization, performance history, risk breakdown,
+ * allocation over time and recent activity; all data notes last. Every chart appears once. Recorded history is not a backtest.
  */
 export function OverviewPage() {
   const { portfolioId, portfolio, isLoading } = usePortfolioContext()
@@ -70,7 +69,8 @@ export function OverviewPage() {
 
   return (
     <>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+      {/* One vertical rhythm (1.25 rem) from the heading through the key figures and charts below. */}
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
         <h2 className="heading-display text-[1.3rem]">Overview</h2>
         <div className="flex flex-wrap items-center gap-2">
           {s?.usesSimulatedData && <DataBadge kind="simulated" />}
@@ -79,7 +79,7 @@ export function OverviewPage() {
               <Button key={r.key} size="sm" variant={range === r.key ? 'secondary' : 'ghost'} aria-pressed={range === r.key} onClick={() => setRange(r.key)}>{r.key}</Button>
             ))}
           </div>
-          <Button render={<Link to={portfolioPath(id, 'optimize')} />}><Sigma /> Optimize</Button>
+          <Button render={<Link to={portfolioPath(id, 'optimize')} />}>Optimize</Button>
         </div>
       </div>
       {created && <NextSteps id={id} />}
@@ -87,88 +87,117 @@ export function OverviewPage() {
       {holdings.error && <ErrorState error={holdings.error} onRetry={() => holdings.refetch()} />}
       {perf.error && <ErrorState error={perf.error} />}
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <MetricCard label="Total value" loading={!s} value={s?.totalValue === null ? 'Not available' : money(s?.totalValue, ccy)} sub={`Net contributions ${money(s?.netContributions, ccy)}`}
-          hint="Market value of all simulated holdings at the latest price (converted into the portfolio currency at the rate of the price date) plus cash." />
-        <MetricCard label="Cash · invested" loading={!s} value={money(s?.cashBalance, ccy)} sub={`${pct(s?.investedFraction, 1)} invested (${money(s?.marketValue, ccy, { compact: true })})`} hint="Uninvested simulated cash and the share of total value held in equities." />
-        <MetricCard label="Total return" loading={!s} tone="signed" numeric={s?.totalReturn} value={pct(s?.totalReturn, 2, true)}
-          sub={s?.benchmarkReturn !== null && s?.benchmarkReturn !== undefined ? <>vs {s.benchmarkSymbol} {pct(s.benchmarkReturn, 2, true)}</> : 'Since first contribution'}
-          hint="(Total value − net contributions) / net contributions. Includes fees and realized P&L; dividends are not credited to the paper portfolio." />
-        <MetricCard label="Daily change" loading={!s} tone="signed" numeric={s?.dailyChange} value={money(s?.dailyChange, ccy, { signed: true })}
-          sub={s?.dailyChangePercent !== null && s?.dailyChangePercent !== undefined ? pct(s.dailyChangePercent, 2, true) : 'No prior close'}
-          hint="Change of held positions between the last two daily closes. Shares bought at the last close are excluded." />
-        <MetricCard label="Volatility (ex-ante)" loading={risk.isLoading} value={<MetricValue metric={risk.data?.annualizedVolatility} format={(v) => pct(v)} />}
-          sub="Current weights · trailing 1y" hint="Annualized standard deviation of daily returns of the current weights applied to the last 252 trading days (historical simulation)." />
-        <MetricCard label="Sharpe ratio (ex-ante)" loading={risk.isLoading} value={<MetricValue metric={risk.data?.sharpeRatio} format={(v) => num(v)} />}
-          sub="Same window, vs risk-free rate" hint="(Annualized mean daily return − risk-free rate) / annualized volatility of the current weights over the trailing window." />
-        <MetricCard label="Max drawdown (ex-ante)" loading={risk.isLoading}
-          value={<MetricValue metric={risk.data?.maxDrawdown} format={(v) => pct(v)} />} sub="Current weights · trailing 1y" hint="Largest peak-to-trough decline of the current weights over the trailing window." />
-        <MetricCard label="Unrealized P&L" loading={!s} tone="signed" numeric={s?.unrealizedPnl} value={money(s?.unrealizedPnl, ccy, { signed: true })}
-          sub={`Realized ${money(s?.realizedPnl, ccy, { signed: true })} · fees ${money(s?.totalFees, ccy)}`} hint="Market value − weighted-average cost basis (buy commissions are included in cost)." />
-      </div>
+      {/* Key figures as one story: what the portfolio is worth → what it has earned → how risky today's holdings are. */}
+      <div className="space-y-5">
+        <MetricGroup title="Value" columns={5}
+          period={portfolio && (portfolio.valuationDate ? `Valued at stored prices of ${date(portfolio.valuationDate)}`
+            : portfolio.holdings === 0 ? 'Cash only – no positions to value' : 'Not valued')}
+          hint="Today's state of the portfolio at the latest stored prices, converted into the portfolio currency at the rate of each price date.">
+          <MetricCard label="Total value" loading={!s} value={s?.totalValue === null ? 'Not available' : money(s?.totalValue, ccy)} sub={`Net contributions ${money(s?.netContributions, ccy)}`}
+            hint="Market value of all simulated holdings at the latest price (converted into the portfolio currency at the rate of the price date) plus cash." />
+          <MetricCard label="Daily change" loading={!s} tone="signed" numeric={s?.dailyChange} value={money(s?.dailyChange, ccy, { signed: true })}
+            sub={s?.dailyChangePercent !== null && s?.dailyChangePercent !== undefined ? pct(s.dailyChangePercent, 2, true) : 'No prior close'}
+            hint="Change of held positions between the last two daily closes. Shares bought at the last close are excluded." />
+          <MetricCard label="Cash · invested" loading={!s} value={money(s?.cashBalance, ccy)} sub={`${pct(s?.investedFraction, 1)} invested (${money(s?.marketValue, ccy, { compact: true })})`} hint="Uninvested simulated cash and the share of total value held in equities." />
+          <MetricCard label="Unrealized P&L" loading={!s} tone="signed" numeric={s?.unrealizedPnl} value={money(s?.unrealizedPnl, ccy, { signed: true })}
+            sub="Open positions vs cost" hint="Market value − weighted-average cost basis (buy commissions are included in cost)." />
+          <MetricCard label="Holdings" loading={!portfolio} value={String(portfolio?.holdings ?? '—')} sub={`Stock${portfolio?.holdings === 1 ? '' : 's'} held`}
+            hint="Number of open positions (stocks and ETFs with a quantity above zero)." />
+        </MetricGroup>
 
-      <div className="mt-4 space-y-3">
-        <ValuationProblems problems={s?.valuationProblems} />
-        <Warnings items={s?.warnings.filter((w) => !s.valuationProblems?.includes(w))} />
-      </div>
+        <MetricGroup title="Performance" period={p?.from ? `${date(p.from)} – ${date(p.to)}` : undefined}
+          hint={<>Recorded history of this portfolio since its first trade, for the date range above – not a backtest. {p?.methodology}</>}>
+          <MetricCard label="Total return" loading={!s} tone="signed" numeric={s?.totalReturn} value={pct(s?.totalReturn, 2, true)}
+            sub={s?.benchmarkReturn !== null && s?.benchmarkReturn !== undefined ? <>vs {s.benchmarkSymbol} {pct(s.benchmarkReturn, 2, true)}</> : 'Since first contribution'}
+            hint="(Total value − net contributions) / net contributions, since the first contribution. Includes fees and realized P&L; dividends are not credited to the paper portfolio." />
+          <MetricCard label="Time-weighted return" loading={perf.isLoading} value={<MetricValue metric={p?.totalReturn} format={(v) => pct(v, 2, true)} />} sub="Selected range" hint="Time-weighted cumulative return over the selected range; deposits and withdrawals do not count as returns." />
+          <MetricCard label="Annualized return" loading={perf.isLoading} value={<MetricValue metric={p?.annualizedReturn} format={(v) => pct(v)} />} hint="Geometric (CAGR), requires at least 20 daily returns." />
+          <MetricCard label="Realized P&L" loading={!s} tone="signed" numeric={s?.realizedPnl} value={money(s?.realizedPnl, ccy, { signed: true })}
+            sub={`Fees ${money(s?.totalFees, ccy)}`} hint="Gains and losses locked in by sales (against the weighted-average cost), and the fees paid." />
+          <MetricCard label="Volatility (realized)" loading={perf.isLoading} value={<MetricValue metric={p?.annualizedVolatility} format={(v) => pct(v)} />} hint="Sample standard deviation of daily returns × √252." />
+          <MetricCard label="Sharpe (realized)" loading={perf.isLoading} value={<MetricValue metric={p?.sharpeRatio} format={(v) => num(v)} />} hint="(Mean daily return − rf/252) / σ × √252." />
+          <MetricCard label="Sortino" loading={perf.isLoading} value={<MetricValue metric={p?.sortinoRatio} format={(v) => num(v)} />} hint="Like Sharpe, but divides by downside deviation below the daily risk-free rate." />
+          <MetricCard label="Max drawdown (realized)" loading={perf.isLoading} value={<MetricValue metric={p?.maxDrawdown} format={(v) => pct(v)} />} hint="Largest peak-to-trough decline of the value index." />
+        </MetricGroup>
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          {perf.isLoading ? <LoadingBlock height="h-80" /> : hasSeries ? (
-            <ChartCard
-              title="Portfolio vs benchmark"
-              description={`Cumulative time-weighted return, ${date(p!.from)} – ${date(p!.to)}`}
-              hint={p!.methodology}
-              legend={[{ name: 'Portfolio', color: 'var(--series-1)' }, { name: p!.benchmarkSymbol, color: 'var(--series-2)', dashed: true }]}
-              table={timeSeriesTable(dates, [
-                { name: 'Portfolio', values: p!.series.map((x) => x.cumulativeReturn) },
-                { name: p!.benchmarkSymbol, values: p!.series.map((x) => x.benchmarkCumulativeReturn) },
-              ], (v) => pct(v))}
-            >
-              <TimeSeriesChart
-                dates={dates}
-                series={[
+        {/* The recorded path of the portfolio sits between its performance figures and today's risk. */}
+        <div className="grid gap-4 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            {perf.isLoading ? <LoadingBlock height="h-80" /> : hasSeries ? (
+              <ChartCard
+                title="Portfolio vs benchmark"
+                description={`Cumulative time-weighted return, ${date(p!.from)} – ${date(p!.to)}`}
+                hint={p!.methodology}
+                legend={[{ name: 'Portfolio', color: 'var(--series-1)' }, { name: p!.benchmarkSymbol, color: 'var(--series-2)', dashed: true }]}
+                table={timeSeriesTable(dates, [
                   { name: 'Portfolio', values: p!.series.map((x) => x.cumulativeReturn) },
-                  { name: p!.benchmarkSymbol, values: p!.series.map((x) => x.benchmarkCumulativeReturn), dashed: true },
-                ]}
-                format={(v) => pct(v, 1)}
-                zeroLine
-              />
-            </ChartCard>
-          ) : (
-            <Card className="h-full">
-              <CardHeader><CardTitle className="text-sm">Portfolio vs benchmark</CardTitle></CardHeader>
-              <CardContent>
-                <EmptyState
-                  title={hasHoldings ? 'Performance history is just starting' : 'No simulated trades yet'}
-                  description={hasHoldings
-                    ? 'Realized performance accumulates with each new daily close after your first simulated execution. Meanwhile, see the in-sample comparison in the optimizer or run a backtest.'
-                    : 'Optimize the portfolio and confirm the simulated purchases, or record your own transactions, to start tracking performance.'}
-                  action={<Button variant="outline" render={<Link to={portfolioPath(id, hasHoldings ? 'backtest' : 'optimize')} />}>{hasHoldings ? 'Run a backtest' : 'Go to optimizer'} <ArrowRight /></Button>}
+                  { name: p!.benchmarkSymbol, values: p!.series.map((x) => x.benchmarkCumulativeReturn) },
+                ], (v) => pct(v))}
+              >
+                <TimeSeriesChart
+                  dates={dates}
+                  series={[
+                    { name: 'Portfolio', values: p!.series.map((x) => x.cumulativeReturn) },
+                    { name: p!.benchmarkSymbol, values: p!.series.map((x) => x.benchmarkCumulativeReturn), dashed: true },
+                  ]}
+                  format={(v) => pct(v, 1)}
+                  zeroLine
                 />
-              </CardContent>
-            </Card>
-          )}
+              </ChartCard>
+            ) : (
+              <Card className="h-full">
+                <CardHeader><CardTitle className="text-sm">Portfolio vs benchmark</CardTitle></CardHeader>
+                <CardContent>
+                  <EmptyState
+                    title={hasHoldings ? 'Performance history is just starting' : 'No simulated trades yet'}
+                    description={hasHoldings
+                      ? 'Realized performance accumulates with each new daily close after your first simulated execution. Meanwhile, see the in-sample comparison in the optimizer or run a backtest.'
+                      : 'Optimize the portfolio and confirm the simulated purchases, or record your own transactions, to start tracking performance.'}
+                    action={<Button variant="outline" render={<Link to={portfolioPath(id, hasHoldings ? 'backtest' : 'optimize')} />}>{hasHoldings ? 'Run a backtest' : 'Go to optimizer'} </Button>}
+                  />
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          <Card>
+            <CardHeader><CardTitle className="text-sm">Allocation</CardTitle></CardHeader>
+            <CardContent>
+              {!holdings.data ? <LoadingBlock /> : (
+                <AllocationDonut
+                  items={[
+                    ...holdings.data.holdings.filter((h) => (h.weight ?? 0) > 0).map((h) => ({ name: h.symbol, value: h.weight! })),
+                    { name: 'Cash', value: (s?.totalValue ?? 0) > 0 ? s!.cashBalance / s!.totalValue! : 1 },
+                  ]}
+                  height={180}
+                  centerLabel={<><span className="text-xs text-muted-foreground">Invested</span><span className="text-lg font-semibold">{pct(s?.investedFraction, 0)}</span></>}
+                />
+              )}
+            </CardContent>
+          </Card>
         </div>
 
-        <Card>
-          <CardHeader><CardTitle className="text-sm">Allocation</CardTitle></CardHeader>
-          <CardContent>
-            {!holdings.data ? <LoadingBlock /> : (
-              <AllocationDonut
-                items={[
-                  ...holdings.data.holdings.filter((h) => (h.weight ?? 0) > 0).map((h) => ({ name: h.symbol, value: h.weight! })),
-                  { name: 'Cash', value: (s?.totalValue ?? 0) > 0 ? s!.cashBalance / s!.totalValue! : 1 },
-                ]}
-                height={180}
-                centerLabel={<><span className="text-xs text-muted-foreground">Invested</span><span className="text-lg font-semibold">{pct(s?.investedFraction, 0)}</span></>}
-              />
-            )}
-          </CardContent>
-        </Card>
+        <MetricGroup title="Risk" period={risk.data ? `${date(risk.data.from)} – ${date(risk.data.to)} · ${risk.data.observations} days` : undefined}
+          hint={<>Ex-ante: today's weights applied to past daily returns (historical simulation). {risk.data?.methodology}</>}>
+          <MetricCard label="Volatility (ex-ante)" loading={risk.isLoading} value={<MetricValue metric={risk.data?.annualizedVolatility} format={(v) => pct(v)} />}
+            hint="Annualized standard deviation of daily returns of the current weights applied to the last 252 trading days (historical simulation)." />
+          <MetricCard label="Sharpe ratio (ex-ante)" loading={risk.isLoading} value={<MetricValue metric={risk.data?.sharpeRatio} format={(v) => num(v)} />}
+            hint="(Annualized mean daily return − risk-free rate) / annualized volatility of the current weights over the trailing window." />
+          <MetricCard label="Max drawdown (ex-ante)" loading={risk.isLoading} value={<MetricValue metric={risk.data?.maxDrawdown} format={(v) => pct(v)} />}
+            hint="Largest peak-to-trough decline of the current weights over the trailing window." />
+          <MetricCard label="Beta vs benchmark" loading={risk.isLoading} value={<MetricValue metric={risk.data?.beta} format={(v) => num(v)} />} hint="Covariance with benchmark returns / benchmark variance." />
+          <MetricCard label={`1-day VaR ${pct(risk.data?.confidenceLevel, 0)}`} loading={risk.isLoading} value={<MetricValue metric={risk.data?.valueAtRisk} format={(v) => pct(v)} />}
+            sub={risk.data?.valueAtRisk.value != null && s?.totalValue != null ? `≈ ${money(risk.data.valueAtRisk.value * s.totalValue, ccy, { decimals: 0 })}` : undefined}
+            hint="Historical one-day loss not exceeded with the stated confidence, using the current weights on past returns." />
+          <MetricCard label={`1-day CVaR ${pct(risk.data?.confidenceLevel, 0)}`} loading={risk.isLoading} value={<MetricValue metric={risk.data?.conditionalValueAtRisk} format={(v) => pct(v)} />} hint="Expected shortfall: average loss on the days beyond the VaR threshold." />
+          <MetricCard label="Tracking error" loading={risk.isLoading} value={<MetricValue metric={risk.data?.trackingError} format={(v) => pct(v)} />} hint="Annualized volatility of the return difference to the benchmark." />
+          <MetricCard label="Information ratio" loading={risk.isLoading} value={<MetricValue metric={risk.data?.informationRatio} format={(v) => num(v)} />} hint="Annualized active return / tracking error." />
+        </MetricGroup>
       </div>
 
-      <div className="mt-4">
+      {s?.totalValue === null && <div className="mt-5"><ValuationProblems problems={s?.valuationProblems} /></div>}
+
+      <div className="mt-5">
         {runs.isLoading || (latestOk && run.isLoading) ? <LoadingBlock height="h-80" /> : run.data ? (
           <ChartCard title="Efficient frontier (latest successful Math Optimization)"
             description={`${objectiveLabels[run.data.objective] ?? run.data.objective} · estimation window ${date(run.data.periodStart)} – ${date(run.data.periodEnd)} · in-sample estimates, not forecasts`}
@@ -184,27 +213,14 @@ export function OverviewPage() {
             <CardHeader><CardTitle className="text-sm">Efficient frontier</CardTitle></CardHeader>
             <CardContent>
               <EmptyState title="No successful Math Optimization yet" description="The frontier of the latest successful Math Optimization of this portfolio appears here."
-                action={<Button render={<Link to={portfolioPath(id, 'optimize')} />}><Sigma /> Optimize</Button>} />
+                action={<Button render={<Link to={portfolioPath(id, 'optimize')} />}>Optimize</Button>} />
             </CardContent>
           </Card>
         )}
       </div>
 
       <div className="mt-8 space-y-8">
-        <ResultSection title="Recorded performance" hint="Recorded history of this portfolio – value, cash and time-weighted return since its first trade, for the date range above. Not a backtest.">
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-            <MetricCard label="Time-weighted return" loading={perf.isLoading} value={<MetricValue metric={p?.totalReturn} format={(v) => pct(v, 2, true)} />} sub={p?.from ? `since ${date(p.from)}` : undefined} hint="Time-weighted cumulative return over the selected range; deposits and withdrawals do not count as returns." />
-            <MetricCard label="Annualized return" loading={perf.isLoading} value={<MetricValue metric={p?.annualizedReturn} format={(v) => pct(v)} />} hint="Geometric (CAGR), requires at least 20 daily returns." />
-            <MetricCard label="Volatility (realized)" loading={perf.isLoading} value={<MetricValue metric={p?.annualizedVolatility} format={(v) => pct(v)} />} hint="Sample standard deviation of daily returns × √252." />
-            <MetricCard label="Sharpe (realized)" loading={perf.isLoading} value={<MetricValue metric={p?.sharpeRatio} format={(v) => num(v)} />} hint="(Mean daily return − rf/252) / σ × √252." />
-            <MetricCard label="Sortino" loading={perf.isLoading} value={<MetricValue metric={p?.sortinoRatio} format={(v) => num(v)} />} hint="Like Sharpe, but divides by downside deviation below the daily risk-free rate." />
-            <MetricCard label="Max drawdown (realized)" loading={perf.isLoading} value={<MetricValue metric={p?.maxDrawdown} format={(v) => pct(v)} />} hint="Largest peak-to-trough decline of the value index." />
-          </div>
-          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            {p?.usesSimulatedData ? <DataBadge kind="simulated" /> : p && <DataBadge kind="cached" label="Stored prices" />}
-            <span>{p?.methodology}</span>
-          </div>
-          <Warnings items={p?.warnings} />
+        <ResultSection title="Performance history" hint="Recorded value, drawdown and monthly returns of this portfolio for the date range above. Not a backtest.">
           {perf.isLoading ? <LoadingBlock height="h-64" /> : !hasSeries ? (
             <p className="rounded-lg border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
               Charts of value, drawdown and monthly returns appear once the portfolio has at least two daily closes after its first simulated execution.
@@ -234,20 +250,10 @@ export function OverviewPage() {
           )}
         </ResultSection>
 
-        <ResultSection title="Risk of the current holdings" hint="Ex-ante: today's weights applied to past daily returns (historical simulation). Volatility, Sharpe ratio and maximum drawdown of the same window are in the key figures above.">
+        <ResultSection title="Risk breakdown" hint="Which holdings drive the ex-ante risk above, and how they move together.">
           {risk.isLoading ? <LoadingBlock /> : risk.data && (
             <>
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-                <MetricCard label={`1-day VaR ${pct(risk.data.confidenceLevel, 0)}`} value={<MetricValue metric={risk.data.valueAtRisk} format={(v) => pct(v)} />}
-                  sub={risk.data.valueAtRisk.value !== null && s?.totalValue != null ? `≈ ${money(risk.data.valueAtRisk.value * s.totalValue, ccy, { decimals: 0 })}` : undefined}
-                  hint="Historical one-day loss not exceeded with the stated confidence, using the current weights on past returns." />
-                <MetricCard label={`1-day CVaR ${pct(risk.data.confidenceLevel, 0)}`} value={<MetricValue metric={risk.data.conditionalValueAtRisk} format={(v) => pct(v)} />} hint="Expected shortfall: average loss on the days beyond the VaR threshold." />
-                <MetricCard label="Beta vs benchmark" value={<MetricValue metric={risk.data.beta} format={(v) => num(v)} />} hint="Covariance with benchmark returns / benchmark variance." />
-                <MetricCard label="Tracking error" value={<MetricValue metric={risk.data.trackingError} format={(v) => pct(v)} />} hint="Annualized volatility of the return difference to the benchmark." />
-                <MetricCard label="Information ratio" value={<MetricValue metric={risk.data.informationRatio} format={(v) => num(v)} />} hint="Annualized active return / tracking error." />
-              </div>
-              <p className="text-xs text-muted-foreground">{risk.data.methodology} Window {date(risk.data.from)} – {date(risk.data.to)} ({risk.data.observations} days).</p>
-              <Warnings items={risk.data.warnings} />
+              {risk.data.contributions.length === 0 && <p className="text-sm text-muted-foreground">Appears once the portfolio holds positions.</p>}
               {risk.data.contributions.length > 0 && (
                 <div className="grid gap-4 lg:grid-cols-2">
                   <ChartCard title="Risk contribution by holding" description="Weight vs share of portfolio variance"
@@ -255,9 +261,12 @@ export function OverviewPage() {
                     table={{ columns: ['Symbol', 'Weight', 'Risk contribution', 'Volatility'], rows: risk.data.contributions.map((c) => [c.symbol, pct(c.weight), pct(c.riskContribution), pct(c.volatility)]) }}>
                     <RiskContributionChart items={risk.data.contributions.map((c) => ({ symbol: c.symbol, weight: c.weight, risk: c.riskContribution }))} />
                   </ChartCard>
-                  <ChartCard title="Correlation of current holdings" description={`Daily returns, ${date(risk.data.from)} – ${date(risk.data.to)}`}>
-                    <CorrelationHeatmap symbols={risk.data.correlationSymbols} matrix={risk.data.correlation} />
-                  </ChartCard>
+                  {/* A correlation needs two holdings; one alone would be a single 1.00 cell. */}
+                  {risk.data.correlationSymbols.length > 1 && (
+                    <ChartCard title="Correlation of current holdings" description={`Daily returns, ${date(risk.data.from)} – ${date(risk.data.to)}`}>
+                      <CorrelationHeatmap symbols={risk.data.correlationSymbols} matrix={risk.data.correlation} />
+                    </ChartCard>
+                  )}
                 </div>
               )}
             </>
@@ -353,6 +362,12 @@ export function OverviewPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* All data notes of the page in one place, at the end. */}
+      <div className="mt-8 space-y-3">
+        {s?.totalValue !== null && <ValuationProblems problems={s?.valuationProblems} />}
+        <Warnings items={[...new Set([...(s?.warnings.filter((w) => !s.valuationProblems?.includes(w)) ?? []), ...(p?.warnings ?? []), ...(risk.data?.warnings ?? [])])]} />
+      </div>
     </>
   )
 }
@@ -360,8 +375,8 @@ export function OverviewPage() {
 /** Shown once after Portfolio Creation: what to do next with the new (still cash-only) portfolio. */
 function NextSteps({ id }: { id: string }) {
   return (
-    <section aria-label="Next steps" className="mb-6 rounded-xl border border-primary/30 bg-primary/5 p-4">
-      <h3 className="flex items-center gap-2 text-sm font-semibold"><CircleCheck className="size-4 text-gain" /> Portfolio created – it holds only simulated cash so far</h3>
+    <section aria-label="Next steps" className="mb-5 rounded-xl border border-primary/30 bg-primary/5 p-4">
+      <h3 className="flex items-center gap-2 text-sm font-semibold">Portfolio created – it holds only simulated cash so far</h3>
       <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
         <li><Link className="underline underline-offset-4" to={portfolioPath(id, 'optimize')}>Run an optimization</Link> on the stocks you chose, then review and confirm the simulated purchases.</li>
         <li>Or record your own buys, deposits and dividends with <span className="font-medium text-foreground">Record transaction</span> above.</li>

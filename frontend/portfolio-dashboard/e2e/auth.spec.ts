@@ -35,7 +35,7 @@ test('registration requires administrator approval before the app opens', async 
   // Now the user reaches the application (not the page the administrator signed out from) but not the admin area.
   await signIn(page, email, strongPassword)
   await expect(page).toHaveURL(/\/$/)
-  await expect(page.getByLabel(/^Signed in as /)).toContainText('Student investor')
+  await expect(page.getByLabel(/^Signed in as .*, Student investor$/)).toBeVisible()
   await page.goto('/admin/users')
   await expect(page.getByText('Administrators only')).toBeVisible()
   await expect(page.getByRole('navigation', { name: 'Administration' })).toHaveCount(0)

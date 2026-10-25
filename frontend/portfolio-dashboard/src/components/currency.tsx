@@ -1,4 +1,3 @@
-import { AlertTriangle, Coins } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { currencyGroups, currencyName, exposureRows, fxPhrase } from '@/lib/currency'
@@ -81,7 +80,6 @@ export function ValuationProblems({ problems }: { problems: string[] | null | un
   if (!problems?.length) return null
   return (
     <Alert className="border-warn/50">
-      <AlertTriangle className="text-warn" />
       <AlertTitle>Some positions cannot be valued</AlertTitle>
       <AlertDescription>
         <ul className="list-disc space-y-0.5 pl-4">{problems.map((p) => <li key={p}>{p}</li>)}</ul>
@@ -96,7 +94,6 @@ export function ReportingNote({ currency, accountCurrency, rate }: { currency: s
   if (currency === accountCurrency) return null
   return (
     <Alert>
-      <Coins />
       <AlertTitle>Shown in {currency} – a reporting conversion</AlertTitle>
       <AlertDescription>
         The portfolio holds its cash in {accountCurrency}. Positions are converted at the rate of their price date; cost, fees and realized

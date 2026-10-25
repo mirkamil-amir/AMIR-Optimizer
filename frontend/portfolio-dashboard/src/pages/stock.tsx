@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router'
-import { ArrowLeft, ChevronLeft, ChevronRight, Minus, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { ErrorState, LoadingBlock, PageHeader } from '@/components/common'
@@ -31,7 +30,7 @@ export function StockPage() {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Button variant="ghost" size="sm" render={<Link to="/watchlist" />} className="-ml-2"><ArrowLeft /> Watchlist</Button>
+        <Button variant="ghost" size="sm" render={<Link to="/watchlist" />} className="-ml-2">Watchlist</Button>
         <WatchlistStepper symbol={s.symbol} />
       </div>
       <PageHeader
@@ -43,7 +42,6 @@ export function StockPage() {
             <WatchToggle symbol={s.symbol} />
             <Button size="sm" variant={selection.has(s.symbol) ? 'outline' : 'default'}
               onClick={() => selection.toggle({ symbol: s.symbol, name: s.name, sector: s.sector, currency: s.currency })}>
-              {selection.has(s.symbol) ? <Minus /> : <Plus />}
               {selection.has(s.symbol) ? 'Remove from selection' : 'Add to selection'}
             </Button>
           </>
@@ -108,12 +106,12 @@ function WatchlistStepper({ symbol }: { symbol: string }) {
   return (
     <nav aria-label="Watchlist navigation" className="flex items-center gap-1.5">
       {previous
-        ? <Button variant="outline" size="sm" render={<Link to={to(previous)} />} aria-label={`Previous stock: ${previous}`}><ChevronLeft /> {previous}</Button>
-        : <Button variant="outline" size="sm" disabled aria-label="Previous stock"><ChevronLeft /> Previous</Button>}
+        ? <Button variant="outline" size="sm" render={<Link to={to(previous)} />} aria-label={`Previous stock: ${previous}`}>{previous}</Button>
+        : <Button variant="outline" size="sm" disabled aria-label="Previous stock">Previous</Button>}
       <span className="px-1 text-xs text-muted-foreground tabular" aria-live="polite">{index + 1} of {symbols.length}</span>
       {next
-        ? <Button variant="outline" size="sm" render={<Link to={to(next)} />} aria-label={`Next stock: ${next}`}>{next} <ChevronRight /></Button>
-        : <Button variant="outline" size="sm" disabled aria-label="Next stock">Next <ChevronRight /></Button>}
+        ? <Button variant="outline" size="sm" render={<Link to={to(next)} />} aria-label={`Next stock: ${next}`}>{next}</Button>
+        : <Button variant="outline" size="sm" disabled aria-label="Next stock">Next</Button>}
     </nav>
   )
 }

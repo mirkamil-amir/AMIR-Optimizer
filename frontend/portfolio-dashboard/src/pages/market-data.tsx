@@ -3,7 +3,6 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { Download, Plus, RefreshCw } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -66,8 +65,8 @@ export function MarketDataPage() {
               <SelectTrigger className="w-32" aria-label="History length"><SelectValue /></SelectTrigger>
               <SelectContent>{historyOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
             </Select>
-            <Button onClick={() => runSync()} disabled={!!running || sync.isPending}><Download /> Sync all enabled</Button>
-            <Button variant="outline" onClick={() => setAddOpen(true)}><Plus /> Add asset</Button>
+            <Button onClick={() => runSync()} disabled={!!running || sync.isPending}>Sync all enabled</Button>
+            <Button variant="outline" onClick={() => setAddOpen(true)}>Add asset</Button>
           </>
         }
       />
@@ -82,7 +81,7 @@ export function MarketDataPage() {
         <Card className="mb-4">
           <CardContent className="space-y-2 py-4">
             <div className="flex items-center justify-between text-sm">
-              <span className="flex items-center gap-2"><RefreshCw className="size-4 animate-spin" /> Downloading{isAdministrator ? ` from ${running.source}` : ''}…</span>
+              <span className="flex items-center gap-2">Downloading{isAdministrator ? ` from ${running.source}` : ''}…</span>
               <span className="tabular text-muted-foreground">{running.assetsCompleted + running.assetsFailed} / {running.assetsTotal}</span>
             </div>
             <Progress value={((running.assetsCompleted + running.assetsFailed) / Math.max(1, running.assetsTotal)) * 100} />
