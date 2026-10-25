@@ -17,7 +17,7 @@
   CSS transform set imperatively (`lib/map-camera.ts`) – never put camera positions into React state or context.
 - No decorative icons (the owner finds them childish): buttons, navigation, badges, alerts, empty states and toasts are
   text only. Icons only where they are the control itself (fold/sort/pager arrows, remove ×, phone menu, spinner, delete
-  bin). Explanations use `InfoTip of={label}` – the label gets a dotted underline – never an ⓘ.
+  bin). Explanations use `InfoTip of={label}` – the label itself shows the tip on hover/focus, unmarked (no ⓘ, no underline).
 - Typography: `.heading-display` (Sora) only for page titles, section headings and the wordmark; body,
   tables and figures stay Geist. Text outside cards must stay readable over the map: put dense lists on `.map-surface`.
 - Disk: the Podman VM disk file (`~/.local/share/containers/podman/machine`) grows with every image build and never

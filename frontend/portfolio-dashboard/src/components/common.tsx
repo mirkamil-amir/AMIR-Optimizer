@@ -32,8 +32,8 @@ export function PageHeader({ title, description, info, actions, level = 1 }: {
 }
 
 /**
- * An explanation shown on hover or keyboard focus – used for every financial metric. No icon: with `of` the label itself
- * (a title, a field name) is the trigger, marked by a dotted underline; without it a small "About" text is. Without an
+ * An explanation shown on hover or keyboard focus – used for every financial metric. No icon and no underline: with `of`
+ * the label itself (a title, a field name) is the trigger; without it a small "About" text is. Without an
  * explanation only `of` is rendered.
  */
 export function InfoTip({ children, of, label = 'More information' }: { children?: ReactNode; of?: ReactNode; label?: string }) {
@@ -42,8 +42,8 @@ export function InfoTip({ children, of, label = 'More information' }: { children
     <Tooltip>
       <TooltipTrigger
         render={of
-          ? <button type="button" className="cursor-help text-left underline decoration-current/35 decoration-dotted underline-offset-4 hover:decoration-current focus-visible:outline-2" />
-          : <button type="button" aria-label={label} className="cursor-help text-xs font-normal text-muted-foreground underline decoration-dotted underline-offset-4 hover:text-foreground focus-visible:outline-2" />}
+          ? <button type="button" className="cursor-help text-left focus-visible:outline-2" />
+          : <button type="button" aria-label={label} className="cursor-help text-xs font-normal text-muted-foreground hover:text-foreground focus-visible:outline-2" />}
       >
         {of ?? 'About'}
       </TooltipTrigger>
@@ -112,7 +112,7 @@ export function MetricValue({ metric, format }: { metric: Metric | undefined; fo
   if (metric.value === null) {
     return (
       <Tooltip>
-        <TooltipTrigger render={<span className="cursor-help text-muted-foreground underline decoration-dotted underline-offset-4" />}>n/a</TooltipTrigger>
+        <TooltipTrigger render={<span className="cursor-help text-muted-foreground" />}>n/a</TooltipTrigger>
         <TooltipContent className="max-w-xs text-xs">{metric.unavailableReason}</TooltipContent>
       </Tooltip>
     )

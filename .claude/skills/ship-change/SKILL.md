@@ -33,8 +33,8 @@ Toolchain once per shell: `export PATH="$HOME/.dotnet:/opt/homebrew/opt/node@22/
    from the repo root – builds a disposable `po-e2e` stack (Mock data, own DB and ports), runs Playwright, removes it.
    **Never** point Playwright at the development stack: it creates accounts (the setup step refuses non-E2E targets).
 9. **Visual change?** Screenshot the page (Playwright or Chrome tools) and check labels, legends (once), overflow, dark mode.
-   No decorative icons (text-only buttons, navigation, badges, alerts); explanations via `InfoTip of={label}` (dotted
-   underline, no ⓘ); an icon-only control needs an `aria-label`. After rebuilding the stack, tell the user to reload open
+   No decorative icons (text-only buttons, navigation, badges, alerts); explanations via `InfoTip of={label}` (the label
+   shows the tip, no ⓘ, no underline); an icon-only control needs an `aria-label`. After rebuilding the stack, tell the user to reload open
    tabs: a tab from before the rebuild requests old bundle files and fails with "Failed to fetch dynamically imported module".
 10. **Docs:** `README.md` (usage/config/API) and the matching `docs/*.md` (architecture, database, market-data,
     quantitative-strategies, machine-learning, security, testing, deployment, decisions, implementation-status,

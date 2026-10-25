@@ -43,8 +43,8 @@ settings stays for scripts and tests). The duplicate settings line under a backt
 No decorative icons (the owner found them childish): buttons, navigation, badges, alerts, empty states and toasts are
 text only; icon-only controls became text buttons (Table/Chart, Swap, Watch, Refresh, Show, More, theme name). Icons remain
 only where they are the control itself: fold arrows, sort arrows, pager arrows, close/remove ×, the phone menu, loading
-spinners and the delete bin. Explanations (`InfoTip`) have no ⓘ either: the title or label they explain is the trigger, marked
-by a dotted underline (hover or keyboard focus); where no label fits, a small "About" text is. Math and ML Optimizations can be deleted from the Optimization runs tab (bin + confirmation).
+spinners and the delete bin. Explanations (`InfoTip`) have no ⓘ either: the title or label they explain is the trigger (hover or
+keyboard focus), with no underline or other mark; where no label fits, a small "About" text is. Math and ML Optimizations can be deleted from the Optimization runs tab (bin + confirmation).
 
 ## D-39 Typography and readability over the map (2026-10-24)
 **Context:** text placed directly on the background map (e.g. the market list of Portfolio Creation) became hard to read
