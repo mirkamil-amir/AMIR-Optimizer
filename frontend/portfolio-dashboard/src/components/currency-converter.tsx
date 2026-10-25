@@ -89,34 +89,43 @@ export function CurrencyConverterCard({ base, className }: { base: string; class
       <CardContent className="space-y-5">
         {(info.error || board.error) && <ErrorState error={info.error ?? board.error} onRetry={() => (info.error ? info.refetch() : board.refetch())} />}
 
-        {/* Calculator */}
-        <div className="grid items-end gap-3 sm:grid-cols-[minmax(0,1fr)_8rem_auto_8rem]">
-          <div className="space-y-1.5">
-            <Label htmlFor="fx-amount">Amount</Label>
-            <Input id="fx-amount" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} aria-label="Amount to convert" />
+        {/* Calculator in one line: amount, from, swap, to and the converted amount; the rate used below it. */}
+        <div className="space-y-1.5">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-3 sm:grid-cols-[7rem_7.5rem_auto_7.5rem_minmax(0,1fr)]">
+            <div className="col-span-3 space-y-1.5 sm:col-span-1">
+              <Label htmlFor="fx-amount">Amount</Label>
+              <Input id="fx-amount" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} aria-label="Amount to convert" className="tabular" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>From</Label>
+              <CurrencySelect value={fromCcy} onChange={setFrom} supported={supported} first={base} label="Convert from" className="w-full" />
+            </div>
+            {/* Swap and the result carry an empty label line, so every box of the row starts at the same height. */}
+            <div className="space-y-1.5">
+              <Label aria-hidden>&nbsp;</Label>
+              <Button variant="ghost" size="sm" aria-label="Swap currencies" onClick={() => { setFrom(toCcy); setTo(fromCcy) }}>Swap</Button>
+            </div>
+            <div className="space-y-1.5">
+              <Label>To</Label>
+              <CurrencySelect value={toCcy} onChange={setTo} supported={supported} first={base} label="Convert to" className="w-full" />
+            </div>
+            <div className="col-span-3 min-w-0 space-y-1.5 sm:col-span-1">
+            <Label aria-hidden className="hidden sm:flex">&nbsp;</Label>
+            <div className="flex h-8 min-w-0 items-center rounded-lg bg-muted/50 px-3" aria-live="polite">
+              {boardLoading ? <span className="text-sm text-muted-foreground">Loading rates…</span> : result !== null ? (
+                <span className="truncate text-xl font-semibold tabular" aria-label="Converted amount">
+                  = {new Intl.NumberFormat('en-US', { style: 'currency', currency: toCcy, maximumFractionDigits: toCcy === 'JPY' ? 0 : 2 }).format(result)}
+                </span>
+              ) : (
+                <span className="truncate text-sm text-warn" title={missing.map((m) => `${m.quote}: ${m.problem}`).join(' ')}>
+                  {missing.length ? missing.map((m) => `${m.quote}: ${m.problem}`).join(' ') : board.error ? 'Rates could not be loaded.' : 'Enter a number to convert.'}
+                </span>
+              )}
+            </div>
+            </div>
           </div>
-          <div className="space-y-1.5">
-            <Label>From</Label>
-            <CurrencySelect value={fromCcy} onChange={setFrom} supported={supported} first={base} label="Convert from" className="w-full" />
-          </div>
-          <Button variant="ghost" size="sm" aria-label="Swap currencies" onClick={() => { setFrom(toCcy); setTo(fromCcy) }}>Swap</Button>
-          <div className="space-y-1.5">
-            <Label>To</Label>
-            <CurrencySelect value={toCcy} onChange={setTo} supported={supported} first={base} label="Convert to" className="w-full" />
-          </div>
-        </div>
-        <div className="rounded-lg bg-muted/50 px-4 py-3" aria-live="polite">
-          {boardLoading ? <span className="text-sm text-muted-foreground">Loading rates…</span> : result !== null ? (
-            <>
-              <div className="text-2xl font-semibold tabular" aria-label="Converted amount">
-                {new Intl.NumberFormat('en-US', { style: 'currency', currency: toCcy, maximumFractionDigits: toCcy === 'JPY' ? 0 : 2 }).format(result)}
-              </div>
-              <div className="mt-0.5 text-xs text-muted-foreground">{fxPhrase(rate, fromCcy, toCcy)}{asOf ? ` · reference rate of ${date(asOf)}` : ''}</div>
-            </>
-          ) : (
-            <span className="text-sm text-warn">
-              {missing.length ? missing.map((m) => `${m.quote}: ${m.problem}`).join(' ') : board.error ? 'Rates could not be loaded.' : 'Enter a number to convert.'}
-            </span>
+          {result !== null && !boardLoading && (
+            <p className="text-xs text-muted-foreground">{fxPhrase(rate, fromCcy, toCcy)}{asOf ? ` · reference rate of ${date(asOf)}` : ''}</p>
           )}
         </div>
 

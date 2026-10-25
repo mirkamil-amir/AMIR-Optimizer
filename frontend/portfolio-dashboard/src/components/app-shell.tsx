@@ -21,6 +21,7 @@ import { useSelection } from '@/lib/selection'
 import { relativeTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { WorldMapProvider } from '@/lib/world-map'
+import { attachNavZoom } from '@/lib/nav-zoom'
 
 function SidebarLink({ entry, active, onNavigate }: { entry: NavEntry; active: boolean; onNavigate?: () => void }) {
   return (
@@ -29,19 +30,20 @@ function SidebarLink({ entry, active, onNavigate }: { entry: NavEntry; active: b
       onClick={onNavigate}
       aria-current={active ? 'page' : undefined}
       className={cn(
-        'flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
-        active && 'bg-muted font-medium text-foreground shadow-[inset_2px_0_0_var(--sidebar-primary)]',
+        'nav-zoom font-nav flex items-center rounded-md px-2.5 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
+        active && 'bg-muted font-semibold text-foreground shadow-[inset_2px_0_0_var(--sidebar-primary)]',
       )}
     >
-      {entry.label}
+      <span>{entry.label}</span>
     </Link>
   )
 }
 
-function SidebarGroups({ sections, activeTo, onNavigate }: { sections: NavSection[]; activeTo?: string; onNavigate?: () => void }) {
+/** Groups of entries; the optimizer's groups are separated by space only, the administration keeps its heading. */
+function SidebarGroups({ sections, activeTo, onNavigate, titled = false }: { sections: NavSection[]; activeTo?: string; onNavigate?: () => void; titled?: boolean }) {
   return sections.map((section) => (
     <div key={section.title} className="flex flex-col gap-0.5">
-      <div className="px-2.5 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">{section.title}</div>
+      {titled && <div className="px-2.5 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">{section.title}</div>}
       {section.items.map((n) => <SidebarLink key={n.to} entry={n} active={n.to === activeTo} onNavigate={onNavigate} />)}
     </div>
   ))
@@ -52,8 +54,14 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const { isAdministrator } = useAuth()
   const { pathname } = useLocation()
   const activeTo = sidebarEntryForPath(pathname, isAdministrator)?.to
+  // Magnification follows the pointer anywhere over the sidebar, not only over the links.
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const area = ref.current?.parentElement
+    return area ? attachNavZoom(area) : undefined
+  }, [])
   return (
-    <div className="flex flex-col gap-4">
+    <div ref={ref} className="flex flex-col gap-4">
       <nav className="flex flex-col gap-4" aria-label="Optimizer sections">
         <div className="flex items-center gap-2 px-2.5 text-xs font-semibold text-foreground">
           Optimizer workspace
@@ -62,7 +70,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
       {isAdministrator && (
         <nav className="flex flex-col gap-4 border-t pt-4" aria-label="Administration">
-          <SidebarGroups sections={[adminSection]} activeTo={activeTo} onNavigate={onNavigate} />
+          <SidebarGroups sections={[adminSection]} activeTo={activeTo} onNavigate={onNavigate} titled />
         </nav>
       )}
     </div>
@@ -92,7 +100,7 @@ export function PrimaryNav() {
                 // Inside the Optimizer workspace the item does nothing, so the open section and its inputs are kept.
                 onClick={(e) => { if (active && p.id === 'optimizer') e.preventDefault() }}
                 className={cn(
-                  'inline-flex items-center gap-2 border-b-2 px-3 py-2.5 text-sm whitespace-nowrap transition-colors focus-visible:rounded-t-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset',
+                  'font-nav inline-flex items-center gap-2 border-b-2 px-3 py-2.5 text-[0.95rem] whitespace-nowrap transition-colors focus-visible:rounded-t-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset',
                   active
                     ? 'border-primary font-semibold text-foreground'
                     : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground',
@@ -140,7 +148,7 @@ function SelectionIndicator() {
   const { count } = useSelection()
   return (
     <Button variant="outline" size="sm" render={<Link to="/stocks" />} aria-label={`Portfolio Creation: ${count} stock${count === 1 ? '' : 's'} selected`}>
-      <span className="hidden sm:inline">Selection</span>
+      <span>Selection</span>
       <Badge variant="secondary" className="tabular">{count}</Badge>
     </Button>
   )
@@ -242,9 +250,12 @@ export function AppShell() {
             <IdentityBadge />
             <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
               <span className="hidden items-center gap-1 2xl:flex">Simulated trading only</span>
-                <SelectionIndicator />
-              <MapControl />
-              <ThemeQuickToggle />
+              <SelectionIndicator />
+              {/* Text-only controls need room: on phones the map and theme stay off the header (theme: Account › Appearance). */}
+              <div className="hidden items-center gap-2 sm:flex">
+                <MapControl />
+                <ThemeQuickToggle />
+              </div>
               <UserMenu />
             </div>
           </div>

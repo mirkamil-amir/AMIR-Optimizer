@@ -3,6 +3,7 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
 @import "@fontsource-variable/sora";
+@import "@fontsource-variable/space-grotesk";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -10,6 +11,7 @@
     --font-heading: var(--font-sans);
     --font-display: 'Sora Variable', 'Geist Variable', sans-serif;
     --font-sans: 'Geist Variable', sans-serif;
+    --font-nav: 'Space Grotesk Variable', 'Geist Variable', sans-serif;
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -329,7 +331,7 @@
 }
 
 /* ------------------------------------------------------------------ typography
-   Two OFL families, served from the app (no external font service; the CSP allows fonts from 'self' only):
+   Three OFL families, served from the app (no external font service; the CSP allows fonts from 'self' only):
    – AMIR Display = Sora (variable): a wide, confident modern sans – chosen by the owner from seven options – for the
      wordmark (spaced capitals), page titles, portfolio names and section headings only; weight 600, tightened.
    – AMIR Text = Geist (variable): body text, labels, tables and every figure (tabular digits via .tabular), which stays
@@ -338,6 +340,21 @@
 .heading-display {
   font-family: var(--font-display); font-weight: 600; letter-spacing: -0.03em; line-height: 1.2; text-wrap: balance;
 }
+
+/* AMIR Nav = Space Grotesk (variable, OFL): the top bar and the sidebar – a geometric grotesk with its own character
+   (open apertures, distinctive a/g/t) that stays legible at 14 px. */
+.font-nav { font-family: var(--font-nav); letter-spacing: -0.01em; }
+
+/* Sidebar magnification (lib/nav-zoom.ts): the entries near the pointer grow like a dock; the selected entry keeps the
+   largest size. The scale is a CSS variable set imperatively on each link – never React state. */
+.nav-zoom { --nav-zoom: 1; }
+.nav-zoom[aria-current="page"] { --nav-zoom: var(--nav-zoom-max); }
+.nav-zoom > span {
+  display: inline-block; transform: scale(var(--nav-zoom)); transform-origin: left center;
+  transition: transform 140ms ease-out; will-change: transform;
+}
+:root { --nav-zoom-max: 1.2; }
+@media (prefers-reduced-motion: reduce) { .nav-zoom > span { transition: none; } }
 
 /* Primary navigation scrolls horizontally on narrow screens; a thin scrollbar shows that more items follow. */
 .nav-scroll { scrollbar-width: thin; }

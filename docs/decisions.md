@@ -45,6 +45,11 @@ text only; icon-only controls became text buttons (Table/Chart, Swap, Watch, Ref
 only where they are the control itself: fold arrows, sort arrows, pager arrows, close/remove ×, the phone menu, loading
 spinners and the delete bin. Explanations (`InfoTip`) have no ⓘ either: the title or label they explain is the trigger (hover or
 keyboard focus), with no underline or other mark; where no label fits, a small "About" text is. Math and ML Optimizations can be deleted from the Optimization runs tab (bin + confirmation).
+Navigation: the sidebar's group headings (Portfolios, Optimize, Test & compare) were dropped – spacing separates the
+groups; the top bar and sidebar use a third bundled face, Space Grotesk (OFL, variable), and sidebar entries magnify like a
+dock as the pointer approaches (up to 1.2×, the selected entry stays at 1.2×; off with reduced motion). The currency
+converter shows amount, from, swap, to and the converted amount in one line, with the rate used beneath it. On phones the
+header keeps Selection and Account only (map and theme are on larger screens and under Account › Appearance).
 
 ## D-39 Typography and readability over the map (2026-10-24)
 **Context:** text placed directly on the background map (e.g. the market list of Portfolio Creation) became hard to read
