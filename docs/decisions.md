@@ -2,6 +2,55 @@
 
 Short records of decisions that are not obvious from the code. Newest first. Format: context → decision → consequences.
 
+## D-43 Large optimizations in seconds (2026-10-25)
+**Context:** an optimization of ~230 stocks from 24 currencies took ~2 minutes, timed out (504) and reported that the
+maximum-return solver did not converge. **Decision:** the maximum expected return – a linear program – is solved exactly
+by the greedy rule when only bounds and (disjoint) sector caps apply; ADMM remains for turnover-constrained problems.
+The ADMM solver checks termination every 5 iterations (like OSQP), tries the active-set polish every 50 iterations once
+residuals are below 1e-3 (accepted only at the strict tolerance) and accepts warm starts. Efficient-frontier points are
+display-only: warm-started from the previous point, 1e-7 tolerance before polish, at most 1,500 iterations (a point that
+does not converge is left out), and the last point is the maximum-return portfolio itself. **Consequences:** 230-stock
+runs take ~10 s; weights are unchanged within solver tolerance (all optimizer tests pass); a frontier may show 28 of 30
+points for very large universes. Price downloads: Yahoo client at ≤ 8 requests/s with 8 in flight; stored prices are
+released from the DbContext after each symbol (≈ 0.18 s per five-year symbol). The stock list has no per-row Refresh
+button any more ("Refresh prices" for the page; one stock in its detail panel).
+
+## D-42 Faster price downloads; a stock chooser for 2,000+ instruments (2026-10-25)
+**Context:** with 35 markets, downloading history felt very slow (≈1.4 s per stock) and two recent listings failed; the
+stock list (36 markets in one column, 44 pages of 50) became hard to navigate. **Decision:** the provider throttle spaces
+request *starts* and allows several in flight (Yahoo: 250 ms, 4 – at most 4 requests/s, still a polite fixed ceiling;
+quota-limited Alpha Vantage keeps one request at a time with the pause after the answer); a sync job downloads ahead in
+parallel but stores sequentially in job order (one DbContext, unchanged logs and progress) and fetches quotes in batches
+afterwards; Yahoo's "Data doesn't exist" for a period without trading days is an empty period. The chooser groups
+markets by region (folding; a region is a filter – the API accepts several countries), shows every active filter as a
+removable chip, adds "Selected only" and a pager with rows per page, position and first/last. **Consequences:** ≈4× faster
+downloads (0.36 s per stock incl. five years of prices; the remaining time is the request ceiling); a quote that fails
+after a download no longer fails the stock's history.
+Follow-up: the selection shows a download's progress (matrix loader, stocks done of total, last stock, failures) and a
+summary that stays until closed; more than 50 missing stocks are queued as several jobs. Selection and paging controls
+appear above and below the list; the price column follows the company. Work in progress (downloads, optimizations, ML
+training, backtests, comparisons, research) shows the logo's matrix with its 16 dots lighting up in turn
+(`MatrixLoader`, 1.28 s per sweep; with reduced motion all dots pulse slowly) instead of a spinner – the previous spinner
+also never showed while an optimization, backtest or comparison was starting (an operator-precedence slip, fixed).
+
+## D-41 Twenty more markets (2026-10-25)
+**Context:** the owner asked for twenty more markets with every existing feature. **Decision:** Norway (OBX), Finland
+(OMX Helsinki 25), Belgium (BEL 20), Portugal (PSI), Ireland (ISEQ 20), Austria (ATX), Poland (WIG20), Hungary (BUX),
+Greece (FTSE/Athex Large Cap), Iceland (OMX Iceland 15), Israel (TA-35), South Korea (KOSPI 200), China (SSE 50),
+Malaysia (FTSE Bursa Malaysia KLCI), Thailand (SET50), Brazil (Ibovespa), Indonesia (LQ45), Mexico (S&P/BMV IPC), South
+Africa (FTSE/JSE Top 40) and New Zealand (S&P/NZX 50): 791 stocks from pinned Wikipedia revisions plus 14 curated index
+ETFs, each symbol, currency and benchmark checked against the price provider. Selection rule: an ECB reference rate for
+the currency (FX conversion is never approximated), a Wikipedia constituent table and provider prices – the Philippines
+failed the last (no provider data) and was replaced by Brazil; Turkey, the Czech Republic and Romania lack a usable
+table. Renames since the pinned revision map to today's symbol and delisted members are dropped with a printed reason,
+instead of keeping instruments that never get a price. Markets without index history at the provider get an index ETF
+as benchmark (Poland, Thailand) or none (Hungary, Iceland) – never another market's index. Venues, sessions,
+research-brief markets, map cities and region frames follow the existing patterns; every feature (catalogue, prices,
+FX, portfolios, optimizations, backtests, comparisons, watchlist, news, research, map) works through the venue suffix,
+so no feature needed market-specific code. **Consequences:** the catalogue roughly doubles (≈2,150 instruments); the
+login quote refresh requests ≈2,200 symbols (≈70 s with Yahoo); constituent lists are as current as their Wikipedia
+revisions (documented in market-data.md and limitations.md).
+
 ## D-40 Portfolios Overview cleanup; active portfolios can be deleted (2026-10-25)
 **Context:** the owner asked for a calmer, more professional interface: every page title carried a sentence of explanation,
 the portfolio cards had six buttons and different heights, and the converter repeated its rate basis twice. Deleting

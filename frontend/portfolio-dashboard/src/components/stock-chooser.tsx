@@ -1,6 +1,6 @@
 import { useDeferredValue, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { Loader2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -11,9 +11,9 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { StockDetailDialog } from '@/components/stock-detail-dialog'
 import { Switch } from '@/components/ui/switch'
-import { DataTable, Pager, type Column } from '@/components/data-table'
+import { DataTable, type Column } from '@/components/data-table'
 import { EmptyState, ErrorState, InfoTip, LoadingBlock } from '@/components/common'
-import { QuoteCell, RefreshQuoteButton, SelectionTray } from '@/components/stock-selection'
+import { QuoteCell, SelectionTray } from '@/components/stock-selection'
 import { UniverseNav, type UniverseScope } from '@/components/universe-nav'
 import { errorMessage } from '@/lib/api'
 import {
@@ -25,6 +25,9 @@ import type { Market, QuoteRefreshRun, StockListItem } from '@/lib/types'
 import { num } from '@/lib/format'
 import { countryOfSymbol } from '@/lib/markets'
 import { useMapSignal } from '@/lib/world-map'
+import { MatrixLoader } from '@/components/matrix-loader'
+
+const pageSizes = [25, 50, 100, 200] as const
 
 const sortOptions: { value: StockSort; label: string }[] = [
   { value: 'name', label: 'Company name A–Z' },
@@ -45,17 +48,24 @@ export function StockChooser({ trayActions }: { trayActions?: ReactNode }) {
   const search = useDeferredValue(searchText.trim())
   const [sort, setSort] = useState<StockSort>('name')
   const [withPricesOnly, setWithPricesOnly] = useState(false)
+  const [selectedOnly, setSelectedOnly] = useState(false)
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState<number>(50)
   const [detail, setDetail] = useState<string | null>(null)
   const signal = useMapSignal()
   // Opening a stock makes its exchange city blink on the background map.
   useEffect(() => { if (detail) signal(countryOfSymbol(detail), 'blink') }, [detail, signal])
   const markets = useMarkets()
   const sectors = useSectors({ country: scope.country, index: scope.index })
-  const stocks = useStocks({ ...scope, search: search || undefined, sort, withPrices: withPricesOnly ? true : undefined, page, pageSize: 50 })
+  const selection = useSelection()
+  // "Selected only" lists the temporary selection with the same filters, prices and paging.
+  const reviewing = selectedOnly && selection.count > 0
+  const stocks = useStocks({
+    country: scope.country, index: scope.index, sector: scope.sector, search: search || undefined, sort,
+    withPrices: withPricesOnly ? true : undefined, symbols: reviewing ? selection.symbols : undefined, page, pageSize,
+  })
   const cycle = useQuoteRefreshCycle()
   const refreshQuotes = useRefreshQuotes()
-  const selection = useSelection()
   const qc = useQueryClient()
 
   const items = stocks.data?.items ?? []
@@ -101,6 +111,19 @@ export function StockChooser({ trayActions }: { trayActions?: ReactNode }) {
     setScope(next)
     setPage(1)
   }
+  const clearAll = () => {
+    setScope({}); setSearchText(''); setWithPricesOnly(false); setSelectedOnly(false); setPage(1)
+  }
+
+  // Every active narrowing as a removable chip, so a large catalogue never hides why a list is short.
+  const chips: { key: string; label: string; remove: () => void }[] = []
+  if (scope.index) chips.push({ key: 'index', label: indexLabel(markets.data, scope.index), remove: () => changeScope({ sector: scope.sector }) })
+  else if (scope.region) chips.push({ key: 'region', label: scope.region, remove: () => changeScope({ sector: scope.sector }) })
+  else if (scope.country) chips.push({ key: 'market', label: markets.data?.find((m) => m.country === scope.country)?.name ?? scope.country, remove: () => changeScope({ sector: scope.sector }) })
+  if (scope.sector) chips.push({ key: 'sector', label: scope.sector, remove: () => changeScope({ ...scope, sector: undefined }) })
+  if (search) chips.push({ key: 'search', label: `“${search}”`, remove: () => { setSearchText(''); setPage(1) } })
+  if (withPricesOnly) chips.push({ key: 'prices', label: 'With price history', remove: () => { setWithPricesOnly(false); setPage(1) } })
+  if (reviewing) chips.push({ key: 'selected', label: `Selected only (${selection.count})`, remove: () => { setSelectedOnly(false); setPage(1) } })
 
   const toSelected = (s: StockListItem) => ({ symbol: s.symbol, name: s.name, sector: s.sector, currency: s.currency })
 
@@ -122,13 +145,10 @@ export function StockChooser({ trayActions }: { trayActions?: ReactNode }) {
       key: 'symbol',
       header: 'Ticker',
       cell: (s) => (
-        <div className="flex items-center gap-1">
-          <div>
-            <div className="font-semibold">{s.symbol}</div>
-            <div className="max-w-24 truncate text-[11px] text-foreground sm:hidden">{s.name}</div>
-            <div className="text-[11px] text-muted-foreground">{s.exchange ?? '—'}</div>
-          </div>
-          <RefreshQuoteButton symbol={s.symbol} />
+        <div>
+          <div className="font-semibold">{s.symbol}</div>
+          <div className="max-w-24 truncate text-[11px] text-foreground sm:hidden">{s.name}</div>
+          <div className="text-[11px] text-muted-foreground">{s.exchange ?? '—'}</div>
         </div>
       ),
     },
@@ -143,6 +163,7 @@ export function StockChooser({ trayActions }: { trayActions?: ReactNode }) {
       ),
       className: 'hidden sm:table-cell',
     },
+    { key: 'price', header: 'Latest price', align: 'right', cell: (s) => <QuoteCell quote={s.quote} /> },
     { key: 'sector', header: 'Sector', cell: (s) => <span className="text-xs">{s.sector ?? 'Unclassified'}</span>, className: 'hidden xl:table-cell' },
     {
       key: 'index',
@@ -154,10 +175,27 @@ export function StockChooser({ trayActions }: { trayActions?: ReactNode }) {
       ),
       className: 'hidden lg:table-cell',
     },
-    { key: 'price', header: 'Latest price', align: 'right', cell: (s) => <QuoteCell quote={s.quote} /> },
   ]
 
   const scopeLabel = describeScope(markets.data, scope)
+
+  // Selection and paging above and below the list (the same controls twice, so long pages need no scrolling back).
+  const listControls = (where: 'top' | 'bottom') => (
+    <div className="flex flex-wrap items-center justify-between gap-2" role="group" aria-label={`List controls (${where})`}>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <Button variant="outline" size="sm" disabled={items.length === 0}
+          onClick={() => allOnPageSelected ? pageSymbols.forEach(selection.remove) : selection.addMany(items.map(toSelected))}>
+          {allOnPageSelected ? 'Deselect page' : 'Select page'}
+        </Button>
+        <Button variant={reviewing ? 'secondary' : 'outline'} size="sm" aria-pressed={reviewing} disabled={selection.count === 0}
+          onClick={() => { setSelectedOnly(!reviewing); setPage(1) }}>
+          Selected only{selection.count > 0 ? ` (${selection.count})` : ''}
+        </Button>
+      </div>
+      <RangePager page={page} pageSize={pageSize} total={stocks.data?.totalCount ?? 0} totalPages={stocks.data?.totalPages ?? 1}
+        onPage={setPage} onPageSize={(n) => { setPageSize(n); setPage(1) }} />
+    </div>
+  )
 
   return (
     <>
@@ -200,22 +238,28 @@ export function StockChooser({ trayActions }: { trayActions?: ReactNode }) {
                   <Button variant="outline" size="sm" onClick={refreshPage} disabled={items.length === 0 || refreshQuotes.isPending}>
                     Refresh prices
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={items.length === 0}
-                    onClick={() => allOnPageSelected ? pageSymbols.forEach(selection.remove) : selection.addMany(items.map(toSelected))}
-                  >
-                    {allOnPageSelected ? 'Deselect page' : 'Select page'}
-                  </Button>
                 </div>
               </div>
-              <div className="text-xs text-muted-foreground" aria-live="polite">
-                {stocks.data ? `${num(stocks.data.totalCount, 0)} stock(s) · ${scopeLabel}${search ? ` · matching “${search}”` : ''}` : ' '}
-                {stocks.isFetching && <Loader2 className="ml-2 inline size-3 animate-spin" aria-label="Loading" />}
+              <div className="flex flex-wrap items-center gap-1.5" aria-live="polite">
+                <span className="text-xs text-muted-foreground tabular">
+                  {stocks.data ? `${num(stocks.data.totalCount, 0)} ${stocks.data.totalCount === 1 ? 'stock' : 'stocks'}` : ' '}
+                </span>
+                {chips.length === 0
+                  ? <span className="text-xs text-muted-foreground">· all markets</span>
+                  : chips.map((c) => (
+                    <Badge key={c.key} variant="secondary" className="h-6 gap-1 pr-1 pl-2 font-normal">
+                      {c.label}
+                      <button type="button" onClick={c.remove} aria-label={`Remove filter ${c.label}`} className="rounded-sm p-0.5 hover:bg-background/60">
+                        <X className="size-3" aria-hidden />
+                      </button>
+                    </Badge>
+                  ))}
+                {chips.length > 1 && <Button variant="ghost" size="xs" onClick={clearAll}>Clear all</Button>}
+                {stocks.isFetching && <MatrixLoader className="ml-1 inline size-3" aria-label="Loading" />}
               </div>
               {stocks.error ? <ErrorState error={stocks.error} onRetry={() => stocks.refetch()} /> : stocks.isLoading ? <LoadingBlock height="h-96" /> : (
                 <>
+                  {listControls('top')}
                   <DataTable
                     rows={items}
                     columns={columns}
@@ -225,7 +269,7 @@ export function StockChooser({ trayActions }: { trayActions?: ReactNode }) {
                     caption={`Stocks – ${scopeLabel}`}
                     empty={<EmptyState title="No stocks found" description="Try another market, sector or search term." />}
                   />
-                  <Pager page={page} totalPages={stocks.data?.totalPages ?? 1} onChange={setPage} />
+                  {listControls('bottom')}
                 </>
               )}
             </CardContent>
@@ -244,6 +288,34 @@ export function StockChooser({ trayActions }: { trayActions?: ReactNode }) {
   )
 }
 
+/** Paging for a large list: position ("51–100 of 2,158"), first/previous/next/last and the number of rows per page. */
+function RangePager({ page, pageSize, total, totalPages, onPage, onPageSize }: {
+  page: number; pageSize: number; total: number; totalPages: number; onPage: (p: number) => void; onPageSize: (n: number) => void
+}) {
+  if (total === 0) return null
+  const from = (page - 1) * pageSize + 1
+  const to = Math.min(total, page * pageSize)
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
+      <div className="flex items-center gap-2">
+        <span>Rows per page</span>
+        <Select value={String(pageSize)} onValueChange={(v) => onPageSize(Number(v))} items={pageSizes.map((n) => ({ value: String(n), label: String(n) }))}>
+          <SelectTrigger size="sm" className="w-20" aria-label="Rows per page"><SelectValue /></SelectTrigger>
+          <SelectContent>{pageSizes.map((n) => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}</SelectContent>
+        </Select>
+      </div>
+      <div className="flex items-center gap-1">
+        <span className="mr-2 tabular">{num(from, 0)}–{num(to, 0)} of {num(total, 0)}</span>
+        <Button variant="outline" size="icon-sm" aria-label="First page" disabled={page <= 1} onClick={() => onPage(1)}><ChevronsLeft /></Button>
+        <Button variant="outline" size="icon-sm" aria-label="Previous page" disabled={page <= 1} onClick={() => onPage(page - 1)}><ChevronLeft /></Button>
+        <span className="px-1 tabular">Page {page} of {totalPages}</span>
+        <Button variant="outline" size="icon-sm" aria-label="Next page" disabled={page >= totalPages} onClick={() => onPage(page + 1)}><ChevronRight /></Button>
+        <Button variant="outline" size="icon-sm" aria-label="Last page" disabled={page >= totalPages} onClick={() => onPage(totalPages)}><ChevronsRight /></Button>
+      </div>
+    </div>
+  )
+}
+
 /** Status of the shared background price refresh (started at sign-in) and of on-page refreshes. */
 function PriceStatus({ run, pageRefreshing }: { run: QuoteRefreshRun | undefined; pageRefreshing: boolean }) {
   if (!run && !pageRefreshing) return null
@@ -251,9 +323,9 @@ function PriceStatus({ run, pageRefreshing }: { run: QuoteRefreshRun | undefined
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2 text-xs" role="status" aria-live="polite">
       {running ? (
-        <><Loader2 className="size-3.5 animate-spin" aria-hidden /> Updating prices for all markets in the background (started {age(run!.requestedAtUtc)})… Cached prices are shown meanwhile.</>
+        <><MatrixLoader className="size-3.5" aria-hidden /> Updating prices for all markets in the background (started {age(run!.requestedAtUtc)})… Cached prices are shown meanwhile.</>
       ) : pageRefreshing ? (
-        <><Loader2 className="size-3.5 animate-spin" aria-hidden /> Requesting current prices for this page…</>
+        <><MatrixLoader className="size-3.5" aria-hidden /> Requesting current prices for this page…</>
       ) : run ? (
         <>
           <span>
@@ -273,7 +345,7 @@ function indexLabel(markets: Market[] | undefined, code: string) {
 
 function describeScope(markets: Market[] | undefined, scope: UniverseScope) {
   const market = markets?.find((m) => m.country === scope.country)
-  const parts = [scope.index ? indexLabel(markets, scope.index) : market?.name ?? 'All markets']
+  const parts = [scope.index ? indexLabel(markets, scope.index) : scope.region ?? market?.name ?? 'All markets']
   if (scope.sector) parts.push(scope.sector)
   return parts.join(' › ')
 }

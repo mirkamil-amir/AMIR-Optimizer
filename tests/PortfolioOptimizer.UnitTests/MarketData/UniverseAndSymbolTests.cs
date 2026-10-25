@@ -15,6 +15,19 @@ public class UniverseAndSymbolTests
 
     private static readonly string[] NewMarkets = ["CH", "ES", "IT", "SE", "DK", "CA", "AU", "HK", "IN", "SG"];
 
+    /// <summary>The twenty markets added 2026-10-25 and their index codes, in the order of indices.csv.</summary>
+    private static readonly string[] TwentyMarketIndices =
+    [
+        "OBX", "OMXH25", "BEL20", "PSI", "ISEQ20", "ATX", "WIG20", "BUX", "ATHEX25", "OMXI15", "TA35", "KOSPI200", "SSE50", "KLCI", "SET50",
+        "IBOV", "LQ45", "IPC", "JSE40", "NZX50",
+    ];
+
+    /// <summary>Markets of the 2026-10-25 batch with a local index ETF the price provider covers.</summary>
+    private static readonly string[] TwentyMarketEtfs = ["KR", "CN", "BR", "MX", "ZA", "NZ", "PL", "TH", "MY", "ID"];
+
+    /// <summary>No benchmark: the price provider has no history of the BUX or OMX Iceland 15 (checked 2026-10-25).</summary>
+    private static readonly HashSet<string> MarketsWithoutBenchmark = ["HU", "IS"];
+
     [Theory]
     [InlineData("SP500", "US", 495, 510, true)]
     [InlineData("DAX40", "DE", 40, 40, true)]
@@ -32,6 +45,26 @@ public class UniverseAndSymbolTests
     [InlineData("HSI", "HK", 80, 100, true)]
     [InlineData("NIFTY50", "IN", 50, 50, true)]
     [InlineData("STI", "SG", 30, 30, false)] // the source lists no industries
+    [InlineData("OBX", "NO", 24, 25, true)]
+    [InlineData("OMXH25", "FI", 25, 25, true)]
+    [InlineData("BEL20", "BE", 20, 20, true)] // includes Aperam, listed in Amsterdam
+    [InlineData("PSI", "PT", 15, 20, true)]
+    [InlineData("ISEQ20", "IE", 20, 20, false)]
+    [InlineData("ATX", "AT", 20, 20, true)]
+    [InlineData("WIG20", "PL", 20, 20, true)]
+    [InlineData("BUX", "HU", 15, 20, true)]
+    [InlineData("ATHEX25", "GR", 24, 25, true)]
+    [InlineData("OMXI15", "IS", 15, 15, true)]
+    [InlineData("TA35", "IL", 35, 35, true)]
+    [InlineData("KOSPI200", "KR", 200, 200, true)]
+    [InlineData("SSE50", "CN", 50, 50, false)]
+    [InlineData("KLCI", "MY", 30, 30, true)]
+    [InlineData("SET50", "TH", 50, 51, true)]
+    [InlineData("IBOV", "BR", 50, 90, true)]
+    [InlineData("LQ45", "ID", 44, 45, false)]
+    [InlineData("IPC", "MX", 30, 36, false)]
+    [InlineData("JSE40", "ZA", 39, 40, true)]
+    [InlineData("NZX50", "NZ", 50, 50, true)]
     public void BundledUniverseFiles_AreWellFormed(string code, string country, int min, int max, bool hasIndustries)
     {
         var (rows, errors) = UniverseService.ParseMembers(File.ReadAllText(Path.Combine(UniverseDir, $"{code}.csv")));
@@ -50,7 +83,7 @@ public class UniverseAndSymbolTests
     [Fact]
     public void IndexEtfFiles_ListFundsOfEachNewMarket()
     {
-        foreach (var country in NewMarkets)
+        foreach (var country in NewMarkets.Concat(TwentyMarketEtfs))
         {
             var (rows, errors) = UniverseService.ParseMembers(File.ReadAllText(Path.Combine(UniverseDir, $"ETF{country}.csv")));
             Assert.Empty(errors);
@@ -68,7 +101,7 @@ public class UniverseAndSymbolTests
         Assert.Equal("code,name,country,currency,benchmark,is_historical,members,source,source_url,revision,licence,verified_on,description", lines[0]);
         var codes = lines.Skip(1).Select(l => l.Split(',')[0]).ToList();
         Assert.Equal(["SP500", "DAX40", "DAX30", "CAC40", "FTSE100", "NIKKEI225", "SMI", "IBEX35", "FTSEMIB", "OMXS30", "OMXC25", "TSX60",
-            "ASX50", "HSI", "NIFTY50", "STI", .. NewMarkets.Select(c => $"ETF{c}")], codes);
+            "ASX50", "HSI", "NIFTY50", "STI", .. TwentyMarketIndices, .. NewMarkets.Concat(TwentyMarketEtfs).Select(c => $"ETF{c}")], codes);
         // Constituent lists come from pinned Wikipedia revisions; the ETF lists are curated and say so.
         Assert.All(lines.Skip(1).Where(l => !l.StartsWith("ETF")), l => Assert.Contains("wikipedia.org/w/index.php?oldid=", l));
         Assert.All(lines.Skip(1).Where(l => l.StartsWith("ETF")), l => Assert.Contains("Curated list", l));
@@ -82,7 +115,10 @@ public class UniverseAndSymbolTests
         foreach (var venue in Markets.Venues.Where(v => v.Country != "NL"))
         {
             var row = lines.First(l => l[2] == venue.Country);
+            if (MarketsWithoutBenchmark.Contains(venue.Country)) { Assert.Equal("", row[4]); continue; } // stated, never invented
             Assert.Equal(venue.Country, Markets.ForSymbol(row[4]).Country);
+            // The benchmark instrument is created on start (index level or ETF) in the market's currency.
+            Assert.Contains(Infrastructure.Persistence.UniverseSeeder.Benchmarks, b => b.Symbol == row[4] && b.Currency == venue.Currency);
         }
     }
 
@@ -109,6 +145,28 @@ public class UniverseAndSymbolTests
     [InlineData("D05.SI", "SG", "SGD", "D05.SI", null)]
     [InlineData("^HSI", "HK", "HKD", "^HSI", null)]
     [InlineData("^NSEI", "IN", "INR", "^NSEI", null)]
+    [InlineData("EQNR.OL", "NO", "NOK", "EQNR.OL", null)]
+    [InlineData("NOKIA.HE", "FI", "EUR", "NOKIA.HE", null)]
+    [InlineData("ABI.BR", "BE", "EUR", "ABI.BR", null)]
+    [InlineData("GALP.LS", "PT", "EUR", "GALP.LS", null)]
+    [InlineData("RYA.IR", "IE", "EUR", "RYA.IR", null)]
+    [InlineData("EBS.VI", "AT", "EUR", "EBS.VI", null)]
+    [InlineData("PKO.WA", "PL", "PLN", "PKO.WA", null)]
+    [InlineData("OTP.BD", "HU", "HUF", "OTP.BD", null)]
+    [InlineData("ALPHA.AT", "GR", "EUR", "ALPHA.AT", null)]
+    [InlineData("ARION.IC", "IS", "ISK", "ARION.IC", null)]
+    [InlineData("TEVA.TA", "IL", "ILS", "TEVA.TA", null)]
+    [InlineData("005930.KS", "KR", "KRW", "005930.KS", null)]
+    [InlineData("600519.SS", "CN", "CNY", "600519.SS", null)]
+    [InlineData("1155.KL", "MY", "MYR", "1155.KL", null)]
+    [InlineData("PTT.BK", "TH", "THB", "PTT.BK", null)]
+    [InlineData("PETR4.SA", "BR", "BRL", "PETR4.SA", null)]
+    [InlineData("BBCA.JK", "ID", "IDR", "BBCA.JK", null)]
+    [InlineData("PE&OLES.MX", "MX", "MXN", "PE&OLES.MX", null)]
+    [InlineData("NPN.JO", "ZA", "ZAR", "NPN.JO", null)]
+    [InlineData("FPH.NZ", "NZ", "NZD", "FPH.NZ", null)]
+    [InlineData("^BVSP", "BR", "BRL", "^BVSP", null)]
+    [InlineData("^J200.JO", "ZA", "ZAR", "^J200.JO", null)]
     public void SymbolMapping_PerMarket(string symbol, string country, string currency, string yahoo, string? alphaVantage)
     {
         var venue = Markets.ForSymbol(symbol);
@@ -123,6 +181,7 @@ public class UniverseAndSymbolTests
     [InlineData("GBX", "GBP", 100)]
     [InlineData("GBP", "GBP", 1)]
     [InlineData("ZAc", "ZAR", 100)]
+    [InlineData("ILA", "ILS", 100)]
     [InlineData("usd", "USD", 1)]
     [InlineData("JPY", "JPY", 1)]
     public void MinorCurrencyUnits_AreConvertedToIsoCurrencies(string provider, string iso, int divisor)
@@ -166,10 +225,33 @@ public class UniverseAndSymbolTests
     [InlineData("SG", 9, 0, 17, 0)]
     [InlineData("DK", 9, 0, 17, 0)]
     [InlineData("CH", 9, 0, 17, 30)]
+    [InlineData("NO", 9, 0, 16, 20)]
+    [InlineData("FI", 10, 0, 18, 25)]
+    [InlineData("AT", 9, 0, 17, 30)]
+    [InlineData("KR", 9, 0, 15, 30)]
+    [InlineData("CN", 9, 30, 15, 0)]
+    [InlineData("BR", 10, 0, 17, 0)]
+    [InlineData("MX", 8, 30, 15, 0)]
+    [InlineData("NZ", 10, 0, 16, 45)]
     public void TradingSessions_OfTheNewMarkets(string country, int openH, int openM, int closeH, int closeM)
     {
         var (open, close) = Markets.Session(Markets.ByCountry(country), new DateOnly(2026, 10, 14));
         Assert.Equal(new TimeOnly(openH, openM), open);
         Assert.Equal(new TimeOnly(closeH, closeM), close);
+    }
+
+    [Fact]
+    public void ForeignCurrencyListings_AreRecordedTheSameWayInTheUniverseFiles()
+    {
+        // Graphisoft Park trades in euros in Budapest; Hammerson's Dublin line in pounds (price provider, 2026-10-25).
+        Assert.Equal("EUR", Markets.ListingCurrency("GSPARK.BD"));
+        Assert.Equal("GBP", Markets.ListingCurrency("HMSO.IR"));
+        Assert.Equal("HUF", Markets.ListingCurrency("OTP.BD"));
+    }
+
+    [Fact]
+    public void EveryVenueHasAnIanaTimeZone_KnownToThisSystem()
+    {
+        Assert.All(Markets.Venues, v => Assert.NotEqual(TimeZoneInfo.Utc, Markets.TimeZone(v)));
     }
 }

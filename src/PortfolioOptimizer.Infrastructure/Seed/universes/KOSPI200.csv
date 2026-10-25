@@ -1,0 +1,201 @@
+symbol,name,country,exchange,mic,currency,sector,industry,isin,wiki
+000080.KS,HiteJinro,KR,Korea Exchange,XKRX,KRW,Consumer Staples,Consumer Staples,,en:HiteJinro
+000100.KS,Yuhan,KR,Korea Exchange,XKRX,KRW,Health Care,Health Care,,en:Yuhan
+000120.KS,CJ Logistics,KR,Korea Exchange,XKRX,KRW,Industrials,Industrials,,en:CJ Logistics
+000150.KS,Doosan,KR,Korea Exchange,XKRX,KRW,Industrials,Heavy Industries,,en:Doosan Group
+000210.KS,DL,KR,Korea Exchange,XKRX,KRW,Industrials,Constructions,,en:DL Group
+000240.KS,Hankook & Company,KR,Korea Exchange,XKRX,KRW,Consumer Discretionary,Consumer Discretionary,,
+000270.KS,Kia,KR,Korea Exchange,XKRX,KRW,Consumer Discretionary,Consumer Discretionary,,en:Kia
+000660.KS,SK Hynix,KR,Korea Exchange,XKRX,KRW,Information Technology,IT,,en:SK Hynix
+000670.KS,Young Poong,KR,Korea Exchange,XKRX,KRW,Materials,Steels & Materials,,en:Young Poong Group
+000720.KS,Hyundai E&C,KR,Korea Exchange,XKRX,KRW,Industrials,Constructions,,en:Hyundai Engineering & Construction
+000810.KS,Samsung Fire & Marine,KR,Korea Exchange,XKRX,KRW,Financials,Financials,,en:Samsung Fire & Marine Insurance
+000880.KS,Hanwha,KR,Korea Exchange,XKRX,KRW,Materials,Energy & Chemicals,,en:Hanwha Group
+000990.KS,DB HiTek,KR,Korea Exchange,XKRX,KRW,Information Technology,IT,,en:DB HiTek
+001040.KS,CJ,KR,Korea Exchange,XKRX,KRW,Consumer Staples,Consumer Staples,,en:CJ Group
+001260.KS,Samsung Epis,KR,Korea Exchange,XKRX,KRW,Health Care,Health Care,,
+001430.KS,Seah Besteel,KR,Korea Exchange,XKRX,KRW,Materials,Steels & Materials,,en:SeAH Besteel Holdings
+001440.KS,Taihan Cable & Solution,KR,Korea Exchange,XKRX,KRW,Industrials,Industrials,,en:Taihan Cable & Solution
+001450.KS,Hyundai Marine & Fire,KR,Korea Exchange,XKRX,KRW,Financials,Financials,,en:Hyundai Marine & Fire Insurance
+001680.KS,Daesang,KR,Korea Exchange,XKRX,KRW,Consumer Staples,Consumer Staples,,
+001800.KS,Orion Holdings,KR,Korea Exchange,XKRX,KRW,Consumer Staples,Consumer Staples,,
+002030.KS,Asia Holdings,KR,Korea Exchange,XKRX,KRW,Materials,Steels & Materials,,
+002380.KS,KCC,KR,Korea Exchange,XKRX,KRW,Industrials,Constructions,,en:KCC Corporation
+002790.KS,Amorepacific Holdings,KR,Korea Exchange,XKRX,KRW,Consumer Staples,Consumer Staples,,
+002840.KS,Miwon Commercial,KR,Korea Exchange,XKRX,KRW,Materials,Energy & Chemicals,,
+003030.KS,Seah Steel Holdings,KR,Korea Exchange,XKRX,KRW,Materials,Steels & Materials,,en:Seah Steel Holdings
+003090.KS,Daewoong,KR,Korea Exchange,XKRX,KRW,Health Care,Health Care,,
+003230.KS,Samyang Foods,KR,Korea Exchange,XKRX,KRW,Consumer Staples,Consumer Staples,,en:Samyang Foods
+003240.KS,Taekwang Industrial,KR,Korea Exchange,XKRX,KRW,Materials,Energy & Chemicals,,en:Taekwang Industrial
+003490.KS,Korean Air,KR,Korea Exchange,XKRX,KRW,Industrials,Industrials,,en:Korean Air
+003550.KS,LG,KR,Korea Exchange,XKRX,KRW,Information Technology,IT,,en:LG
+003670.KS,POSCO Future M,KR,Korea Exchange,XKRX,KRW,Industrials,Industrials,,en:POSCO Future M
+004000.KS,Lotte Fine Chemical,KR,Korea Exchange,XKRX,KRW,Materials,Energy & Chemicals,,
+004020.KS,Hyundai Steel,KR,Korea Exchange,XKRX,KRW,Materials,Steels & Materials,,en:Hyundai Steel
+004170.KS,Shinsegae,KR,Korea Exchange,XKRX,KRW,Consumer Discretionary,Consumer Discretionary,,en:Shinsegae
+004370.KS,Nongshim,KR,Korea Exchange,XKRX,KRW,Consumer Staples,Consumer Staples,,en:Nongshim
+004990.KS,Lotte,KR,Korea Exchange,XKRX,KRW,Consumer Staples,Consumer Staples,,en:Lotte Corporation
+005300.KS,Lotte Chilsung,KR,Korea Exchange,XKRX,KRW,Consumer Staples,Consumer Staples,,en:Lotte Chilsung
+005380.KS,Hyundai Motor,KR,Korea Exchange,XKRX,KRW,Consumer Discretionary,Consumer Discretionary,,en:Hyundai Motor Company
+005420.KS,Cosmo Chemical,KR,Korea Exchange,XKRX,KRW,Materials,Energy & Chemicals,,
+005490.KS,POSCO,KR,Korea Exchange,XKRX,KRW,Materials,Steels & Materials,,en:POSCO
+005830.KS,DB Insurance,KR,Korea Exchange,XKRX,KRW,Financials,Financials,,en:DB Insurance
+005850.KS,SL,KR,Korea Exchange,XKRX,KRW,Consumer Discretionary,Consumer Discretionary,,en:SL Corporation
+005930.KS,Samsung Electronics,KR,Korea Exchange,XKRX,KRW,Information Technology,IT,,en:Samsung Electronics
+005940.KS,NH Investment & Securities,KR,Korea Exchange,XKRX,KRW,Financials,Financials,,en:NH Investment & Securities
+006040.KS,Dongwon Industries,KR,Korea Exchange,XKRX,KRW,Consumer Staples,Consumer Staples,,en:Dongwon Industries
+006260.KS,LS,KR,Korea Exchange,XKRX,KRW,Industrials,Industrials,,en:LS Group
+006280.KS,Green Cross,KR,Korea Exchange,XKRX,KRW,Health Care,Health Care,,en:Green Cross (South Korean company)
+006400.KS,Samsung SDI,KR,Korea Exchange,XKRX,KRW,Information Technology,IT,,en:Samsung SDI
+006650.KS,Korea Petrochemical,KR,Korea Exchange,XKRX,KRW,Materials,Energy & Chemicals,,
+006800.KS,Mirae Asset Securities,KR,Korea Exchange,XKRX,KRW,Financials,Financials,,en:Mirae Asset Securities
+007070.KS,GS Retail,KR,Korea Exchange,XKRX,KRW,Consumer Staples,Consumer Staples,,
+007310.KS,Ottogi,KR,Korea Exchange,XKRX,KRW,Consumer Staples,Consumer Staples,,en:Ottogi
+007340.KS,DN Automotive,KR,Korea Exchange,XKRX,KRW,Consumer Discretionary,Consumer Discretionary,,en:DN Automotive
+007660.KS,Isu Petasys,KR,Korea Exchange,XKRX,KRW,Information Technology,IT,,
+008730.KS,Youlchon Chemical,KR,Korea Exchange,XKRX,KRW,Materials,Steels & Materials,,
+008770.KS,Hotel Shilla,KR,Korea Exchange,XKRX,KRW,Consumer Discretionary,Consumer Discretionary,,en:Hotel Shilla
+008930.KS,Hanmi Science,KR,Korea Exchange,XKRX,KRW,Health Care,Health Care,,
+009150.KS,Samsung Electro-Mechanics,KR,Korea Exchange,XKRX,KRW,Information Technology,IT,,en:Samsung Electro-Mechanics
+009240.KS,Hanssem,KR,Korea Exchange,XKRX,KRW,Consumer Discretionary,Consumer Discretionary,,en:Hanssem
+009420.KS,Hanall Biopharma,KR,Korea Exchange,XKRX,KRW,Health Care,Health Care,,
+009540.KS,HD KSOE,KR,Korea Exchange,XKRX,KRW,Industrials,Heavy Industries,,
+009830.KS,Hanwha Solutions,KR,Korea Exchange,XKRX,KRW,Materials,Energy & Chemicals,,en:Hanwha Solutions
+009970.KS,Youngone Holdings,KR,Korea Exchange,XKRX,KRW,Consumer Discretionary,Consumer Discretionary,,
+010060.KS,OCI Holdings,KR,Korea Exchange,XKRX,KRW,Materials,Energy & Chemicals,,
+010120.KS,LS Electric,KR,Korea Exchange,XKRX,KRW,Industrials,Industrials,,en:LS Electric
+010130.KS,Korea Zinc,KR,Korea Exchange,XKRX,KRW,Materials,Steels & Materials,,en:Korea Zinc
+010140.KS,Samsung Heavy Industries,KR,Korea Exchange,XKRX,KRW,Industrials,Heavy Industries,,en:Samsung Heavy Industries
+010950.KS,S-Oil,KR,Korea Exchange,XKRX,KRW,Materials,Energy & Chemicals,,en:S-Oil
+011070.KS,LG Innotek,KR,Korea Exchange,XKRX,KRW,Information Technology,IT,,en:LG Innotek
+011170.KS,Lotte Chemical,KR,Korea Exchange,XKRX,KRW,Materials,Energy & Chemicals,,en:Lotte Chemical
+011200.KS,HMM,KR,Korea Exchange,XKRX,KRW,Industrials,Industrials,,en:HMM (company)
+011210.KS,Hyundai WIA,KR,Korea Exchange,XKRX,KRW,Consumer Discretionary,Consumer Discretionary,,en:Hyundai WIA
+011780.KS,Kumho Petrochemical,KR,Korea Exchange,XKRX,KRW,Materials,Energy & Chemicals,,en:Kumho Petrochemical
+011790.KS,SKC,KR,Korea Exchange,XKRX,KRW,Materials,Energy & Chemicals,,en:SKC (company)
+012330.KS,Hyundai Mobis,KR,Korea Exchange,XKRX,KRW,Consumer Discretionary,Consumer Discretionary,,en:Hyundai Mobis
+012450.KS,Hanwha Aerospace,KR,Korea Exchange,XKRX,KRW,Industrials,Industrials,,en:Hanwha Aerospace
+012750.KS,S-1,KR,Korea Exchange,XKRX,KRW,Industrials,Industrials,,
+014680.KS,Hansol Chemical,KR,Korea Exchange,XKRX,KRW,Materials,Energy & Chemicals,,
+014820.KS,Dongwon Systems,KR,Korea Exchange,XKRX,KRW,Materials,Steels & Materials,,
+015760.KS,KEPCO,KR,Korea Exchange,XKRX,KRW,Consumer Staples,Consumer Staples,,en:Korea Electric Power Corporation
+016360.KS,Samsung Securities,KR,Korea Exchange,XKRX,KRW,Financials,Financials,,en:Samsung Securities
+017670.KS,SK Telecom,KR,Korea Exchange,XKRX,KRW,Communication Services,Communication Services,,en:SK Telecom
+017800.KS,Hyundai Elevator,KR,Korea Exchange,XKRX,KRW,Industrials,Heavy Industries,,en:Hyundai Elevator
+017960.KS,Hankuk Carbon,KR,Korea Exchange,XKRX,KRW,Materials,Energy & Chemicals,,
+018260.KS,Samsung SDS,KR,Korea Exchange,XKRX,KRW,Information Technology,IT,,en:Samsung SDS
+018880.KS,Hanon Systems,KR,Korea Exchange,XKRX,KRW,Consumer Discretionary,Consumer Discretionary,,en:Hanon Systems
+021240.KS,Coway,KR,Korea Exchange,XKRX,KRW,Consumer Discretionary,Consumer Discretionary,,
+022100.KS,POSCO DX,KR,Korea Exchange,XKRX,KRW,Information Technology,IT,,
+023530.KS,Lotte Shopping,KR,Korea Exchange,XKRX,KRW,Consumer Discretionary,Consumer Discretionary,,en:Lotte Shopping
+024110.KS,Industrial Bank of Korea,KR,Korea Exchange,XKRX,KRW,Financials,Financials,,en:Industrial Bank of Korea
+026960.KS,Dongsuh,KR,Korea Exchange,XKRX,KRW,Consumer Staples,Consumer Staples,,
+028050.KS,Samsung E&A,KR,Korea Exchange,XKRX,KRW,Industrials,Constructions,,en:Samsung E&A
+028260.KS,Samsung C&T,KR,Korea Exchange,XKRX,KRW,Industrials,Constructions,,en:Samsung C&T Corporation
+028670.KS,Pan Ocean,KR,Korea Exchange,XKRX,KRW,Industrials,Industrials,,en:Pan Ocean
+029780.KS,Samsung Card,KR,Korea Exchange,XKRX,KRW,Financials,Financials,,en:Samsung Card
+030000.KS,Cheil Worldwide,KR,Korea Exchange,XKRX,KRW,Communication Services,Communication Services,,en:Cheil Worldwide
+030200.KS,KT,KR,Korea Exchange,XKRX,KRW,Communication Services,Communication Services,,en:KT Corporation
+032640.KS,LG Uplus,KR,Korea Exchange,XKRX,KRW,Communication Services,Communication Services,,en:LG Uplus
+032830.KS,Samsung Life,KR,Korea Exchange,XKRX,KRW,Financials,Financials,,en:Samsung Life Insurance
+033780.KS,KT&G,KR,Korea Exchange,XKRX,KRW,Consumer Staples,Consumer Staples,,en:Korea Tobacco & Ginseng Corporation
+034020.KS,Doosan Enerbility,KR,Korea Exchange,XKRX,KRW,Industrials,Heavy Industries,,en:Doosan Enerbility
+034220.KS,LG Display,KR,Korea Exchange,XKRX,KRW,Information Technology,IT,,en:LG Display
+034230.KS,Paradise,KR,Korea Exchange,XKRX,KRW,Consumer Discretionary,Consumer Discretionary,,
+034730.KS,SK,KR,Korea Exchange,XKRX,KRW,Materials,Energy & Chemicals,,en:SK Inc.
+035250.KS,Kangwon Land,KR,Korea Exchange,XKRX,KRW,Consumer Discretionary,Consumer Discretionary,,en:Kangwon Land
+035420.KS,Naver,KR,Korea Exchange,XKRX,KRW,Communication Services,Communication Services,,en:Naver Corporation
+035720.KS,Kakao,KR,Korea Exchange,XKRX,KRW,Communication Services,Communication Services,,en:Kakao
+036460.KS,Korea Gas,KR,Korea Exchange,XKRX,KRW,Consumer Staples,Consumer Staples,,en:Korea Gas Corporation
+036570.KS,NC,KR,Korea Exchange,XKRX,KRW,Communication Services,Communication Services,,en:NC (company)
+039490.KS,Kiwoom Securities,KR,Korea Exchange,XKRX,KRW,Financials,Financials,,en:Kiwoom Securities
+042660.KS,Hanwha Ocean,KR,Korea Exchange,XKRX,KRW,Industrials,Heavy Industries,,en:Hanwha Ocean
+042700.KS,Hanmi Semiconductor,KR,Korea Exchange,XKRX,KRW,Information Technology,IT,,en:Hanmi Semiconductor
+047040.KS,Daewoo E&C,KR,Korea Exchange,XKRX,KRW,Industrials,Constructions,,en:Daewoo E&C
+047050.KS,POSCO International,KR,Korea Exchange,XKRX,KRW,Industrials,Industrials,,en:POSCO International
+047810.KS,Korea Aerospace,KR,Korea Exchange,XKRX,KRW,Industrials,Industrials,,en:Korea Aerospace Industries
+051600.KS,KEPCO KPS,KR,Korea Exchange,XKRX,KRW,Industrials,Constructions,,en:KEPCO Plant Service & Engineering
+051900.KS,LG H&H,KR,Korea Exchange,XKRX,KRW,Consumer Staples,Consumer Staples,,en:LG Household & Health Care
+051910.KS,LG Chem,KR,Korea Exchange,XKRX,KRW,Materials,Energy & Chemicals,,en:LG Chem
+052690.KS,KEPCO E&C,KR,Korea Exchange,XKRX,KRW,Industrials,Constructions,,en:KEPCO E&C
+055550.KS,Shinhan Financial,KR,Korea Exchange,XKRX,KRW,Financials,Financials,,en:Shinhan Financial Group
+062040.KS,Sanil Electric,KR,Korea Exchange,XKRX,KRW,Industrials,Heavy Industries,,
+064350.KS,Hyundai Rotem,KR,Korea Exchange,XKRX,KRW,Industrials,Heavy Industries,,en:Hyundai Rotem
+064400.KS,LG CNS,KR,Korea Exchange,XKRX,KRW,Information Technology,IT,,en:LG CNS
+066570.KS,LG Electronics,KR,Korea Exchange,XKRX,KRW,Information Technology,IT,,en:LG Electronics
+066970.KS,L&F,KR,Korea Exchange,XKRX,KRW,Industrials,Industrials,,
+068270.KS,Celltrion,KR,Korea Exchange,XKRX,KRW,Health Care,Health Care,,en:Celltrion
+069260.KS,TKG Huchems,KR,Korea Exchange,XKRX,KRW,Materials,Energy & Chemicals,,
+069620.KS,Daewoong Pharmaceutical,KR,Korea Exchange,XKRX,KRW,Health Care,Health Care,,en:Daewoong Pharmaceutical
+069960.KS,Hyundai Department Store,KR,Korea Exchange,XKRX,KRW,Consumer Discretionary,Consumer Discretionary,,en:Hyundai Department Store
+071050.KS,Korea Investment,KR,Korea Exchange,XKRX,KRW,Financials,Financials,,
+071320.KS,Korea District Heating,KR,Korea Exchange,XKRX,KRW,Consumer Staples,Consumer Staples,,en:Korea District Heating Corporation
+071970.KS,HD Hyundai Marine Engine,KR,Korea Exchange,XKRX,KRW,Industrials,Heavy Industries,,
+073240.KS,Kumho Tire,KR,Korea Exchange,XKRX,KRW,Consumer Discretionary,Consumer Discretionary,,en:Kumho Tire
+078930.KS,GS,KR,Korea Exchange,XKRX,KRW,Materials,Energy & Chemicals,,en:GS Group
+079550.KS,LIG Nex1,KR,Korea Exchange,XKRX,KRW,Industrials,Industrials,,en:LIG Nex1
+081660.KS,Misto,KR,Korea Exchange,XKRX,KRW,Consumer Discretionary,Consumer Discretionary,,en:Misto Holdings
+082740.KS,Hanwha Engine,KR,Korea Exchange,XKRX,KRW,Industrials,Heavy Industries,,
+086280.KS,Hyundai Glovis,KR,Korea Exchange,XKRX,KRW,Industrials,Industrials,,en:Hyundai Glovis
+086790.KS,Hana Financial,KR,Korea Exchange,XKRX,KRW,Financials,Financials,,en:Hana Financial Group
+088350.KS,Hanwha Life,KR,Korea Exchange,XKRX,KRW,Financials,Financials,,en:Hanwha Life Insurance
+090430.KS,Amorepacific,KR,Korea Exchange,XKRX,KRW,Consumer Staples,Consumer Staples,,en:Amorepacific Corporation
+093370.KS,Foosung,KR,Korea Exchange,XKRX,KRW,Materials,Energy & Chemicals,,
+096770.KS,SK Innovation,KR,Korea Exchange,XKRX,KRW,Materials,Energy & Chemicals,,en:SK Innovation
+097950.KS,CJ CheilJedang,KR,Korea Exchange,XKRX,KRW,Consumer Staples,Consumer Staples,,en:CJ CheilJedang
+103140.KS,Poongsan,KR,Korea Exchange,XKRX,KRW,Materials,Steels & Materials,,en:Poongsan Corporation
+105560.KS,KB Financial,KR,Korea Exchange,XKRX,KRW,Financials,Financials,,en:KB Financial Group
+111770.KS,Youngone,KR,Korea Exchange,XKRX,KRW,Consumer Discretionary,Consumer Discretionary,,
+112610.KS,CS Wind,KR,Korea Exchange,XKRX,KRW,Industrials,Heavy Industries,,en:CS Wind
+120110.KS,Kolon Industries,KR,Korea Exchange,XKRX,KRW,Materials,Energy & Chemicals,,en:Kolon Industries
+128940.KS,Hanmi Pharm,KR,Korea Exchange,XKRX,KRW,Health Care,Health Care,,en:Hanmi Pharm
+137310.KS,SD Biosensor,KR,Korea Exchange,XKRX,KRW,Health Care,Health Care,,
+138040.KS,Meritz Financial,KR,Korea Exchange,XKRX,KRW,Financials,Financials,,en:Meritz Financial Group
+138930.KS,BNK Financial,KR,Korea Exchange,XKRX,KRW,Financials,Financials,,en:BNK Financial Group
+139130.KS,IM Financial,KR,Korea Exchange,XKRX,KRW,Financials,Financials,,en:IM Financial Group
+139480.KS,Emart,KR,Korea Exchange,XKRX,KRW,Consumer Staples,Consumer Staples,,en:Emart
+161390.KS,Hankook,KR,Korea Exchange,XKRX,KRW,Consumer Discretionary,Consumer Discretionary,,en:Hankook
+161890.KS,Kolmar Korea,KR,Korea Exchange,XKRX,KRW,Consumer Staples,Consumer Staples,,
+175330.KS,JB Financial,KR,Korea Exchange,XKRX,KRW,Financials,Financials,,
+180640.KS,Hanjin KAL,KR,Korea Exchange,XKRX,KRW,Consumer Discretionary,Consumer Discretionary,,en:Hanjin
+185750.KS,Chong Kun Dang,KR,Korea Exchange,XKRX,KRW,Health Care,Health Care,,en:Chong Kun Dang
+192080.KS,DoubleU Games,KR,Korea Exchange,XKRX,KRW,Consumer Discretionary,Consumer Discretionary,,
+192820.KS,Cosmax,KR,Korea Exchange,XKRX,KRW,Consumer Staples,Consumer Staples,,
+204320.KS,HL Mando,KR,Korea Exchange,XKRX,KRW,Consumer Discretionary,Consumer Discretionary,,en:HL Mando
+207940.KS,Samsung Biologics,KR,Korea Exchange,XKRX,KRW,Health Care,Health Care,,en:Samsung Biologics
+241560.KS,Doosan Bobcat,KR,Korea Exchange,XKRX,KRW,Industrials,Heavy Industries,,en:Doosan Bobcat
+251270.KS,Netmarble,KR,Korea Exchange,XKRX,KRW,Communication Services,Communication Services,,en:Netmarble
+259960.KS,Krafton,KR,Korea Exchange,XKRX,KRW,Communication Services,Communication Services,,en:Krafton
+267250.KS,HD Hyundai,KR,Korea Exchange,XKRX,KRW,Materials,Energy & Chemicals,,en:HD Hyundai
+267260.KS,HD Hyundai Electric,KR,Korea Exchange,XKRX,KRW,Industrials,Heavy Industries,,en:HD Hyundai Electric
+267270.KS,HD Construction Equipment,KR,Korea Exchange,XKRX,KRW,Industrials,Heavy Industries,,en:HD Construction Equipment
+268280.KS,Miwon Specialty Chemical,KR,Korea Exchange,XKRX,KRW,Materials,Energy & Chemicals,,
+271560.KS,Orion,KR,Korea Exchange,XKRX,KRW,Consumer Staples,Consumer Staples,,en:Orion Corporation (South Korean company)
+272210.KS,Hanwha Systems,KR,Korea Exchange,XKRX,KRW,Industrials,Industrials,,en:Hanwha Systems
+278470.KS,APR,KR,Korea Exchange,XKRX,KRW,Consumer Staples,Consumer Staples,,
+280360.KS,Lotte Wellfood,KR,Korea Exchange,XKRX,KRW,Consumer Staples,Consumer Staples,,en:Lotte Wellfood
+282330.KS,BGF Retail,KR,Korea Exchange,XKRX,KRW,Consumer Staples,Consumer Staples,,
+285130.KS,SK Chemicals,KR,Korea Exchange,XKRX,KRW,Materials,Energy & Chemicals,,en:SK Chemicals
+298020.KS,Hyosung TNC,KR,Korea Exchange,XKRX,KRW,Materials,Energy & Chemicals,,en:Hyosung TNC
+298040.KS,Hyosung Heavy Industries,KR,Korea Exchange,XKRX,KRW,Industrials,Heavy Industries,,en:Hyosung Heavy Industries
+298050.KS,HS Hyosung Advanced Materials,KR,Korea Exchange,XKRX,KRW,Materials,Energy & Chemicals,,
+300720.KS,Hanil Cement,KR,Korea Exchange,XKRX,KRW,Industrials,Constructions,,en:Hanil Cement
+302440.KS,SK Bioscience,KR,Korea Exchange,XKRX,KRW,Health Care,Health Care,,en:SK Bioscience
+307950.KS,Hyundai AutoEver,KR,Korea Exchange,XKRX,KRW,Information Technology,IT,,en:Hyundai AutoEver
+316140.KS,Woori Financial,KR,Korea Exchange,XKRX,KRW,Financials,Financials,,en:Woori Financial Group
+323410.KS,KakaoBank,KR,Korea Exchange,XKRX,KRW,Financials,Financials,,en:KakaoBank
+326030.KS,SK Biopharm,KR,Korea Exchange,XKRX,KRW,Health Care,Health Care,,
+329180.KS,HD Hyundai Heavy Industries,KR,Korea Exchange,XKRX,KRW,Industrials,Heavy Industries,,en:HD Hyundai Heavy Industries
+352820.KS,Hybe,KR,Korea Exchange,XKRX,KRW,Communication Services,Communication Services,,en:Hybe Corporation
+361610.KS,SK IE Technology,KR,Korea Exchange,XKRX,KRW,Industrials,Industrials,,
+373220.KS,LG Energy Solution,KR,Korea Exchange,XKRX,KRW,Industrials,Industrials,,en:LG Energy Solution
+375500.KS,DL E&C,KR,Korea Exchange,XKRX,KRW,Industrials,Constructions,,en:DL E&C
+377300.KS,KakaoPay,KR,Korea Exchange,XKRX,KRW,Financials,Financials,,en:KakaoPay
+383220.KS,F&F,KR,Korea Exchange,XKRX,KRW,Consumer Discretionary,Consumer Discretionary,,
+402340.KS,SK Square,KR,Korea Exchange,XKRX,KRW,Information Technology,IT,,
+443060.KS,HD Hyundai Marine Solution,KR,Korea Exchange,XKRX,KRW,Industrials,Industrials,,
+450080.KS,Ecopro Materials,KR,Korea Exchange,XKRX,KRW,Industrials,Industrials,,
+454910.KS,Doosan Robotics,KR,Korea Exchange,XKRX,KRW,Industrials,Heavy Industries,,en:Doosan Robotics
+456040.KS,OCI,KR,Korea Exchange,XKRX,KRW,Materials,Energy & Chemicals,,en:OCI (company)
+457190.KS,Isu Specialty Chemical,KR,Korea Exchange,XKRX,KRW,Materials,Energy & Chemicals,,
+483650.KS,d'Alba Global,KR,Korea Exchange,XKRX,KRW,Consumer Staples,Consumer Staples,,

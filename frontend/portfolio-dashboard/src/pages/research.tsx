@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
-import { Loader2, Trash2 } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -23,6 +23,7 @@ import {
 import { briefRows, eventLabel, isEligible, marketNames, objectiveNames, originLabel, sectors } from '@/lib/research'
 import type { Hypothesis, Level, RefinementChange, ResearchBrief, ResearchCandidate, ResearchSession, ReviewFlag, UpdateBriefRequest } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { MatrixLoader } from '@/components/matrix-loader'
 
 const examples = [
   'I want a low-risk portfolio of US stocks without energy companies, at most 20% in any single stock.',
@@ -101,7 +102,7 @@ export function ResearchHomePage() {
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <Button onClick={submit} disabled={objective.trim().length < 3 || start.isPending}>
-              {start.isPending && <Loader2 className="animate-spin" />} Start research
+              {start.isPending && <MatrixLoader />} Start research
             </Button>
             <p className="text-xs text-muted-foreground">
               Runs on the server while you wait. Nothing is saved to your portfolios unless you confirm it. Educational research – not investment advice.
@@ -348,7 +349,7 @@ function BriefEditor({ session: s, onDone }: { session: ResearchSession; onDone:
       </fieldset>
       <div className="flex gap-2">
         <Button onClick={save} disabled={Object.keys(form).length === 0 || update.isPending}>
-          {update.isPending && <Loader2 className="animate-spin" />} Save brief and research universe
+          {update.isPending && <MatrixLoader />} Save brief and research universe
         </Button>
         <Button variant="ghost" onClick={() => { setForm({}); onDone() }}>Cancel</Button>
       </div>
@@ -436,7 +437,7 @@ function UniverseCard({ session: s, onCompany }: { session: ResearchSession; onC
             )}
             <Button disabled={changed || evaluate.isPending}
               onClick={() => evaluate.mutate(undefined, { onError: (e) => toast.error(errorMessage(e)) })}>
-              {evaluate.isPending && <Loader2 className="animate-spin" />} {s.hypotheses.length ? 'Run analysis again' : 'Run analysis'}
+              {evaluate.isPending && <MatrixLoader />} {s.hypotheses.length ? 'Run analysis again' : 'Run analysis'}
             </Button>
           </div>
         </div>
@@ -618,7 +619,7 @@ function SaveButton({ session: s, h }: { session: ResearchSession; h: Hypothesis
                 onSuccess: () => { setOpen(false); toast.success('Saved as an optimization run') },
                 onError: (e) => toast.error(errorMessage(e)),
               })}>
-              {save.isPending && <Loader2 className="animate-spin" />} Confirm and save
+              {save.isPending && <MatrixLoader />} Confirm and save
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -653,7 +654,7 @@ function RefineCard({ session: s }: { session: ResearchSession }) {
         </div>
         <Button disabled={text.trim().length < 2 || propose.isPending}
           onClick={() => propose.mutate({ text, hypothesisId: base }, { onSuccess: () => setText(''), onError })}>
-          {propose.isPending && <Loader2 className="animate-spin" />} Interpret
+          {propose.isPending && <MatrixLoader />} Interpret
         </Button>
 
         {p && (
@@ -670,7 +671,7 @@ function RefineCard({ session: s }: { session: ResearchSession }) {
             <div className="mt-3 flex gap-2">
               {p.changes.length > 0 && (
                 <Button disabled={apply.isPending} onClick={() => apply.mutate(p.id, { onError })}>
-                  {apply.isPending && <Loader2 className="animate-spin" />} Apply and recalculate
+                  {apply.isPending && <MatrixLoader />} Apply and recalculate
                 </Button>
               )}
               <Button variant="ghost" disabled={discard.isPending} onClick={() => discard.mutate(undefined, { onError })}>

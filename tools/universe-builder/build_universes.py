@@ -15,7 +15,11 @@ Rules:
   * Canonical symbols follow Yahoo Finance conventions: US tickers without suffix (share classes with '-', e.g. BRK-B),
     Xetra '.DE', Euronext Paris '.PA', London '.L' (share-class dots become '-', e.g. BT-A.L), Tokyo '.T', SIX '.SW',
     Madrid '.MC', Milan '.MI', Stockholm '.ST', Copenhagen '.CO', Toronto '.TO' (RCI-B.TO), ASX '.AX', Hong Kong '.HK'
-    (four digits, 0005.HK), NSE '.NS' (M&M.NS), Singapore '.SI'.
+    (four digits, 0005.HK), NSE '.NS' (M&M.NS), Singapore '.SI', and for the markets added 2026-10-25 Oslo '.OL',
+    Helsinki '.HE', Brussels '.BR', Lisbon '.LS', Dublin '.IR', Vienna '.VI', Warsaw '.WA', Budapest '.BD', Athens '.AT',
+    Iceland '.IC', Tel Aviv '.TA', Korea '.KS' (six digits), Shanghai '.SS', Bursa Malaysia '.KL' (four digits), Bangkok
+    '.BK', B3 '.SA' (share classes separately, PETR4.SA), Jakarta '.JK', Mexico '.MX' (series letters without a space,
+    GFNORTEO.MX), Johannesburg '.JO', NZX '.NZ'.
   * Index ETFs of the newer markets (ETF<country>.csv) are a curated list in this file, not Wikipedia data.
   * 'sector' is an approximate GICS-style sector so one filter works across markets; 'industry' keeps the source's own
     classification (GICS sub-industry, Prime Standard sector, ICB sector, Nikkei industry translated from German).
@@ -32,6 +36,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 import urllib.parse
 import urllib.request
 
@@ -58,6 +63,27 @@ PINNED = {
     "HSI": ("en", "Hang Seng Index", 1377881667),
     "NIFTY50": ("en", "NIFTY 50", 1379683379),
     "STI": ("en", "Straits Times Index", 1373209403),
+    # Twenty markets added 2026-10-25 (current revisions of that day).
+    "OBX": ("en", "OBX Index", 1356511451),
+    "OMXH25": ("en", "OMX Helsinki 25", 1356511455),
+    "BEL20": ("en", "BEL 20", 1380911122),
+    "PSI": ("en", "PSI-20", 1381076092),
+    "ISEQ20": ("en", "ISEQ 20", 1362357822),
+    "ATX": ("en", "Austrian Traded Index", 1356511363),
+    "WIG20": ("de", "WIG20", 270643862),
+    "BUX": ("en", "BUX", 1356511092),
+    "ATHEX25": ("en", "FTSE/Athex Large Cap", 1366728259),
+    "OMXI15": ("en", "OMX Iceland 15", 1337461510),
+    "TA35": ("en", "TA-35 Index", 1362844669),
+    "KOSPI200": ("en", "KOSPI 200", 1379902632),
+    "SSE50": ("en", "SSE 50 Index", 1356509131),
+    "KLCI": ("en", "FTSE Bursa Malaysia KLCI", 1356927985),
+    "SET50": ("en", "SET50 Index and SET100 Index", 1358079040),
+    "IBOV": ("pt", "Lista de companhias citadas no Ibovespa", 70162555),
+    "LQ45": ("en", "LQ45", 1370624740),
+    "IPC": ("en", "Indice de Precios y Cotizaciones", 1364117964),
+    "JSE40": ("en", "FTSE/JSE Top 40 Index", 1343081092),
+    "NZX50": ("en", "S&P/NZX 50", 1381776750),
 }
 
 INDICES = {
@@ -94,6 +120,46 @@ INDICES = {
                     description="50 large companies on the National Stock Exchange of India."),
     "STI": dict(name="Straits Times Index", country="SG", currency="SGD", benchmark="^STI", historical=False,
                 description="30 largest companies on the Singapore Exchange."),
+    "OBX": dict(name="OBX", country="NO", currency="NOK", benchmark="OSEBX.OL", historical=False,
+                description="25 most traded shares on Oslo Børs (benchmark: the Oslo Børs Benchmark Index)."),
+    "OMXH25": dict(name="OMX Helsinki 25", country="FI", currency="EUR", benchmark="^OMXH25", historical=False,
+                   description="25 most traded share classes on Nasdaq Helsinki."),
+    "BEL20": dict(name="BEL 20", country="BE", currency="EUR", benchmark="^BFX", historical=False,
+                  description="20 large companies on Euronext Brussels."),
+    "PSI": dict(name="PSI", country="PT", currency="EUR", benchmark="PSI20.LS", historical=False,
+                description="Largest and most liquid companies on Euronext Lisbon (formerly PSI-20)."),
+    "ISEQ20": dict(name="ISEQ 20", country="IE", currency="EUR", benchmark="^ISEQ", historical=False,
+                   description="20 largest and most liquid companies on Euronext Dublin (benchmark: the ISEQ Overall index)."),
+    "ATX": dict(name="ATX", country="AT", currency="EUR", benchmark="^ATX", historical=False,
+                description="Austrian Traded Index: the 20 largest companies on the Vienna Stock Exchange."),
+    "WIG20": dict(name="WIG20", country="PL", currency="PLN", benchmark="ETFBW20TR.WA", historical=False,
+                  description="20 largest companies on the Warsaw Stock Exchange (benchmark: the Beta ETF WIG20TR, as the price provider has no index history)."),
+    "BUX": dict(name="BUX", country="HU", currency="HUF", benchmark="", historical=False,
+                description="Blue-chip index of the Budapest Stock Exchange (no benchmark: the price provider has no BUX history)."),
+    "ATHEX25": dict(name="FTSE/Athex Large Cap", country="GR", currency="EUR", benchmark="GD.AT", historical=False,
+                    description="25 largest companies on the Athens Stock Exchange (benchmark: the Athex Composite)."),
+    "OMXI15": dict(name="OMX Iceland 15", country="IS", currency="ISK", benchmark="", historical=False,
+                   description="15 most traded shares on Nasdaq Iceland (no benchmark: the price provider has no index history)."),
+    "TA35": dict(name="TA-35", country="IL", currency="ILS", benchmark="TA35.TA", historical=False,
+                 description="35 largest companies on the Tel Aviv Stock Exchange (prices in ILS; providers quote in agorot)."),
+    "KOSPI200": dict(name="KOSPI 200", country="KR", currency="KRW", benchmark="^KS11", historical=False,
+                     description="200 large companies on the Korea Exchange (benchmark: the KOSPI Composite)."),
+    "SSE50": dict(name="SSE 50", country="CN", currency="CNY", benchmark="000001.SS", historical=False,
+                  description="50 largest and most liquid A-shares on the Shanghai Stock Exchange (benchmark: the SSE Composite)."),
+    "KLCI": dict(name="FTSE Bursa Malaysia KLCI", country="MY", currency="MYR", benchmark="^KLSE", historical=False,
+                 description="30 largest companies on Bursa Malaysia."),
+    "SET50": dict(name="SET50", country="TH", currency="THB", benchmark="TDEX.BK", historical=False,
+                  description="50 largest and most liquid companies on the Stock Exchange of Thailand (benchmark: the ThaiDEX SET50 ETF, as the price provider has no index history)."),
+    "IBOV": dict(name="Ibovespa", country="BR", currency="BRL", benchmark="^BVSP", historical=False,
+                 description="Most traded shares on B3, the São Paulo stock exchange (share classes listed separately, e.g. PETR3 and PETR4)."),
+    "LQ45": dict(name="LQ45", country="ID", currency="IDR", benchmark="^JKLQ45", historical=False,
+                 description="45 liquid large companies on the Indonesia Stock Exchange."),
+    "IPC": dict(name="S&P/BMV IPC", country="MX", currency="MXN", benchmark="^MXX", historical=False,
+                description="Largest and most liquid companies on the Mexican Stock Exchange."),
+    "JSE40": dict(name="FTSE/JSE Top 40", country="ZA", currency="ZAR", benchmark="^J200.JO", historical=False,
+                  description="40 largest companies on the Johannesburg Stock Exchange (prices in ZAR; providers quote in cents)."),
+    "NZX50": dict(name="S&P/NZX 50", country="NZ", currency="NZD", benchmark="^NZ50", historical=False,
+                  description="50 largest companies on the New Zealand Exchange."),
 }
 
 # Exchange-traded index funds of the newer markets: not on Wikipedia, so curated here. Every symbol, name, currency and
@@ -110,9 +176,23 @@ ETFS = {
     "HK": [("2800", "Tracker Fund of Hong Kong", "Hang Seng Index"), ("2828", "Hang Seng China Enterprises Index ETF", "Hang Seng China Enterprises Index")],
     "IN": [("NIFTYBEES", "Nippon India ETF Nifty 50 BeES", "NIFTY 50"), ("BANKBEES", "Nippon India ETF Nifty Bank BeES", "NIFTY Bank")],
     "SG": [("ES3", "SPDR Straits Times Index ETF", "Straits Times Index"), ("G3B", "Nikko AM Singapore STI ETF", "Straits Times Index")],
+    # Markets added 2026-10-25 (checked that day; the other new markets have no local index ETF with prices at the provider).
+    "KR": [("069500", "KODEX 200", "KOSPI 200"), ("102110", "TIGER 200", "KOSPI 200")],
+    "CN": [("510050", "China 50 ETF", "SSE 50"), ("510300", "Huatai-PineBridge CSI 300 ETF", "CSI 300")],
+    "BR": [("BOVA11", "iShares Ibovespa", "Ibovespa")],
+    "MX": [("NAFTRACISHRS", "iShares NAFTRAC", "S&P/BMV IPC")],
+    "ZA": [("STX40", "Satrix 40 ETF", "FTSE/JSE Top 40")],
+    "NZ": [("FNZ", "Smartshares NZ Top 50 ETF", "S&P/NZX 50 Portfolio"), ("TNZ", "Smartshares NZ Top 10 ETF", "S&P/NZX 10")],
+    "PL": [("ETFBW20TR", "Beta ETF WIG20TR", "WIG20TR (total return)")],
+    "TH": [("TDEX", "ThaiDEX SET50 ETF", "SET50")],
+    "MY": [("0820EA", "FTSE Bursa Malaysia KLCI ETF", "FTSE Bursa Malaysia KLCI")],
+    "ID": [("R-LQ45X", "Premier ETF LQ-45", "LQ45"), ("XIIT", "Premier ETF IDX30", "IDX30")],
 }
+VERIFIED_ETFS_BY_COUNTRY = {c: "2026-10-25" for c in ("KR", "CN", "BR", "MX", "ZA", "NZ", "PL", "TH", "MY", "ID")}
 ETF_COUNTRY_NAMES = {"CH": "Swiss", "ES": "Spanish", "IT": "Italian", "SE": "Swedish", "DK": "Danish", "CA": "Canadian",
-                     "AU": "Australian", "HK": "Hong Kong", "IN": "Indian", "SG": "Singapore"}
+                     "AU": "Australian", "HK": "Hong Kong", "IN": "Indian", "SG": "Singapore", "KR": "Korean", "CN": "Chinese",
+                     "BR": "Brazilian", "MX": "Mexican", "ZA": "South African", "NZ": "New Zealand", "PL": "Polish", "TH": "Thai",
+                     "MY": "Malaysian", "ID": "Indonesian"}
 
 MARKET = {
     "DE": dict(suffix=".DE", exchange="XETRA", mic="XETR", currency="EUR"),
@@ -130,6 +210,26 @@ MARKET = {
     "HK": dict(suffix=".HK", exchange="Hong Kong Stock Exchange", mic="XHKG", currency="HKD"),
     "IN": dict(suffix=".NS", exchange="National Stock Exchange of India", mic="XNSE", currency="INR"),
     "SG": dict(suffix=".SI", exchange="Singapore Exchange", mic="XSES", currency="SGD"),
+    "NO": dict(suffix=".OL", exchange="Oslo Børs", mic="XOSL", currency="NOK"),
+    "FI": dict(suffix=".HE", exchange="Nasdaq Helsinki", mic="XHEL", currency="EUR"),
+    "BE": dict(suffix=".BR", exchange="Euronext Brussels", mic="XBRU", currency="EUR"),
+    "PT": dict(suffix=".LS", exchange="Euronext Lisbon", mic="XLIS", currency="EUR"),
+    "IE": dict(suffix=".IR", exchange="Euronext Dublin", mic="XDUB", currency="EUR"),
+    "AT": dict(suffix=".VI", exchange="Wiener Börse", mic="XWBO", currency="EUR"),
+    "PL": dict(suffix=".WA", exchange="Warsaw Stock Exchange", mic="XWAR", currency="PLN"),
+    "HU": dict(suffix=".BD", exchange="Budapest Stock Exchange", mic="XBUD", currency="HUF"),
+    "GR": dict(suffix=".AT", exchange="Athens Stock Exchange", mic="ASEX", currency="EUR"),
+    "IS": dict(suffix=".IC", exchange="Nasdaq Iceland", mic="XICE", currency="ISK"),
+    "IL": dict(suffix=".TA", exchange="Tel Aviv Stock Exchange", mic="XTAE", currency="ILS"),
+    "KR": dict(suffix=".KS", exchange="Korea Exchange", mic="XKRX", currency="KRW"),
+    "CN": dict(suffix=".SS", exchange="Shanghai Stock Exchange", mic="XSHG", currency="CNY"),
+    "MY": dict(suffix=".KL", exchange="Bursa Malaysia", mic="XKLS", currency="MYR"),
+    "TH": dict(suffix=".BK", exchange="Stock Exchange of Thailand", mic="XBKK", currency="THB"),
+    "BR": dict(suffix=".SA", exchange="B3", mic="BVMF", currency="BRL"),
+    "ID": dict(suffix=".JK", exchange="Indonesia Stock Exchange", mic="XIDX", currency="IDR"),
+    "MX": dict(suffix=".MX", exchange="Bolsa Mexicana de Valores", mic="XMEX", currency="MXN"),
+    "ZA": dict(suffix=".JO", exchange="Johannesburg Stock Exchange", mic="XJSE", currency="ZAR"),
+    "NZ": dict(suffix=".NZ", exchange="New Zealand Exchange", mic="XNZE", currency="NZD"),
 }
 
 # ---------------------------------------------------------------------------------------------- sector mappings
@@ -325,18 +425,217 @@ STI_SECTOR = {
     "U14": "Real Estate", "V03": "Information Technology", "F34": "Consumer Staples", "BS6": "Industrials",
 }
 
+# ------------------------------------------------------------------ the twenty markets added 2026-10-25
+# Sector labels of these sources mapped to the GICS-style sectors used everywhere (approximate). Where a source lists no
+# sector (ISEQ 20, SSE 50, LQ45) or no tickers (ATX, WIG20, FTSE/JSE Top 40), both are assigned here from each company's
+# main business and listing; every symbol was checked against the price provider (VERIFIED_NEW_MARKETS).
+VERIFIED_NEW_MARKETS = "2026-10-25"
+
+OBX_SECTOR = {
+    "oil: crude producers": "Energy", "integrated oil and gas": "Energy", "oil equipment and services": "Energy",
+    "offshore drilling and other services": "Energy", "marine transportation": "Industrials", "banks": "Financials",
+    "full line insurance": "Financials", "life insurance": "Financials", "diversified industrials": "Industrials",
+    "farming, fishing, ranching and plantations": "Consumer Staples", "food products": "Consumer Staples",
+    "semiconductors": "Information Technology", "aluminum": "Materials", "fertilizers": "Materials", "airlines": "Industrials",
+    "telecommunications services": "Communication Services", "machinery: industrial": "Industrials",
+}
+GICS_ALIASES = {  # labels close to GICS used by the BEL 20, KOSPI 200 and other tables
+    "basic materials": "Materials", "electronic equipment": "Information Technology", "it": "Information Technology",
+    "constructions": "Industrials", "heavy industries": "Industrials", "steels & materials": "Materials",
+    "energy & chemicals": "Materials", "healthcare": "Health Care",
+}
+GICS_SECTORS = {"Energy", "Materials", "Industrials", "Consumer Discretionary", "Consumer Staples", "Health Care", "Financials",
+                "Information Technology", "Communication Services", "Utilities", "Real Estate"}
+PSI_SECTOR = {
+    "basic resources": "Materials", "banks": "Financials", "industrial goods & services": "Industrials", "utilities": "Utilities",
+    "energy": "Energy", "travel & leisure": "Consumer Discretionary", "personal care, drug & grocery stores": "Consumer Staples",
+    "construction & materials": "Industrials", "telecommunications": "Communication Services", "technology": "Information Technology",
+    "financial services": "Financials",
+}
+ISEQ_SECTOR = {
+    "A5G": "Financials", "BIRG": "Financials", "C5H": "Consumer Discretionary", "DQ7A": "Consumer Staples", "EG7": "Financials",
+    "GL9": "Consumer Staples", "GVR": "Consumer Discretionary", "GRP": "Utilities", "HMSO": "Real Estate", "IR5B": "Industrials",
+    "IRES": "Real Estate", "KMR": "Materials", "KRZ": "Consumer Staples", "KRX": "Industrials", "MLC": "Health Care",
+    "MIO": "Industrials", "OIZ": "Consumer Staples", "PTSB": "Financials", "RY4C": "Industrials", "UPR": "Health Care",
+}
+# Company (as named by the source) -> (ticker, sector): the ATX, WIG20 and FTSE/JSE Top 40 tables list no tickers.
+ATX_MEMBERS = {
+    "Erste Bank": ("EBS", "Financials"), "Verbund": ("VER", "Utilities"), "OMV": ("OMV", "Energy"), "BAWAG": ("BG", "Financials"),
+    "Andritz": ("ANDR", "Industrials"), "Wienerberger": ("WIE", "Materials"), "Voestalpine": ("VOE", "Materials"),
+    "Raiffeisen International": ("RBI", "Financials"), "Porr": ("POS", "Industrials"), "CA Immo": ("CAI", "Real Estate"),
+    "EVN Group": ("EVN", "Utilities"), "AT&S": ("ATS", "Information Technology"), "Austrian Post": ("POST", "Industrials"),
+    "Vienna Insurance Group": ("VIG", "Financials"), "Lenzing": ("LNZ", "Materials"), "Uniqa Insurance Group": ("UQA", "Financials"),
+    "Schoeller-Bleckmann Oilfield Equipment": ("SBO", "Energy"), "Immofinanz": ("IIA", "Real Estate"), "Strabag": ("STR", "Industrials"),
+    "Do & Co": ("DOC", "Consumer Discretionary"),
+}
+WIG20_MEMBERS = {
+    "Alior Bank": ("ALR", "Financials"), "Allegro.eu": ("ALE", "Consumer Discretionary"), "Bank Pekao": ("PEO", "Financials"),
+    "Budimex": ("BDX", "Industrials"), "CCC": ("CCC", "Consumer Discretionary"), "CD Projekt": ("CDR", "Communication Services"),
+    "Dino Polska": ("DNP", "Consumer Staples"), "Grupa Kęty": ("KTY", "Materials"), "KGHM Polska Miedź": ("KGH", "Materials"),
+    "Kruk S.A.": ("KRU", "Financials"), "LPP": ("LPP", "Consumer Discretionary"), "mBank": ("MBK", "Financials"),
+    "Orange Polska": ("OPL", "Communication Services"), "Orlen": ("PKN", "Energy"), "Pepco Group": ("PCO", "Consumer Discretionary"),
+    "PGE": ("PGE", "Utilities"), "PKO Bank Polski": ("PKO", "Financials"), "PZU SA": ("PZU", "Financials"),
+    "Santander Bank Polska": ("SPL", "Financials"), "Żabka Group": ("ZAB", "Consumer Staples"),
+}
+JSE40_MEMBERS = {
+    "Absa Group": ("ABG", "Financials"), "Anglo American": ("AGL", "Materials"), "Anglogold Ashanti": ("ANG", "Materials"),
+    "AB InBev": ("ANH", "Consumer Staples"), "Aspen Pharmacare": ("APN", "Health Care"), "BHP": ("BHG", "Materials"),
+    "Bidcorp": ("BID", "Consumer Staples"), "Bidvest Group": ("BVT", "Industrials"), "BAT": ("BTI", "Consumer Staples"),
+    "Capitec": ("CPI", "Financials"), "Clicks": ("CLS", "Consumer Staples"), "Discovery": ("DSY", "Financials"),
+    "Exxaro": ("EXX", "Energy"), "FirstRand": ("FSR", "Financials"), "Glencore": ("GLN", "Materials"), "Gold Fields": ("GFI", "Materials"),
+    "Growthpoint Properties": ("GRT", "Real Estate"), "Implats": ("IMP", "Materials"), "Investec Ltd": ("INL", "Financials"),
+    "Investec PLC": ("INP", "Financials"), "Mondi": ("MNP", "Materials"), "Mr Price Group": ("MRP", "Consumer Discretionary"),
+    "MTN Group": ("MTN", "Communication Services"), "MultiChoice": ("MCG", "Communication Services"),
+    "Naspers": ("NPN", "Consumer Discretionary"), "Nedbank": ("NED", "Financials"), "NEPI Rockcastle": ("NRP", "Real Estate"),
+    "Northam Platinum": ("NPH", "Materials"), "Old Mutual": ("OMU", "Financials"), "Prosus": ("PRX", "Consumer Discretionary"),
+    "Reinet Investments": ("RNI", "Financials"), "Remgro": ("REM", "Financials"), "RMH": ("RMH", "Financials"),
+    "Sanlam": ("SLM", "Financials"), "Sasol": ("SOL", "Materials"), "Shoprite": ("SHP", "Consumer Staples"),
+    "Standard Bank": ("SBK", "Financials"), "Valterra Platinum": ("VAL", "Materials"), "Vodacom": ("VOD", "Communication Services"),
+    "Woolworths Holdings": ("WHL", "Consumer Discretionary"),
+}
+BUX_SECTOR = {
+    "telecommunications": "Communication Services", "electric utilities": "Utilities", "diversified industrials": "Industrials",
+    "real estate": "Real Estate", "automobiles & parts": "Consumer Discretionary", "insurance": "Financials",
+    "informatics": "Information Technology", "construction": "Industrials", "oil & gas": "Energy", "industrial conglomerate": "Industrials",
+    "banks": "Financials", "industrial services": "Utilities", "pharmaceuticals": "Health Care", "industrial transportation": "Industrials",
+}
+ATHEX_SECTOR = {
+    "airlines": "Industrials", "banks": "Financials", "toys": "Consumer Discretionary", "industrial goods & services": "Industrials",
+    "soft drinks": "Consumer Staples", "construction & materials": "Industrials", "basic resources": "Materials",
+    "integrated oil and gas": "Energy", "water": "Utilities", "heavy construction": "Industrials",
+    "fixed line telecommunications": "Communication Services", "real estate holding & development": "Real Estate",
+    "exploration & production": "Energy", "nonferrous metals": "Industrials", "gambling": "Consumer Discretionary",
+    "consumer products & services": "Consumer Discretionary", "conventional electricity": "Utilities", "technology": "Information Technology",
+    "personal products": "Consumer Staples", "alternative electricity": "Utilities", "construction materials and fixtures": "Materials",
+    "diversified industrials": "Industrials",
+}
+TA35_SECTOR = {
+    "energy": "Utilities", "renewable energy": "Utilities", "chemicals": "Materials", "defense": "Industrials", "real estate": "Real Estate",
+    "telecommunications": "Communication Services", "banking": "Financials", "oil & gas": "Energy", "insurance": "Financials",
+    "semiconductors": "Information Technology", "pharma": "Health Care", "technology": "Information Technology",
+    "hotels & tourism": "Consumer Discretionary", "retail": "Consumer Staples", "food processing": "Consumer Staples",
+    "construction": "Industrials",
+}
+SSE50_SECTOR = {
+    600028: "Energy", 600030: "Financials", 600031: "Industrials", 600036: "Financials", 600048: "Real Estate",
+    600050: "Communication Services", 600089: "Industrials", 600104: "Consumer Discretionary", 600111: "Materials",
+    600150: "Industrials", 600276: "Health Care", 600309: "Materials", 600406: "Industrials", 600436: "Health Care",
+    600438: "Information Technology", 600519: "Consumer Staples", 600690: "Consumer Discretionary", 600809: "Consumer Staples",
+    600887: "Consumer Staples", 600893: "Industrials", 600900: "Utilities", 600905: "Utilities", 601012: "Information Technology",
+    601088: "Energy", 601166: "Financials", 601225: "Energy", 601288: "Financials", 601318: "Financials", 601390: "Industrials",
+    601398: "Financials", 601601: "Financials", 601628: "Financials", 601633: "Consumer Discretionary", 601668: "Industrials",
+    601669: "Industrials", 601728: "Communication Services", 601857: "Energy", 601888: "Consumer Discretionary",
+    601899: "Materials", 601919: "Industrials", 601988: "Financials", 603259: "Health Care", 603288: "Consumer Staples",
+    603501: "Information Technology", 603799: "Materials", 603986: "Information Technology", 688111: "Information Technology",
+    688041: "Information Technology", 688599: "Information Technology", 688981: "Information Technology",
+}
+KLCI_SECTOR = {
+    "retailers": "Consumer Staples", "retail": "Consumer Discretionary", "financial services": "Financials", "construction": "Industrials",
+    "mobile network, network infrastructure & digital internet": "Communication Services",
+    "telecommunications service & internet services": "Communication Services", "telecommunications": "Communication Services",
+    "healthcare": "Health Care", "plantations": "Consumer Staples", "plantation": "Consumer Staples", "plantation & properties": "Consumer Staples",
+    "agriculture": "Consumer Staples", "energy shipping, maritime services": "Energy", "food & beverages": "Consumer Staples",
+    "chemicals": "Materials", "oil and gas": "Energy", "metals": "Materials", "conglomerate": "Industrials", "industrial": "Industrials",
+    "electric power industry": "Utilities",
+}
+KLCI_OVERRIDES = {"6033": "Utilities"}  # Petronas Gas: gas transport and distribution
+SET50_SECTOR = {
+    "information & communication technology": "Communication Services", "transportation & logistics": "Industrials",
+    "property development": "Real Estate", "energy & utilities": "Energy", "banking": "Financials", "health care services": "Health Care",
+    "commerce": "Consumer Discretionary", "food & beverages": "Consumer Staples", "food & beverage": "Consumer Staples",
+    "electronic components": "Information Technology", "petrochemicals & chemicals": "Materials", "finance & securities": "Financials",
+    "construction materials": "Materials", "packaging": "Materials", "insurance": "Financials", "media & publishing": "Communication Services",
+}
+SET50_OVERRIDES = {"EGCO": "Utilities", "GPSC": "Utilities", "GULF": "Utilities", "RATCH": "Utilities", "CPALL": "Consumer Staples",
+                   "BJC": "Consumer Staples", "MINT": "Consumer Discretionary"}
+IBOV_SECTOR = {  # first level of B3's own sector classification
+    "consumo não cíclico": "Consumer Staples", "consumo cíclico": "Consumer Discretionary", "bens industriais": "Industrials",
+    "financeiro e outros": "Financials", "financeiro": "Financials", "materiais básicos": "Materials", "utilidade pública": "Utilities",
+    "petróleo. gás e biocombustíveis": "Energy", "petróleo, gás e biocombustíveis": "Energy", "saúde": "Health Care",
+    "tecnologia da informação": "Information Technology", "telecomunicações": "Communication Services",
+}
+LQ45_SECTOR = {
+    "AADI": "Energy", "ADMR": "Materials", "ADRO": "Energy", "AKRA": "Energy", "AMMN": "Materials", "AMRT": "Consumer Staples",
+    "ANTM": "Materials", "ASII": "Industrials", "BBCA": "Financials", "BBNI": "Financials", "BBRI": "Financials", "BBTN": "Financials",
+    "BMRI": "Financials", "BRPT": "Materials", "BUMI": "Energy", "CPIN": "Consumer Staples", "CUAN": "Energy", "DEWA": "Energy",
+    "EMTK": "Communication Services", "ESSA": "Materials", "EXCL": "Communication Services", "GOTO": "Consumer Discretionary",
+    "HRTA": "Consumer Discretionary", "ICBP": "Consumer Staples", "INCO": "Materials", "INDF": "Consumer Staples", "INDY": "Energy",
+    "INKP": "Materials", "ISAT": "Communication Services", "ITMG": "Energy", "JPFA": "Consumer Staples", "KLBF": "Health Care",
+    "MAPI": "Consumer Discretionary", "MBMA": "Materials", "MDKA": "Materials", "MEDC": "Energy", "PGAS": "Utilities",
+    "PGEO": "Utilities", "PTBA": "Energy", "SCMA": "Communication Services", "TLKM": "Communication Services", "UNTR": "Industrials",
+    "UNVR": "Consumer Staples", "WIFI": "Communication Services",
+}
+IPC_OVERRIDES = {  # rows without a sector in the source
+    "AMXB": "Communication Services", "BBAJIOO": "Financials", "CUERVO": "Consumer Staples", "GFINBURO": "Financials",
+    "GFNORTEO": "Financials", "RA": "Financials",
+}
+NZX_SECTOR = {
+    "airport services": "Industrials", "airlines": "Industrials", "diversified banks": "Financials", "diversified reits": "Real Estate",
+    "retail reits": "Real Estate", "office reits": "Real Estate", "industrial reits": "Real Estate", "health care reits": "Real Estate",
+    "packaged foods & meats": "Consumer Staples", "specialty stores": "Consumer Discretionary", "electric utilities": "Utilities",
+    "renewable electricity": "Utilities", "multi-utilities": "Utilities", "oil and gas refining": "Energy",
+    "alternative carriers": "Communication Services", "integrated telecommunication services": "Communication Services",
+    "cable & satellite": "Communication Services", "health care distributors": "Health Care",
+    "health care equipment & services": "Health Care", "health care facilities": "Health Care", "construction materials": "Materials",
+    "air freight & logistics": "Industrials", "application software": "Information Technology", "consumer cyclical": "Consumer Discretionary",
+    "marine ports & services": "Industrials", "financial exchanges & data": "Financials", "casinos & gaming": "Consumer Discretionary",
+    "industrial machinery": "Industrials", "tourism": "Consumer Discretionary", "automotive": "Consumer Discretionary",
+    "property & casualty insurance": "Financials", "metals & mining": "Materials",
+}
+
+
+def gics(label):
+    """A GICS sector name as given, or its alias; "Unclassified" when neither."""
+    return label if label in GICS_SECTORS else GICS_ALIASES.get(label.lower(), "Unclassified")
+
+
 # Listings whose trading currency differs from the venue's (checked against the price provider 2026-10-24): the Jardine
 # group companies trade in US dollars on the Singapore Exchange. Prices are only accepted in the instrument's currency.
 # Keep in sync with Markets.ForeignCurrencyListings (the simulated provider quotes them in the same currency).
-CURRENCY_OVERRIDES = {"D01.SI": "USD", "H78.SI": "USD", "J36.SI": "USD"}
+CURRENCY_OVERRIDES = {"D01.SI": "USD", "H78.SI": "USD", "J36.SI": "USD", "GSPARK.BD": "EUR", "HMSO.IR": "GBP"}
+
+# Members renamed or re-listed since the pinned revision (checked against the price provider 2026-10-25): prices exist only
+# under the current symbol. Source symbol -> (current ticker on the same venue, name shown).
+TICKER_CHANGES = {
+    "RY4C.IR": ("RYA", "Ryanair Holdings"),
+    "IIA.VI": ("CPI", "CPI Europe (formerly Immofinanz)"),
+    "SPL.WA": ("EBP", "Erste Bank Polska (formerly Santander Bank Polska)"),
+    "CCC.WA": ("MDV", "Modivo (formerly CCC)"),
+    "MYTIL.AT": ("MTLN", "Metlen Energy & Metals (formerly Mytilineos)"),
+    "OPAP.AT": ("ALWN", "Allwyn (formerly OPAP)"),
+    "KOJAMO.HE": ("LUMO", "Lumo Kodit (formerly Kojamo)"),
+    "ALFAA.MX": ("SIGMAFA", "Sigma Foods (formerly Alfa)"),
+    "CCRO3.SA": ("MOTV3", "Motiva (formerly CCR)"),
+    "ELET3.SA": ("AXIA3", "Axia Energia (formerly Eletrobras)"),
+    "EMBR3.SA": ("EMBJ3", "Embraer"),
+    "NTCO3.SA": ("NATU3", "Natura"),
+    "MRFG3.SA": ("MBRF3", "MBRF Global Foods (Marfrig and BRF combined)"),
+}
 
 # Rows of a source table that are not index constituents (removed and reported).
-NOT_CONSTITUENTS = {"ASX50": {"VAS": "Vanguard Australian Shares is an index fund, not an ASX 50 company"}}
+NOT_CONSTITUENTS = {
+    "ASX50": {"VAS": "Vanguard Australian Shares is an index fund, not an ASX 50 company"},
+    # No longer listed (no prices from the provider, 2026-10-25); the pinned revision predates the change.
+    "OBX": {"GOGL": "Golden Ocean Group merged into CMB.TECH (2025)"},
+    "PSI": {"SONC": "Sonae Capital was delisted after its takeover (2022)"},
+    "ATHEX25": {"TENERGY": "Terna Energy was delisted after its takeover by Masdar (2025)"},
+    "IPC": {"ELEKTRA": "Grupo Elektra is no longer listed"},
+    "JSE40": {"MCG": "MultiChoice was delisted after its takeover by Canal+ (2025)"},
+    "IBOV": {
+        "BRFS3": "BRF was combined with Marfrig into MBRF Global Foods (MBRF3, listed)",
+        "JBSS3": "JBS moved its primary listing to New York (2025); B3 trades only depositary receipts",
+        "ELET6": "no quote for this preferred class under the new name (Axia Energia) at the provider",
+        "AZUL4": "no quote for these preferred shares at the provider since the restructuring",
+        "GOLL4": "no longer quoted at the provider",
+        "CIEL3": "Cielo was delisted (2024)",
+        "CRFB3": "Carrefour Brasil was delisted (2025)",
+    },
+}
 
 # ------------------------------------------------------------------------------------------------- fetching
 
 
-def fetch_json(url):
+def fetch_once(url):
     request = urllib.request.Request(url, headers={"User-Agent": UA})
     try:
         with urllib.request.urlopen(request, timeout=60) as response:
@@ -346,6 +645,17 @@ def fetch_json(url):
             raise
         out = subprocess.run(["curl", "-sS", "--max-time", "60", "-A", UA, url], check=True, capture_output=True)
         return json.loads(out.stdout)
+
+
+def fetch_json(url, attempts=6):
+    """Wikipedia throttles bursts of requests (an empty or HTML answer): wait and retry with a growing pause."""
+    for attempt in range(attempts):
+        try:
+            return fetch_once(url)
+        except (ValueError, urllib.error.HTTPError, subprocess.CalledProcessError):
+            if attempt == attempts - 1:
+                raise
+            time.sleep(5 * (attempt + 1))
 
 
 def api(lang, **params):
@@ -365,7 +675,8 @@ def latest_revision(lang, title):
 
 
 def tables(text):
-    return re.findall(r'<table class="[^"]*wikitable[^"]*"[^>]*>(.*?)</table>', text, re.S)
+    # The class may follow other attributes (<table style="…" class="wikitable sortable">).
+    return re.findall(r'<table[^>]*\sclass="[^"]*wikitable[^"]*"[^>]*>(.*?)</table>', text, re.S)
 
 
 def clean(cell):
@@ -395,6 +706,9 @@ def wiki_title(raw_cell):
 def find_table(text, *required_headers):
     for table in tables(text):
         parsed = rows(table)
+        # A one-cell title row above the real header ("TA-35 Components") is skipped.
+        if len(parsed) > 1 and len(parsed[0][0]) == 1 and all(k == "h" for k in parsed[1][2]):
+            parsed = parsed[1:]
         header = [h.lower() for h in parsed[0][0]]
         if all(any(req in h for h in header) for req in required_headers):
             return header, [r for r in parsed[1:] if r[2] and r[2][0] == "d" or (r[2] and "d" in r[2])]
@@ -571,6 +885,194 @@ def sti(text):
     return out
 
 
+def after_colon(cell):
+    """'OSE: AKRBP' / 'Euronext Brussels: ABI' -> 'AKRBP' / 'ABI'."""
+    return cell.split(":")[-1].strip().upper()
+
+
+def obx(text):
+    header, data = find_table(text, "company", "ticker symbol", "icb subsector")
+    c, t, sec = col(header, "company"), col(header, "ticker symbol"), col(header, "icb subsector")
+    return [market_row("NO", after_colon(cells[t]), name_of(cells[c]), OBX_SECTOR.get(cells[sec].lower(), "Unclassified"),
+                       cells[sec][:1].upper() + cells[sec][1:], wiki_title(raw[c])) for cells, raw, _ in data]
+
+
+def omxh25(text):
+    header, data = find_table(text, "ticker", "company", "gics")
+    t, c, sec = col(header, "ticker"), col(header, "company"), col(header, "gics")
+    return [market_row("FI", cells[t].upper().removesuffix(".HE"), name_of(cells[c]), gics(cells[sec]), cells[sec], wiki_title(raw[c]))
+            for cells, raw, _ in data]
+
+
+def bel20(text):
+    header, data = find_table(text, "company", "ticker symbol", "weighting")
+    c, t, sec = col(header, "company"), col(header, "ticker symbol"), col(header, "icb")
+    out = []
+    for cells, raw, _ in data:
+        # Members listed elsewhere keep their own exchange (Aperam: Euronext Amsterdam, APAM.AS).
+        country = "NL" if "amsterdam" in cells[t].lower() else "BE"
+        out.append(market_row(country, after_colon(cells[t]), name_of(cells[c]), gics(cells[sec]), cells[sec], wiki_title(raw[c])))
+    return out
+
+
+def psi(text):
+    header, data = find_table(text, "company", "ticker", "weight")
+    c, t, sec = col(header, "company"), col(header, "ticker"), col(header, "industry")
+    return [market_row("PT", cells[t].upper(), name_of(cells[c]), PSI_SECTOR.get(cells[sec].lower(), "Unclassified"), cells[sec],
+                       wiki_title(raw[c])) for cells, raw, _ in data]
+
+
+def iseq20(text):
+    header, data = find_table(text, "mnem", "company")
+    t, c = col(header, "mnem"), col(header, "company")
+    out = []
+    for cells, raw, _ in data:
+        ticker = after_colon(cells[t])
+        out.append(market_row("IE", ticker, name_of(cells[c]), ISEQ_SECTOR.get(ticker, "Unclassified"), "", wiki_title(raw[c])))
+    return out
+
+
+def by_name(country, members, code):
+    """Rows of a table without tickers: company name -> (ticker, sector) from the curated mapping; an unknown name stops the build."""
+    def parse(text, name_col, industry_col):
+        header, data = find_table(text, name_col, industry_col)
+        c, ind = col(header, name_col), col(header, industry_col)
+        out = []
+        for cells, raw, _ in data:
+            name = name_of(cells[c])
+            if name not in members:
+                raise SystemExit(f"{code}: no ticker for '{name}' – add it to the mapping after checking it with the price provider")
+            ticker, sector = members[name]
+            out.append(market_row(country, ticker, name, sector, cells[ind], wiki_title(raw[c])))
+        return out
+    return parse
+
+
+def atx(text):
+    return by_name("AT", ATX_MEMBERS, "ATX")(text, "company", "industry")
+
+
+def wig20(text):
+    return by_name("PL", WIG20_MEMBERS, "WIG20")(text, "unternehmen", "branche")
+
+
+def jse40(text):
+    return by_name("ZA", JSE40_MEMBERS, "JSE40")(text, "name", "sector")
+
+
+def bux(text):
+    header, data = find_table(text, "company", "ticker", "icb")
+    c, t, sec = col(header, "company"), col(header, "ticker"), col(header, "icb")
+    return [market_row("HU", cells[t].upper(), name_of(cells[c]), BUX_SECTOR.get(cells[sec].lower(), "Unclassified"), cells[sec],
+                       wiki_title(raw[c])) for cells, raw, _ in data]
+
+
+def athex25(text):
+    header, data = find_table(text, "company", "traded as", "sector")
+    c, t, sec = col(header, "company"), col(header, "traded as"), col(header, "sector")
+    return [market_row("GR", after_colon(cells[t]), name_of(cells[c]), ATHEX_SECTOR.get(cells[sec].lower(), "Unclassified"), cells[sec],
+                       wiki_title(raw[c])) for cells, raw, _ in data]
+
+
+def omxi15(text):
+    header, data = find_table(text, "company", "symbol", "gics")
+    c, t, sec = col(header, "company"), col(header, "symbol"), col(header, "gics")
+    return [market_row("IS", cells[t].upper(), name_of(cells[c]), gics(cells[sec]), cells[sec], wiki_title(raw[c])) for cells, raw, _ in data]
+
+
+def ta35(text):
+    header, data = find_table(text, "corporation", "ticker", "industry")
+    c, t, sec = col(header, "corporation"), col(header, "ticker"), col(header, "industry")
+    return [market_row("IL", cells[t].upper(), name_of(cells[c]), TA35_SECTOR.get(cells[sec].lower(), "Unclassified"), cells[sec],
+                       wiki_title(raw[c])) for cells, raw, _ in data]
+
+
+def kospi200(text):
+    header, data = find_table(text, "company", "symbol", "gics")
+    c, t, sec = col(header, "company"), col(header, "symbol"), col(header, "gics")
+    return [market_row("KR", re.sub(r"\D", "", cells[t]).zfill(6), name_of(cells[c]), gics(cells[sec]), cells[sec], wiki_title(raw[c]))
+            for cells, raw, _ in data]
+
+
+def sse50(text):
+    header, data = find_table(text, "name", "ticker")
+    c, t = col(header, "name"), col(header, "ticker")
+    out = []
+    for cells, raw, _ in data:
+        code = int(re.sub(r"\D", "", cells[t]))
+        out.append(market_row("CN", str(code), name_of(cells[c]), SSE50_SECTOR.get(code, "Unclassified"), "", wiki_title(raw[c])))
+    return out
+
+
+def klci(text):
+    header, data = find_table(text, "constituent", "stock code", "sector")
+    c, t, sec = col(header, "constituent"), col(header, "stock code"), col(header, "sector")
+    out = []
+    for cells, raw, _ in data:
+        code = re.sub(r"\D", "", cells[t]).zfill(4)
+        sector = KLCI_OVERRIDES.get(code) or KLCI_SECTOR.get(cells[sec].lower(), "Unclassified")
+        # The source writes most names in capitals; they are kept as published.
+        out.append(market_row("MY", code, name_of(cells[c]), sector, cells[sec], wiki_title(raw[c])))
+    return out
+
+
+def set50(text):
+    header, data = find_table(text, "symbol", "securities name", "sector")
+    t, c, sec = col(header, "symbol"), col(header, "securities name"), col(header, "sector")
+    out = []
+    for cells, raw, _ in data:
+        ticker = cells[t].upper()
+        sector = SET50_OVERRIDES.get(ticker) or SET50_SECTOR.get(cells[sec].lower(), "Unclassified")
+        out.append(market_row("TH", ticker, name_of(cells[c]), sector, cells[sec], wiki_title(raw[c])))
+    return out
+
+
+def ibov(text):
+    header, data = find_table(text, "código", "ação", "setor")
+    t, c, sec = col(header, "código"), col(header, "ação"), col(header, "setor")
+    out, previous = [], None
+    for cells, raw, _ in data:
+        # A second share class of the same company is a short row (code and class only): it takes name and sector from above.
+        if len(cells) <= 2 and previous:
+            name, label, wiki = previous
+        else:
+            name, label, wiki = name_of(cells[c]), cells[sec], wiki_title(raw[c])
+            previous = (name, label, wiki)
+        top = label.split("/")[0].strip().lower()
+        sector = "Real Estate" if "imóveis" in label.lower() else IBOV_SECTOR.get(top, "Unclassified")
+        out.append(market_row("BR", cells[t].upper(), name, sector, label, wiki))
+    return out
+
+
+def lq45(text):
+    header, data = find_table(text, "ticker", "company")
+    t, c = col(header, "ticker"), col(header, "company")
+    out = []
+    for cells, raw, _ in data:
+        ticker = after_colon(cells[t])
+        out.append(market_row("ID", ticker, name_of(cells[c]), LQ45_SECTOR.get(ticker, "Unclassified"), "", wiki_title(raw[c])))
+    return out
+
+
+def ipc(text):
+    header, data = find_table(text, "name", "symbol", "sector", "sub-industry")
+    c, t, sec, sub = col(header, "name"), col(header, "symbol"), col(header, "sector"), col(header, "sub-industry")
+    out = []
+    for cells, raw, _ in data:
+        # Series letters are part of the Yahoo symbol without a space ("ALFA A" -> ALFAA.MX).
+        ticker = cells[t].upper().replace(" ", "")
+        sector = IPC_OVERRIDES.get(ticker) or gics(cells[sec])
+        out.append(market_row("MX", ticker, name_of(cells[c]), sector, cells[sub] or cells[sec], wiki_title(raw[c])))
+    return out
+
+
+def nzx50(text):
+    header, data = find_table(text, "ticker symbol", "company", "sector")
+    t, c, sec = col(header, "ticker symbol"), col(header, "company"), col(header, "sector")
+    return [market_row("NZ", cells[t].upper(), name_of(cells[c]), NZX_SECTOR.get(cells[sec].lower(), "Unclassified"), cells[sec],
+                       wiki_title(raw[c])) for cells, raw, _ in data]
+
+
 def market_row(country, ticker, name, sector, industry, wiki="", isin=""):
     m = MARKET[country]
     symbol = ticker + m["suffix"]
@@ -580,7 +1082,10 @@ def market_row(country, ticker, name, sector, industry, wiki="", isin=""):
 
 PARSERS = {"SP500": sp500, "DAX40": dax, "DAX30": dax, "CAC40": cac40, "FTSE100": ftse100, "NIKKEI225": nikkei225,
            "SMI": smi, "IBEX35": ibex35, "FTSEMIB": ftsemib, "OMXS30": omxs30, "OMXC25": omxc25, "TSX60": tsx60, "ASX50": asx50,
-           "HSI": hsi, "NIFTY50": nifty50, "STI": sti}
+           "HSI": hsi, "NIFTY50": nifty50, "STI": sti,
+           "OBX": obx, "OMXH25": omxh25, "BEL20": bel20, "PSI": psi, "ISEQ20": iseq20, "ATX": atx, "WIG20": wig20, "BUX": bux,
+           "ATHEX25": athex25, "OMXI15": omxi15, "TA35": ta35, "KOSPI200": kospi200, "SSE50": sse50, "KLCI": klci, "SET50": set50,
+           "IBOV": ibov, "LQ45": lq45, "IPC": ipc, "JSE40": jse40, "NZX50": nzx50}
 
 FIELDS = ["symbol", "name", "country", "exchange", "mic", "currency", "sector", "industry", "isin", "wiki"]
 
@@ -608,6 +1113,9 @@ def main():
         text, revid = page_html(lang, title, revision)
         members, seen = [], set()
         for m in PARSERS[code](text):
+            if m["symbol"] in TICKER_CHANGES:
+                ticker, name = TICKER_CHANGES[m["symbol"]]
+                m = market_row(m["country"], ticker, name, m["sector"], m["industry"], m["wiki"], m.get("isin", ""))
             excluded = NOT_CONSTITUENTS.get(code, {}).get(m["symbol"].split(".")[0])
             if excluded:
                 print(f"warning: {code}: {m['symbol']} skipped ({excluded})", file=sys.stderr)
@@ -652,10 +1160,10 @@ def main():
                 "code": code, "name": f"{ETF_COUNTRY_NAMES[country]} index ETFs", "country": country, "currency": MARKET[country]["currency"],
                 "benchmark": INDICES[index]["benchmark"], "is_historical": "false", "members": str(len(funds)),
                 "source": "Curated list (tools/universe-builder)", "source_url": "", "revision": "", "licence": "",
-                "verified_on": VERIFIED_ETFS,
+                "verified_on": VERIFIED_ETFS_BY_COUNTRY.get(country, VERIFIED_ETFS),
                 "description": "Exchange-traded funds that track a local index – a whole market in one instrument. Not index constituents.",
             }
-            print(f"{code}: {len(funds)} funds (curated, checked {VERIFIED_ETFS})")
+            print(f"{code}: {len(funds)} funds (curated, checked {index_rows[code]['verified_on']})")
 
     with open(indices_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=["code", "name", "country", "currency", "benchmark", "is_historical", "members", "source",

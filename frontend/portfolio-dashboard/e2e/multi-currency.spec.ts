@@ -32,8 +32,10 @@ test('mixed-currency portfolio: EUR base with US, German, Japanese and UK stocks
   // Stocks without stored history are downloaded first (on a fresh stack most non-US listings have none yet).
   const fetch = tray.getByRole('button', { name: /Fetch prices/ })
   for (let round = 0; round < 3 && await fetch.waitFor({ timeout: 10_000 }).then(() => true, () => false); round++) {
-    await expect(fetch).toBeEnabled({ timeout: 15_000 })
-    await fetch.click()
+    // Downloads are fast: the history may arrive (and the button disappear) before the click.
+    if (!await fetch.click({ timeout: 15_000 }).then(() => true, () => false)) continue
+    // The selection shows the download's progress, then a summary that stays until closed.
+    await expect(tray.getByRole('status', { name: /Downloading price history|Download result/ }).or(tray.getByRole('img', { name: /Downloading price history/ })).first()).toBeVisible({ timeout: 30_000 })
     // The button label switches to "Downloading history…" while the job runs; the toast reports completion.
     await expect(page.getByText('Price history downloaded').first()).toBeVisible({ timeout: 120_000 })
   }

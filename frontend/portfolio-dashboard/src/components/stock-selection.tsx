@@ -1,18 +1,19 @@
-import type { ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
-import { Loader2, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DataBadge, InfoTip } from '@/components/common'
 import { errorMessage } from '@/lib/api'
 import { usePortfolioContext } from '@/lib/portfolio-context'
-import { useFetchPrices, useRefreshQuote, useStocks } from '@/lib/queries'
+import { useAfterPriceDownload, useRefreshQuote, useStartPriceDownload, useStocks, useSyncJobs } from '@/lib/queries'
 import { age, quoteStatus } from '@/lib/quote-status'
 import { useSelection } from '@/lib/selection'
-import type { StockQuote } from '@/lib/types'
+import type { StockQuote, SyncJob } from '@/lib/types'
 import { money, pct } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { MatrixLoader, WorkingPanel } from '@/components/matrix-loader'
 
 /** Price with its provenance: what kind of price it is, when it applies, and honest qualifiers. Never labelled "live". */
 export function QuoteCell({ quote, compact = false }: { quote: StockQuote; compact?: boolean }) {
@@ -80,7 +81,7 @@ export function RefreshQuoteButton({ symbol, size = 'icon-xs' }: { symbol: strin
     </Button>
   ) : (
     <Button size="xs" variant="ghost" onClick={run} disabled={refresh.isPending} aria-label={label} title={label}>
-      {refresh.isPending ? <Loader2 className="animate-spin" /> : 'Refresh'}
+      {refresh.isPending ? <MatrixLoader /> : 'Refresh'}
     </Button>
   )
 }
@@ -101,16 +102,16 @@ export function SelectionTray({ className, actions }: { className?: string; acti
   const analysisCurrency = portfolio?.baseCurrency ?? 'USD'
   const selection = useSelection()
   const coverage = useStocks({ symbols: selection.symbols, pageSize: 200 }, selection.count > 0)
-  const fetchPrices = useFetchPrices()
+  const start = useStartPriceDownload()
+  const [jobIds, setJobIds] = useState<string[]>([])
+  const download = useDownloadProgress(jobIds)
   const missing = (coverage.data?.items ?? []).filter((s) => s.observations < 61).map((s) => s.symbol)
 
   if (selection.count === 0) return null
 
   const fetchMissing = async () => {
     try {
-      const job = await fetchPrices.mutateAsync(missing.slice(0, 50))
-      if (job.assetsFailed === 0) toast.success('Price history downloaded', { description: `${job.assetsCompleted} stock(s).` })
-      else toast.warning(`Price history: ${job.assetsCompleted} downloaded, ${job.assetsFailed} failed`, { description: job.message ?? undefined })
+      setJobIds(await start.mutateAsync(missing))
     } catch (e) {
       toast.error('Could not queue the download', { description: errorMessage(e) })
     }
@@ -124,10 +125,10 @@ export function SelectionTray({ className, actions }: { className?: string; acti
           <Badge variant="secondary" className="tabular">{selection.count}</Badge>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
-          {missing.length > 0 && (
-            <Button size="sm" variant="outline" onClick={fetchMissing} disabled={fetchPrices.isPending || coverage.isFetching}>
-              {fetchPrices.isPending && <Loader2 className="animate-spin" />}
-              {fetchPrices.isPending ? 'Downloading history…' : `Fetch prices (${Math.min(missing.length, 50)})`}
+          {missing.length > 0 && !download.running && (
+            <Button size="sm" variant="outline" onClick={fetchMissing} disabled={start.isPending || coverage.isFetching}>
+              {start.isPending && <MatrixLoader />}
+              Fetch prices ({missing.length})
             </Button>
           )}
           <Button size="sm" variant="ghost" onClick={selection.clear}>
@@ -170,11 +171,62 @@ export function SelectionTray({ className, actions }: { className?: string; acti
           )
         })}
       </ul>
-      {missing.length > 0 && (
+      {jobIds.length > 0 && <DownloadProgress progress={download} onClose={() => setJobIds([])} />}
+      {missing.length > 0 && !download.running && (
         <p className="mt-2 text-xs text-warn">
-          {missing.length} selected stock(s) have fewer than 61 stored prices and would be excluded from analysis until prices are fetched.
-          {missing.length > 50 && ' At most 50 symbols can be fetched per request.'}
+          {missing.length} selected {missing.length === 1 ? 'stock has' : 'stocks have'} fewer than 61 stored prices and would be excluded from analysis until prices are fetched.
         </p>
+      )}
+    </div>
+  )
+}
+
+interface Progress { running: boolean; total: number; done: number; failed: SyncJob['logs']; last: string | null; succeeded: number }
+
+/** Combined progress of the download jobs of one "Fetch prices" (50 stocks per job); refreshes the lists when all are done. */
+function useDownloadProgress(ids: string[]): Progress {
+  const jobs = useSyncJobs(ids).map((q) => q.data).filter((j): j is SyncJob => !!j)
+  const after = useAfterPriceDownload()
+  const running = ids.length > 0 && (jobs.length < ids.length || jobs.some((j) => j.status === 'Queued' || j.status === 'Running'))
+  const total = jobs.reduce((n, j) => n + j.assetsTotal, 0)
+  const succeeded = jobs.reduce((n, j) => n + j.assetsCompleted, 0)
+  const done = jobs.reduce((n, j) => n + j.assetsCompleted + j.assetsFailed, 0)
+  const failed = jobs.flatMap((j) => j.logs.filter((l) => !l.success))
+  const logs = jobs.flatMap((j) => j.logs).sort((a, b) => a.completedAtUtc.localeCompare(b.completedAtUtc))
+  const last = logs.at(-1)?.symbol ?? null
+
+  // Once per download: reload coverage and prices, and say how it ended.
+  const reported = useRef('')
+  const key = ids.join(',')
+  useEffect(() => {
+    if (!key || running || reported.current === key || jobs.length < ids.length) return
+    reported.current = key
+    after()
+    if (failed.length === 0) toast.success('Price history downloaded', { description: `${succeeded} ${succeeded === 1 ? 'stock' : 'stocks'}.` })
+    else toast.warning(`Price history: ${succeeded} downloaded, ${failed.length} failed`, { description: failed.slice(0, 3).map((f) => f.message).join(' · ') })
+  }, [key, running, jobs.length, ids.length, after, failed, succeeded])
+
+  return { running, total, done, failed, last, succeeded }
+}
+
+/** The download in the selection: running (matrix loader, stocks done, last stock) or finished (summary with failures). */
+function DownloadProgress({ progress: p, onClose }: { progress: Progress; onClose: () => void }) {
+  if (p.running) {
+    return (
+      <WorkingPanel className="mt-3" title="Downloading price history…" percent={p.total ? (p.done / p.total) * 100 : null}
+        detail={`${p.done} of ${p.total || '…'} stocks${p.last ? ` · last: ${p.last}` : ''}${p.failed.length ? ` · ${p.failed.length} failed` : ''}`} />
+    )
+  }
+  return (
+    <div className="mt-3 rounded-xl border bg-card px-4 py-3 text-sm" role="status" aria-label="Download result">
+      <div className="flex items-center justify-between gap-3">
+        <span className="font-medium">Price history downloaded: {p.succeeded} of {p.total} {p.total === 1 ? 'stock' : 'stocks'}</span>
+        <Button size="xs" variant="ghost" onClick={onClose}>Close</Button>
+      </div>
+      {p.failed.length > 0 && (
+        <ul className="mt-1.5 space-y-0.5 text-xs text-warn">
+          {p.failed.map((f) => <li key={f.symbol}>{f.message ?? `${f.symbol}: failed`}</li>)}
+        </ul>
       )}
     </div>
   )

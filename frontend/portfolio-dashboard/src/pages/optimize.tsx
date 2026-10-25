@@ -4,7 +4,6 @@ import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { Loader2 } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -36,6 +35,7 @@ import { CurrencyExposureList } from '@/components/currency'
 import type { Allocation, Asset, ObjectiveKind, OptimizationRun, Portfolio, PortfolioSettings, TradeProposal } from '@/lib/types'
 import { date, dateTime, num, objectiveLabels, pct } from '@/lib/format'
 import { InvestableValueCard, NoPortfolio } from './shared'
+import { MatrixLoader } from '@/components/matrix-loader'
 
 // ------------------------------------------------------------------ form schema (percent units in the UI)
 
@@ -261,7 +261,7 @@ function ConfigFormInner({ portfolio: portfolioData, assets: assetList }: { port
                     }
                   }}
                 >
-                  {fetchPrices.isPending && <Loader2 className="animate-spin" />} Fetch prices
+                  {fetchPrices.isPending && <MatrixLoader />} Fetch prices
                 </Button>
               </div>
             )}
@@ -361,7 +361,7 @@ function ConfigFormInner({ portfolio: portfolioData, assets: assetList }: { port
           )}
 
           <Button type="submit" className="w-full" disabled={runMutation.isPending || missingData.checking}>
-            {runMutation.isPending || missingData.checking && <Loader2 className="animate-spin" />}
+            {(runMutation.isPending || missingData.checking) && <MatrixLoader />}
             {runMutation.isPending ? 'Optimizing…' : 'Run optimization'}
           </Button>
           <p className="text-[11px] text-muted-foreground">Saves these settings to the portfolio and stores the run for reproducibility.</p>
@@ -512,7 +512,7 @@ function RunResults({ run }: { run: OptimizationRun }) {
               <CardDescription className="text-xs">Translate the target weights into whole-share orders at the latest stored prices, after costs.</CardDescription>
             </div>
             <Button variant={proposal ? 'outline' : 'default'} onClick={makeProposal} disabled={createProposal.isPending}>
-              {createProposal.isPending && <Loader2 className="animate-spin" />}
+              {createProposal.isPending && <MatrixLoader />}
               {proposal ? 'Recalculate' : 'Create trade proposal'}
             </Button>
           </CardHeader>

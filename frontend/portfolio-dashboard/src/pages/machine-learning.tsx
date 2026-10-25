@@ -1,7 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
-import { Loader2 } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -9,7 +8,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Progress } from '@/components/ui/progress'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { AllocationDonut, ChartCard, TimeSeriesChart, seriesColor, timeSeriesTable } from '@/components/charts'
@@ -39,6 +37,7 @@ import type {
 } from '@/lib/types'
 import { date, dateTime, familyLabels, money, num, pct, relativeTime, targetLabels } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { MatrixLoader, WorkingPanel } from '@/components/matrix-loader'
 
 const horizons = [5, 10, 21, 63, 126].map((h) => ({ value: h, label: `${h} trading days (≈ ${h <= 10 ? `${Math.round(h / 5)} week${h > 5 ? 's' : ''}` : `${Math.round(h / 21)} month${h > 21 ? 's' : ''}`})` }))
 
@@ -266,7 +265,7 @@ function NewExperimentForm({ catalog, portfolio }: { catalog: MlCatalog; portfol
         </details>
 
         <Button className="w-full" onClick={submit} disabled={create.isPending || missingData.checking || universe.length < 5}>
-          {create.isPending || missingData.checking && <Loader2 className="animate-spin" />} {create.isPending ? 'Starting…' : 'Run ML optimization'}
+          {(create.isPending || missingData.checking) && <MatrixLoader />} {create.isPending ? 'Starting…' : 'Run ML optimization'}
         </Button>
         {missingData.dialog}
         {universe.length > 0 && universe.length < 5 && <p className="text-xs text-warn">Select at least 5 stocks.</p>}
@@ -301,7 +300,7 @@ function NumberField({ label, value, onChange, min, max, step, hint, optional }:
 
 function StatusBadge({ status }: { status: MlExperimentSummary['status'] }) {
   const cls = status === 'Succeeded' ? 'border-gain/40 text-gain' : status === 'Failed' || status === 'Cancelled' ? 'border-loss/40 text-loss' : 'border-warn/50 text-warn'
-  return <Badge variant="outline" className={cls}>{status === 'Running' && <Loader2 className="size-3 animate-spin" />}{status}</Badge>
+  return <Badge variant="outline" className={cls}>{status === 'Running' && <MatrixLoader className="size-3" />}{status}</Badge>
 }
 
 function ExperimentHistory({ portfolioId, activeId }: { portfolioId: string; activeId?: string }) {
@@ -375,10 +374,8 @@ function ExperimentResults({ id, portfolioId }: { id: string; portfolioId: strin
       <ExperimentPortfolio id={id} experimentPortfolioId={s.portfolioId ?? null} currency={e.currency} portfolioId={portfolioId} />
 
       {active && (
-        <div className="space-y-1" aria-live="polite">
-          <Progress value={s.progressPercent} aria-label="Experiment progress" />
-          <p className="text-xs text-muted-foreground">{s.progressMessage ?? 'Queued'} · {s.progressPercent}%</p>
-        </div>
+        <WorkingPanel title={s.status === 'Queued' ? 'Waiting to start the ML Optimization…' : 'Training and testing the models…'}
+          detail={s.progressMessage ?? 'Queued'} percent={s.progressPercent} />
       )}
       {s.status === 'Failed' && (
         <Alert variant="destructive"><AlertTitle>The ML optimization did not complete</AlertTitle><AlertDescription>{s.error}</AlertDescription></Alert>
@@ -444,7 +441,7 @@ function MlTradeProposal({ e, portfolioId }: { e: MlExperiment; portfolioId: str
             toast.error('Could not create trade proposal', { description: errorMessage(err) })
           }
         }}>
-          {preview.isPending && <Loader2 className="animate-spin" />}
+          {preview.isPending && <MatrixLoader />}
           {proposal ? 'Recalculate' : 'Create trade proposal'}
         </Button>
       </CardHeader>

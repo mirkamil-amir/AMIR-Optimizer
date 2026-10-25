@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -10,6 +9,7 @@ import { errorMessage } from '@/lib/api'
 import { date, money } from '@/lib/format'
 import { useRecordTransaction, useStocks } from '@/lib/queries'
 import type { PortfolioTransactionType, RecordTransactionRequest } from '@/lib/types'
+import { MatrixLoader } from '@/components/matrix-loader'
 
 const TYPES: { value: PortfolioTransactionType; label: string; help: string }[] = [
   { value: 'Buy', label: 'Buy', help: 'Shares bought at the price you paid. The commission is added to the cost basis.' },
@@ -174,7 +174,7 @@ function TransactionForm({ portfolioId, portfolioName, currency, symbols, initia
 
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onDone}>Cancel</Button>
-        <Button type="submit" disabled={record.isPending}>{record.isPending && <Loader2 className="animate-spin" />} Record</Button>
+        <Button type="submit" disabled={record.isPending}>{record.isPending && <MatrixLoader />} Record</Button>
       </DialogFooter>
     </form>
   )

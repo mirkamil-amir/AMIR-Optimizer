@@ -11,7 +11,7 @@ test('header shows the signed-in name; the role is only in its label', async ({ 
   await expect(identity).not.toContainText('Admin Investor')
 })
 
-test('stock selection loads prices automatically and refreshes a single quote', async ({ page }) => {
+test('stock selection loads prices automatically and refreshes the page on request', async ({ page }) => {
   await page.goto('/stocks')
   await page.getByLabel('Search company name or ticker').fill('Apple')
   const row = page.getByRole('row', { name: /AAPL/ })
@@ -20,19 +20,43 @@ test('stock selection loads prices automatically and refreshes a single quote', 
   await expect(row).toContainText(/Last close|Delayed quote/)
   await expect(row).not.toContainText('No price available')
 
-  await row.getByRole('button', { name: 'Refresh price of AAPL' }).click()
-  await expect(page.getByText(/AAPL: price (updated|is already current)/)).toBeVisible()
+  // No per-row refresh in the list (one stock is refreshed in its detail panel); the page refreshes at once.
+  await expect(row.getByRole('button', { name: 'Refresh price of AAPL' })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Refresh prices', exact: true }).click()
+  await expect(page.getByText(/^Prices refreshed/)).toBeVisible()
 })
 
 test('markets and indices organise the universe, with prices in local currency', async ({ page }) => {
   await page.goto('/stocks')
-  await page.getByRole('button', { name: /Germany/ }).click()
-  await page.getByRole('button', { name: /^DAX 40/ }).click()
-  await expect(page.getByText(/^40 stock\(s\) · DAX 40/)).toBeVisible()
+  // Markets are grouped by region; a region is a filter of its own and opens to its markets.
+  const nav = page.getByRole('navigation', { name: 'Markets, indices and sectors' }).first()
+  await expect(nav.getByRole('button', { name: /^Germany/ })).toHaveCount(0)
+  await nav.getByRole('button', { name: /^Europe/ }).click()
+  await expect(page.getByRole('button', { name: 'Remove filter Europe' })).toBeVisible()
+  await nav.getByRole('button', { name: /^Germany/ }).click()
+  await nav.getByRole('button', { name: /^DAX 40/ }).click()
+  await expect(page.getByText(/^40 stocks$/)).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Remove filter DAX 40' })).toBeVisible()
   await expect(page.getByRole('row', { name: /SAP\.DE/ })).toContainText('€')
   await expect(page.getByRole('button', { name: /DAX 30 \(historical\)/ })).toBeVisible()
+  // Rows per page and the position in the list; removing the chip returns to all markets.
+  // The same selection and paging controls sit above and below the list.
+  const top = page.getByRole('group', { name: 'List controls (top)' })
+  const bottom = page.getByRole('group', { name: 'List controls (bottom)' })
+  await top.getByRole('combobox', { name: 'Rows per page' }).click()
+  await page.getByRole('option', { name: '25', exact: true }).click()
+  await expect(top.getByText(/^1–25 of 40$/)).toBeVisible()
+  await bottom.getByRole('button', { name: 'Last page' }).click()
+  await expect(bottom.getByText(/^26–40 of 40$/)).toBeVisible()
+  await expect(bottom.getByRole('button', { name: 'Select page' })).toBeVisible()
+  await page.getByRole('button', { name: 'Remove filter DAX 40' }).click()
+  await expect(page.getByText('· all markets')).toBeVisible()
+  await nav.getByRole('button', { name: /^Europe/ }).click()
+  await nav.getByRole('button', { name: /^Germany/ }).click()
+  await nav.getByRole('button', { name: /^DAX 40/ }).click()
 
-  await page.getByRole('button', { name: /Japan/ }).click()
+  await nav.getByRole('button', { name: /^Asia-Pacific/ }).click()
+  await nav.getByRole('button', { name: /^Japan/ }).click()
   await page.getByLabel('Search company name or ticker').fill('Toyota')
   await expect(page.getByRole('row', { name: /7203\.T/ })).toContainText('¥')
 })

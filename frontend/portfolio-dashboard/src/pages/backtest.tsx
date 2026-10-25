@@ -1,14 +1,12 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
-import { Loader2 } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Progress } from '@/components/ui/progress'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ChartCard, TimeSeriesChart, WeightsOverTimeChart, seriesColor, timeSeriesTable } from '@/components/charts'
 import { DataTable } from '@/components/data-table'
@@ -23,6 +21,7 @@ import { useMissingDataGuard } from '@/components/missing-data-dialog'
 import type { Backtest, PortfolioStrategy } from '@/lib/types'
 import { date, dateTime, money, num, objectiveLabels, pct, relativeTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { MatrixLoader, WorkingPanel } from '@/components/matrix-loader'
 
 /** Backtests are hypothetical; shown in the page's tip and in every result's notes. */
 const HYPOTHETICAL = 'Backtests use today’s list of symbols (survivorship bias) and historical estimates. They are hypothetical, not forecasts, and do not guarantee future returns.'
@@ -173,7 +172,7 @@ function BacktestAnOptimization({ fixedPortfolioId }: { fixedPortfolioId?: strin
         </div>
         {end <= start && <p className="text-xs text-destructive">The end must be after the start.</p>}
         <Button className="w-full" onClick={submit} disabled={!chosen || end <= start || create.isPending || missingData.checking}>
-          {create.isPending || missingData.checking && <Loader2 className="animate-spin" />} Run backtest
+          {(create.isPending || missingData.checking) && <MatrixLoader />} Run backtest
         </Button>
         {missingData.dialog}
       </CardContent>
@@ -215,7 +214,7 @@ function BacktestResults({ bt }: { bt: Backtest }) {
       </div>
 
       {running && (
-        <Card><CardContent className="space-y-2 py-6 text-center text-sm text-muted-foreground"><Loader2 className="mx-auto size-6 animate-spin" />Running in the background…<Progress value={null} className="mx-auto max-w-xs" /></CardContent></Card>
+        <WorkingPanel title={bt.status === 'Queued' ? 'Waiting to start the backtest…' : 'Running the backtest…'} detail="Walk-forward simulation in the background; results appear automatically." />
       )}
       {bt.status === 'Failed' && <Alert variant="destructive"><AlertTitle>Backtest failed</AlertTitle><AlertDescription>{bt.error}</AlertDescription></Alert>}
 

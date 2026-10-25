@@ -194,16 +194,36 @@ public sealed class MarketDataService(
             return;
         }
 
-        foreach (var symbol in job.Symbols.Split(',', StringSplitOptions.RemoveEmptyEntries))
+        var symbols = job.Symbols.Split(',', StringSplitOptions.RemoveEmptyEntries);
+        var plans = await PlanAsync(provider.Descriptor.Name, symbols, job.StartDate, job.EndDate, job.ForceFullRefresh, ct);
+
+        // Downloads run ahead in parallel (the provider's client keeps its rate limit); the database work stays sequential
+        // and in job order, so progress, logs and the DbContext behave as before. At most `window` downloads are buffered.
+        var parallelism = Math.Max(1, provider.HistoryParallelism);
+        var window = parallelism * 4;
+        using var gate = new SemaphoreSlim(parallelism, parallelism);
+        var fetches = new Task<Fetched>[plans.Count];
+        for (var i = 0; i < Math.Min(window, plans.Count); i++) fetches[i] = FetchAsync(provider, plans[i], gate, ct);
+        var quoted = new List<Asset>();
+        for (var i = 0; i < plans.Count; i++)
         {
             ct.ThrowIfCancellationRequested();
-            var log = await SyncAssetAsync(provider, symbol, job.StartDate, job.EndDate, job.ForceFullRefresh, ct);
+            var fetched = await fetches[i];
+            if (i + window < plans.Count) fetches[i + window] = FetchAsync(provider, plans[i + window], gate, ct);
+            var log = await ApplyAsync(provider, plans[i], fetched, ct);
             log.JobId = job.Id;
             db.SyncLogs.Add(log);
-            if (log.Success) job.AssetsCompleted++;
+            if (log.Success) { job.AssetsCompleted++; quoted.Add(plans[i].Asset!); }
             else job.AssetsFailed++;
             await db.SaveChangesAsync(ct);
+            // Stored prices are not needed again in this job: without releasing them every save would scan all of them
+            // (measured: 0.14 s per stock at the start of a 100-stock job, 0.31 s at its end).
+            foreach (var entry in db.ChangeTracker.Entries<HistoricalPrice>().ToList()) entry.State = EntityState.Detached;
         }
+
+        // Latest quotes in batches (20 symbols per request with Yahoo) instead of one request per symbol. A missing quote
+        // never fails the download: the stored daily history is complete without it.
+        await UpdateQuotesAsync(provider, quoted, ct);
 
         job.Status = job.AssetsFailed == 0 ? JobStatus.Succeeded
             : job.AssetsCompleted == 0 ? JobStatus.Failed
@@ -214,26 +234,34 @@ public sealed class MarketDataService(
         logger.LogInformation("Market data sync {JobId} from {Source} finished: {Message}", job.Id, job.Source, job.Message);
     }
 
-    private async Task<DataSyncLog> SyncAssetAsync(IMarketDataProvider provider, string symbol, DateOnly start, DateOnly end, bool force, CancellationToken ct)
+    /// <summary>What to download for one symbol: its asset and the date ranges missing from the stored history.</summary>
+    private sealed record SyncPlan(string Symbol, Asset? Asset, bool HadHistory, DateOnly? StoredFrom, DateOnly Start, DateOnly End, bool Force,
+        IReadOnlyList<(DateOnly From, DateOnly To)> Ranges);
+
+    /// <summary>Downloaded histories per range, or the provider error that stopped the download.</summary>
+    private sealed record Fetched(IReadOnlyList<ProviderHistory> Histories, string? Error);
+
+    /// <summary>Plans every symbol of a job with two queries (assets, stored date range per asset) instead of two per symbol.</summary>
+    private async Task<List<SyncPlan>> PlanAsync(string source, IReadOnlyList<string> symbols, DateOnly start, DateOnly end, bool force,
+        CancellationToken ct)
     {
-        var source = provider.Descriptor.Name;
-        var log = new DataSyncLog { Symbol = symbol, Source = source };
-        var asset = await db.Assets.SingleOrDefaultAsync(a => a.Symbol == symbol, ct);
-        if (asset is null)
-        {
-            log.Message = "Asset no longer exists.";
-            log.CompletedAtUtc = clock.GetUtcNow().UtcDateTime;
-            return log;
-        }
-        log.AssetId = asset.Id;
+        var assets = await db.Assets.Where(a => symbols.Contains(a.Symbol)).ToDictionaryAsync(a => a.Symbol, ct);
+        var ids = assets.Values.Select(a => a.Id).ToList();
+        var stored = await db.HistoricalPrices.AsNoTracking()
+            .Where(p => ids.Contains(p.AssetId) && p.Source == source)
+            .GroupBy(p => p.AssetId)
+            .Select(g => new { AssetId = g.Key, Min = g.Min(p => p.Date), Max = g.Max(p => p.Date) })
+            .ToDictionaryAsync(x => x.AssetId, ct);
 
-        try
+        var plans = new List<SyncPlan>(symbols.Count);
+        foreach (var symbol in symbols)
         {
-            var existing = await db.HistoricalPrices.Where(p => p.AssetId == asset.Id && p.Source == source)
-                .GroupBy(_ => 1)
-                .Select(g => new { Min = g.Min(p => p.Date), Max = g.Max(p => p.Date) })
-                .SingleOrDefaultAsync(ct);
-
+            if (!assets.TryGetValue(symbol, out var asset))
+            {
+                plans.Add(new SyncPlan(symbol, null, false, null, start, end, force, []));
+                continue;
+            }
+            var existing = stored.GetValueOrDefault(asset.Id);
             var ranges = new List<(DateOnly From, DateOnly To)>();
             if (force || existing is null) ranges.Add((start, end));
             else
@@ -242,45 +270,99 @@ public sealed class MarketDataService(
                 var incrementalFrom = existing.Max.AddDays(-OverlapDays);
                 if (incrementalFrom < end) ranges.Add((incrementalFrom < start ? start : incrementalFrom, end));
             }
+            plans.Add(new SyncPlan(symbol, asset, existing is not null, existing?.Min, start, end, force, ranges));
+        }
+        return plans;
+    }
 
+    /// <summary>Downloads the planned ranges of one symbol (no database access – runs in parallel with other symbols).</summary>
+    private async Task<Fetched> FetchAsync(IMarketDataProvider provider, SyncPlan plan, SemaphoreSlim gate, CancellationToken ct)
+    {
+        if (plan.Asset is null || plan.Ranges.Count == 0) return new Fetched([], null);
+        await gate.WaitAsync(ct);
+        try
+        {
+            var histories = new List<ProviderHistory>(plan.Ranges.Count);
+            foreach (var (from, to) in plan.Ranges)
+                histories.Add(await provider.GetHistoricalPricesAsync(plan.Symbol, from, to, ct));
+            return new Fetched(histories, null);
+        }
+        catch (MarketDataProviderException ex)
+        {
+            logger.LogWarning(ex, "Provider error syncing {Symbol} from {Source}", plan.Symbol, provider.Descriptor.Name);
+            return new Fetched([], ex.Message);
+        }
+        catch (HttpRequestException ex)
+        {
+            logger.LogWarning(ex, "Network error syncing {Symbol} from {Source}", plan.Symbol, provider.Descriptor.Name);
+            return new Fetched([], $"Network error: {ex.Message}");
+        }
+        catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)
+        {
+            return new Fetched([], $"Request timed out: {ex.Message}");
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
+    /// <summary>Stores what was downloaded for one symbol and returns its log (sequential: uses the DbContext).</summary>
+    private async Task<DataSyncLog> ApplyAsync(IMarketDataProvider provider, SyncPlan plan, Fetched fetched, CancellationToken ct)
+    {
+        var source = provider.Descriptor.Name;
+        var log = new DataSyncLog { Symbol = plan.Symbol, Source = source };
+        if (plan.Asset is not { } asset)
+        {
+            log.Message = "Asset no longer exists.";
+            log.CompletedAtUtc = clock.GetUtcNow().UtcDateTime;
+            return log;
+        }
+        log.AssetId = asset.Id;
+        if (fetched.Error is { } error)
+        {
+            log.Success = false;
+            log.Message = error;
+            log.CompletedAtUtc = clock.GetUtcNow().UtcDateTime;
+            return log;
+        }
+
+        try
+        {
             var messages = new List<string>();
-            foreach (var (from, to) in ranges)
+            foreach (var history in fetched.Histories)
             {
-                var history = await provider.GetHistoricalPricesAsync(symbol, from, to, ct);
                 var upsert = await UpsertAsync(asset, provider, history, ct);
                 Accumulate(log, history, upsert);
                 messages.AddRange(history.Warnings);
 
-                if (upsert.AdjustmentsChanged && !force && existing is not null)
+                if (upsert.AdjustmentsChanged && !plan.Force && plan.HadHistory)
                 {
                     // Back-adjusted series changed (new dividend or split): refresh the full stored history.
-                    var fullFrom = existing.Min < start ? existing.Min : start;
+                    var fullFrom = plan.StoredFrom!.Value < plan.Start ? plan.StoredFrom.Value : plan.Start;
                     // Routine, not a problem: kept as a short note (shown on demand), logged for operators.
                     messages.Add($"History refreshed from {fullFrom:yyyy-MM-dd} after a dividend or split adjustment.");
-                    logger.LogInformation("{Symbol}: adjusted closes changed (dividend/split); full history re-downloaded from {From}", symbol, fullFrom);
-                    var full = await provider.GetHistoricalPricesAsync(symbol, fullFrom, end, ct);
+                    logger.LogInformation("{Symbol}: adjusted closes changed (dividend/split); full history re-downloaded from {From}", plan.Symbol, fullFrom);
+                    var full = await provider.GetHistoricalPricesAsync(plan.Symbol, fullFrom, plan.End, ct);
                     Accumulate(log, full, await UpsertAsync(asset, provider, full, ct));
                     break;
                 }
             }
 
-            var quote = await provider.GetLatestQuoteAsync(symbol, ct);
-            if (quote is not null) await UpsertQuoteAsync(asset, provider, quote, ct);
-
             // A catalogue instrument whose prices were fetched on demand becomes tracked (kept fresh by scheduled refreshes).
             if (!asset.IsEnabled && log.RowsReceived > 0) asset.IsEnabled = true;
             log.Success = true;
-            log.Message = ranges.Count == 0 ? "Already up to date." : string.Join(" ", messages.Distinct().Take(10));
+            log.Message = plan.Ranges.Count == 0 ? "Already up to date." : string.Join(" ", messages.Distinct().Take(10));
         }
         catch (MarketDataProviderException ex)
         {
-            logger.LogWarning(ex, "Provider error syncing {Symbol} from {Source}", symbol, source);
+            logger.LogWarning(ex, "Provider error syncing {Symbol} from {Source}", plan.Symbol, source);
             log.Success = false;
             log.Message = ex.Message;
         }
         catch (HttpRequestException ex)
         {
-            logger.LogWarning(ex, "Network error syncing {Symbol} from {Source}", symbol, source);
+            logger.LogWarning(ex, "Network error syncing {Symbol} from {Source}", plan.Symbol, source);
             log.Success = false;
             log.Message = $"Network error: {ex.Message}";
         }
@@ -292,6 +374,26 @@ public sealed class MarketDataService(
 
         log.CompletedAtUtc = clock.GetUtcNow().UtcDateTime;
         return log;
+    }
+
+    /// <summary>Latest quotes of the synced assets in provider batches; failures are logged and otherwise ignored.</summary>
+    private async Task UpdateQuotesAsync(IMarketDataProvider provider, IReadOnlyList<Asset> assets, CancellationToken ct)
+    {
+        var bySymbol = assets.Where(a => provider.Supports(a.Symbol)).GroupBy(a => a.Symbol).ToDictionary(g => g.Key, g => g.First());
+        foreach (var batch in bySymbol.Keys.Chunk(Math.Max(1, provider.QuoteBatchSize)))
+        {
+            ct.ThrowIfCancellationRequested();
+            IReadOnlyList<QuoteFetch> results;
+            try { results = await provider.GetLatestQuotesAsync(batch, ct); }
+            catch (Exception ex) when (ex is MarketDataProviderException or HttpRequestException || ex is TaskCanceledException && !ct.IsCancellationRequested)
+            {
+                logger.LogWarning(ex, "Quote batch after a sync failed ({Count} symbols)", batch.Length);
+                continue;
+            }
+            foreach (var r in results)
+                if (r.Quote is { } quote && bySymbol.TryGetValue(r.Symbol, out var asset)) await UpsertQuoteAsync(asset, provider, quote, ct);
+            await db.SaveChangesAsync(ct);
+        }
     }
 
     private static void Accumulate(DataSyncLog log, ProviderHistory h, UpsertResult u)
@@ -307,6 +409,8 @@ public sealed class MarketDataService(
 
     private async Task<UpsertResult> UpsertAsync(Asset asset, IMarketDataProvider provider, ProviderHistory history, CancellationToken ct)
     {
+        // An empty answer (e.g. a period before the first trading day) stores nothing and says nothing about the currency.
+        if (history.Bars.Count == 0 && history.RawRowCount == 0) return new UpsertResult(0, 0, false);
         if (!string.Equals(history.Currency, asset.Currency, StringComparison.OrdinalIgnoreCase))
         {
             throw new MarketDataProviderException(provider.Descriptor.Name, asset.Symbol,

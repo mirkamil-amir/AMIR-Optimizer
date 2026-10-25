@@ -3,7 +3,6 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Loader2 } from 'lucide-react'
 import { MatrixWordmark } from '@/components/brand'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -14,6 +13,7 @@ import { LoadingBlock } from '@/components/common'
 import { errorMessage } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { dateTime } from '@/lib/format'
+import { MatrixLoader } from '@/components/matrix-loader'
 
 function AuthLayout({ title, description, children, footer }: { title: string; description: ReactNode; children: ReactNode; footer?: ReactNode }) {
   return (
@@ -94,7 +94,7 @@ export function LoginPage() {
           <Input id="password" type="password" autoComplete="current-password" {...register('password')} />
         </FieldRow>
         <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting && <Loader2 className="animate-spin" />}
+          {isSubmitting && <MatrixLoader />}
           Sign in
         </Button>
       </form>
@@ -175,7 +175,7 @@ export function RegisterPage() {
           <Input id="confirm" type="password" autoComplete="new-password" {...register('confirm')} />
         </FieldRow>
         <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting && <Loader2 className="animate-spin" />}
+          {isSubmitting && <MatrixLoader />}
           Submit application
         </Button>
       </form>

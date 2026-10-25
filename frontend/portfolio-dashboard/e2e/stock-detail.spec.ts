@@ -7,9 +7,11 @@ test.use({ storageState: ADMIN_STATE })
 test('detail panel: large layout, Previous/Next/Close, ranges, description and selection kept', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/stocks')
-  await page.getByRole('button', { name: /Germany/ }).click()
-  await page.getByRole('button', { name: /^DAX 40/ }).click()
-  await expect(page.getByText(/^40 stock\(s\) · DAX 40/)).toBeVisible()
+  const nav = page.getByRole('navigation', { name: 'Markets, indices and sectors' }).first()
+  await nav.getByRole('button', { name: /^Europe/ }).click()
+  await nav.getByRole('button', { name: /^Germany/ }).click()
+  await nav.getByRole('button', { name: /^DAX 40/ }).click()
+  await expect(page.getByText(/^40 stocks$/)).toBeVisible()
 
   // A selection made before opening the panel must survive it.
   await page.getByRole('checkbox', { name: 'Select SAP.DE' }).check()
@@ -51,7 +53,7 @@ test('detail panel: large layout, Previous/Next/Close, ranges, description and s
 
   await dialog.getByRole('button', { name: 'Close' }).click()
   await expect(dialog).toBeHidden()
-  await expect(page.getByText(/^40 stock\(s\) · DAX 40/)).toBeVisible()
+  await expect(page.getByText(/^40 stocks$/)).toBeVisible()
   await expect(page.getByRole('checkbox', { name: 'Select SAP.DE' })).toBeChecked()
 
   // Escape also closes.

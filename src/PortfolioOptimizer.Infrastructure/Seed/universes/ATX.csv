@@ -1,0 +1,21 @@
+symbol,name,country,exchange,mic,currency,sector,industry,isin,wiki
+ANDR.VI,Andritz,AT,Wiener Börse,XWBO,EUR,Industrials,Industrial Goods & Services,,en:Andritz AG
+ATS.VI,AT&S,AT,Wiener Börse,XWBO,EUR,Information Technology,Industrial Goods & Services,,en:AT&S
+BG.VI,BAWAG,AT,Wiener Börse,XWBO,EUR,Financials,Financials,,en:BAWAG
+CAI.VI,CA Immo,AT,Wiener Börse,XWBO,EUR,Real Estate,Financials,,en:CA Immo
+CPI.VI,CPI Europe (formerly Immofinanz),AT,Wiener Börse,XWBO,EUR,Real Estate,Financials,,en:Immofinanz
+DOC.VI,Do & Co,AT,Wiener Börse,XWBO,EUR,Consumer Discretionary,Consumer Products,,en:Do & Co
+EBS.VI,Erste Bank,AT,Wiener Börse,XWBO,EUR,Financials,Financials,,en:Erste Bank
+EVN.VI,EVN Group,AT,Wiener Börse,XWBO,EUR,Utilities,Utilities,,en:EVN Group
+LNZ.VI,Lenzing,AT,Wiener Börse,XWBO,EUR,Materials,Basic Industries,,en:Lenzing AG
+OMV.VI,OMV,AT,Wiener Börse,XWBO,EUR,Energy,Basic Industries,,en:OMV
+POS.VI,Porr,AT,Wiener Börse,XWBO,EUR,Industrials,Construction,,en:Porr
+POST.VI,Austrian Post,AT,Wiener Börse,XWBO,EUR,Industrials,Industrial Goods & Services,,en:Austrian Post
+RBI.VI,Raiffeisen International,AT,Wiener Börse,XWBO,EUR,Financials,Financials,,en:Raiffeisen Bank International
+SBO.VI,Schoeller-Bleckmann Oilfield Equipment,AT,Wiener Börse,XWBO,EUR,Energy,Basic Industries,,en:Schoeller-Bleckmann Oilfield Equipment
+STR.VI,Strabag,AT,Wiener Börse,XWBO,EUR,Industrials,Construction,,en:Strabag
+UQA.VI,Uniqa Insurance Group,AT,Wiener Börse,XWBO,EUR,Financials,Financials,,en:Uniqa Insurance Group
+VER.VI,Verbund,AT,Wiener Börse,XWBO,EUR,Utilities,Utilities,,en:Verbund
+VIG.VI,Vienna Insurance Group,AT,Wiener Börse,XWBO,EUR,Financials,Financials,,en:Vienna Insurance Group
+VOE.VI,Voestalpine,AT,Wiener Börse,XWBO,EUR,Materials,Basic Industries,,en:Voestalpine
+WIE.VI,Wienerberger,AT,Wiener Börse,XWBO,EUR,Materials,Basic Industries,,en:Wienerberger

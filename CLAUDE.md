@@ -16,8 +16,9 @@
   header's `MapControl`); pages light markets with `useMapHighlight`, stock interactions use `useMapSignal`. The camera is a
   CSS transform set imperatively (`lib/map-camera.ts`) – never put camera positions into React state or context.
 - No decorative icons (the owner finds them childish): buttons, navigation, badges, alerts, empty states and toasts are
-  text only. Icons only where they are the control itself (fold/sort/pager arrows, remove ×, phone menu, spinner, delete
-  bin). Explanations use `InfoTip of={label}` – the label itself shows the tip on hover/focus, unmarked (no ⓘ, no underline).
+  text only. Icons only where they are the control itself (fold/sort/pager arrows, remove ×, phone menu, delete bin).
+  Work in progress shows the logo's matrix lighting up dot by dot (`MatrixLoader`, `WorkingPanel` in
+  `components/matrix-loader.tsx`) – never a spinner. Explanations use `InfoTip of={label}` – the label itself shows the tip on hover/focus, unmarked (no ⓘ, no underline).
 - Typography: `.heading-display` (Sora) only for page titles, section headings and the wordmark; `.font-nav` (Sora too,
   chosen from nine options) for the top bar and sidebar; body, tables and figures stay Geist. Sidebar and top-bar entries magnify near the
   pointer (`lib/nav-zoom.ts`, CSS variable set imperatively); the selected entry stays enlarged. Text outside cards must stay readable over the map: put dense lists on `.map-surface`.

@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
-import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -16,6 +15,7 @@ import { useFetchPrices, useStock } from '@/lib/queries'
 import { useSelection } from '@/lib/selection'
 import { stockPosition } from '@/lib/stock-navigation'
 import type { HistoryRange, Market, StockListItem } from '@/lib/types'
+import { MatrixLoader } from '@/components/matrix-loader'
 
 /** Chart height follows the viewport so the chart fills the panel on large screens and stays usable on small ones. */
 function useChartHeight() {
@@ -174,7 +174,7 @@ function StockDetailBody({ symbol, listItem, markets, position, range, onRangeCh
                 <div className="flex flex-col items-start gap-3 rounded-xl border border-dashed p-6 text-sm">
                   <p><strong>No daily prices are stored for {symbol} yet.</strong> The chart needs its history from the configured provider.</p>
                   <Button variant="outline" size="sm" onClick={fetchHistory} disabled={fetchPrices.isPending}>
-                    {fetchPrices.isPending && <Loader2 className="animate-spin" />} Download price history
+                    {fetchPrices.isPending && <MatrixLoader />} Download price history
                   </Button>
                 </div>
               ) : (

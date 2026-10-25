@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { Loader2 } from 'lucide-react'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
@@ -20,6 +19,7 @@ import type { AuditEvent, UserAccountStatus, UserSummary } from '@/lib/types'
 import { dateTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { AppSettingsCard } from './settings'
+import { MatrixLoader } from '@/components/matrix-loader'
 
 const statusTabs: { value: UserAccountStatus | 'All'; label: string }[] = [
   { value: 'Pending', label: 'Pending' },
@@ -186,7 +186,7 @@ export function AdminUsersPage() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirm} variant={pending?.kind === 'status' && pending.status !== 'Approved' ? 'destructive' : 'default'}>
-              {(setStatus.isPending || setRoles.isPending) && <Loader2 className="animate-spin" />}Confirm
+              {(setStatus.isPending || setRoles.isPending) && <MatrixLoader />}Confirm
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -267,7 +267,7 @@ function CatalogueImportCard() {
           </div>
         </div>
         <Button onClick={submit} disabled={!csv || source.trim().length < 3 || importCatalogue.isPending}>
-          {importCatalogue.isPending && <Loader2 className="animate-spin" />} Import
+          {importCatalogue.isPending && <MatrixLoader />} Import
         </Button>
         {result && (
           <div className="space-y-2 text-sm">

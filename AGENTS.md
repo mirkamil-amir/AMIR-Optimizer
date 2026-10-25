@@ -1,6 +1,6 @@
 # AGENTS.md – instructions for coding agents
 
-MaTrix: an educational portfolio-research platform. Students browse stocks and index ETFs from fifteen markets, optimize
+MaTrix: an educational portfolio-research platform. Students browse stocks and index ETFs from thirty-five markets, optimize
 portfolios (mean-variance), train ML ranking models, compare strategies fairly and paper-trade. .NET 10 API +
 PostgreSQL + React/Vite. **No real orders, not investment advice, never claim profitability or real-time prices.**
 Read this file before changing code; details are in `docs/` (linked below).

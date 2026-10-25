@@ -1,0 +1,58 @@
+symbol,name,country,exchange,mic,currency,sector,industry,isin,wiki
+ABEV3.SA,AMBEV S/A,BR,B3,BVMF,BRL,Consumer Staples,Consumo não Cíclico / Bebidas / Cervejas e Refrigerantes,,pt:AMBEV
+AXIA3.SA,Axia Energia (formerly Eletrobras),BR,B3,BVMF,BRL,Utilities,Utilidade Pública / Energia Elétrica,,pt:Eletrobras
+B3SA3.SA,B3,BR,B3,BVMF,BRL,Financials,Financeiro e Outros / Serviços Financeiros Diversos / Serviços Financeiros Diversos,,pt:B3 (bolsa de valores)
+BBAS3.SA,BANCO DO BRASIL,BR,B3,BVMF,BRL,Financials,Financeiro e Outros / Intermediários Financeiros / Bancos,,pt:Banco do Brasil
+BBDC3.SA,BRADESCO,BR,B3,BVMF,BRL,Financials,Financeiro e Outros / Intermediários Financeiros / Bancos,,pt:Bradesco
+BBDC4.SA,BRADESCO,BR,B3,BVMF,BRL,Financials,Financeiro e Outros / Intermediários Financeiros / Bancos,,pt:Bradesco
+BBSE3.SA,BBSEGURIDADE,BR,B3,BVMF,BRL,Financials,Financeiro e Outros / Previdência e Seguros / Seguradoras,,pt:BB Seguridade
+BEEF3.SA,MINERVA,BR,B3,BVMF,BRL,Consumer Staples,Consumo não Cíclico / Alimentos Processados / Carnes e Derivados,,pt:Minerva Foods
+BPAC11.SA,BTGP BANCO,BR,B3,BVMF,BRL,Financials,Financeiro e Outros / Intermediários Financeiros / Bancos,,pt:BTG Pactual
+BRAP4.SA,BRADESPAR,BR,B3,BVMF,BRL,Materials,Materiais Básicos / Mineração / Minerais Metálicos,,pt:Bradespar
+BRKM5.SA,BRASKEM,BR,B3,BVMF,BRL,Materials,Materiais Básicos / Químicos / Petroquímicos,,pt:Braskem
+BRSR6.SA,BANRISUL,BR,B3,BVMF,BRL,Financials,Financeiro e Outros / Intermediários Financeiros / Bancos,,pt:Banrisul
+CMIG4.SA,CEMIG,BR,B3,BVMF,BRL,Utilities,Utilidade Pública / Energia Elétrica,,pt:Companhia Energética de Minas Gerais
+COGN3.SA,COGNA ON,BR,B3,BVMF,BRL,Consumer Discretionary,Consumo Cíclico / Diversos / Serviços Educacionais,,pt:Cogna Educação
+CPFE3.SA,CPFL ENERGIA,BR,B3,BVMF,BRL,Utilities,Utilidade Pública / Energia Elétrica / Energia Elétrica,,pt:CPFL Energia
+CSAN3.SA,COSAN,BR,B3,BVMF,BRL,Energy,Petróleo. Gás e Biocombustíveis,,pt:Cosan
+CSNA3.SA,SID NACIONAL,BR,B3,BVMF,BRL,Materials,Materiais Básicos / Siderurgia e Metalurgia / Siderurgia,,pt:Companhia Siderúrgica Nacional
+CVCB3.SA,CVC BRASIL,BR,B3,BVMF,BRL,Consumer Discretionary,Consumo Cíclico / Viagens e Lazer / Viagens e Turismo,,
+CYRE3.SA,CYRELA REALT,BR,B3,BVMF,BRL,Consumer Discretionary,Consumo Cíclico / Construção Civil / Edificações,,pt:Cyrela Brazil Realty
+ECOR3.SA,ECORODOVIAS,BR,B3,BVMF,BRL,Industrials,Bens Industriais / Transporte / Exploração de Rodovias,,pt:EcoRodovias
+EGIE3.SA,ENGIE BRASIL,BR,B3,BVMF,BRL,Utilities,Utilidade Pública / Energia Elétrica,,pt:Engie Brasil
+EMBJ3.SA,Embraer,BR,B3,BVMF,BRL,Industrials,Bens Industriais / Material de Transporte,,pt:Embraer
+ENGI11.SA,ENERGISA,BR,B3,BVMF,BRL,Utilities,Utilidade Pública / Energia Elétrica,,pt:Grupo Energisa
+EQTL3.SA,EQUATORIAL,BR,B3,BVMF,BRL,Utilities,Utilidade Pública / Energia Elétrica,,pt:Equatorial Energia
+FLRY3.SA,FLEURY,BR,B3,BVMF,BRL,Health Care,Saúde / Serv.Méd.Hospit..Análises e Diagnósticos,,pt:Grupo Fleury
+GGBR4.SA,GERDAU,BR,B3,BVMF,BRL,Materials,Materiais Básicos / Siderurgia e Metalurgia / Siderurgia,,pt:Gerdau
+GOAU4.SA,GERDAU MET,BR,B3,BVMF,BRL,Materials,Materiais Básicos / Siderurgia e Metalurgia / Siderurgia,,pt:Gerdau
+HAPV3.SA,HAPVIDA,BR,B3,BVMF,BRL,Health Care,Saúde / Serv.Méd.Hospit..Análises e Diagnósticos,,pt:Grupo Hapvida
+HYPE3.SA,HYPERA,BR,B3,BVMF,BRL,Health Care,Saúde / Comércio e Distribuição,,pt:Hypera Pharma
+IRBR3.SA,IRBBRASIL RE,BR,B3,BVMF,BRL,Financials,Financeiro / Previdência e Seguros / Seguradoras,,pt:IRB Brasil RE
+ITSA4.SA,ITAUSA,BR,B3,BVMF,BRL,Financials,Financeiro e Outros / Intermediários Financeiros / Bancos,,pt:Itaúsa
+ITUB4.SA,ITAUUNIBANCO,BR,B3,BVMF,BRL,Financials,Financeiro e Outros / Intermediários Financeiros / Bancos,,pt:Itaú Unibanco
+KLBN11.SA,KLABIN S/A,BR,B3,BVMF,BRL,Materials,Materiais Básicos / Papel e Celulose,,pt:Klabin
+LREN3.SA,LOJAS RENNER,BR,B3,BVMF,BRL,Consumer Discretionary,Consumo Cíclico / Comércio,,pt:Lojas Renner
+MBRF3.SA,MBRF Global Foods (Marfrig and BRF combined),BR,B3,BVMF,BRL,Consumer Staples,Consumo não Cíclico / Alimentos Processados / Carnes e Derivados,,pt:Marfrig
+MGLU3.SA,MAGAZ LUIZA,BR,B3,BVMF,BRL,Consumer Discretionary,Consumo Cíclico / Comércio,,pt:Magazine Luiza
+MOTV3.SA,Motiva (formerly CCR),BR,B3,BVMF,BRL,Industrials,Bens Industriais / Transporte / Exploração de Rodovias,,pt:Grupo CCR
+MRVE3.SA,MRV,BR,B3,BVMF,BRL,Consumer Discretionary,Consumo Cíclico / Construção Civil / Edificações,,pt:MRV Engenharia
+MULT3.SA,MULTIPLAN,BR,B3,BVMF,BRL,Real Estate,Financeiro e Outros / Exploração de Imóveis,,pt:Multiplan
+NATU3.SA,Natura,BR,B3,BVMF,BRL,Consumer Staples,Consumo não Cíclico / Produtos de Uso Pessoal e de Limpeza,,pt:Natura
+PCAR3.SA,P.ACUCAR-CBD,BR,B3,BVMF,BRL,Consumer Staples,Consumo não Cíclico / Comércio e Distribuição / Alimentos,,pt:Pão de Açúcar (supermercado brasileiro)
+PETR3.SA,PETROBRAS,BR,B3,BVMF,BRL,Energy,Petróleo. Gás e Biocombustíveis,,pt:Petrobras
+PETR4.SA,PETROBRAS,BR,B3,BVMF,BRL,Energy,Petróleo. Gás e Biocombustíveis,,pt:Petrobras
+QUAL3.SA,QUALICORP,BR,B3,BVMF,BRL,Health Care,Saúde / Serv.Méd.Hospit..Análises e Diagnósticos,,
+RADL3.SA,RAIADROGASIL,BR,B3,BVMF,BRL,Health Care,Saúde / Comércio e Distribuição,,pt:RaiaDrogasil
+RAIL3.SA,RUMO S.A.,BR,B3,BVMF,BRL,Industrials,Bens Industriais / Transporte / Transporte Ferroviário,,pt:Rumo Logística
+RENT3.SA,LOCALIZA,BR,B3,BVMF,BRL,Consumer Discretionary,Consumo Cíclico / Aluguel de carros,,pt:Localiza Hertz
+SANB11.SA,SANTANDER BR,BR,B3,BVMF,BRL,Financials,Financeiro e Outros / Intermediários Financeiros / Bancos,,pt:Banco Santander (Brasil)
+SBSP3.SA,SABESP,BR,B3,BVMF,BRL,Utilities,Utilidade Pública / Água e Saneamento,,pt:Companhia de Saneamento Básico do Estado de São Paulo
+SUZB3.SA,SUZANO S.A.,BR,B3,BVMF,BRL,Materials,Materiais Básicos / Papel e Celulose,,pt:Suzano Papel e Celulose
+TAEE11.SA,TAESA,BR,B3,BVMF,BRL,Utilities,Utilidade Pública / Energia Elétrica,,pt:Taesa S.A.
+TOTS3.SA,TOTVS,BR,B3,BVMF,BRL,Information Technology,Tecnologia da Informação / Programas e Serviços,,pt:Totvs
+UGPA3.SA,ULTRAPAR,BR,B3,BVMF,BRL,Energy,Petróleo. Gás e Biocombustíveis,,pt:Grupo Ultra
+USIM5.SA,USIMINAS,BR,B3,BVMF,BRL,Materials,Materiais Básicos / Siderurgia e Metalurgia / Siderurgia,,pt:Usiminas
+VALE3.SA,VALE,BR,B3,BVMF,BRL,Materials,Materiais Básicos / Mineração / Minerais Metálicos,,pt:Vale S.A.
+WEGE3.SA,WEG,BR,B3,BVMF,BRL,Industrials,Bens Industriais / Máquinas e Equipamentos,,pt:WEG S.A.
+YDUQ3.SA,YDUQS PART,BR,B3,BVMF,BRL,Consumer Discretionary,Consumo Cíclico / Serviços Educacionais,,pt:YDUQS

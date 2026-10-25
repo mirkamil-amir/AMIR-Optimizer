@@ -1,0 +1,25 @@
+symbol,name,country,exchange,mic,currency,sector,industry,isin,wiki
+AKRBP.OL,Aker BP,NO,Oslo Børs,XOSL,NOK,Energy,Oil: crude producers,,en:Aker BP
+BWLPG.OL,BW LPG,NO,Oslo Børs,XOSL,NOK,Industrials,Marine transportation,,en:BW Group
+DNB.OL,DNB Bank,NO,Oslo Børs,XOSL,NOK,Financials,Banks,,en:DNB ASA
+EQNR.OL,Equinor,NO,Oslo Børs,XOSL,NOK,Energy,Integrated oil and gas,,en:Equinor
+FRO.OL,Frontline,NO,Oslo Børs,XOSL,NOK,Industrials,Marine transportation,,en:Frontline Ltd.
+GJF.OL,Gjensidige Forsikring,NO,Oslo Børs,XOSL,NOK,Financials,Full line insurance,,en:Gjensidige
+HAFNI.OL,Hafnia Limited,NO,Oslo Børs,XOSL,NOK,Industrials,Marine transportation,,en:BW Group
+HAUTO.OL,Höegh Autoliners ASA,NO,Oslo Børs,XOSL,NOK,Industrials,Marine transportation,,en:Leif Höegh & Co
+KOG.OL,Kongsberg Gruppen,NO,Oslo Børs,XOSL,NOK,Industrials,Diversified industrials,,en:Kongsberg Gruppen
+MOWI.OL,Mowi,NO,Oslo Børs,XOSL,NOK,Consumer Staples,"Farming, fishing, ranching and plantations",,en:Mowi
+MPCC.OL,MPC Container Ships,NO,Oslo Børs,XOSL,NOK,Industrials,Marine transportation,,
+NAS.OL,Norwegian Air Shuttle,NO,Oslo Børs,XOSL,NOK,Industrials,Airlines,,en:Norwegian Air Shuttle
+NHY.OL,Norsk Hydro,NO,Oslo Børs,XOSL,NOK,Materials,Aluminum,,en:Norsk Hydro
+NOD.OL,Nordic Semiconductor,NO,Oslo Børs,XOSL,NOK,Information Technology,Semiconductors,,en:Nordic Semiconductor
+ORK.OL,Orkla,NO,Oslo Børs,XOSL,NOK,Consumer Staples,Food products,,en:Orkla Group
+SALM.OL,SalMar,NO,Oslo Børs,XOSL,NOK,Consumer Staples,"Farming, fishing, ranching and plantations",,en:SalMar
+STB.OL,Storebrand,NO,Oslo Børs,XOSL,NOK,Financials,Life insurance,,en:Storebrand
+SUBC.OL,Subsea 7,NO,Oslo Børs,XOSL,NOK,Energy,Oil equipment and services,,en:Subsea 7
+TEL.OL,Telenor,NO,Oslo Børs,XOSL,NOK,Communication Services,Telecommunications services,,en:Telenor
+TGS.OL,TGS ASA,NO,Oslo Børs,XOSL,NOK,Energy,Oil equipment and services,,en:TGS-NOPEC Geophysical Company
+TOM.OL,Tomra Systems,NO,Oslo Børs,XOSL,NOK,Industrials,Machinery: industrial,,en:Tomra
+VAR.OL,Vår Energi ASA,NO,Oslo Børs,XOSL,NOK,Energy,Offshore drilling and other services,,en:Vår Energi
+WAWI.OL,Wallenius Wilhelmsen,NO,Oslo Børs,XOSL,NOK,Industrials,Marine transportation,,en:Wallenius Wilhelmsen
+YAR.OL,Yara International,NO,Oslo Børs,XOSL,NOK,Materials,Fertilizers,,en:Yara International

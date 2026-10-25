@@ -1,5 +1,4 @@
 import { Link } from 'react-router'
-import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -12,6 +11,7 @@ import { useAdminOverview, useStartQuoteRefresh } from '@/lib/queries'
 import { age } from '@/lib/quote-status'
 import type { AdminOverview, QuoteRefreshRun } from '@/lib/types'
 import { dateTime, num } from '@/lib/format'
+import { MatrixLoader } from '@/components/matrix-loader'
 
 type RecentRun = AdminOverview['recentRuns'][number]
 type IndexHealth = AdminOverview['marketData']['indices'][number]
@@ -101,7 +101,7 @@ export function AdminOverviewPage() {
               <CardDescription>Active: {o.marketData.activeProvider}. Keys are never shown, only whether they are configured.</CardDescription>
             </div>
             <Button size="sm" variant="outline" onClick={refreshNow} disabled={startRefresh.isPending}>
-              {startRefresh.isPending && <Loader2 className="animate-spin" />} Refresh prices now
+              {startRefresh.isPending && <MatrixLoader />} Refresh prices now
             </Button>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -167,7 +167,7 @@ function RefreshRow({ run }: { run: QuoteRefreshRun }) {
   const running = run.status === 'Queued' || run.status === 'Running'
   return (
     <li className="flex items-start gap-2 text-xs">
-      {running && <Loader2 className="mt-0.5 size-3.5 animate-spin" aria-hidden />}
+      {running && <MatrixLoader className="mt-0.5 size-3.5" aria-hidden />}
       <span>
         {run.trigger} · {age(run.requestedAtUtc)} · {running ? 'running' : `${run.updated} updated, ${run.unchanged} current, ${run.failed} without price`}
       </span>

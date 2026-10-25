@@ -110,12 +110,21 @@ public sealed class MeanVarianceOptimizer(IQuadraticProgramSolver solver) : IPor
         var result = new List<FrontierPoint> { Point(input, Clean(gmv.Weights, spec)) };
         if (rMax - rMin < 1e-8) return result;
 
-        for (var k = 1; k < points; k++)
+        // Interior points: each solve starts from the previous point (neighbouring problems, same rows), with a looser
+        // ADMM stopping rule – the active-set polish then restores full accuracy. The last point is the maximum-return
+        // portfolio itself (a min-variance problem pinned to the maximum return is degenerate and slow to solve).
+        double[]? warmX = null, warmY = null;
+        for (var k = 1; k < points - 1; k++)
         {
             var target = rMin + (rMax - rMin) * k / (points - 1);
-            var sol = SolveMinVariance(spec, target, counters);
-            if (sol.Weights is not null) result.Add(Point(input, Clean(sol.Weights, spec)));
+            var rows = spec.Rows.Append(new Row(Pad(input.ExpectedReturns, spec.VariableCount), target, double.PositiveInfinity, "target return")).ToList();
+            var sol = SolveRows(spec.CovarianceBlock(2.0), Vector<double>.Build.Dense(spec.VariableCount), rows, counters,
+                FrontierSettings with { WarmX = warmX, WarmY = warmY });
+            if (!sol.IsOptimal) continue;
+            (warmX, warmY) = (sol.X, sol.Y);
+            result.Add(Point(input, Clean(sol.X.Take(spec.N).ToArray(), spec)));
         }
+        result.Add(Point(input, Clean(maxRet.Weights, spec)));
         return result;
     }
 
@@ -163,12 +172,56 @@ public sealed class MeanVarianceOptimizer(IQuadraticProgramSolver solver) : IPor
         return Run(spec, p, q, rows, counters, "minimum variance");
     }
 
-    /// <summary>Maximum expected return (an LP), lightly regularized with ε·wᵀΣw to make the solution unique.</summary>
+    /// <summary>
+    /// Display-only frontier points: looser ADMM tolerance (the polish step makes them exact) and an iteration cap, so a
+    /// slow point near the maximum return is left out instead of holding up the whole optimization.
+    /// </summary>
+    private static readonly QpSettings FrontierSettings = QpSettings.Default with { EpsAbs = 1e-7, EpsRel = 1e-7, MaxIterations = 1500 };
+
+    /// <summary>
+    /// Maximum expected return – a linear program. With budget, weight bounds and sector caps only (no turnover rows) it is
+    /// solved exactly by the greedy rule: start at the lower bounds and give the remaining budget to the highest expected
+    /// returns first, up to each asset's and each sector's limit (sectors are disjoint, so greedy is optimal). Otherwise –
+    /// or if the greedy fill cannot place the whole budget – the QP solver with a tiny ε·wᵀΣw regularization is used.
+    /// </summary>
     private SolveOutcome SolveMaxReturn(ProblemSpec spec, Counters counters)
     {
+        if (!spec.TurnoverApplied && GreedyMaxReturn(spec) is { } exact) return SolveOutcome.Ok(exact, null);
         var p = spec.CovarianceBlock(2e-6);
         var q = Vector<double>.Build.DenseOfArray(Pad(spec.Input.ExpectedReturns, spec.VariableCount)).Negate();
         return Run(spec, p, q, spec.Rows, counters, "maximum return");
+    }
+
+    private static double[]? GreedyMaxReturn(ProblemSpec spec)
+    {
+        var input = spec.Input;
+        var c = input.Constraints;
+        var w = (double[])spec.Lb.Clone();
+        var remaining = c.InvestedFraction - w.Sum();
+        if (remaining < -1e-12) return null;
+
+        // Room left in each capped sector after the lower bounds.
+        var sectorOf = new string?[spec.N];
+        var room = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (sector, cap) in c.SectorMaxWeights) room[sector] = cap;
+        for (var i = 0; i < spec.N; i++)
+        {
+            var sector = c.Sectors.GetValueOrDefault(input.Symbols[i]);
+            if (sector is not null && room.ContainsKey(sector)) { sectorOf[i] = sector; room[sector] -= w[i]; }
+        }
+        if (room.Values.Any(r => r < -1e-12)) return null;
+
+        foreach (var i in Enumerable.Range(0, spec.N).OrderByDescending(i => input.ExpectedReturns[i]).ThenBy(i => i))
+        {
+            if (remaining <= 1e-15) break;
+            var add = Math.Min(spec.Ub[i] - w[i], remaining);
+            if (sectorOf[i] is { } s) add = Math.Min(add, room[s]);
+            if (add <= 0) continue;
+            w[i] += add;
+            remaining -= add;
+            if (sectorOf[i] is { } s2) room[s2] -= add;
+        }
+        return remaining > 1e-9 ? null : w;
     }
 
     private SolveOutcome SolveMaxSharpe(ProblemSpec spec, Counters counters)
@@ -251,9 +304,8 @@ public sealed class MeanVarianceOptimizer(IQuadraticProgramSolver solver) : IPor
         var rLo = PortfolioMath.ExpectedReturn(gmv.Weights, input.ExpectedReturns);
         var rHi = PortfolioMath.ExpectedReturn(maxRet.Weights, input.ExpectedReturns);
 
-        var top = SolveMinVariance(spec, rHi, counters);
-        if (top.Weights is not null && PortfolioMath.Volatility(top.Weights, input.Covariance) <= maxVol)
-            return SolveOutcome.Ok(top.Weights, "Volatility limit is not binding; the maximum-return efficient portfolio is selected.");
+        if (PortfolioMath.Volatility(maxRet.Weights, input.Covariance) <= maxVol)
+            return SolveOutcome.Ok(maxRet.Weights, "Volatility limit is not binding; the maximum-return efficient portfolio is selected.");
 
         var best = gmv.Weights;
         for (var it = 0; it < 60 && rHi - rLo > 1e-9; it++)
@@ -280,7 +332,7 @@ public sealed class MeanVarianceOptimizer(IQuadraticProgramSolver solver) : IPor
         return SolveOutcome.Ok(sol.X.Take(spec.N).ToArray(), null);
     }
 
-    private QpSolution SolveRows(Matrix<double> p, Vector<double> q, IReadOnlyList<Row> rows, Counters counters)
+    private QpSolution SolveRows(Matrix<double> p, Vector<double> q, IReadOnlyList<Row> rows, Counters counters, QpSettings? settings = null)
     {
         var nv = p.RowCount;
         var a = Matrix<double>.Build.Dense(rows.Count, nv);
@@ -292,7 +344,7 @@ public sealed class MeanVarianceOptimizer(IQuadraticProgramSolver solver) : IPor
             l[r] = rows[r].Lower;
             u[r] = rows[r].Upper;
         }
-        var sol = solver.Solve(new QuadraticProgram(p, q, a, l, u));
+        var sol = solver.Solve(new QuadraticProgram(p, q, a, l, u), settings);
         counters.Calls++;
         counters.Iterations += sol.Iterations;
         return sol;

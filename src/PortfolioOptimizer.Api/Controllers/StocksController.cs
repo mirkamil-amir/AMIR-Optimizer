@@ -28,7 +28,7 @@ public sealed class StocksController(StockDiscoveryService stocks, MarketDataSer
         stocks.GetSectorsAsync(country, index, ct);
 
     /// <summary>Searches the catalogue.</summary>
-    /// <param name="country">Market (ISO country of a venue in Markets.Venues, e.g. US, DE, CH, IN); includes members of that market's indices.</param>
+    /// <param name="country">Market (ISO country of a venue in Markets.Venues, e.g. US, DE, CH, IN) or several, comma-separated (a region); includes members of their indices.</param>
     /// <param name="index">Index code (SP500, DAX40, DAX30, CAC40, FTSE100, NIKKEI225).</param>
     /// <param name="sector">Exact sector name, or "Unclassified".</param>
     /// <param name="search">Case-insensitive match on ticker, company name or ISIN.</param>

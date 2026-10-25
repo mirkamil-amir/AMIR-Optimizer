@@ -1,0 +1,18 @@
+symbol,name,country,exchange,mic,currency,sector,industry,isin,wiki
+ALTR.LS,Altri,PT,Euronext Lisbon,XLIS,EUR,Materials,Basic Resources,,en:Altri
+BCP.LS,Banco Comercial Português,PT,Euronext Lisbon,XLIS,EUR,Financials,Banks,,en:Banco Comercial Português
+COR.LS,Corticeira Amorim,PT,Euronext Lisbon,XLIS,EUR,Industrials,Industrial Goods & Services,,en:Corticeira Amorim
+CTT.LS,CTT Correios de Portugal,PT,Euronext Lisbon,XLIS,EUR,Industrials,Industrial Goods & Services,,"en:CTT Correios de Portugal, S.A."
+EDP.LS,Energias de Portugal,PT,Euronext Lisbon,XLIS,EUR,Utilities,Utilities,,en:Energias de Portugal
+EDPR.LS,EDP Renováveis,PT,Euronext Lisbon,XLIS,EUR,Utilities,Utilities,,en:EDP Renováveis
+EGL.LS,Mota-Engil,PT,Euronext Lisbon,XLIS,EUR,Industrials,Construction & Materials,,en:Mota-Engil
+GALP.LS,Galp Energia,PT,Euronext Lisbon,XLIS,EUR,Energy,Energy,,en:Galp Energia
+IBS.LS,Ibersol,PT,Euronext Lisbon,XLIS,EUR,Consumer Discretionary,Travel & Leisure,,
+JMT.LS,Jerónimo Martins,PT,Euronext Lisbon,XLIS,EUR,Consumer Staples,"Personal Care, Drug & Grocery Stores",,en:Jerónimo Martins
+NBA.LS,Novabase,PT,Euronext Lisbon,XLIS,EUR,Information Technology,Technology,,
+NOS.LS,NOS,PT,Euronext Lisbon,XLIS,EUR,Communication Services,Telecommunications,,en:NOS (Portuguese media company)
+NVG.LS,The Navigator Company,PT,Euronext Lisbon,XLIS,EUR,Materials,Basic Resources,,en:The Navigator Company
+PHR.LS,Pharol,PT,Euronext Lisbon,XLIS,EUR,Communication Services,Telecommunications,,
+RENE.LS,Redes Energéticas Nacionais,PT,Euronext Lisbon,XLIS,EUR,Utilities,Utilities,,en:Redes Energéticas Nacionais
+SEM.LS,Semapa,PT,Euronext Lisbon,XLIS,EUR,Materials,Basic Resources,,en:Semapa
+SON.LS,Sonae,PT,Euronext Lisbon,XLIS,EUR,Consumer Staples,"Personal Care, Drug & Grocery Stores",,en:Sonae

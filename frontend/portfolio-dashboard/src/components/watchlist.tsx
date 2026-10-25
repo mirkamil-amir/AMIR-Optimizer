@@ -1,4 +1,3 @@
-import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { ChartCard, TimeSeriesChart, timeSeriesTable } from '@/components/charts'
@@ -8,6 +7,7 @@ import { date, dateTime, money, pct } from '@/lib/format'
 import { useAddToWatchlist, useRemoveFromWatchlist, useStockHistory, useWatchlist } from '@/lib/queries'
 import type { HistoryRange, PricePoint } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { MatrixLoader } from '@/components/matrix-loader'
 
 const historyRanges: HistoryRange[] = ['1D', '1M', '3M', '6M', '1Y', '5Y', 'MAX']
 const rangeLabels: Partial<Record<HistoryRange, string>> = { MAX: 'Max' }
@@ -95,13 +95,13 @@ export function WatchToggle({ symbol, size = 'sm' }: { symbol: string; size?: 's
   if (size === 'icon-xs') {
     return (
       <Button size="xs" variant="ghost" onClick={run} disabled={busy} aria-label={label} title={label} aria-pressed={watched}>
-        {busy ? <Loader2 className="animate-spin" /> : watched ? 'Unwatch' : 'Watch'}
+        {busy ? <MatrixLoader /> : watched ? 'Unwatch' : 'Watch'}
       </Button>
     )
   }
   return (
     <Button size="sm" variant="outline" onClick={run} disabled={busy} aria-pressed={watched}>
-      {busy && <Loader2 className="animate-spin" />}
+      {busy && <MatrixLoader />}
       {watched ? 'Unwatch' : 'Watch'}
     </Button>
   )

@@ -1,7 +1,6 @@
 import { useRef, useState, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { errorMessage } from '@/lib/api'
@@ -10,6 +9,7 @@ import { MissingDataList } from '@/components/missing-data-list'
 import { checkData, downloadMissingData, getSyncJob, keys } from '@/lib/queries'
 import { nextStep, shouldAsk } from '@/lib/data-check'
 import type { DataCheck, DataCheckRequest, SyncJob } from '@/lib/types'
+import { MatrixLoader } from '@/components/matrix-loader'
 
 type Phase = 'review' | 'downloading' | 'incomplete'
 interface State { phase: Phase; request: DataCheckRequest; check: DataCheck; proceed: () => unknown; problems: string[] }
@@ -119,7 +119,7 @@ export function useMissingDataGuard(): { guard: (request: DataCheckRequest, proc
               Download and continue
             </Button>
           )}
-          {state.phase === 'downloading' && <Button disabled><Loader2 className="size-4 animate-spin" /> Downloading…</Button>}
+          {state.phase === 'downloading' && <Button disabled><MatrixLoader className="size-4" /> Downloading…</Button>}
         </DialogFooter>
       </DialogContent>
     </Dialog>

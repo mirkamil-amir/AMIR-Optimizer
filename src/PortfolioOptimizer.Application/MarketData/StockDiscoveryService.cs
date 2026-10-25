@@ -176,10 +176,12 @@ public sealed class StockDiscoveryService(
         }
         if (!string.IsNullOrWhiteSpace(query.Country))
         {
-            var country = query.Country.Trim().ToUpperInvariant();
-            // A market contains its listings and the members of its indices (e.g. ArcelorMittal, Amsterdam-listed CAC 40 member).
-            var codes = db.MarketIndices.Where(i => i.Country == country).Select(i => i.Code);
-            q = q.Where(a => a.Country == country || a.Memberships.Any(m => codes.Contains(m.IndexCode)));
+            // One market or several (a region: "DE,FR,IT"). A market contains its listings and the members of its indices
+            // (e.g. ArcelorMittal, the Amsterdam-listed CAC 40 member).
+            var countries = query.Country.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(c => c.ToUpperInvariant()).Distinct().ToList();
+            var codes = db.MarketIndices.Where(i => countries.Contains(i.Country)).Select(i => i.Code);
+            q = q.Where(a => countries.Contains(a.Country) || a.Memberships.Any(m => codes.Contains(m.IndexCode)));
         }
         if (!string.IsNullOrWhiteSpace(query.Index))
         {

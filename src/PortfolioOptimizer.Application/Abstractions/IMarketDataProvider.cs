@@ -63,6 +63,12 @@ public interface IMarketDataProvider
     /// <summary>Maximum symbols per <see cref="GetLatestQuotesAsync"/> request; 1 means the provider has no batch endpoint.</summary>
     int QuoteBatchSize { get; }
 
+    /// <summary>
+    /// Symbols whose history a sync job may download at once (the provider's HTTP client enforces its rate limit
+    /// regardless). 1 – the default – downloads one symbol after the other.
+    /// </summary>
+    int HistoryParallelism => 1;
+
     /// <summary>Requests left today under a known daily quota (Alpha Vantage free tier), or null when not limited.</summary>
     int? RemainingDailyRequests { get; }
 

@@ -43,14 +43,53 @@ export const venues: Venue[] = [
   { country: 'HK', countryName: 'Hong Kong', exchange: 'Hong Kong Stock Exchange', suffix: '.HK', city: 'Hong Kong', lat: 22.32, lon: 114.17, iso: '344', frame: [104, 14, 126, 32], label: 'right' },
   { country: 'IN', countryName: 'India', exchange: 'National Stock Exchange of India', suffix: '.NS', city: 'Mumbai', lat: 19.08, lon: 72.88, iso: '356', frame: [67, 6, 92, 32], label: 'left' },
   { country: 'SG', countryName: 'Singapore', exchange: 'Singapore Exchange', suffix: '.SI', city: 'Singapore', lat: 1.35, lon: 103.82, iso: '702', frame: [96, -7, 112, 9], label: 'below' },
+  // Twenty markets added 2026-10-25.
+  { country: 'NO', countryName: 'Norway', exchange: 'Oslo Børs', suffix: '.OL', city: 'Oslo', lat: 59.91, lon: 10.75, iso: '578', frame: EUROPE, label: 'left' },
+  { country: 'FI', countryName: 'Finland', exchange: 'Nasdaq Helsinki', suffix: '.HE', city: 'Helsinki', lat: 60.17, lon: 24.94, iso: '246', frame: EUROPE, label: 'right' },
+  { country: 'BE', countryName: 'Belgium', exchange: 'Euronext Brussels', suffix: '.BR', city: 'Brussels', lat: 50.85, lon: 4.35, iso: '056', frame: EUROPE, label: 'below' },
+  { country: 'PT', countryName: 'Portugal', exchange: 'Euronext Lisbon', suffix: '.LS', city: 'Lisbon', lat: 38.72, lon: -9.14, iso: '620', frame: EUROPE, label: 'left' },
+  { country: 'IE', countryName: 'Ireland', exchange: 'Euronext Dublin', suffix: '.IR', city: 'Dublin', lat: 53.35, lon: -6.26, iso: '372', frame: EUROPE, label: 'left' },
+  { country: 'AT', countryName: 'Austria', exchange: 'Wiener Börse', suffix: '.VI', city: 'Vienna', lat: 48.21, lon: 16.37, iso: '040', frame: EUROPE, label: 'right' },
+  { country: 'PL', countryName: 'Poland', exchange: 'Warsaw Stock Exchange', suffix: '.WA', city: 'Warsaw', lat: 52.23, lon: 21.01, iso: '616', frame: EUROPE, label: 'right' },
+  { country: 'HU', countryName: 'Hungary', exchange: 'Budapest Stock Exchange', suffix: '.BD', city: 'Budapest', lat: 47.5, lon: 19.04, iso: '348', frame: EUROPE, label: 'below' },
+  { country: 'GR', countryName: 'Greece', exchange: 'Athens Stock Exchange', suffix: '.AT', city: 'Athens', lat: 37.98, lon: 23.73, iso: '300', frame: EUROPE, label: 'right' },
+  { country: 'IS', countryName: 'Iceland', exchange: 'Nasdaq Iceland', suffix: '.IC', city: 'Reykjavik', lat: 64.15, lon: -21.94, iso: '352', frame: [-28, 50, 12, 68], label: 'right' },
+  { country: 'IL', countryName: 'Israel', exchange: 'Tel Aviv Stock Exchange', suffix: '.TA', city: 'Tel Aviv', lat: 32.09, lon: 34.78, iso: '376', frame: [26, 26, 44, 38], label: 'right' },
+  { country: 'KR', countryName: 'South Korea', exchange: 'Korea Exchange', suffix: '.KS', city: 'Seoul', lat: 37.57, lon: 126.98, iso: '410', frame: [119, 32, 133, 41], label: 'left' },
+  { country: 'CN', countryName: 'China', exchange: 'Shanghai Stock Exchange', suffix: '.SS', city: 'Shanghai', lat: 31.23, lon: 121.47, iso: '156', frame: [100, 18, 128, 42], label: 'right' },
+  { country: 'MY', countryName: 'Malaysia', exchange: 'Bursa Malaysia', suffix: '.KL', city: 'Kuala Lumpur', lat: 3.14, lon: 101.69, iso: '458', frame: [96, -3, 120, 9], label: 'left' },
+  { country: 'TH', countryName: 'Thailand', exchange: 'Stock Exchange of Thailand', suffix: '.BK', city: 'Bangkok', lat: 13.76, lon: 100.5, iso: '764', frame: [95, 4, 108, 21], label: 'left' },
+  { country: 'BR', countryName: 'Brazil', exchange: 'B3', suffix: '.SA', city: 'São Paulo', lat: -23.55, lon: -46.63, iso: '076', frame: [-75, -35, -33, 6], label: 'right' },
+  { country: 'ID', countryName: 'Indonesia', exchange: 'Indonesia Stock Exchange', suffix: '.JK', city: 'Jakarta', lat: -6.21, lon: 106.85, iso: '360', frame: [94, -12, 142, 7], label: 'below' },
+  { country: 'MX', countryName: 'Mexico', exchange: 'Bolsa Mexicana de Valores', suffix: '.MX', city: 'Mexico City', lat: 19.43, lon: -99.13, iso: '484', frame: [-118, 14, -86, 33], label: 'left' },
+  { country: 'ZA', countryName: 'South Africa', exchange: 'Johannesburg Stock Exchange', suffix: '.JO', city: 'Johannesburg', lat: -26.2, lon: 28.05, iso: '710', frame: [15, -35, 34, -21], label: 'right' },
+  { country: 'NZ', countryName: 'New Zealand', exchange: 'New Zealand Exchange', suffix: '.NZ', city: 'Wellington', lat: -41.29, lon: 174.78, iso: '554', frame: [165, -48, 180, -33], label: 'left' },
 ]
 
 export const venueByCountry: ReadonlyMap<string, Venue> = new Map(venues.map((v) => [v.country, v]))
+
+/** Regions that group the markets in lists (the stock chooser), in display order. */
+export const regions = ['Americas', 'Europe', 'Asia-Pacific', 'Middle East & Africa'] as const
+export type Region = (typeof regions)[number]
+
+const regionOfCountry: Record<string, Region> = {
+  US: 'Americas', CA: 'Americas', BR: 'Americas', MX: 'Americas',
+  IL: 'Middle East & Africa', ZA: 'Middle East & Africa',
+  JP: 'Asia-Pacific', AU: 'Asia-Pacific', HK: 'Asia-Pacific', IN: 'Asia-Pacific', SG: 'Asia-Pacific', KR: 'Asia-Pacific',
+  CN: 'Asia-Pacific', MY: 'Asia-Pacific', TH: 'Asia-Pacific', ID: 'Asia-Pacific', NZ: 'Asia-Pacific',
+}
+
+/** Region of a market (ISO country of its exchange); every European venue not listed above is in Europe. */
+export function regionOf(country: string): Region {
+  return regionOfCountry[country] ?? 'Europe'
+}
 
 /** Benchmark index symbols (no venue suffix) and their market – mirror of `Markets.IndexVenues`. */
 const indexCountries: Record<string, string> = {
   '^GSPC': 'US', '^GDAXI': 'DE', '^FCHI': 'FR', '^FTSE': 'GB', '^N225': 'JP', '^SSMI': 'CH', '^IBEX': 'ES', '^OMX': 'SE',
   '^OMXC25': 'DK', '^GSPTSE': 'CA', '^AXJO': 'AU', '^HSI': 'HK', '^NSEI': 'IN', '^STI': 'SG',
+  '^OMXH25': 'FI', '^BFX': 'BE', '^ISEQ': 'IE', '^ATX': 'AT', '^KS11': 'KR', '^KLSE': 'MY', '^BVSP': 'BR', '^JKLQ45': 'ID',
+  '^MXX': 'MX', '^J200.JO': 'ZA', '^NZ50': 'NZ',
 }
 
 const resolved = new Map<string, string | null>()

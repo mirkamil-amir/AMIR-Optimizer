@@ -12,6 +12,9 @@ public static class BriefRules
         ["US"] = "SP500", ["DE"] = "DAX40", ["FR"] = "CAC40", ["GB"] = "FTSE100", ["JP"] = "NIKKEI225",
         ["CH"] = "SMI", ["ES"] = "IBEX35", ["IT"] = "FTSEMIB", ["SE"] = "OMXS30", ["DK"] = "OMXC25",
         ["CA"] = "TSX60", ["AU"] = "ASX50", ["HK"] = "HSI", ["IN"] = "NIFTY50", ["SG"] = "STI",
+        ["NO"] = "OBX", ["FI"] = "OMXH25", ["BE"] = "BEL20", ["PT"] = "PSI", ["IE"] = "ISEQ20", ["AT"] = "ATX", ["PL"] = "WIG20",
+        ["HU"] = "BUX", ["GR"] = "ATHEX25", ["IS"] = "OMXI15", ["IL"] = "TA35", ["KR"] = "KOSPI200", ["CN"] = "SSE50", ["MY"] = "KLCI",
+        ["TH"] = "SET50", ["BR"] = "IBOV", ["ID"] = "LQ45", ["MX"] = "IPC", ["ZA"] = "JSE40", ["NZ"] = "NZX50",
     };
 
     public static readonly IReadOnlyDictionary<string, string> MarketNames = new Dictionary<string, string>
@@ -20,6 +23,12 @@ public static class BriefRules
         ["CH"] = "Switzerland (SMI)", ["ES"] = "Spain (IBEX 35)", ["IT"] = "Italy (FTSE MIB)", ["SE"] = "Sweden (OMX Stockholm 30)",
         ["DK"] = "Denmark (OMX Copenhagen 25)", ["CA"] = "Canada (S&P/TSX 60)", ["AU"] = "Australia (S&P/ASX 50)",
         ["HK"] = "Hong Kong (Hang Seng Index)", ["IN"] = "India (NIFTY 50)", ["SG"] = "Singapore (Straits Times Index)",
+        ["NO"] = "Norway (OBX)", ["FI"] = "Finland (OMX Helsinki 25)", ["BE"] = "Belgium (BEL 20)", ["PT"] = "Portugal (PSI)",
+        ["IE"] = "Ireland (ISEQ 20)", ["AT"] = "Austria (ATX)", ["PL"] = "Poland (WIG20)", ["HU"] = "Hungary (BUX)",
+        ["GR"] = "Greece (FTSE/Athex Large Cap)", ["IS"] = "Iceland (OMX Iceland 15)", ["IL"] = "Israel (TA-35)",
+        ["KR"] = "South Korea (KOSPI 200)", ["CN"] = "China (SSE 50)", ["MY"] = "Malaysia (FTSE Bursa Malaysia KLCI)",
+        ["TH"] = "Thailand (SET50)", ["BR"] = "Brazil (Ibovespa)", ["ID"] = "Indonesia (LQ45)", ["MX"] = "Mexico (S&P/BMV IPC)",
+        ["ZA"] = "South Africa (FTSE/JSE Top 40)", ["NZ"] = "New Zealand (S&P/NZX 50)",
     };
 
     public static readonly string[] Sectors =
@@ -128,6 +137,26 @@ public sealed class BriefInterpreter(ILanguageModel model)
         ("HK", new Regex(@"\b(hong\s*kong|hang\s*seng)\b", RegexOptions.IgnoreCase)),
         ("IN", new Regex(@"\b(india|indian|nifty(\s*50)?|mumbai)\b", RegexOptions.IgnoreCase)),
         ("SG", new Regex(@"\b(singapore|straits\s*times)\b", RegexOptions.IgnoreCase)),
+        ("NO", new Regex(@"\b(norway|norwegian|obx|oslo)\b", RegexOptions.IgnoreCase)),
+        ("FI", new Regex(@"\b(finland|finnish|omxh\s*25|helsinki)\b", RegexOptions.IgnoreCase)),
+        ("BE", new Regex(@"\b(belgium|belgian|bel\s*20|brussels)\b", RegexOptions.IgnoreCase)),
+        ("PT", new Regex(@"\b(portugal|portuguese|psi(\s*20)?|lisbon)\b", RegexOptions.IgnoreCase)),
+        ("IE", new Regex(@"\b(ireland|irish|iseq(\s*20)?|dublin)\b", RegexOptions.IgnoreCase)),
+        ("AT", new Regex(@"\b(austria|austrian|atx|vienna)\b", RegexOptions.IgnoreCase)),
+        ("PL", new Regex(@"\b(poland|polish|wig\s*20|warsaw)\b", RegexOptions.IgnoreCase)),
+        ("HU", new Regex(@"\b(hungary|hungarian|bux|budapest)\b", RegexOptions.IgnoreCase)),
+        ("GR", new Regex(@"\b(greece|greek|athex|athens)\b", RegexOptions.IgnoreCase)),
+        ("IS", new Regex(@"\b(iceland|icelandic|omxi\s*15|reykjavik)\b", RegexOptions.IgnoreCase)),
+        ("IL", new Regex(@"\b(israel|israeli|ta[- ]?35|tel\s*aviv)\b", RegexOptions.IgnoreCase)),
+        ("KR", new Regex(@"\b((south\s*)?korea|korean|kospi(\s*200)?|seoul)\b", RegexOptions.IgnoreCase)),
+        ("CN", new Regex(@"\b(china|chinese|mainland|sse\s*50|shanghai)\b", RegexOptions.IgnoreCase)),
+        ("MY", new Regex(@"\b(malaysia|malaysian|klci|kuala\s*lumpur|bursa)\b", RegexOptions.IgnoreCase)),
+        ("TH", new Regex(@"\b(thailand|thai|set\s*50|bangkok)\b", RegexOptions.IgnoreCase)),
+        ("BR", new Regex(@"\b(brazil|brazilian|ibovespa|bovespa|s[ãa]o\s*paulo)\b", RegexOptions.IgnoreCase)),
+        ("ID", new Regex(@"\b(indonesia|indonesian|lq\s*45|jakarta)\b", RegexOptions.IgnoreCase)),
+        ("MX", new Regex(@"\b(mexico|mexican|ipc|bmv)\b", RegexOptions.IgnoreCase)),
+        ("ZA", new Regex(@"\b(south\s*africa|south\s*african|jse|johannesburg)\b", RegexOptions.IgnoreCase)),
+        ("NZ", new Regex(@"\b(new\s*zealand|nzx(\s*50)?|auckland)\b", RegexOptions.IgnoreCase)),
     ];
 
     private static readonly Regex LowRisk = new(@"\b(low[- ]risk|conservative|cautious|defensive|stable|safe|capital preservation|avoid (big )?losses|don'?t want to lose)\b", RegexOptions.IgnoreCase);
