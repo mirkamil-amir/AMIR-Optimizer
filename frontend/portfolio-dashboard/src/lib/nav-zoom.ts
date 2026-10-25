@@ -1,22 +1,27 @@
 /**
- * Dock-like magnification of the sidebar entries: the closer the pointer is to an entry (vertically), the larger its text,
- * up to `--nav-zoom-max`; the selected entry never shrinks below that. The scale is written as a CSS variable on each
- * entry (like the map camera, never React state), so moving the pointer re-renders nothing.
+ * Dock-like magnification of navigation entries (sidebar: vertical, top bar: horizontal): the closer the pointer is to an
+ * entry along the list's axis, the larger its text, up to `--nav-zoom-max`; the selected entry (`data-zoom-active`) never
+ * shrinks below that. The scale is written as a CSS variable on each entry (like the map camera, never React state), so
+ * moving the pointer re-renders nothing.
  */
 
-/** Pointer distance (px) at which an entry is back at normal size. */
+/** Pointer distance (px) at which an entry is back at normal size (sidebar). */
 export const ZOOM_RADIUS = 72
 
 /** Scale of an entry `distance` px from the pointer; `active` entries keep the maximum. Pure – unit-tested. */
-export function zoomFor(distance: number, max: number, active: boolean): number {
-  const near = Math.max(0, 1 - Math.abs(distance) / ZOOM_RADIUS)
+export function zoomFor(distance: number, max: number, active: boolean, radius = ZOOM_RADIUS): number {
+  const near = Math.max(0, 1 - Math.abs(distance) / radius)
   // Smooth falloff (ease-out): neighbours grow a little, the entry under the pointer the most.
   const scale = 1 + (max - 1) * near * near * (3 - 2 * near)
   return active ? Math.max(scale, max) : scale
 }
 
-/** Applies the magnification to every `.nav-zoom` entry inside `area` while the pointer moves over it. Returns a cleanup. */
-export function attachNavZoom(area: HTMLElement): () => void {
+/**
+ * Applies the magnification to every `.nav-zoom` entry inside `area` while the pointer moves over it: `axis` 'y' for a
+ * vertical list, 'x' for a row (wider entries, so a wider radius). Returns a cleanup.
+ */
+export function attachNavZoom(area: HTMLElement, axis: 'x' | 'y' = 'y'): () => void {
+  const radius = axis === 'x' ? 130 : ZOOM_RADIUS
   if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return () => {}
   const entries = () => Array.from(area.querySelectorAll<HTMLElement>('.nav-zoom'))
   const max = () => Number.parseFloat(getComputedStyle(area).getPropertyValue('--nav-zoom-max')) || 1.2
@@ -28,8 +33,8 @@ export function attachNavZoom(area: HTMLElement): () => void {
       const m = max()
       for (const el of entries()) {
         const r = el.getBoundingClientRect()
-        const active = el.getAttribute('aria-current') === 'page'
-        el.style.setProperty('--nav-zoom', zoomFor(e.clientY - (r.top + r.height / 2), m, active).toFixed(3))
+        const distance = axis === 'x' ? e.clientX - (r.left + r.width / 2) : e.clientY - (r.top + r.height / 2)
+        el.style.setProperty('--nav-zoom', zoomFor(distance, m, el.hasAttribute('data-zoom-active'), radius).toFixed(3))
       }
     })
   }

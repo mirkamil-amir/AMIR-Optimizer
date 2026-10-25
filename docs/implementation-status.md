@@ -1,8 +1,25 @@
 # Implementation status
 
+## 2026-10-25: MaTrix – UI polish, deletable optimizations, new brand (D-40)
+
+* Brand: renamed **MaTrix** (page title "MaTrix - Portfolio Viewer"); logo = 4×4 correlation matrix with a gold diagonal
+  (chosen from nine concepts), also the favicon. Navigation (top bar and sidebar) in Sora (chosen from nine fonts); entries
+  magnify near the pointer like a dock (`lib/nav-zoom.ts`), the selected one stays enlarged. Sidebar without headings.
+* No decorative icons anywhere; explanations open from their label (no ⓘ, no underline). Header shows the name only.
+* Portfolio tabs: Overview · Holdings · Math Optimization · ML Optimization · Optimization runs · Backtest · Strategy
+  comparison · Transactions. Optimization runs: scrolling lists with search and filters; Math and ML Optimizations can be
+  deleted (bin + confirmation; `DELETE /api/v1/optimization-runs/{id}`, integration-tested incl. cross-user and archived).
+* Math/ML Optimization: one "What your result means" box (paragraphs by kind, inputs & methodology, data notes); ML feature
+  guide in plain language, checked against `FeatureCatalog.cs`. Backtest: inline choice of any optimization, no custom
+  strategy form, one "Data notes & methodology" box.
+* Currency converter: one calculator line; list and chart follow From (chart = To per From, drawn without a click); To
+  never equals From; the rate and its date in the result's tooltip.
+* Verified: `./scripts/test.sh` (unit, ML, integration) earlier in this change set; Vitest 183; Playwright 35 on the
+  disposable stack; screenshots of sidebar, header, converter, backtest and overview.
+
 ## 2026-10-24 (8): typography and contrast (D-39)
 
-* Sora for the AMIR wordmark, page titles, portfolio names and section headings (chosen from seven rendered options); Geist
+* Sora for the wordmark, page titles, portfolio names and section headings (chosen from seven rendered options); Geist
   for everything else.
 * Readability over the map: veil behind the content column, halo for text directly on it, near-solid panel for the
   Portfolio Creation market/sector list; buttons and badges excluded from the halo. Checked in light and dark screenshots.
@@ -192,7 +209,7 @@
 
 * Converter card (rates board, pair chart, calculator) on the overview and stock-selection pages, backed by
   `/fx/history` and `/fx/board`; labelled reference rates with dates, never "live".
-* AMIR = Allocation · Modelling · Investment · Research; SVG mark in the sidebar, sign-in pages, favicon, tab title.
+* Brand: MaTrix (formerly AMIR Optimizer); SVG mark (a correlation matrix with a gold diagonal) in the sidebar, sign-in pages, favicon, tab title.
 * Light / dark / system mode and five colour skins; header toggle and Settings → Appearance; persisted per browser.
 * Verified by unit, integration, Vitest and e2e tests and by screenshots (light, dark Ocean, Violet).
 

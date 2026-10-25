@@ -1,7 +1,8 @@
-# AMIR Optimizer – Portfolio Research Platform
+# MaTrix – Portfolio Viewer
 
-**AMIR = Allocation · Modelling · Investment · Research.** The logo is a geometric “A” standing over three ascending gold bars
-(allocation and growth) on a graded tile with a fine gold frame; the name is set in a classic serif
+**MaTrix** (formerly AMIR Optimizer) is named after the covariance matrix at the heart of the optimizer. The logo
+is a 4×4 correlation matrix – the risk model at the core
+of the optimizer – with its diagonal in gold on a graded navy tile; the name is set in Sora
 (`frontend/…/src/components/brand.tsx`, `public/favicon.svg`).
 
 An educational portfolio-research platform. An **AI research assistant** turns an investment objective into an

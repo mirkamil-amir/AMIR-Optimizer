@@ -20,20 +20,24 @@ const ranges = [
 ] as const
 
 /**
- * Currency converter: published reference rates against a selectable base (the majors plus any currency the user adds), a
- * chart of any pair and a calculator over every supported currency. Rates are daily reference rates (ECB, or simulated with
- * simulated prices) – never live, never an exchange offer.
+ * Currency converter: a calculator over every supported currency, the published reference rates against the "From" currency
+ * (the majors plus any currency the user adds) and a chart of From → To. Rates are daily reference rates (ECB, or simulated
+ * with simulated prices) – never live, never an exchange offer. The rate used and its date are in the result's tooltip.
  *
- * Data flow: ONE board request per base loads every supported currency; the visible rows, the calculator and "Add currency"
- * all read from it, so adding or removing a currency changes only local state (no request). Only the chart asks for the
- * chosen pair's history; while it loads, the previous chart stays visible.
+ * Data flow: ONE board request per From currency loads every supported currency; the visible rows, the calculator and "Add
+ * currency" all read from it, so adding or removing a currency changes only local state (no request). Only the chart asks
+ * for the pair's history; while it loads, the previous chart stays visible. Clicking a rate row makes it the To currency;
+ * To never equals From and defaults to the first listed currency, so the chart is drawn at once.
  */
 export function CurrencyConverterCard({ base, className }: { base: string; className?: string }) {
   const info = useFxInfo()
-  // The board's base ("1 USD =") is selectable among all published currencies; it defaults to the portfolio currency.
-  const [boardBase, setBoardBase] = useState<string>()
-  const b = boardBase ?? base
   const supported = info.data?.currencies
+  // Default pair: the first major other than the portfolio currency → the portfolio currency, never X → X.
+  const [from, setFrom] = useState<string>()
+  const [to, setTo] = useState<string>()
+  const fromCcy = from ?? converterCurrencies(base, supported).find((c) => c !== base) ?? base
+  // The rate list and the chart follow the "From" currency.
+  const b = fromCcy
   const historical = useMemo(() => info.data?.discontinued ?? [], [info.data?.discontinued])
   const allQuotes = useMemo(() => (supported ?? []).filter((c) => c !== b).sort(), [supported, b])
   const board = useFxBoard(b, allQuotes)
@@ -45,11 +49,12 @@ export function CurrencyConverterCard({ base, className }: { base: string; class
   const [added, setAdded] = useState<string[]>([])
   const shown = useMemo(() => [...new Set([...converterCurrencies(base, supported), ...added])].filter((c) => c !== b && (supported ?? []).includes(c)),
     [base, supported, added, b])
+  // To is never the From currency: when From takes its value, To falls back to the portfolio currency, else to the first
+  // currency of the list – so a pair (and its chart) always exists without a click.
+  const toCcy = to && to !== fromCcy ? to : base !== fromCcy ? base : shown[0] ?? base
   const addable = allQuotes.filter((c) => !shown.includes(c))
 
-  const [pair, setPair] = useState<string>()
-  const chartQuote = pair && pair !== b ? pair : shown[0]
-  const chartHistorical = historical.find((d) => d.currency === chartQuote)
+  const chartQuote = toCcy !== b ? toCcy : undefined
   const [range, setRange] = useState<(typeof ranges)[number]['label']>('1Y')
   const history = useFxHistory(b, chartQuote, ranges.find((r) => r.label === range)!.days)
   const points = history.data && history.data.from === b && history.data.to === chartQuote ? history.data.points : null
@@ -58,11 +63,6 @@ export function CurrencyConverterCard({ base, className }: { base: string; class
   const updating = history.isFetching && history.isPlaceholderData
 
   const [amount, setAmount] = useState('1000')
-  const [from, setFrom] = useState<string>()
-  const [to, setTo] = useState<string>()
-  // Default pair: the chosen board base (or the first major) → the portfolio currency, never X → X.
-  const fromCcy = from ?? (b !== base ? b : shown[0]) ?? base
-  const toCcy = to ?? base
   // Cross rate via the board's base: every supported currency is on the board, so any pair converts without a request.
   const rates = useMemo(() => Object.fromEntries(boardRows.map((r) => [r.quote, r.rate])), [boardRows])
   const rate = boardRows.length ? crossFromBoard(rates, b, fromCcy, toCcy) : null
@@ -81,7 +81,7 @@ export function CurrencyConverterCard({ base, className }: { base: string; class
           <InfoTip of="Currency converter">
             {board.data?.note ?? 'Reference rates, published once per business day.'} For analysis and reporting only – not a rate at which money can be
             exchanged; banks and brokers add spreads and fees.
-            {historical.length > 0 && ` No longer published: ${historical.map((d) => `${d.currency} (until ${date(d.lastRateDate)}, chart history only)`).join(', ')}.`}
+            {historical.length > 0 && ` No longer published: ${historical.map((d) => `${d.currency} (until ${date(d.lastRateDate)})`).join(', ')}.`}
           </InfoTip>
         </CardTitle>
         {board.data?.isSimulated && <DataBadge kind="simulated" />}
@@ -107,13 +107,14 @@ export function CurrencyConverterCard({ base, className }: { base: string; class
             </div>
             <div className="space-y-1.5">
               <Label>To</Label>
-              <CurrencySelect value={toCcy} onChange={setTo} supported={supported} first={base} label="Convert to" className="w-full" />
+              <CurrencySelect value={toCcy} onChange={setTo} supported={supported} first={base} exclude={fromCcy} label="Convert to" className="w-full" />
             </div>
             <div className="col-span-3 min-w-0 space-y-1.5 sm:col-span-1">
             <Label aria-hidden className="hidden sm:flex">&nbsp;</Label>
             <div className="flex h-8 min-w-0 items-center rounded-lg bg-muted/50 px-3" aria-live="polite">
               {boardLoading ? <span className="text-sm text-muted-foreground">Loading rates…</span> : result !== null ? (
-                <span className="truncate text-xl font-semibold tabular" aria-label="Converted amount">
+                <span className="truncate text-xl font-semibold tabular" aria-label="Converted amount"
+                  title={`${fxPhrase(rate, fromCcy, toCcy)}${asOf ? ` · reference rate of ${date(asOf)}` : ''}`}>
                   = {new Intl.NumberFormat('en-US', { style: 'currency', currency: toCcy, maximumFractionDigits: toCcy === 'JPY' ? 0 : 2 }).format(result)}
                 </span>
               ) : (
@@ -124,27 +125,19 @@ export function CurrencyConverterCard({ base, className }: { base: string; class
             </div>
             </div>
           </div>
-          {result !== null && !boardLoading && (
-            <p className="text-xs text-muted-foreground">{fxPhrase(rate, fromCcy, toCcy)}{asOf ? ` · reference rate of ${date(asOf)}` : ''}</p>
-          )}
         </div>
 
         {/* List and chart share one row on wide screens: the chart takes the list's height (list capped, then it scrolls). */}
         <div className="grid gap-4 lg:grid-cols-[minmax(0,15rem)_minmax(0,1fr)]">
           {/* Rate board */}
           <div className="flex min-w-0 flex-col">
-            <div className="mb-2 flex items-center gap-2">
-              <span className="text-xs font-medium text-muted-foreground uppercase">1</span>
-              <CurrencySelect value={b} onChange={setBoardBase} supported={supported} first={base} label="Base currency of the rates" size="sm" className="w-24" />
-              <span className="text-xs font-medium text-muted-foreground uppercase">=</span>
-            </div>
             {boardLoading ? <LoadingBlock height="h-40" /> : (
               <ul className="max-h-96 space-y-1 overflow-y-auto overscroll-contain" aria-label={`Exchange rates against ${b}`}>
                 {shown.map((q) => {
                   const r = rowByQuote.get(q)
                   return (
                     <li key={q} className="flex items-center gap-1">
-                      <button type="button" onClick={() => setPair(q)} aria-pressed={q === chartQuote} title={r?.problem ?? currencyName(q)}
+                      <button type="button" onClick={() => setTo(q)} aria-pressed={q === chartQuote} title={r?.problem ?? currencyName(q)}
                         className={cn('grid min-w-0 flex-1 grid-cols-[3rem_1fr_4rem] items-center gap-2 rounded-md px-2 py-1 text-left text-sm hover:bg-muted/60',
                           q === chartQuote && 'bg-muted')}>
                         <span className="font-medium">{q}</span>
@@ -164,20 +157,15 @@ export function CurrencyConverterCard({ base, className }: { base: string; class
             {/* The list is capped at 12 rows (max-h-96); say so instead of hiding rows silently. */}
             {!boardLoading && shown.length > 12 && <p className="mt-1 text-xs text-muted-foreground">{shown.length} currencies – scroll the list for more.</p>}
             {addable.length > 0 && (
-              <CurrencySelect value={null} onChange={(c) => { setAdded((a) => (a.includes(c) ? a : [...a, c])); setPair(c) }} supported={addable}
+              <CurrencySelect value={null} onChange={(c) => { setAdded((a) => (a.includes(c) ? a : [...a, c])); setTo(c) }} supported={addable}
                 label="Add a currency to the rates" placeholder="+ Add currency" size="sm" className="mt-2 w-full" />
             )}
           </div>
 
           {/* Chart of the selected pair */}
           <div className="flex min-w-0 flex-col">
-            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                {chartQuote && <CurrencySelect value={chartQuote} onChange={setPair} supported={supported} historical={historical.map((d) => d.currency)} first={base} exclude={b}
-                  label="Currency shown in the chart" size="sm" className="w-24" />}
-                <h3 className="text-xs font-medium text-muted-foreground uppercase">per {b}</h3>
-                {updating && <span className="text-xs text-muted-foreground" role="status">Updating…</span>}
-              </div>
+            <div className="mb-2 flex flex-wrap items-center justify-end gap-2">
+              {updating && <span className="mr-auto text-xs text-muted-foreground" role="status">Updating…</span>}
               <div role="radiogroup" aria-label="Exchange-rate range" className="flex gap-1">
                 {ranges.map((r) => (
                   <Button key={r.label} size="xs" variant={r.label === range ? 'secondary' : 'ghost'} role="radio" aria-checked={r.label === range} onClick={() => setRange(r.label)}>
@@ -194,16 +182,14 @@ export function CurrencyConverterCard({ base, className }: { base: string; class
                 <TimeSeriesChart dates={chartDates} series={chartSeries} format={chartFormat} yDomain={['auto', 'auto']} height="100%" />
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  {chartHistorical
-                    ? `No ${chartQuote} rates in this period. ${chartHistorical.note} Choose 1Y or 5Y to see its history.`
-                    : 'No published rates for this pair in the period.'}
+                  {chartQuote ? 'No published rates for this pair in the period.' : 'Choose two different currencies to see their chart.'}
                 </p>
               )}
             </div>
             {points && points.length > 1 && !updating && (
               <p className="mt-1 text-xs text-muted-foreground">
                 {range} change: <Signed value={points.at(-1)!.rate / points[0].rate - 1}>{pct(points.at(-1)!.rate / points[0].rate - 1, 2, true)}</Signed>{' '}
-                ({points.length} published rates{chartHistorical ? `, until ${date(chartHistorical.lastRateDate)}` : ''})
+                ({points.length} published rates)
               </p>
             )}
           </div>

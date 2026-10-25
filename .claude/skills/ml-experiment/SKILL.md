@@ -1,6 +1,6 @@
 ---
 name: ml-experiment
-description: Run ML Optimizations (machine-learning experiments) in AMIR Optimizer through the API on real stored prices (one or several model families/targets on the same universe, linked to a portfolio), wait for them, backtest or compare them with the portfolio's other optimizations, and report out-of-sample results honestly against baselines and equal weight. Use when asked to train, evaluate, compare or benchmark ML models or to produce ML evaluation numbers.
+description: Run ML Optimizations (machine-learning experiments) in MaTrix through the API on real stored prices (one or several model families/targets on the same universe, linked to a portfolio), wait for them, backtest or compare them with the portfolio's other optimizations, and report out-of-sample results honestly against baselines and equal weight. Use when asked to train, evaluate, compare or benchmark ML models or to produce ML evaluation numbers.
 ---
 
 # Run & report ML experiments

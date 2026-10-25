@@ -4,11 +4,11 @@ import { ADMIN_STATE, acceptDownloadIfAsked } from './helpers'
 // Main student and administrator journeys on the deterministic Mock data of the e2e stack.
 test.use({ storageState: ADMIN_STATE })
 
-test('header shows the signed-in name and the Admin Investor role', async ({ page }) => {
+test('header shows the signed-in name; the role is only in its label', async ({ page }) => {
   await page.goto('/')
-  const identity = page.getByLabel(/^Signed in as /)
-  await expect(identity).toContainText('Admin Investor')
+  const identity = page.getByLabel(/^Signed in as .*, Admin Investor$/)
   await expect(identity).toContainText('Administrator')
+  await expect(identity).not.toContainText('Admin Investor')
 })
 
 test('stock selection loads prices automatically and refreshes a single quote', async ({ page }) => {

@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Loader2 } from 'lucide-react'
-import { AmirWordmark } from '@/components/brand'
+import { MatrixWordmark } from '@/components/brand'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
@@ -20,7 +20,7 @@ function AuthLayout({ title, description, children, footer }: { title: string; d
     <div className="flex min-h-svh items-center justify-center bg-muted/30 px-4 py-10">
       <div className="w-full max-w-sm space-y-6">
         <div className="flex justify-center">
-          <AmirWordmark />
+          <MatrixWordmark />
         </div>
         <Card>
           <CardHeader>

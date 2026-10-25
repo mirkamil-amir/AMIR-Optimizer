@@ -18,3 +18,10 @@ describe('zoomFor', () => {
     expect(zoomFor(ZOOM_RADIUS * 3, 1.2, true)).toBe(1.2)
   })
 })
+
+describe('zoomFor along a row', () => {
+  it('uses the wider radius it is given', () => {
+    expect(zoomFor(100, 1.14, false, 130)).toBeGreaterThan(1)
+    expect(zoomFor(100, 1.14, false)).toBe(1)
+  })
+})

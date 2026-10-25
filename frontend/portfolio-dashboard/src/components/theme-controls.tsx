@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { AmirMark } from '@/components/brand'
+import { MatrixMark } from '@/components/brand'
 import { skins, useTheme, type ThemeMode } from '@/lib/theme'
 import { cn } from '@/lib/utils'
 
@@ -54,7 +54,7 @@ export function AppearanceCard() {
           ))}
         </div>
         <div className="flex items-center gap-3 rounded-lg border p-3">
-          <AmirMark className="size-10" />
+          <MatrixMark className="size-10" />
           <div className="text-sm">
             <Button size="sm">Primary action</Button>
             <span className="ml-3 text-muted-foreground">Preview of the current skin</span>

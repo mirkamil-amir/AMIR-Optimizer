@@ -66,7 +66,8 @@ dated 2025-12-31 (verified against the ECB data API and reference-rate page, 202
 2025-12-31 (charts, historical conversions); there is no current BGN rate, so it is not offered for new portfolios, the
 calculator or the rate board (the board explains why), and a current conversion fails with the reason. EUR is never
 substituted for BGN and the fixed conversion rate is not used as a market rate. No stored portfolio, transaction or asset
-used BGN when this policy was introduced.
+used BGN when this policy was introduced. The overview's currency converter charts From → To only, so it no longer shows BGN
+history (the API still serves it); its title tip names BGN as no longer published.
 
 **Alternatives** (not integrated): central-bank feeds of other base currencies (Fed H.10 for USD, BoE for GBP), commercial
 intraday providers (e.g. Refinitiv, Bloomberg, Open Exchange Rates paid tiers) for valuation at each market's close or for

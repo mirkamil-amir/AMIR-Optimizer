@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { DataBadge, LoadingBlock } from '@/components/common'
-import { AmirWordmark } from '@/components/brand'
+import { BRAND, MatrixWordmark } from '@/components/brand'
 import { ThemeQuickToggle } from '@/components/theme-controls'
 import { MapControl, SelectionOnMap, WorldMapBackdrop } from '@/components/world-map'
 import { useAuth } from '@/lib/auth'
@@ -29,6 +29,7 @@ function SidebarLink({ entry, active, onNavigate }: { entry: NavEntry; active: b
       to={entry.to}
       onClick={onNavigate}
       aria-current={active ? 'page' : undefined}
+      data-zoom-active={active ? '' : undefined}
       className={cn(
         'nav-zoom font-nav flex items-center rounded-md px-2.5 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
         active && 'bg-muted font-semibold text-foreground shadow-[inset_2px_0_0_var(--sidebar-primary)]',
@@ -39,11 +40,10 @@ function SidebarLink({ entry, active, onNavigate }: { entry: NavEntry; active: b
   )
 }
 
-/** Groups of entries; the optimizer's groups are separated by space only, the administration keeps its heading. */
-function SidebarGroups({ sections, activeTo, onNavigate, titled = false }: { sections: NavSection[]; activeTo?: string; onNavigate?: () => void; titled?: boolean }) {
+/** Groups of entries, separated by space only (no headings; the administration area by a rule). */
+function SidebarGroups({ sections, activeTo, onNavigate }: { sections: NavSection[]; activeTo?: string; onNavigate?: () => void }) {
   return sections.map((section) => (
     <div key={section.title} className="flex flex-col gap-0.5">
-      {titled && <div className="px-2.5 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">{section.title}</div>}
       {section.items.map((n) => <SidebarLink key={n.to} entry={n} active={n.to === activeTo} onNavigate={onNavigate} />)}
     </div>
   ))
@@ -63,14 +63,11 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div ref={ref} className="flex flex-col gap-4">
       <nav className="flex flex-col gap-4" aria-label="Optimizer sections">
-        <div className="flex items-center gap-2 px-2.5 text-xs font-semibold text-foreground">
-          Optimizer workspace
-        </div>
         <SidebarGroups sections={optimizerSections} activeTo={activeTo} onNavigate={onNavigate} />
       </nav>
       {isAdministrator && (
         <nav className="flex flex-col gap-4 border-t pt-4" aria-label="Administration">
-          <SidebarGroups sections={[adminSection]} activeTo={activeTo} onNavigate={onNavigate} titled />
+          <SidebarGroups sections={[adminSection]} activeTo={activeTo} onNavigate={onNavigate} />
         </nav>
       )}
     </div>
@@ -82,11 +79,14 @@ export function PrimaryNav() {
   const { pathname } = useLocation()
   const current = primaryForPath(pathname)
   const activeRef = useRef<HTMLAnchorElement>(null)
+  const navRef = useRef<HTMLElement>(null)
   useEffect(() => {
     activeRef.current?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
   }, [current?.id])
+  // Magnification along the row, like the sidebar's.
+  useEffect(() => (navRef.current ? attachNavZoom(navRef.current, 'x') : undefined), [])
   return (
-    <nav aria-label="Primary" className="nav-scroll overflow-x-auto px-2 lg:px-6">
+    <nav ref={navRef} aria-label="Primary" className="nav-zoom-row nav-scroll overflow-x-auto px-2 lg:px-6">
       <ul className="flex min-w-max items-stretch gap-0.5">
         {primaryNav.map((p) => {
           const active = current?.id === p.id
@@ -99,14 +99,15 @@ export function PrimaryNav() {
                 aria-current={active ? (pathname === p.to ? 'page' : 'true') : undefined}
                 // Inside the Optimizer workspace the item does nothing, so the open section and its inputs are kept.
                 onClick={(e) => { if (active && p.id === 'optimizer') e.preventDefault() }}
+                data-zoom-active={active ? '' : undefined}
                 className={cn(
-                  'font-nav inline-flex items-center gap-2 border-b-2 px-3 py-2.5 text-[0.95rem] whitespace-nowrap transition-colors focus-visible:rounded-t-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset',
+                  'nav-zoom font-nav inline-flex items-center gap-2 border-b-2 px-3 py-2.5 text-[0.95rem] whitespace-nowrap transition-colors focus-visible:rounded-t-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset',
                   active
                     ? 'border-primary font-semibold text-foreground'
                     : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground',
                 )}
               >
-                {p.label}
+                <span>{p.label}</span>
               </Link>
             </li>
           )
@@ -118,8 +119,8 @@ export function PrimaryNav() {
 
 function Brand() {
   return (
-    <Link to="/" className="block rounded-md px-2.5 focus-visible:ring-2 focus-visible:ring-ring" aria-label="AMIR Optimizer – home">
-      <AmirWordmark compact />
+    <Link to="/" className="block rounded-md px-2.5 focus-visible:ring-2 focus-visible:ring-ring" aria-label={`${BRAND.name} – home`}>
+      <MatrixWordmark compact />
     </Link>
   )
 }
@@ -170,12 +171,8 @@ function IdentityBadge() {
       >
         {id.initials}
       </span>
-      <div className="min-w-0 leading-tight">
-        <div className="truncate text-sm font-semibold text-foreground">{id.name}</div>
-        <div className="flex items-center gap-1 truncate text-[11px] text-muted-foreground">
-          {id.role}
-        </div>
-      </div>
+      {/* The role is not shown (only read out by screen readers via the label above). */}
+      <div className="min-w-0 truncate text-sm font-semibold text-foreground">{id.name}</div>
     </div>
   )
 }

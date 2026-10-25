@@ -1,6 +1,6 @@
 ---
 name: run-app
-description: Start the AMIR Optimizer stack (Podman containers by default, or local dotnet + Vite against the compose PostgreSQL) and verify it is healthy, including sign-in. Use when asked to run, start, restart, show or check the app.
+description: Start the MaTrix stack (Podman containers by default, or local dotnet + Vite against the compose PostgreSQL) and verify it is healthy, including sign-in. Use when asked to run, start, restart, show or check the app.
 ---
 
 # Run & verify the app

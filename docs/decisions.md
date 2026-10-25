@@ -46,10 +46,22 @@ only where they are the control itself: fold arrows, sort arrows, pager arrows, 
 spinners and the delete bin. Explanations (`InfoTip`) have no ⓘ either: the title or label they explain is the trigger (hover or
 keyboard focus), with no underline or other mark; where no label fits, a small "About" text is. Math and ML Optimizations can be deleted from the Optimization runs tab (bin + confirmation).
 Navigation: the sidebar's group headings (Portfolios, Optimize, Test & compare) were dropped – spacing separates the
-groups; the top bar and sidebar use a third bundled face, Space Grotesk (OFL, variable), and sidebar entries magnify like a
-dock as the pointer approaches (up to 1.2×, the selected entry stays at 1.2×; off with reduced motion). The currency
+groups; the top bar and sidebar use Sora as well (chosen by the owner from nine rendered
+options after Space Grotesk was rejected), and sidebar entries magnify like a
+dock as the pointer approaches (up to 1.2×, the selected entry stays at 1.2×; off with reduced motion); the top-bar entries
+do the same along the row (up to 1.14×). The currency
 converter shows amount, from, swap, to and the converted amount in one line, with the rate used beneath it. On phones the
 header keeps Selection and Account only (map and theme are on larger screens and under Account › Appearance).
+Logo: a 4×4 correlation matrix with a gold diagonal (the risk model at the core of the optimizer), chosen by the owner
+from nine rendered concepts; it replaces the "A over three bars" mark in the sidebar, sign-in pages, settings and favicon.
+Name: the product is renamed **MaTrix** (the owner's spelling; after the covariance matrix and the logo); the wordmark reads
+"MaTrix" only, the page title is "MaTrix - Portfolio Viewer", and the tagline "Portfolio Viewer" replaces the AMIR acronym.
+The header shows the user's name without the role. Currency converter: the rate list and the chart follow the From box
+(list = rates per one From unit, chart = To per From; clicking a row makes it To; To never equals From and falls back to
+the first listed currency, so the chart is drawn without a click); the separate base and chart selectors
+and the line under the calculator are gone – the rate used and its date stay in the result's tooltip, as every rate must
+keep its date. The sidebar has no headings at all
+("Optimizer workspace" and "Administration" removed); a rule separates the administration entries.
 
 ## D-39 Typography and readability over the map (2026-10-24)
 **Context:** text placed directly on the background map (e.g. the market list of Portfolio Creation) became hard to read
