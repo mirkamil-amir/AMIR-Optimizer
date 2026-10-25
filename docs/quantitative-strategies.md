@@ -48,7 +48,10 @@ All rates, weights and returns are fractions (0.05 = 5%). The trading-day conven
   portfolio is valued.
 * Daily simple return: `r[t] = P[t] / P[t−1] − 1`. Log returns are available (`ReturnCalculator.LogReturns`).
 * Multi-asset return matrices are aligned on the **intersection** of dates (no forward-filling, no pairwise-complete
-  estimation) so the covariance matrix stays positive semi-definite. Dropped observations are reported.
+  estimation) so the covariance matrix stays positive semi-definite. Dropped observations are reported. Before that,
+  `CommonWindow` leaves out stocks whose prices ended more than 10 days before the others and the fewest most recent
+  listings needed for a window of at least half the look-back (each exclusion is listed in the diagnostics), so one new
+  listing cannot shrink the window of every other stock. A Math Optimization uses at most 500 stocks.
 * Sources are never mixed: all analytics read the active provider's series only. Simulated (mock) rows are flagged.
 * Prices are stored in the trading currency's major unit (London pence converted to pounds); see [market-data.md](market-data.md).
 

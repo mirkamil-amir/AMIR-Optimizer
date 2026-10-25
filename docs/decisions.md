@@ -2,6 +2,19 @@
 
 Short records of decisions that are not obvious from the code. Newest first. Format: context → decision → consequences.
 
+## D-44 One common window for large universes; whole-selection price check (2026-10-25)
+**Context:** a Math Optimization of 2,158 stocks from 35 markets failed with "Only 30 aligned daily returns": returns use
+only the dates every stock traded, so one recent listing or one stock whose prices stopped in August cut the window of
+all ~1,000 stocks with history to 30 days. The Selection box had not offered the download because it checked only the
+first 200 selected stocks, and the pre-run data check refused selections above 151 symbols (it is advice only, so the run
+went ahead). **Decision:** `CommonWindow.Choose` leaves out – never fills in – stocks whose prices end more than 10 days
+before the latest stock's, then the fewest most recent listings until the common window has at least half the look-back
+(binary search; never fewer than 61 dates); every exclusion is reported in the diagnostics. A Math Optimization accepts at
+most 500 stocks (more parameters than a few years of returns can estimate; ~40 s solve at 500). The Selection box counts
+stored prices of the whole selection (`POST /api/v1/stocks/history-coverage`, up to 3,000 symbols, one grouped query) and
+the data check accepts 501 symbols. **Consequences:** a mixed-history universe optimizes on its long-history stocks
+instead of failing; recent listings need their own, smaller universe.
+
 ## D-43 Large optimizations in seconds (2026-10-25)
 **Context:** an optimization of ~230 stocks from 24 currencies took ~2 minutes, timed out (504) and reported that the
 maximum-return solver did not converge. **Decision:** the maximum expected return – a linear program – is solved exactly

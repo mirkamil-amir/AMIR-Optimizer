@@ -480,6 +480,15 @@ export function useFetchPrices() {
   })
 }
 
+/** Stored daily prices per symbol for a whole selection (any size; one request in the body). */
+export const useHistoryCoverage = (symbols: string[]) =>
+  useQuery({
+    queryKey: ['history-coverage', [...symbols].sort().join(',')],
+    queryFn: () => api.post<{ symbol: string; observations: number }[]>(`${V1}/stocks/history-coverage`, { symbols }),
+    enabled: symbols.length > 0,
+    placeholderData: keepPreviousData,
+  })
+
 /** Queues price-history downloads in jobs of at most 50 symbols (the per-request limit); returns the job ids at once. */
 export function useStartPriceDownload() {
   return useMutation({
@@ -506,7 +515,7 @@ export function useSyncJobs(ids: string[]) {
 export function useAfterPriceDownload() {
   const qc = useQueryClient()
   return () => {
-    for (const key of [keys.status, ['stocks'], ['stock'], ['markets'], keys.assets]) qc.invalidateQueries({ queryKey: key })
+    for (const key of [keys.status, ['stocks'], ['stock'], ['markets'], keys.assets, ['history-coverage']]) qc.invalidateQueries({ queryKey: key })
   }
 }
 

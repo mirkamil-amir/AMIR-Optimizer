@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { DataBadge, InfoTip } from '@/components/common'
 import { errorMessage } from '@/lib/api'
 import { usePortfolioContext } from '@/lib/portfolio-context'
-import { useAfterPriceDownload, useRefreshQuote, useStartPriceDownload, useStocks, useSyncJobs } from '@/lib/queries'
+import { useAfterPriceDownload, useHistoryCoverage, useRefreshQuote, useStartPriceDownload, useSyncJobs } from '@/lib/queries'
 import { age, quoteStatus } from '@/lib/quote-status'
 import { useSelection } from '@/lib/selection'
 import type { StockQuote, SyncJob } from '@/lib/types'
@@ -101,11 +101,12 @@ export function SelectionTray({ className, actions }: { className?: string; acti
   const { portfolio } = usePortfolioContext()
   const analysisCurrency = portfolio?.baseCurrency ?? 'USD'
   const selection = useSelection()
-  const coverage = useStocks({ symbols: selection.symbols, pageSize: 200 }, selection.count > 0)
+  // Coverage of the whole selection – also beyond the first page of a large selection.
+  const coverage = useHistoryCoverage(selection.symbols)
   const start = useStartPriceDownload()
   const [jobIds, setJobIds] = useState<string[]>([])
   const download = useDownloadProgress(jobIds)
-  const missing = (coverage.data?.items ?? []).filter((s) => s.observations < 61).map((s) => s.symbol)
+  const missing = (coverage.data ?? []).filter((s) => s.observations < 61).map((s) => s.symbol)
 
   if (selection.count === 0) return null
 

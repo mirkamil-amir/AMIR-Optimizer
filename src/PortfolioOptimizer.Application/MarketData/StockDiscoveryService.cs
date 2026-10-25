@@ -219,6 +219,28 @@ public sealed class StockDiscoveryService(
         return await db.Assets.AsNoTracking().SingleOrDefaultAsync(a => a.Symbol == s, ct) ?? throw new NotFoundException("Stock", s);
     }
 
+    /// <summary>Largest selection whose stored history can be checked in one request.</summary>
+    public const int MaxCoverageSymbols = 3000;
+
+    /// <summary>
+    /// Stored daily prices per symbol (active source) for any selection – one grouped query, so a selection of thousands
+    /// of stocks still learns which ones lack history. Unknown symbols are reported with 0.
+    /// </summary>
+    public async Task<IReadOnlyList<HistoryCoverageDto>> GetHistoryCoverageAsync(IReadOnlyList<string> symbols, CancellationToken ct)
+    {
+        var list = symbols.Select(Asset.NormalizeSymbol).Distinct().ToList();
+        if (list.Count > MaxCoverageSymbols) throw new ValidationException("symbols", $"At most {MaxCoverageSymbols} symbols per request.");
+        var source = (await prices.SettingsAsync(ct)).ActiveProvider;
+        var ids = await db.Assets.AsNoTracking().Where(a => list.Contains(a.Symbol)).ToDictionaryAsync(a => a.Symbol, a => a.Id, ct);
+        var idList = ids.Values.ToList();
+        var counts = await db.HistoricalPrices.AsNoTracking()
+            .Where(p => idList.Contains(p.AssetId) && p.Source == source)
+            .GroupBy(p => p.AssetId)
+            .Select(g => new { AssetId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.AssetId, x => x.Count, ct);
+        return list.Select(s => new HistoryCoverageDto(s, ids.TryGetValue(s, out var id) ? counts.GetValueOrDefault(id) : 0)).ToList();
+    }
+
     private async Task<List<StockListItemDto>> BuildItemsAsync(IReadOnlyList<Asset> assets, ApplicationSettings settings, CancellationToken ct)
     {
         var ids = assets.Select(a => a.Id).ToList();

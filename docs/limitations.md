@@ -104,6 +104,9 @@
 * Explanation quality was not evaluated with users.
 
 ## Quant & ML
+- Large universes optimize on the stocks that share a common window: recent listings and stocks whose prices stopped
+  are left out (listed in the run's diagnostics), not modelled with shorter histories. At most 500 stocks per Math
+  Optimization.
 - The Portfolio Reality Check tests four assumption changes; it is not a full resampling/bootstrap analysis, and its
   out-of-sample section appears only once ≥ 20 trading days exist after the run's window.
 - Expected returns for mean-variance are historical means. No Black–Litterman, factor models or robust optimization.

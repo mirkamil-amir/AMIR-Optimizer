@@ -46,6 +46,14 @@ public sealed class StocksController(StockDiscoveryService stocks, MarketDataSer
         stocks.SearchAsync(new StockQuery(country, index, sector, search, tracked, withPrices, sort, page, pageSize,
             symbols?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)), ct);
 
+    /// <summary>
+    /// Stored daily prices per symbol for a whole selection (up to 3,000 symbols, in the body so a long list fits); the
+    /// selection uses it to offer the download of missing histories.
+    /// </summary>
+    [HttpPost("stocks/history-coverage")]
+    public Task<IReadOnlyList<HistoryCoverageDto>> HistoryCoverage(HistoryCoverageRequest request, CancellationToken ct) =>
+        stocks.GetHistoryCoverageAsync(request.Symbols, ct);
+
     /// <summary>Refreshes the latest quotes of up to 100 stocks (e.g. the visible page) through the server's data provider.</summary>
     /// <remarks>Quotes retrieved within the cache window are reused unless <c>force</c> is set (a 30-second cooldown still applies).</remarks>
     [HttpPost("stocks/quotes/refresh")]

@@ -41,8 +41,12 @@ import { MatrixLoader } from '@/components/matrix-loader'
 
 const optionalNumber = z.number().finite().optional()
 
+/** Mirror of `OptimizationService.MaxUniverse` (the server enforces it). */
+const MAX_UNIVERSE = 500
+
 const schema = z.object({
-  universe: z.array(z.string()).min(1, 'Select at least one asset'),
+  universe: z.array(z.string()).min(1, 'Select at least one asset')
+    .max(MAX_UNIVERSE, `A Math Optimization can use at most ${MAX_UNIVERSE} stocks – narrow the universe by market, index or sector.`),
   lookbackDays: z.number().int().min(60).max(5040),
   objective: z.enum(['MinimumVariance', 'MaximumSharpe', 'TargetReturn', 'MaximumReturnForRisk', 'EqualWeight']),
   covarianceMethod: z.enum(['Sample', 'LedoitWolf']),
