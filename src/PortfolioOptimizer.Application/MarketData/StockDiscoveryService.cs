@@ -176,10 +176,12 @@ public sealed class StockDiscoveryService(
         }
         if (!string.IsNullOrWhiteSpace(query.Country))
         {
-            var country = query.Country.Trim().ToUpperInvariant();
-            // A market contains its listings and the members of its indices (e.g. ArcelorMittal, Amsterdam-listed CAC 40 member).
-            var codes = db.MarketIndices.Where(i => i.Country == country).Select(i => i.Code);
-            q = q.Where(a => a.Country == country || a.Memberships.Any(m => codes.Contains(m.IndexCode)));
+            // One market or several (a region: "DE,FR,IT"). A market contains its listings and the members of its indices
+            // (e.g. ArcelorMittal, the Amsterdam-listed CAC 40 member).
+            var countries = query.Country.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(c => c.ToUpperInvariant()).Distinct().ToList();
+            var codes = db.MarketIndices.Where(i => countries.Contains(i.Country)).Select(i => i.Code);
+            q = q.Where(a => countries.Contains(a.Country) || a.Memberships.Any(m => codes.Contains(m.IndexCode)));
         }
         if (!string.IsNullOrWhiteSpace(query.Index))
         {
@@ -215,6 +217,28 @@ public sealed class StockDiscoveryService(
     {
         var s = Asset.NormalizeSymbol(symbol);
         return await db.Assets.AsNoTracking().SingleOrDefaultAsync(a => a.Symbol == s, ct) ?? throw new NotFoundException("Stock", s);
+    }
+
+    /// <summary>Largest selection whose stored history can be checked in one request.</summary>
+    public const int MaxCoverageSymbols = 3000;
+
+    /// <summary>
+    /// Stored daily prices per symbol (active source) for any selection – one grouped query, so a selection of thousands
+    /// of stocks still learns which ones lack history. Unknown symbols are reported with 0.
+    /// </summary>
+    public async Task<IReadOnlyList<HistoryCoverageDto>> GetHistoryCoverageAsync(IReadOnlyList<string> symbols, CancellationToken ct)
+    {
+        var list = symbols.Select(Asset.NormalizeSymbol).Distinct().ToList();
+        if (list.Count > MaxCoverageSymbols) throw new ValidationException("symbols", $"At most {MaxCoverageSymbols} symbols per request.");
+        var source = (await prices.SettingsAsync(ct)).ActiveProvider;
+        var ids = await db.Assets.AsNoTracking().Where(a => list.Contains(a.Symbol)).ToDictionaryAsync(a => a.Symbol, a => a.Id, ct);
+        var idList = ids.Values.ToList();
+        var counts = await db.HistoricalPrices.AsNoTracking()
+            .Where(p => idList.Contains(p.AssetId) && p.Source == source)
+            .GroupBy(p => p.AssetId)
+            .Select(g => new { AssetId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.AssetId, x => x.Count, ct);
+        return list.Select(s => new HistoryCoverageDto(s, ids.TryGetValue(s, out var id) ? counts.GetValueOrDefault(id) : 0)).ToList();
     }
 
     private async Task<List<StockListItemDto>> BuildItemsAsync(IReadOnlyList<Asset> assets, ApplicationSettings settings, CancellationToken ct)

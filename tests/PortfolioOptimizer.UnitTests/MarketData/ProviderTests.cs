@@ -72,6 +72,25 @@ public class ProviderTests
     }
 
     [Fact]
+    public async Task Yahoo_PeriodBeforeTheFirstTradingDay_IsAnEmptyHistory_NotAFailure()
+    {
+        // The recorded answer for a range that ends before a 2024 listing (5326.KL, AADI.JK).
+        var body = """{"chart":{"result":null,"error":{"code":"Bad Request","description":"Data doesn't exist for startDate = 1628726400, endDate = 1725840000"}}}""";
+        var history = await Yahoo(new StubHandler(HttpStatusCode.BadRequest, body)).GetHistoricalPricesAsync("5326.KL", new(2021, 8, 12), new(2024, 9, 8), CancellationToken.None);
+        Assert.Empty(history.Bars);
+        Assert.Equal(0, history.RawRowCount);
+        Assert.Contains("before the first trading day", Assert.Single(history.Warnings));
+    }
+
+    [Fact]
+    public async Task Yahoo_OtherBadRequests_StillFail()
+    {
+        var body = """{"chart":{"result":null,"error":{"code":"Bad Request","description":"Invalid input - interval=1d is not supported"}}}""";
+        await Assert.ThrowsAsync<MarketDataProviderException>(() =>
+            Yahoo(new StubHandler(HttpStatusCode.BadRequest, body)).GetHistoricalPricesAsync("AAPL", new(2025, 1, 1), new(2025, 1, 10), CancellationToken.None));
+    }
+
+    [Fact]
     public async Task Yahoo_HtmlInsteadOfJson_IsReportedClearly()
     {
         var ex = await Assert.ThrowsAsync<MarketDataProviderException>(() =>

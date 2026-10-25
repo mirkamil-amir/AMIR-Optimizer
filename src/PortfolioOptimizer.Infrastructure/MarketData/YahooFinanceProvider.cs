@@ -22,7 +22,7 @@ public sealed class YahooFinanceProvider(HttpClient http, IOptions<YahooFinanceO
         RequiresApiKey: false,
         IsConfigured: options.Value.Enabled,
         ProvidesAdjustedClose: true,
-        RateLimit: $"Unpublished; client self-limits to one request per {options.Value.MinRequestIntervalMs} ms with retries on 429/5xx.",
+        RateLimit: $"Unpublished; client self-limits to one request start per {options.Value.MinRequestIntervalMs} ms, at most {options.Value.MaxConcurrentRequests} at once, with retries on 429/5xx.",
         Terms: "Unofficial endpoint. Personal, non-commercial use only per Yahoo terms; availability not guaranteed.");
 
     public async Task<ProviderHistory> GetHistoricalPricesAsync(string symbol, DateOnly startDate, DateOnly endDate, CancellationToken cancellationToken)
@@ -30,7 +30,19 @@ public sealed class YahooFinanceProvider(HttpClient http, IOptions<YahooFinanceO
         var p1 = new DateTimeOffset(startDate.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero).ToUnixTimeSeconds();
         var p2 = new DateTimeOffset(endDate.AddDays(1).ToDateTime(TimeOnly.MinValue), TimeSpan.Zero).ToUnixTimeSeconds();
         var url = $"/v8/finance/chart/{Uri.EscapeDataString(ToYahooSymbol(symbol))}?period1={p1}&period2={p2}&interval=1d&events=div%2Csplits&includeAdjustedClose=true";
-        using var doc = await GetJsonAsync(url, symbol, cancellationToken);
+        JsonDocument doc;
+        try
+        {
+            doc = await GetJsonAsync(url, symbol, cancellationToken);
+        }
+        catch (MarketDataProviderException ex) when (ex.Message.Contains("Data doesn't exist for startDate", StringComparison.OrdinalIgnoreCase))
+        {
+            // Yahoo answers HTTP 400 for a period without any trading day – typically before a recent listing (an IPO after
+            // the requested start). That is "no prices in this period", not a failure of the symbol.
+            return new ProviderHistory(symbol, "", [], 0, 0, 0,
+                [$"No prices from {startDate:yyyy-MM-dd} to {endDate:yyyy-MM-dd} (before the first trading day or not traded)."]);
+        }
+        using var _ = doc;
         var result = ChartResult(doc, symbol);
 
         var meta = result.GetProperty("meta");
@@ -95,6 +107,8 @@ public sealed class YahooFinanceProvider(HttpClient http, IOptions<YahooFinanceO
 
     /// <summary>The spark endpoint accepts at most 20 symbols per request.</summary>
     public int QuoteBatchSize => 20;
+
+    public int HistoryParallelism => Math.Max(1, options.Value.MaxConcurrentRequests);
 
     public int? RemainingDailyRequests => null;
 

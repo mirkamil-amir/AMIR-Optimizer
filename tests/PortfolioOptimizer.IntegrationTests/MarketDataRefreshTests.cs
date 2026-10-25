@@ -74,7 +74,9 @@ public sealed class MarketDataRefreshTests : IAsyncLifetime
     public async Task Markets_ListEveryUniverse_WithProvenance()
     {
         var markets = await (await _admin.GetAsync("/api/v1/markets")).ReadAsync<List<MarketDto>>();
-        Assert.Equal(["US", "DE", "FR", "GB", "JP", "CH", "ES", "IT", "SE", "DK", "CA", "AU", "HK", "IN", "SG"], markets.Select(m => m.Country));
+        Assert.Equal(["US", "DE", "FR", "GB", "JP", "CH", "ES", "IT", "SE", "DK", "CA", "AU", "HK", "IN", "SG",
+            "NO", "FI", "BE", "PT", "IE", "AT", "PL", "HU", "GR", "IS", "IL", "KR", "CN", "MY", "TH", "BR", "ID", "MX", "ZA", "NZ"],
+            markets.Select(m => m.Country));
         var indices = markets.SelectMany(m => m.Indices).ToDictionary(i => i.Code);
         Assert.Equal(40, indices["DAX40"].Members);
         Assert.Equal(30, indices["DAX30"].Members);
@@ -85,15 +87,20 @@ public sealed class MarketDataRefreshTests : IAsyncLifetime
         Assert.InRange(indices["NIKKEI225"].Members, 220, 225);
         Assert.InRange(indices["SP500"].Members, 495, 510);
         var constituentLists = indices.Values.Where(i => !i.Code.StartsWith("ETF")).ToList();
-        Assert.Equal(16, constituentLists.Count);
+        Assert.Equal(36, constituentLists.Count);
         Assert.All(constituentLists, i => Assert.Contains("wikipedia.org", i.SourceUrl));
         Assert.All(constituentLists, i => Assert.Equal("CC BY-SA 4.0", i.Licence));
         Assert.Equal(48, indices["ASX50"].Members);
         Assert.Equal("CHF", indices["SMI"].Currency);
         Assert.Equal("^HSI", indices["HSI"].BenchmarkSymbol);
+        // Markets without an index history at the price provider have no benchmark – stated, never substituted.
+        Assert.Null(indices["BUX"].BenchmarkSymbol);
+        Assert.Null(indices["OMXI15"].BenchmarkSymbol);
+        Assert.Equal("^BVSP", indices["IBOV"].BenchmarkSymbol);
+        Assert.Equal(200, indices["KOSPI200"].Members);
         // The index-ETF lists of the newer markets say they are curated, not Wikipedia data.
         var etfLists = indices.Values.Where(i => i.Code.StartsWith("ETF")).ToList();
-        Assert.Equal(10, etfLists.Count);
+        Assert.Equal(20, etfLists.Count);
         Assert.All(etfLists, i => Assert.StartsWith("Curated list", i.Source));
         Assert.All(etfLists, i => Assert.InRange(i.Members, 1, 3));
     }
@@ -113,6 +120,31 @@ public sealed class MarketDataRefreshTests : IAsyncLifetime
         var canadianEtfs = await (await _admin.GetAsync("/api/v1/stocks?index=ETFCA&pageSize=10")).ReadAsync<PagedResult<StockListItemDto>>();
         Assert.Contains(canadianEtfs.Items, s => s.Symbol == "XIU.TO" && s.Currency == "CAD");
         Assert.All(canadianEtfs.Items, s => Assert.Equal(AssetType.Etf, s.AssetType));
+
+        // Markets added later: venue currencies, the documented foreign-currency listings, numeric and series symbols.
+        var hungary = await (await _admin.GetAsync("/api/v1/stocks?index=BUX&pageSize=50")).ReadAsync<PagedResult<StockListItemDto>>();
+        Assert.Equal("EUR", hungary.Items.Single(s => s.Symbol == "GSPARK.BD").Currency);
+        Assert.Equal("HUF", hungary.Items.Single(s => s.Symbol == "OTP.BD").Currency);
+        var korea = await (await _admin.GetAsync("/api/v1/stocks?index=KOSPI200&pageSize=200")).ReadAsync<PagedResult<StockListItemDto>>();
+        Assert.Contains(korea.Items, s => s.Symbol == "005930.KS" && s.Currency == "KRW" && s.Country == "KR");
+        var brazil = await (await _admin.GetAsync("/api/v1/stocks?country=BR&pageSize=100")).ReadAsync<PagedResult<StockListItemDto>>();
+        Assert.Contains(brazil.Items, s => s.Symbol == "PETR4.SA" && s.Currency == "BRL");
+        Assert.Contains(brazil.Items, s => s.Symbol == "BOVA11.SA" && s.AssetType == AssetType.Etf);
+        Assert.Equal(HttpStatusCode.OK, (await _admin.GetAsync($"/api/v1/stocks/{Uri.EscapeDataString("PE&OLES.MX")}")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Stocks_FilterBySeveralMarkets_ForARegion()
+    {
+        async Task<int> Count(string country) =>
+            (await (await _admin.GetAsync($"/api/v1/stocks?country={country}&pageSize=1")).ReadAsync<PagedResult<StockListItemDto>>()).TotalCount;
+        var germany = await Count("DE");
+        var spain = await Count("ES");
+        // A region is several markets in one request; the sector list narrows the same way.
+        Assert.Equal(germany + spain, await Count("DE,ES"));
+        Assert.Equal(germany + spain, await Count(" de , es "));
+        var sectors = await (await _admin.GetAsync("/api/v1/sectors?country=DE,ES")).ReadAsync<List<SectorDto>>();
+        Assert.Equal(germany + spain, sectors.Sum(s => s.StockCount));
     }
 
     [Fact]

@@ -12,6 +12,11 @@ public sealed class BriefParserTests
     [InlineData("aggressive growth with S&P 500 companies", "US", "high", "MaximumSharpe")]
     [InlineData("FTSE 100 shares, I am cautious", "GB", "low", "MinimumVariance")]
     [InlineData("Nikkei stocks", "JP", "medium", "MinimumVariance")]
+    [InlineData("Brazilian stocks", "BR", "medium", "MinimumVariance")]
+    [InlineData("South Korean companies, aggressive", "KR", "high", "MaximumSharpe")]
+    [InlineData("Polish shares", "PL", "medium", "MinimumVariance")]
+    [InlineData("New Zealand stocks", "NZ", "medium", "MinimumVariance")]
+    [InlineData("South African miners, cautious", "ZA", "low", "MinimumVariance")]
     public void MarketRiskAndObjective_AreRecognised(string text, string market, string risk, string objective)
     {
         var b = Parse(text);
@@ -35,6 +40,26 @@ public sealed class BriefParserTests
         Assert.Equal(FieldOrigin.User, b.Origins["objective"].Source);
         Assert.Contains("15%", b.Origins["maxWeight"].Reason);
         Assert.Equal(FieldOrigin.Assumption, b.Origins["lookbackDays"].Source);
+    }
+
+    [Fact]
+    public void EveryMarket_HasADefaultIndexAndAName_FromTheBundledUniverses()
+    {
+        var dir = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "src", "PortfolioOptimizer.Infrastructure", "Seed", "universes");
+        var codes = File.ReadAllLines(Path.Combine(dir, "indices.csv")).Skip(1).Select(l => l.Split(',')[0]).ToHashSet();
+        foreach (var venue in PortfolioOptimizer.Application.MarketData.Markets.Venues.Where(v => v.Country != "NL"))
+        {
+            Assert.Contains(BriefRules.DefaultIndex[venue.Country], codes);
+            Assert.StartsWith(venue.CountryName, BriefRules.MarketNames[venue.Country]);
+        }
+    }
+
+    [Fact]
+    public void OrdinaryWords_DoNotSelectAMarket()
+    {
+        // "a share of", "set" or "kiwi" are not market names.
+        var b = Parse("I want a share of steady companies, set a 10% cap, like a kiwi farmer");
+        Assert.Null(b.Market);
     }
 
     [Fact]

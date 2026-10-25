@@ -8,9 +8,11 @@ of the optimizer – with its diagonal in gold on a graded navy tile; the name i
 An educational portfolio-research platform. An **AI research assistant** turns an investment objective into an
 editable research brief, researches a universe with evidence, runs the real optimizer and risk review, explains the
 results only with numbers it can show, and lets students refine and compare alternatives before deliberately saving
-one (works without any language model; see [agentic architecture](docs/agentic-architecture.md)). Students browse ~1,350 stocks and index ETFs from fifteen markets (S&P 500, DAX 40 and the
+one (works without any language model; see [agentic architecture](docs/agentic-architecture.md)). Students browse ~2,150 stocks and index ETFs from thirty-five markets (S&P 500, DAX 40 and the
 historical DAX 30, CAC 40, FTSE 100, Nikkei 225, SMI, IBEX 35, FTSE MIB, OMX Stockholm 30, OMX Copenhagen 25, S&P/TSX 60,
-S&P/ASX 50, Hang Seng, NIFTY 50, Straits Times, plus local index ETFs of the ten newer markets) with automatically refreshed,
+S&P/ASX 50, Hang Seng, NIFTY 50, Straits Times, OBX, OMX Helsinki 25, BEL 20, PSI, ISEQ 20, ATX, WIG20, BUX, FTSE/Athex
+Large Cap, OMX Iceland 15, TA-35, KOSPI 200, SSE 50, FTSE Bursa Malaysia KLCI, SET50, Ibovespa, LQ45, S&P/BMV IPC, FTSE/JSE
+Top 40, S&P/NZX 50, plus local index ETFs of twenty markets – see [market data](docs/market-data.md)) with automatically refreshed,
 clearly labelled prices, build a
 temporary selection, follow stocks on a personal **watchlist** with price history and company news, read
 **financial news** from attributed sources (with an event and price-movement comparison that makes no causal claims),
@@ -134,10 +136,14 @@ figures Geist (both bundled with the app). Details: [portfolios.md](docs/portfol
    and say "cannot be valued" instead of showing a guessed total when a rate is missing. See [currencies](docs/currency.md).
 1. **Sign in / apply.** New users apply on `/register`; their account stays *Pending* until an administrator
    approves it under **Users**. Pending, rejected and suspended accounts can sign in but only see their status page.
-2. **Portfolio Creation (stock selection).** Navigate market → index → sector, search by company or ticker, sort. Every sign-in starts a
+2. **Portfolio Creation (stock selection).** Navigate region → market → index → sector (regions fold; a region, market
+   or index is a filter of its own), search by company or ticker, sort; active filters are removable chips, "Selected
+   only" reviews the selection, and the list pages with 25–200 rows and its position ("51–100 of 2,153"); selection and
+   paging controls sit above and below the list. "Fetch prices" in the selection downloads every stock that lacks
+   history (in jobs of 50) and shows the progress – stocks done, last stock, failures – then a summary until closed. Every sign-in starts a
    shared background price refresh for all markets; the page shows cached prices immediately and refreshes the visible
    ones. Each price shows its currency, kind (*Delayed quote* / *Last close*, never "live"), when it applies, when it was
-   retrieved and whether it is cached, stale or SIMULATED; a Refresh button updates a single stock. Select stocks across
+   retrieved and whether it is cached, stale or SIMULATED; "Refresh prices" updates the visible page and a single stock is refreshed in its detail panel. Select stocks across
    sectors – the selection lives **only in browser memory** (not saved, survives navigation, discarded on reload or
    sign-out). Fetch price history for selected stocks from the selection tray. Stocks of different currencies can be
    combined (converted into the portfolio currency). When an analysis would miss stored prices or exchange rates, a window

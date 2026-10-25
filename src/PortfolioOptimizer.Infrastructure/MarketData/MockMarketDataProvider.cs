@@ -57,6 +57,8 @@ public sealed class MockMarketDataProvider(IOptions<MockProviderOptions> options
 
     public int QuoteBatchSize => 200;
 
+    public int HistoryParallelism => 8;
+
     public int? RemainingDailyRequests => null;
 
     public Task<IReadOnlyList<QuoteFetch>> GetLatestQuotesAsync(IReadOnlyList<string> symbols, CancellationToken cancellationToken) =>

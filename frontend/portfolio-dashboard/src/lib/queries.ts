@@ -1,4 +1,4 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useQueries, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from './api'
 import type {
   AppSettings, Asset, AuditEvent, Backtest, BacktestRequest, BacktestSummary, CashEntry, CatalogueImportResult, HoldingsResponse,
@@ -478,6 +478,45 @@ export function useFetchPrices() {
       qc.invalidateQueries({ queryKey: keys.assets })
     },
   })
+}
+
+/** Stored daily prices per symbol for a whole selection (any size; one request in the body). */
+export const useHistoryCoverage = (symbols: string[]) =>
+  useQuery({
+    queryKey: ['history-coverage', [...symbols].sort().join(',')],
+    queryFn: () => api.post<{ symbol: string; observations: number }[]>(`${V1}/stocks/history-coverage`, { symbols }),
+    enabled: symbols.length > 0,
+    placeholderData: keepPreviousData,
+  })
+
+/** Queues price-history downloads in jobs of at most 50 symbols (the per-request limit); returns the job ids at once. */
+export function useStartPriceDownload() {
+  return useMutation({
+    mutationFn: async (symbols: string[]) => {
+      const ids: string[] = []
+      for (let i = 0; i < symbols.length; i += 50) ids.push((await api.post<SyncJob>(`${V1}/market-data/sync`, { symbols: symbols.slice(i, i + 50) })).id)
+      return ids
+    },
+  })
+}
+
+/** The given download jobs, polled every 1.2 s while one of them is queued or running (shows progress per stock). */
+export function useSyncJobs(ids: string[]) {
+  return useQueries({
+    queries: ids.map((id) => ({
+      queryKey: ['sync-job', id],
+      queryFn: () => api.get<SyncJob>(`${V1}/market-data/jobs/${id}`),
+      refetchInterval: (q: { state: { data?: SyncJob } }) => (!q.state.data || q.state.data.status === 'Queued' || q.state.data.status === 'Running' ? 1200 : false),
+    })),
+  })
+}
+
+/** After downloads: lists, coverage and the stock pages pick up the new prices. */
+export function useAfterPriceDownload() {
+  const qc = useQueryClient()
+  return () => {
+    for (const key of [keys.status, ['stocks'], ['stock'], ['markets'], keys.assets, ['history-coverage']]) qc.invalidateQueries({ queryKey: key })
+  }
 }
 
 /** Latest background quote refresh cycle (started at sign-in); polls while it is running. */

@@ -1,0 +1,21 @@
+symbol,name,country,exchange,mic,currency,sector,industry,isin,wiki
+ALE.WA,Allegro.eu,PL,Warsaw Stock Exchange,XWAR,PLN,Consumer Discretionary,Internethandel,,de:Allegro (Internetauktionshaus)
+ALR.WA,Alior Bank,PL,Warsaw Stock Exchange,XWAR,PLN,Financials,Bank,,de:Alior Bank
+BDX.WA,Budimex,PL,Warsaw Stock Exchange,XWAR,PLN,Industrials,Bau,,de:Budimex
+CDR.WA,CD Projekt,PL,Warsaw Stock Exchange,XWAR,PLN,Communication Services,Software,,de:CD Projekt
+DNP.WA,Dino Polska,PL,Warsaw Stock Exchange,XWAR,PLN,Consumer Staples,Lebensmitteleinzelhandel,,de:Dino Polska
+EBP.WA,Erste Bank Polska (formerly Santander Bank Polska),PL,Warsaw Stock Exchange,XWAR,PLN,Financials,Bank,,de:Santander Bank Polska
+KGH.WA,KGHM Polska Miedź,PL,Warsaw Stock Exchange,XWAR,PLN,Materials,Bergbau,,de:KGHM Polska Miedź
+KRU.WA,Kruk S.A.,PL,Warsaw Stock Exchange,XWAR,PLN,Financials,Finanzdienstleister,,de:Kruk S.A.
+KTY.WA,Grupa Kęty,PL,Warsaw Stock Exchange,XWAR,PLN,Materials,Aluminiumhersteller,,de:Grupa Kęty
+LPP.WA,LPP,PL,Warsaw Stock Exchange,XWAR,PLN,Consumer Discretionary,Textilindustrie,,de:LPP (Unternehmen)
+MBK.WA,mBank,PL,Warsaw Stock Exchange,XWAR,PLN,Financials,Bank,,de:MBank
+MDV.WA,Modivo (formerly CCC),PL,Warsaw Stock Exchange,XWAR,PLN,Consumer Discretionary,Bekleidung,,de:CCC (Unternehmen)
+OPL.WA,Orange Polska,PL,Warsaw Stock Exchange,XWAR,PLN,Communication Services,Telekommunikation,,de:Orange Polska
+PCO.WA,Pepco Group,PL,Warsaw Stock Exchange,XWAR,PLN,Consumer Discretionary,"Textilien, Non-Food",,de:Pepco Group
+PEO.WA,Bank Pekao,PL,Warsaw Stock Exchange,XWAR,PLN,Financials,Bank,,de:Bank Pekao
+PGE.WA,PGE,PL,Warsaw Stock Exchange,XWAR,PLN,Utilities,Energieversorgung,,de:PGE Polska Grupa Energetyczna
+PKN.WA,Orlen,PL,Warsaw Stock Exchange,XWAR,PLN,Energy,Öl und Gas,,de:Orlen
+PKO.WA,PKO Bank Polski,PL,Warsaw Stock Exchange,XWAR,PLN,Financials,Bank,,de:PKO Bank Polski
+PZU.WA,PZU SA,PL,Warsaw Stock Exchange,XWAR,PLN,Financials,Finanzen,,de:Powszechny Zakład Ubezpieczeń
+ZAB.WA,Żabka Group,PL,Warsaw Stock Exchange,XWAR,PLN,Consumer Staples,Einzelhandel,,de:Żabka Group

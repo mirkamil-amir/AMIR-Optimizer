@@ -7,8 +7,13 @@ public sealed class YahooFinanceOptions
     public bool Enabled { get; set; } = true;
     public string BaseUrl { get; set; } = "https://query1.finance.yahoo.com";
     public string UserAgent { get; set; } = "Mozilla/5.0 (compatible; PortfolioOptimizer/1.0; personal research)";
-    /// <summary>Minimum delay between consecutive requests (self-imposed politeness limit; Yahoo publishes no official limit).</summary>
-    public int MinRequestIntervalMs { get; set; } = 500;
+    /// <summary>
+    /// Minimum spacing between request starts (self-imposed politeness limit; Yahoo publishes no official limit). With
+    /// <see cref="MaxConcurrentRequests"/> this caps the client at 1000 / interval requests per second (125 ms: 8/s).
+    /// </summary>
+    public int MinRequestIntervalMs { get; set; } = 125;
+    /// <summary>Requests in flight at once (history downloads of a sync job run this many symbols in parallel).</summary>
+    public int MaxConcurrentRequests { get; set; } = 8;
     public int TimeoutSeconds { get; set; } = 20;
 }
 

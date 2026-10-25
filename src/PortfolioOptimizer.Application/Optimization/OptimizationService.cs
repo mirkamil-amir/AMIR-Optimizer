@@ -31,6 +31,13 @@ public sealed class OptimizationService(
 {
     public const int MinimumObservations = 60;
 
+    /// <summary>
+    /// Largest Math Optimization universe. Mean-variance weights of more stocks than this are not meaningful with a few
+    /// years of daily returns (the covariance matrix has more parameters than observations), and the solve would exceed
+    /// the request timeout.
+    /// </summary>
+    public const int MaxUniverse = 500;
+
     public static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
     public const string Methodology =
@@ -47,6 +54,9 @@ public sealed class OptimizationService(
         var portfolio = await portfolios.LoadAsync(portfolioId, ct);
         portfolio.EnsureActive();
         var settings = request.Settings?.ToDomain() ?? portfolio.Settings;
+        if (settings.Universe.Count > MaxUniverse)
+            throw new ValidationException("universe",
+                $"A Math Optimization can use at most {MaxUniverse} stocks; this universe has {settings.Universe.Count}. Narrow it by market, index or sector.");
         if (request.Settings is not null && request.PersistSettings)
             await portfolios.UpdateSettingsAsync(portfolioId, settings, ct);
 
@@ -133,7 +143,16 @@ public sealed class OptimizationService(
         if (usable.Count == 0)
             return (Fail(run, OptimizationRunStatus.InvalidInput, "No asset in the universe has sufficient price history. Synchronize market data first.", diagnostics, excludedForData, sw), assets);
 
-        var matrix = ReturnMatrix.Build(series.Where(kv => usable.Contains(kv.Key)).ToDictionary(kv => kv.Key, kv => kv.Value.Points), usable);
+        // One common window for all assets: recent listings or stale histories would shrink it for every other asset.
+        var points = series.Where(kv => usable.Contains(kv.Key)).ToDictionary(kv => kv.Key, kv => kv.Value.Points);
+        var (kept, outOfWindow) = CommonWindow.Choose(points, usable, Math.Max(MinimumObservations + 1, settings.LookbackDays / 2));
+        foreach (var x in outOfWindow)
+        {
+            excludedForData.Add(x.Symbol);
+            diagnostics.Add($"{x.Symbol}: {x.Reason}");
+        }
+        usable = [.. kept];
+        var matrix = ReturnMatrix.Build(points, usable);
         run.Symbols = usable;
         run.PeriodStart = matrix.PriceDates.FirstOrDefault();
         run.PeriodEnd = matrix.PriceDates.LastOrDefault();

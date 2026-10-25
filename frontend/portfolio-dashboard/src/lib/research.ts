@@ -11,6 +11,11 @@ export const marketNames: Record<string, string> = {
   CH: 'Switzerland (SMI)', ES: 'Spain (IBEX 35)', IT: 'Italy (FTSE MIB)', SE: 'Sweden (OMX Stockholm 30)', DK: 'Denmark (OMX Copenhagen 25)',
   CA: 'Canada (S&P/TSX 60)', AU: 'Australia (S&P/ASX 50)', HK: 'Hong Kong (Hang Seng Index)', IN: 'India (NIFTY 50)',
   SG: 'Singapore (Straits Times Index)',
+  NO: 'Norway (OBX)', FI: 'Finland (OMX Helsinki 25)', BE: 'Belgium (BEL 20)', PT: 'Portugal (PSI)', IE: 'Ireland (ISEQ 20)',
+  AT: 'Austria (ATX)', PL: 'Poland (WIG20)', HU: 'Hungary (BUX)', GR: 'Greece (FTSE/Athex Large Cap)', IS: 'Iceland (OMX Iceland 15)',
+  IL: 'Israel (TA-35)', KR: 'South Korea (KOSPI 200)', CN: 'China (SSE 50)', MY: 'Malaysia (FTSE Bursa Malaysia KLCI)',
+  TH: 'Thailand (SET50)', BR: 'Brazil (Ibovespa)', ID: 'Indonesia (LQ45)', MX: 'Mexico (S&P/BMV IPC)',
+  ZA: 'South Africa (FTSE/JSE Top 40)', NZ: 'New Zealand (S&P/NZX 50)',
 }
 
 export const sectors = [

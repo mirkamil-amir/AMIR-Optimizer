@@ -12,6 +12,17 @@ describe('markets', () => {
     expect(countryOfSymbol('rci-b.to')).toBe('CA')
     expect(countryOfSymbol('^HSI')).toBe('HK')
     expect(countryOfSymbol('FTSEMIB.MI')).toBe('IT')
+    // The twenty markets added later, including symbols with digits, series letters and '&'.
+    expect(countryOfSymbol('005930.KS')).toBe('KR')
+    expect(countryOfSymbol('600519.SS')).toBe('CN')
+    expect(countryOfSymbol('PETR4.SA')).toBe('BR')
+    expect(countryOfSymbol('PE&OLES.MX')).toBe('MX')
+    expect(countryOfSymbol('NPN.JO')).toBe('ZA')
+    expect(countryOfSymbol('ALPHA.AT')).toBe('GR')
+    expect(countryOfSymbol('R-LQ45X.JK')).toBe('ID')
+    expect(countryOfSymbol('^J200.JO')).toBe('ZA')
+    expect(countryOfSymbol('^BVSP')).toBe('BR')
+    expect(countryOfSymbol('OSEBX.OL')).toBe('NO')
   })
 
   it('never guesses a market for an unknown venue or index', () => {
@@ -28,7 +39,7 @@ describe('markets', () => {
 
   it('has one exchange city with valid coordinates per market', () => {
     expect(new Set(venues.map((v) => v.country)).size).toBe(venues.length)
-    expect(venues).toHaveLength(16)
+    expect(venues).toHaveLength(36)
     for (const v of venues) {
       expect(v.lat).toBeGreaterThan(-58)
       expect(v.lat).toBeLessThan(84)

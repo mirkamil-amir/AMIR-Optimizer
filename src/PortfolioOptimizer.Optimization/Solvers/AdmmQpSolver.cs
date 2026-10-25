@@ -42,9 +42,16 @@ public sealed class AdmmQpSolver : IQuadraticProgramSolver
         var x = Vector<double>.Build.Dense(n);
         var z = Vector<double>.Build.Dense(m);
         var y = Vector<double>.Build.Dense(m);
+        if (s.WarmX is { } wx && wx.Length == n && s.WarmY is { } wy && wy.Length == m)
+        {
+            x = Vector<double>.Build.DenseOfArray(wx);
+            y = Vector<double>.Build.DenseOfArray(wy);
+            z = Project(a * x, l, u);
+        }
         double primRes = double.PositiveInfinity, dualRes = double.PositiveInfinity;
         var status = QpStatus.MaxIterationsReached;
         var iter = 0;
+        var earlyPolished = false;
 
         for (iter = 1; iter <= s.MaxIterations; iter++)
         {
@@ -60,6 +67,10 @@ public sealed class AdmmQpSolver : IQuadraticProgramSolver
             var zNew = Project(zHat + y.PointwiseDivide(rho), l, u);
             y = y + rho.PointwiseMultiply(zHat - zNew);
             z = zNew;
+
+            // Residuals and certificates cost several matrix–vector products: like OSQP, check them every few iterations
+            // (and always on the last one) instead of after every step.
+            if (iter % s.CheckInterval != 0 && iter != s.MaxIterations) continue;
 
             if (!AllFinite(x) || !AllFinite(y))
                 return Fail(QpStatus.NumericalError, n, m, "Iterates diverged to non-finite values.");
@@ -105,6 +116,18 @@ public sealed class AdmmQpSolver : IQuadraticProgramSolver
                     catch (Exception ex) { return Fail(QpStatus.NumericalError, n, m, $"KKT re-factorization failed: {ex.Message}"); }
                 }
             }
+
+            // Early polish: once the iterates are roughly right, the active set is usually already correct and the polish
+            // step solves the problem exactly. Accepted only when it meets the strict tolerance (10·EpsAbs) on its own.
+            if (s.Polish && s.EarlyPolishInterval > 0 && iter % s.EarlyPolishInterval == 0 &&
+                primRes <= s.EarlyPolishTolerance && dualRes <= s.EarlyPolishTolerance &&
+                Polish(problem, x, z, y, s, 0, 0) is { } early)
+            {
+                (x, y, primRes, dualRes) = early;
+                status = QpStatus.Solved;
+                earlyPolished = true;
+                break;
+            }
         }
 
         if (status is QpStatus.PrimalInfeasible)
@@ -117,8 +140,8 @@ public sealed class AdmmQpSolver : IQuadraticProgramSolver
         if (status == QpStatus.MaxIterationsReached && primRes <= s.InaccurateTolerance && dualRes <= s.InaccurateTolerance)
             status = QpStatus.SolvedInaccurate;
 
-        var polished = false;
-        if (s.Polish && status is QpStatus.Solved or QpStatus.SolvedInaccurate)
+        var polished = earlyPolished;
+        if (!earlyPolished && s.Polish && status is QpStatus.Solved or QpStatus.SolvedInaccurate)
         {
             var pol = Polish(problem, x, z, y, s, primRes, dualRes);
             if (pol is not null)

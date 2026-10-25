@@ -1,6 +1,5 @@
 import { useDeferredValue } from 'react'
 import { useSearchParams } from 'react-router'
-import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -12,6 +11,7 @@ import { useAuth } from '@/lib/auth'
 import { useNews } from '@/lib/queries'
 import type { NewsCategory, NewsFilters, NewsScope } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { MatrixLoader } from '@/components/matrix-loader'
 
 type View = 'latest' | 'watchlist' | 'Company' | 'Market' | 'Macro'
 
@@ -128,7 +128,7 @@ export function NewsPage() {
         <div className="space-y-2" aria-live="polite" aria-busy={news.isFetching}>
           {data?.refreshing && (
             <p role="status" className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Loader2 className="size-3.5 animate-spin" aria-hidden /> Updating news sources… The articles below were stored earlier; their publication times are shown on each.
+              <MatrixLoader className="size-3.5" aria-hidden /> Updating news sources… The articles below were stored earlier; their publication times are shown on each.
             </p>
           )}
           {failing.length > 0 && <SourceProblems sources={failing} />}

@@ -29,6 +29,29 @@ public class OptimizerTests
         new(symbols ?? Three, mu ?? Mu3, cov ?? Cov3, objective, c ?? new PortfolioConstraints(), rf, current);
 
     [Fact]
+    public void MaximumReturn_IsTheExactLinearProgramOptimum_WithBoundsAndSectorCaps()
+    {
+        // Max weight 40 %, Tech (B, C) capped at 50 %: the LP optimum is C 40 %, B 10 % (Tech full), A 40 %, D 10 %.
+        string[] symbols = ["A", "B", "C", "D"];
+        var c = new PortfolioConstraints
+        {
+            MaxWeight = 0.4,
+            Sectors = new Dictionary<string, string> { ["A"] = "Health", ["B"] = "Tech", ["C"] = "Tech", ["D"] = "Energy" },
+            SectorMaxWeights = new Dictionary<string, double> { ["Tech"] = 0.5 },
+            TargetReturn = 0.2,
+        };
+        var cov = BuildCov([0.2, 0.25, 0.3, 0.22], new double[,] { { 1, 0.2, 0.2, 0.1 }, { 0.2, 1, 0.5, 0.1 }, { 0.2, 0.5, 1, 0.1 }, { 0.1, 0.1, 0.1, 1 } });
+        double[] mu = [0.10, 0.12, 0.15, 0.05];
+        // The highest achievable expected return: 0.4·0.15 + 0.1·0.12 + 0.4·0.10 + 0.1·0.05 = 0.117.
+        var result = _optimizer.Optimize(Input(OptimizationObjective.TargetReturn, c, symbols: symbols, mu: mu, cov: cov));
+        Assert.Equal(OptimizationStatus.Infeasible, result.Status);
+        Assert.Matches(@"maximum achievable expected return 11\.70\s?%", result.Message);
+        var frontier = _optimizer.EfficientFrontier(Input(OptimizationObjective.MinimumVariance, c, symbols: symbols, mu: mu, cov: cov), 8);
+        Assert.Equal(0.117, frontier[^1].ExpectedReturn, 9);                   // the frontier ends at the exact maximum
+        Assert.All(frontier.Zip(frontier.Skip(1)), p => Assert.True(p.Second.ExpectedReturn >= p.First.ExpectedReturn - 1e-9));
+    }
+
+    [Fact]
     public void MinimumVariance_TwoAssets_MatchesClosedForm()
     {
         var cov = BuildCov([0.2, 0.3], new double[,] { { 1, 0.25 }, { 0.25, 1 } });

@@ -18,7 +18,8 @@ public sealed record MarketVenue(
 /// <summary>
 /// Supported venues and the canonical symbol convention. Canonical symbols follow Yahoo Finance: US tickers without a
 /// suffix (share classes with '-', e.g. BRK-B), other venues with an exchange suffix (SAP.DE, MC.PA, TSCO.L, BT-A.L,
-/// 7203.T, MT.AS, NOVN.SW, ATCO-A.ST, RCI-B.TO, 0005.HK, M&amp;M.NS). Providers translate canonical symbols with <see cref="SymbolMapper"/>.
+/// 7203.T, MT.AS, NOVN.SW, ATCO-A.ST, RCI-B.TO, 0005.HK, M&amp;M.NS, 005930.KS, 600519.SS, PETR4.SA, NAFTRACISHRS.MX). Providers translate
+/// canonical symbols with <see cref="SymbolMapper"/>.
 /// </summary>
 public static class Markets
 {
@@ -42,6 +43,27 @@ public static class Markets
         new("HK", "Hong Kong", "Hong Kong Stock Exchange", "XHKG", "HKD", ".HK", null, "Asia/Hong_Kong"),
         new("IN", "India", "National Stock Exchange of India", "XNSE", "INR", ".NS", null, "Asia/Kolkata"),
         new("SG", "Singapore", "Singapore Exchange", "XSES", "SGD", ".SI", null, "Asia/Singapore"),
+        // Twenty markets added 2026-10-25.
+        new("NO", "Norway", "Oslo Børs", "XOSL", "NOK", ".OL", null, "Europe/Oslo"),
+        new("FI", "Finland", "Nasdaq Helsinki", "XHEL", "EUR", ".HE", null, "Europe/Helsinki"),
+        new("BE", "Belgium", "Euronext Brussels", "XBRU", "EUR", ".BR", null, "Europe/Brussels"),
+        new("PT", "Portugal", "Euronext Lisbon", "XLIS", "EUR", ".LS", null, "Europe/Lisbon"),
+        new("IE", "Ireland", "Euronext Dublin", "XDUB", "EUR", ".IR", null, "Europe/Dublin"),
+        new("AT", "Austria", "Wiener Börse", "XWBO", "EUR", ".VI", null, "Europe/Vienna"),
+        new("PL", "Poland", "Warsaw Stock Exchange", "XWAR", "PLN", ".WA", null, "Europe/Warsaw"),
+        new("HU", "Hungary", "Budapest Stock Exchange", "XBUD", "HUF", ".BD", null, "Europe/Budapest"),
+        new("GR", "Greece", "Athens Stock Exchange", "ASEX", "EUR", ".AT", null, "Europe/Athens"),
+        new("IS", "Iceland", "Nasdaq Iceland", "XICE", "ISK", ".IC", null, "Atlantic/Reykjavik"),
+        new("IL", "Israel", "Tel Aviv Stock Exchange", "XTAE", "ILS", ".TA", null, "Asia/Jerusalem"),
+        new("KR", "South Korea", "Korea Exchange", "XKRX", "KRW", ".KS", null, "Asia/Seoul"),
+        new("CN", "China", "Shanghai Stock Exchange", "XSHG", "CNY", ".SS", null, "Asia/Shanghai"),
+        new("MY", "Malaysia", "Bursa Malaysia", "XKLS", "MYR", ".KL", null, "Asia/Kuala_Lumpur"),
+        new("TH", "Thailand", "Stock Exchange of Thailand", "XBKK", "THB", ".BK", null, "Asia/Bangkok"),
+        new("BR", "Brazil", "B3", "BVMF", "BRL", ".SA", null, "America/Sao_Paulo"),
+        new("ID", "Indonesia", "Indonesia Stock Exchange", "XIDX", "IDR", ".JK", null, "Asia/Jakarta"),
+        new("MX", "Mexico", "Bolsa Mexicana de Valores", "XMEX", "MXN", ".MX", null, "America/Mexico_City"),
+        new("ZA", "South Africa", "Johannesburg Stock Exchange", "XJSE", "ZAR", ".JO", null, "Africa/Johannesburg"),
+        new("NZ", "New Zealand", "New Zealand Exchange", "XNZE", "NZD", ".NZ", null, "Pacific/Auckland"),
     ];
 
     /// <summary>The venue of a canonical symbol (index symbols such as ^GDAXI are matched by <see cref="IndexVenues"/>).</summary>
@@ -59,12 +81,13 @@ public static class Markets
     }
 
     /// <summary>
-    /// Listings that trade in another currency than their venue's (checked against the price provider 2026-10-24): the
-    /// Jardine group companies trade in US dollars on the Singapore Exchange. The universe files carry the same currency.
+    /// Listings that trade in another currency than their venue's (checked against the price provider): the Jardine group
+    /// companies trade in US dollars on the Singapore Exchange (2026-10-24), Graphisoft Park in euros in Budapest and
+    /// Hammerson's Dublin line in pounds (2026-10-25). The universe files carry the same currency.
     /// </summary>
     public static readonly IReadOnlyDictionary<string, string> ForeignCurrencyListings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
     {
-        ["D01.SI"] = "USD", ["H78.SI"] = "USD", ["J36.SI"] = "USD",
+        ["D01.SI"] = "USD", ["H78.SI"] = "USD", ["J36.SI"] = "USD", ["GSPARK.BD"] = "EUR", ["HMSO.IR"] = "GBP",
     };
 
     /// <summary>Trading currency of a canonical symbol: its venue's currency unless listed in <see cref="ForeignCurrencyListings"/>.</summary>
@@ -80,6 +103,9 @@ public static class Markets
         ["^GSPC"] = "US", ["^GDAXI"] = "DE", ["^FCHI"] = "FR", ["^FTSE"] = "GB", ["^N225"] = "JP",
         ["^SSMI"] = "CH", ["^IBEX"] = "ES", ["^OMX"] = "SE", ["^OMXC25"] = "DK", ["^GSPTSE"] = "CA", ["^AXJO"] = "AU",
         ["^HSI"] = "HK", ["^NSEI"] = "IN", ["^STI"] = "SG", // the FTSE MIB index (FTSEMIB.MI) carries the Milan suffix
+        ["^OMXH25"] = "FI", ["^BFX"] = "BE", ["^ISEQ"] = "IE", ["^ATX"] = "AT", ["^KS11"] = "KR", ["^KLSE"] = "MY", ["^BVSP"] = "BR",
+        ["^JKLQ45"] = "ID", ["^MXX"] = "MX", ["^J200.JO"] = "ZA", ["^NZ50"] = "NZ",
+        // OSEBX.OL, PSI20.LS, GD.AT, TA35.TA and 000001.SS carry their venue's suffix; Poland and Thailand use index ETFs.
     };
 
     public static TimeZoneInfo TimeZone(MarketVenue venue)
@@ -89,8 +115,9 @@ public static class Markets
     }
 
     /// <summary>
-    /// Regular continuous-trading session in exchange-local time (no auctions, lunch breaks, half days or holiday calendar).
-    /// Tokyo closes at 15:30 since the session extension of 5 Nov 2024; earlier dates closed at 15:00.
+    /// Regular continuous-trading session in exchange-local time (no auctions, lunch breaks, half days, weekday differences
+    /// or holiday calendar – an approximation used to label quotes). Tokyo closes at 15:30 since the session extension of
+    /// 5 Nov 2024; earlier dates closed at 15:00.
     /// </summary>
     public static (TimeOnly Open, TimeOnly Close) Session(MarketVenue venue, DateOnly date) => venue.Country switch
     {
@@ -102,7 +129,23 @@ public static class Markets
         "HK" => (new(9, 30), new(16, 0)),
         "IN" => (new(9, 15), new(15, 30)),
         "SG" => (new(9, 0), new(17, 0)),
-        _ => (new(9, 0), new(17, 30)), // Xetra, Euronext Paris/Amsterdam, SIX, Madrid, Milan, Stockholm
+        "NO" => (new(9, 0), new(16, 20)),
+        "FI" => (new(10, 0), new(18, 25)),
+        "PT" or "IE" => (new(8, 0), new(16, 30)),
+        "PL" => (new(9, 0), new(16, 50)),
+        "HU" or "ZA" => (new(9, 0), new(17, 0)),
+        "GR" => (new(10, 0), new(17, 20)),
+        "IS" => (new(9, 30), new(15, 30)),
+        "IL" => (new(10, 0), new(17, 15)),
+        "KR" => (new(9, 0), new(15, 30)),
+        "CN" => (new(9, 30), new(15, 0)),
+        "MY" => (new(9, 0), new(16, 45)),
+        "TH" => (new(10, 0), new(16, 30)),
+        "BR" => (new(10, 0), new(17, 0)),
+        "ID" => (new(9, 0), new(16, 0)),
+        "MX" => (new(8, 30), new(15, 0)),
+        "NZ" => (new(10, 0), new(16, 45)),
+        _ => (new(9, 0), new(17, 30)), // Xetra, Euronext Paris/Amsterdam/Brussels, SIX, Madrid, Milan, Stockholm, Vienna
     };
 
     /// <summary>UTC instant of a local exchange time on a date (daylight saving handled by the venue's time zone).</summary>

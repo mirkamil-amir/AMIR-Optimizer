@@ -57,9 +57,21 @@ public sealed record QpSettings
     public double InaccurateTolerance { get; init; } = 1e-5;
     public int MaxIterations { get; init; } = 100_000;
     public int AdaptiveRhoInterval { get; init; } = 25;
+    /// <summary>Iterations between early polish attempts (0: polish only after convergence).</summary>
+    public int EarlyPolishInterval { get; init; } = 50;
+    /// <summary>Residuals below which an early polish is attempted.</summary>
+    public double EarlyPolishTolerance { get; init; } = 1e-3;
+    /// <summary>Iterations between termination and infeasibility checks (OSQP's check_termination).</summary>
+    public int CheckInterval { get; init; } = 5;
     public bool Polish { get; init; } = true;
     public double PolishDelta { get; init; } = 1e-9;
     public int PolishRefinementSteps { get; init; } = 5;
+    /// <summary>
+    /// Warm start: primal and dual iterates of a closely related problem (same variables and rows), e.g. the previous
+    /// point of an efficient frontier. Ignored when the dimensions differ.
+    /// </summary>
+    public double[]? WarmX { get; init; }
+    public double[]? WarmY { get; init; }
 }
 
 public sealed record QpSolution(

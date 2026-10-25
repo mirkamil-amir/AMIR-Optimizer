@@ -1,14 +1,13 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
-import { Loader2, Trash2 } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Progress } from '@/components/ui/progress'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { ChartCard, TimeSeriesChart, seriesColor, timeSeriesTable } from '@/components/charts'
@@ -27,6 +26,7 @@ import { useMissingDataGuard } from '@/components/missing-data-dialog'
 import type { ComparisonStrategy, StrategyComparison, StrategyComparisonRequest } from '@/lib/types'
 import { date, money, pct, relativeTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { MatrixLoader, WorkingPanel } from '@/components/matrix-loader'
 
 /** Fixed colour per strategy kind (follows the entity, never its rank). */
 const strategyColor: Record<string, string> = {
@@ -190,7 +190,7 @@ function NewComparisonCard({ fixedPortfolioId }: { fixedPortfolioId?: string }) 
           <InfoTip>Only for one mathematical and one ML optimization: a separate, clearly labelled extra strategy. The two strategies themselves stay unchanged.</InfoTip>
         </div>
         <Button className="w-full" onClick={submit} disabled={!strategyA || !strategyB || create.isPending || missingData.checking}>
-          {create.isPending || missingData.checking && <Loader2 className="animate-spin" />} Compare strategies
+          {(create.isPending || missingData.checking) && <MatrixLoader />} Compare strategies
         </Button>
         {missingData.dialog}
       </CardContent>
@@ -263,7 +263,7 @@ function ComparisonDetail({ id, portfolioId }: { id: string; portfolioId?: strin
             }}><Trash2 /></Button>}
           </div>
         </div>
-        {active && <div className="space-y-1" aria-live="polite"><Progress value={s.progressPercent} aria-label="Comparison progress" /><p className="text-xs text-muted-foreground">{s.progressMessage}</p></div>}
+        {active && <WorkingPanel title="Simulating the strategies…" detail={s.progressMessage} percent={s.progressPercent} />}
         {s.status === 'Failed' && <Alert variant="destructive"><AlertTitle>Comparison failed</AlertTitle><AlertDescription>{s.error}</AlertDescription></Alert>}
         <p className="text-[11px] text-muted-foreground">{c.disclaimer}</p>
       </CardContent></Card>

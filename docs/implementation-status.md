@@ -1,5 +1,38 @@
 # Implementation status
 
+## 2026-10-25 (4): large optimizations, faster downloads (D-43)
+
+* Optimizer: exact maximum return (greedy LP), warm-started capped frontier, early polish, OSQP-style check interval.
+  230 stocks via the API: ~2 min (504) → 10–11 s; benchmark frontier 154 s → 6.9 s. New test: exact max return with
+  bounds and sector caps, frontier ending at it.
+* Downloads: 8 requests/s, 8 in flight; DbContext released per symbol: 100 five-year symbols 33.6 s → 17.6 s.
+* Stock list without the per-row Refresh button.
+* Verified: `./scripts/test.sh` (after restarting the Podman machine, which had stopped with 5 GB free on the Mac;
+  `fstrim` returned it to 17 GB), Vitest 187, Playwright 35; timings on the development and the e2e stack.
+
+## 2026-10-25 (3): faster downloads, stock chooser for 35 markets (D-42)
+
+* Sync jobs: start-spaced throttle with up to 4 Yahoo requests in flight, parallel download / sequential storage, quotes
+  batched after the job; pre-listing periods are empty, not failures (5326.KL, AADI.JK now succeed). Measured: 100 stocks ×
+  5 years 62 s → 36 s (≈1.4 s → 0.36 s per stock vs. the earlier jobs).
+* Portfolio Creation and the optimizations' stock choice: markets grouped by region (folding, region as a filter, API
+  `country=DE,FR`), filter chips with Clear all, "Selected only", pager with rows per page, position and first/last.
+* Verified: `./scripts/test.sh` (unit incl. throttle and pre-listing tests, ML, integration incl. region filter), Vitest
+  187, Playwright 35; downloads timed on the development stack; screenshot of the chooser.
+
+## 2026-10-25 (2): twenty more markets (D-41)
+
+* Norway, Finland, Belgium, Portugal, Ireland, Austria, Poland, Hungary, Greece, Iceland, Israel, South Korea, China,
+  Malaysia, Thailand, Brazil, Indonesia, Mexico, South Africa, New Zealand: 791 stocks (20 index universes) and 14 index
+  ETFs (10 markets); venues, time zones, sessions, benchmarks (18), foreign-currency listings, research-brief markets and
+  names, map cities and frames. Builder: retries when Wikipedia throttles, tables whose class follows other attributes or
+  that have a title row, ticker changes and delistings recorded in the script.
+* Verified: every symbol and benchmark against the price provider (currency, at least a year of daily prices); on the
+  development stack the 30 new universe files imported with 0 issues, the login quote refresh covered 2,188 symbols
+  (2,130 updated; failures: four known provider quirks and stale quotes), a year of prices for one stock per new market
+  and every benchmark downloaded, agorot and cents converted. `./scripts/test.sh`, Vitest 183, Playwright 35.
+* Not done: point-in-time constituents (as before); holiday calendars; the Philippines (no provider data).
+
 ## 2026-10-25: MaTrix – UI polish, deletable optimizations, new brand (D-40)
 
 * Brand: renamed **MaTrix** (page title "MaTrix - Portfolio Viewer"); logo = 4×4 correlation matrix with a gold diagonal

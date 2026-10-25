@@ -15,3 +15,6 @@ TestResults/
 .DS_Store
 .idea/
 *.DotSettings.user
+
+# Python bytecode (the universe and world-map builders)
+__pycache__/

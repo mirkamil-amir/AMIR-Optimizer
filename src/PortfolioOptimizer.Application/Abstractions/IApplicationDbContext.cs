@@ -42,6 +42,9 @@ public interface IApplicationDbContext
 
     DatabaseFacade Database { get; }
 
+    /// <summary>Tracked entities (long jobs release what they no longer need, so saving stays fast).</summary>
+    Microsoft.EntityFrameworkCore.ChangeTracking.ChangeTracker ChangeTracker { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 
     /// <summary>True when the save failed because a unique index/constraint was violated (provider-specific error code).</summary>

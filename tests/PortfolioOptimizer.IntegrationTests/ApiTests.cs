@@ -188,6 +188,33 @@ public sealed class ApiTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task HistoryCoverage_CountsStoredPricesOfAWholeSelection()
+    {
+        var response = await _client.PostJsonAsync("/api/v1/stocks/history-coverage",
+            new HistoryCoverageRequest { Symbols = ["AAPL", "msft", "NOPE"] });
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var coverage = await response.ReadAsync<List<HistoryCoverageDto>>();
+        Assert.Equal(["AAPL", "MSFT", "NOPE"], coverage.Select(c => c.Symbol));
+        Assert.True(coverage[0].Observations > 60);
+        Assert.Equal(0, coverage[2].Observations);
+
+        var tooMany = await _client.PostJsonAsync("/api/v1/stocks/history-coverage",
+            new HistoryCoverageRequest { Symbols = Enumerable.Range(0, 3001).Select(i => $"S{i}").ToList() });
+        Assert.Equal(HttpStatusCode.BadRequest, tooMany.StatusCode);
+    }
+
+    [Fact]
+    public async Task MathOptimization_RefusesMoreThan500Stocks()
+    {
+        var portfolio = await CreatePortfolioAsync();
+        var response = await _client.PostJsonAsync($"/api/v1/portfolios/{portfolio.Id}/optimization-runs", new RunOptimizationRequest
+        {
+            Settings = new PortfolioSettingsDto { Universe = Enumerable.Range(0, 501).Select(i => $"S{i}").ToList() },
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task InfeasibleConstraints_AreStoredWithExplanationAndNoWeights()
     {
         var portfolio = await CreatePortfolioAsync(new PortfolioSettingsDto { Universe = ["AAPL", "MSFT"], MaxWeight = 0.3, LookbackDays = 252 });

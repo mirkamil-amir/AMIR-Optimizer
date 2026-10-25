@@ -56,7 +56,7 @@ public static class DependencyInjection
         {
             c.BaseAddress = new Uri(o.BaseUrl);
             c.Timeout = Timeout.InfiniteTimeSpan; // governed by the resilience pipeline
-        }, o => o.MinRequestIntervalMs, o => o.TimeoutSeconds);
+        }, o => o.MinRequestIntervalMs, o => o.TimeoutSeconds, o => o.MaxConcurrentRequests);
 
         AddProviderClient<AlphaVantageProvider, AlphaVantageOptions>(services, (o, c) =>
         {
@@ -199,7 +199,8 @@ public static class DependencyInjection
         IServiceCollection services,
         Action<TOptions, HttpClient> configure,
         Func<TOptions, int> minIntervalMs,
-        Func<TOptions, int> timeoutSeconds)
+        Func<TOptions, int> timeoutSeconds,
+        Func<TOptions, int>? maxConcurrent = null)
         where TClient : class
         where TOptions : class
     {
@@ -220,7 +221,8 @@ public static class DependencyInjection
         builder.AddHttpMessageHandler(sp =>
         {
             var opts = sp.GetRequiredService<IOptions<TOptions>>().Value;
-            return new ThrottlingHandler(TimeSpan.FromMilliseconds(minIntervalMs(opts)), sp.GetRequiredService<TimeProvider>());
+            return new ThrottlingHandler(TimeSpan.FromMilliseconds(minIntervalMs(opts)), sp.GetRequiredService<TimeProvider>(),
+                maxConcurrent?.Invoke(opts) ?? 1);
         });
     }
 }

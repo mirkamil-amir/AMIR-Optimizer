@@ -1,0 +1,26 @@
+symbol,name,country,exchange,mic,currency,sector,industry,isin,wiki
+ELISA.HE,Elisa,FI,Nasdaq Helsinki,XHEL,EUR,Communication Services,Communication Services,,en:Elisa (company)
+FORTUM.HE,Fortum,FI,Nasdaq Helsinki,XHEL,EUR,Utilities,Utilities,,en:Fortum
+HIAB.HE,Hiab,FI,Nasdaq Helsinki,XHEL,EUR,Industrials,Industrials,,en:Cargotec
+HUH1V.HE,Huhtamäki,FI,Nasdaq Helsinki,XHEL,EUR,Industrials,Industrials,,en:Huhtamäki
+KALMAR.HE,Kalmar [fi] B,FI,Nasdaq Helsinki,XHEL,EUR,Industrials,Industrials,,
+KCR.HE,Konecranes,FI,Nasdaq Helsinki,XHEL,EUR,Industrials,Industrials,,en:Konecranes
+KEMIRA.HE,Kemira,FI,Nasdaq Helsinki,XHEL,EUR,Materials,Materials,,en:Kemira
+KESKOB.HE,Kesko B,FI,Nasdaq Helsinki,XHEL,EUR,Consumer Staples,Consumer Staples,,en:Kesko
+KNEBV.HE,KONE,FI,Nasdaq Helsinki,XHEL,EUR,Industrials,Industrials,,en:Kone
+LUMO.HE,Lumo Kodit (formerly Kojamo),FI,Nasdaq Helsinki,XHEL,EUR,Real Estate,Real Estate,,
+MANTA.HE,Mandatum,FI,Nasdaq Helsinki,XHEL,EUR,Financials,Financials,,
+METSO.HE,Metso,FI,Nasdaq Helsinki,XHEL,EUR,Industrials,Industrials,,en:Metso (2020–present)
+NDA-FI.HE,Nordea,FI,Nasdaq Helsinki,XHEL,EUR,Financials,Financials,,en:Nordea
+NESTE.HE,Neste,FI,Nasdaq Helsinki,XHEL,EUR,Energy,Energy,,en:Neste
+NOKIA.HE,Nokia,FI,Nasdaq Helsinki,XHEL,EUR,Information Technology,Information Technology,,en:Nokia
+ORNBV.HE,Orion,FI,Nasdaq Helsinki,XHEL,EUR,Health Care,Health Care,,en:Orion Corporation (pharmaceutical company)
+OUT1V.HE,Outokumpu,FI,Nasdaq Helsinki,XHEL,EUR,Materials,Materials,,en:Outokumpu
+QTCOM.HE,Qt Group,FI,Nasdaq Helsinki,XHEL,EUR,Information Technology,Information Technology,,en:The Qt Company
+SAMPO.HE,Sampo A,FI,Nasdaq Helsinki,XHEL,EUR,Financials,Financials,,en:Sampo Group
+STERV.HE,Stora Enso R,FI,Nasdaq Helsinki,XHEL,EUR,Materials,Materials,,en:Stora Enso
+TIETO.HE,TietoEVRY,FI,Nasdaq Helsinki,XHEL,EUR,Information Technology,Information Technology,,en:TietoEVRY
+TYRES.HE,Nokian Tyres,FI,Nasdaq Helsinki,XHEL,EUR,Consumer Discretionary,Consumer Discretionary,,en:Nokian Tyres
+UPM.HE,UPM-Kymmene,FI,Nasdaq Helsinki,XHEL,EUR,Materials,Materials,,en:UPM (company)
+VALMT.HE,Valmet,FI,Nasdaq Helsinki,XHEL,EUR,Industrials,Industrials,,en:Valmet
+WRT1V.HE,Wärtsilä,FI,Nasdaq Helsinki,XHEL,EUR,Industrials,Industrials,,en:Wärtsilä

@@ -214,3 +214,11 @@ public sealed record DataCheckDto(string Currency, DateOnly From, DateOnly To, b
 
 /// <summary>Downloads started for a data check: price jobs (poll /market-data/jobs/{id}) and currencies whose rates load in the background.</summary>
 public sealed record DataDownloadDto(IReadOnlyList<Guid> SyncJobIds, IReadOnlyList<string> PriceSymbols, IReadOnlyList<string> Currencies);
+
+/// <summary>Stored daily prices of one symbol (active source).</summary>
+public sealed record HistoryCoverageDto(string Symbol, int Observations);
+
+public sealed record HistoryCoverageRequest
+{
+    [Required, MinLength(1)] public List<string> Symbols { get; init; } = [];
+}

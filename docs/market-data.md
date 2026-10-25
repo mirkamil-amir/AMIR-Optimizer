@@ -23,15 +23,53 @@ against the live providers on 2026-10-14 (smoke tests: `PO_LIVE_SMOKE=1 dotnet t
 | Hong Kong | Hang Seng Index | 85 | HKEX (XHKG) | HKD | `0005.HK` (four digits) | ^HSI |
 | India | NIFTY 50 | 50 | NSE (XNSE) | INR | `RELIANCE.NS`, `M&M.NS` | ^NSEI |
 | Singapore | Straits Times Index | 30 (three trade in USD: `D01.SI`, `H78.SI`, `J36.SI`) | SGX (XSES) | SGD | `D05.SI` | ^STI |
+| Norway | OBX | 24 | Oslo Børs (XOSL) | NOK | `EQNR.OL` | OSEBX.OL (Oslo Børs Benchmark) |
+| Finland | OMX Helsinki 25 | 25 | Nasdaq Helsinki (XHEL) | EUR | `NOKIA.HE`, `NDA-FI.HE` | ^OMXH25 |
+| Belgium | BEL 20 | 20 (19 Brussels + Aperam on Euronext Amsterdam `APAM.AS`) | Euronext Brussels (XBRU) | EUR | `ABI.BR` | ^BFX |
+| Portugal | PSI | 17 | Euronext Lisbon (XLIS) | EUR | `GALP.LS` | PSI20.LS |
+| Ireland | ISEQ 20 | 20 (Hammerson's Dublin line trades in GBP: `HMSO.IR`) | Euronext Dublin (XDUB) | EUR | `RYA.IR` | ^ISEQ (ISEQ All Share) |
+| Austria | ATX | 20 | Wiener Börse (XWBO) | EUR | `EBS.VI` | ^ATX |
+| Poland | WIG20 | 20 | Warsaw Stock Exchange (XWAR) | PLN | `PKO.WA` | ETFBW20TR.WA (ETF – no index history at the provider) |
+| Hungary | BUX | 17 (Graphisoft Park trades in EUR: `GSPARK.BD`) | Budapest Stock Exchange (XBUD) | HUF | `OTP.BD` | none (no index history at the provider) |
+| Greece | FTSE/Athex Large Cap | 24 | Athens Stock Exchange (ASEX) | EUR | `ALPHA.AT` | GD.AT (Athex Composite) |
+| Iceland | OMX Iceland 15 | 15 | Nasdaq Iceland (XICE) | ISK | `ARION.IC` | none (no index history at the provider) |
+| Israel | TA-35 | 35 | Tel Aviv Stock Exchange (XTAE) | ILS (provider quotes agorot, ÷100) | `TEVA.TA` | TA35.TA |
+| South Korea | KOSPI 200 | 200 | Korea Exchange (XKRX) | KRW | `005930.KS` (six digits) | ^KS11 (KOSPI Composite) |
+| China | SSE 50 | 50 | Shanghai Stock Exchange (XSHG) | CNY | `600519.SS` | 000001.SS (SSE Composite) |
+| Malaysia | FTSE Bursa Malaysia KLCI | 30 | Bursa Malaysia (XKLS) | MYR | `1155.KL` (four digits) | ^KLSE |
+| Thailand | SET50 | 51 | Stock Exchange of Thailand (XBKK) | THB | `PTT.BK` | TDEX.BK (ETF – no index history at the provider) |
+| Brazil | Ibovespa | 57 (share classes separately: `PETR3.SA`, `PETR4.SA`) | B3 (BVMF) | BRL | `VALE3.SA`, `BPAC11.SA` | ^BVSP |
+| Indonesia | LQ45 | 44 | Indonesia Stock Exchange (XIDX) | IDR | `BBCA.JK` | ^JKLQ45 |
+| Mexico | S&P/BMV IPC | 33 | Bolsa Mexicana de Valores (XMEX) | MXN | `WALMEX.MX`, `GFNORTEO.MX`, `PE&OLES.MX` | ^MXX |
+| South Africa | FTSE/JSE Top 40 | 39 | Johannesburg Stock Exchange (XJSE) | ZAR (provider quotes cents, ÷100) | `NPN.JO` | ^J200.JO |
+| New Zealand | S&P/NZX 50 | 50 | New Zealand Exchange (XNZE) | NZD | `FPH.NZ` | ^NZ50 (gross) |
 
-**Index ETFs.** Each of the ten newer markets also has a small universe "<Country> index ETFs" (`ETFCH` … `ETFSG`, 1–2
-funds each, `AssetType.Etf`): exchange-traded funds on the local index, e.g. `CSSMI.SW`, `XIU.TO`, `STW.AX`, `2800.HK`,
-`NIFTYBEES.NS`, `ES3.SI`. They are a curated list in `build_universes.py` (not Wikipedia, not index constituents);
-symbol, name, currency and fund type were checked against the price provider on 2026-10-24. `SPIC25KL.CO` is a Danish
+**Twenty markets added 2026-10-25.** Every member and benchmark symbol was checked against the price provider that day
+(the instrument exists, trades in the recorded currency and has at least a year of daily prices); a sample download of a
+year of prices per market and of every benchmark succeeded, with agorot and cents converted to ILS and ZAR. Wikipedia
+tables lag corporate events, so the builder records what changed since the pinned revision:
+renamed or re-listed members point to today's symbol (`TICKER_CHANGES`: Ryanair `RYA.IR`, Immofinanz → CPI Europe
+`CPI.VI`, Santander Bank Polska → Erste Bank Polska `EBP.WA`, CCC → Modivo `MDV.WA`, Mytilineos → Metlen `MTLN.AT`,
+OPAP → Allwyn `ALWN.AT`, Kojamo → Lumo Kodit `LUMO.HE`, Alfa → Sigma Foods `SIGMAFA.MX`, CCR → Motiva `MOTV3.SA`,
+Eletrobras → Axia `AXIA3.SA`, Embraer `EMBJ3.SA`, Natura `NATU3.SA`, Marfrig/BRF → MBRF `MBRF3.SA`) and members no longer
+listed are left out with the reason printed by the build (Golden Ocean, Sonae Capital, Terna Energy, Grupo Elektra,
+MultiChoice, BRF, JBS, Eletrobras PNB, Azul PN, Gol, Cielo, Carrefour Brasil). The ATX, WIG20 and FTSE/JSE Top 40 tables
+name no tickers, and the ISEQ 20, SSE 50 and LQ45 tables no sectors: those are assigned in the script (company →
+ticker/sector, approximate sectors), each ticker checked with the provider. The **Philippines** (PSEi) was evaluated
+and left out: the provider has no data for the Philippine Stock Exchange. Turkey, the Czech Republic and Romania have
+no usable Wikipedia constituent table; Taiwan, Saudi Arabia and others have no ECB reference rate.
+
+**Index ETFs.** Twenty markets also have a small universe "<Country> index ETFs" (`ETFCH` … `ETFSG`, checked
+2026-10-24; `ETFKR`, `ETFCN`, `ETFBR`, `ETFMX`, `ETFZA`, `ETFNZ`, `ETFPL`, `ETFTH`, `ETFMY`, `ETFID`, checked 2026-10-25;
+1–2 funds each, `AssetType.Etf`): exchange-traded funds on the local index, e.g. `CSSMI.SW`, `XIU.TO`, `STW.AX`,
+`2800.HK`, `NIFTYBEES.NS`, `ES3.SI`, `069500.KS`, `BOVA11.SA`, `NAFTRACISHRS.MX`, `STX40.JO`. They are a curated list in
+`build_universes.py` (not Wikipedia, not index constituents); symbol, name and currency were checked against the price
+provider (which labels some of them as equities). The other new markets have no local index ETF with prices at the provider. `SPIC25KL.CO` is a Danish
 listed index fund (investeringsforening) rather than a UCITS ETF. Constituent files may carry an optional `type` column
 (`Equity` default, `Etf`).
 
-All currencies of the new markets (CHF, SEK, DKK, CAD, AUD, HKD, INR, SGD) have ECB reference rates, so prices,
+All currencies of the newer markets (CHF, SEK, DKK, CAD, AUD, HKD, INR, SGD, NOK, PLN, HUF, ISK, ILS, KRW, CNY, MYR, THB,
+BRL, IDR, MXN, ZAR, NZD) have ECB reference rates, so prices,
 analyses, portfolio values and backtests convert exactly like the earlier markets (`FxService`, dated rates).
 
 The DAX 30 list is a fixed historical composition (the 30 members before the expansion to 40), shown as
@@ -62,6 +100,26 @@ All constituent lists come from pinned Wikipedia revisions (CC BY-SA 4.0), recor
 | Hang Seng Index | en: "Hang Seng Index" | 1377881667 |
 | NIFTY 50 | en: "NIFTY 50" | 1379683379 |
 | Straits Times Index | en: "Straits Times Index" | 1373209403 |
+| OBX | en: "OBX Index" | 1356511451 |
+| OMX Helsinki 25 | en: "OMX Helsinki 25" | 1356511455 |
+| BEL 20 | en: "BEL 20" | 1380911122 |
+| PSI | en: "PSI-20" | 1381076092 |
+| ISEQ 20 | en: "ISEQ 20" | 1362357822 |
+| ATX | en: "Austrian Traded Index" | 1356511363 |
+| WIG20 | de: "WIG20" (the English article has no constituent table) | 270643862 |
+| BUX | en: "BUX" | 1356511092 |
+| FTSE/Athex Large Cap | en: "FTSE/Athex Large Cap" | 1366728259 |
+| OMX Iceland 15 | en: "OMX Iceland 15" | 1337461510 |
+| TA-35 | en: "TA-35 Index" | 1362844669 |
+| KOSPI 200 | en: "KOSPI 200" | 1379902632 |
+| SSE 50 | en: "SSE 50 Index" | 1356509131 |
+| FTSE Bursa Malaysia KLCI | en: "FTSE Bursa Malaysia KLCI" | 1356927985 |
+| SET50 | en: "SET50 Index and SET100 Index" | 1358079040 |
+| Ibovespa | pt: "Lista de companhias citadas no Ibovespa" | 70162555 |
+| LQ45 | en: "LQ45" | 1370624740 |
+| S&P/BMV IPC | en: "Indice de Precios y Cotizaciones" | 1364117964 |
+| FTSE/JSE Top 40 | en: "FTSE/JSE Top 40 Index" | 1343081092 |
+| S&P/NZX 50 | en: "S&P/NZX 50" | 1381776750 |
 
 Only the FTSE MIB table lists ISINs (kept); for all other indices the ISIN column is empty (never derived). Index providers' official lists are licensed
 data; Wikipedia was chosen because its licence allows redistribution with attribution.
@@ -96,7 +154,7 @@ After any update, run a quote refresh (Admin overview → *Refresh prices now*) 
 
 | Provider | Role | Markets | Key | Limits (verified 2026-10-14) | Price kind |
 |---|---|---|---|---|---|
-| **Yahoo Finance** (unofficial chart + spark endpoints) | default for quotes and history | US, DE, FR, NL, GB, JP, index levels | none | unpublished; client throttles 1 request / 500 ms; spark accepts ≤ 20 symbols | delayed quotes during trading (typically 15+ min), session closes otherwise |
+| **Yahoo Finance** (unofficial chart + spark endpoints) | default for quotes and history | all 36 venues, index levels (not the Philippines; no BUX, OMX Iceland 15, WIG20 or SET history) | none | unpublished; client starts at most one request per 125 ms with ≤ 8 in flight (≤ 8/s, `MarketData:Yahoo`); spark accepts ≤ 20 symbols | delayed quotes during trading (typically 15+ min), session closes otherwise |
 | **Alpha Vantage** | optional alternative (Admin settings → provider) | US, Xetra `.DEX`, Paris `.PAR`, Amsterdam `.AMS`, London `.LON`; **no Tokyo, no index levels** | `ALPHAVANTAGE_API_KEY` (server only) | free key: **25 requests/day**, ~1 request/s; adjusted daily series is premium | end of day (`GLOBAL_QUOTE` gives the last trading day only) |
 | **Mock** | offline demos and all automated tests | every symbol | none | none | **SIMULATED**, flagged everywhere |
 
@@ -154,6 +212,15 @@ admin ──► POST /admin/catalogue/quote-refresh;  scheduler (every 12 h) ─
 * **De-duplication:** a sign-in starts a cycle only if none is running and the last one was requested more than
   `MarketData:Quotes:CycleMinIntervalMinutes` (15) ago; otherwise it reuses that cycle.
 * **Cache window:** quotes retrieved within `FreshForMinutes` (15) are reused; the UI marks older ones "cached".
+* **History downloads (sync jobs):** the stored date range of every symbol of a job is read in one query, the provider
+  downloads run ahead in parallel (`IMarketDataProvider.HistoryParallelism`: Yahoo 8, Alpha Vantage 1) while the
+  database work stays sequential and in job order, and the latest quotes are fetched afterwards in batches (20 per spark
+  request) instead of one request per symbol. A period with no trading day (before a recent listing: Yahoo answers HTTP
+  400 "Data doesn't exist") is stored as "no prices in this period", not as a failure. Measured on the development stack
+  (2026-10-25, 100 stocks without stored prices, five years each): 1.4 s per symbol before, 0.36 s with 4 requests/s,
+  0.18 s with 8/s once stored prices are released from the DbContext after each symbol (the time per symbol had grown
+  from 0.14 to 0.31 s during a job). History cannot be downloaded 20 symbols per request: Yahoo's multi-symbol endpoint
+  (spark) returns plain closes only – no adjusted closes (dividends), no open/high/low/volume and no currency.
 * **Rate limits:** page and single refreshes share a per-user limit (60/min); ≤ 100 symbols per page refresh; the
   provider throttles itself. A rejected Yahoo batch is retried once, then fetched symbol by symbol.
 * **States shown to users:** *Delayed quote* (last trade within 30 minutes), *Last close* (session finished or stored

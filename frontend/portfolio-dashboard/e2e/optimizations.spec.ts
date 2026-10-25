@@ -187,5 +187,5 @@ test('optimizations of one portfolio: Math and ML pages alike, backtest any opti
   await expect(map.locator('[data-country="JP"]')).toHaveAttribute('data-state', 'idle')
   if (process.env.SCREENSHOT_DIR) await page.screenshot({ path: `${process.env.SCREENSHOT_DIR}/overview.png`, fullPage: true })
   await page.goto('/')
-  await expect(map.locator('[data-state="lit"]')).toHaveCount(16)
+  await expect(map.locator('[data-state="lit"]')).toHaveCount(36)                    // every exchange city of the 36 markets
 })

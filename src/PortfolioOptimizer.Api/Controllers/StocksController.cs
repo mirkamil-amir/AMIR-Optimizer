@@ -28,7 +28,7 @@ public sealed class StocksController(StockDiscoveryService stocks, MarketDataSer
         stocks.GetSectorsAsync(country, index, ct);
 
     /// <summary>Searches the catalogue.</summary>
-    /// <param name="country">Market (ISO country of a venue in Markets.Venues, e.g. US, DE, CH, IN); includes members of that market's indices.</param>
+    /// <param name="country">Market (ISO country of a venue in Markets.Venues, e.g. US, DE, CH, IN) or several, comma-separated (a region); includes members of their indices.</param>
     /// <param name="index">Index code (SP500, DAX40, DAX30, CAC40, FTSE100, NIKKEI225).</param>
     /// <param name="sector">Exact sector name, or "Unclassified".</param>
     /// <param name="search">Case-insensitive match on ticker, company name or ISIN.</param>
@@ -45,6 +45,14 @@ public sealed class StocksController(StockDiscoveryService stocks, MarketDataSer
         CancellationToken ct, [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
         stocks.SearchAsync(new StockQuery(country, index, sector, search, tracked, withPrices, sort, page, pageSize,
             symbols?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)), ct);
+
+    /// <summary>
+    /// Stored daily prices per symbol for a whole selection (up to 3,000 symbols, in the body so a long list fits); the
+    /// selection uses it to offer the download of missing histories.
+    /// </summary>
+    [HttpPost("stocks/history-coverage")]
+    public Task<IReadOnlyList<HistoryCoverageDto>> HistoryCoverage(HistoryCoverageRequest request, CancellationToken ct) =>
+        stocks.GetHistoryCoverageAsync(request.Symbols, ct);
 
     /// <summary>Refreshes the latest quotes of up to 100 stocks (e.g. the visible page) through the server's data provider.</summary>
     /// <remarks>Quotes retrieved within the cache window are reused unless <c>force</c> is set (a 30-second cooldown still applies).</remarks>

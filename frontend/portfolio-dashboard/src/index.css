@@ -453,3 +453,11 @@
 
 /* Toasts carry no status icon (no decorative icons anywhere): the title says what happened. */
 [data-sonner-toast] [data-icon] { display: none !important; }
+
+/* MatrixLoader (components/matrix-loader.tsx): each dot of the logo's matrix lights up in turn (16 × 80 ms = 1.28 s). */
+.matrix-loader circle { opacity: 0.22; animation: matrix-dot 1.28s linear infinite; }
+@keyframes matrix-dot { 0%, 100% { opacity: 0.22; } 6% { opacity: 1; } 22% { opacity: 0.22; } }
+@media (prefers-reduced-motion: reduce) {
+  .matrix-loader circle { animation: matrix-pulse 2.4s ease-in-out infinite; animation-delay: 0s !important; }
+  @keyframes matrix-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.8; } }
+}

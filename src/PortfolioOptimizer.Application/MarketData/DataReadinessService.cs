@@ -15,8 +15,8 @@ namespace PortfolioOptimizer.Application.MarketData;
 public sealed class DataReadinessService(IApplicationDbContext db, PriceQueryService prices, MarketDataService marketData, FxService fx,
     ICurrentUser currentUser, TimeProvider clock)
 {
-    /// <summary>Same bound as an ML universe plus benchmark.</summary>
-    public const int MaxSymbols = CreateMlExperimentRequest.MaxUniverse + 1;
+    /// <summary>The largest universe any analysis accepts (a Math Optimization's) plus its benchmark.</summary>
+    public const int MaxSymbols = Optimization.OptimizationService.MaxUniverse + 1;
 
     /// <summary>A history starting within a week after the requested date is complete (weekends, holidays, listing calendars).</summary>
     public const int StartToleranceDays = 7;
