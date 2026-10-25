@@ -61,13 +61,14 @@
 
 * Renamed "Mathematical Optimization" → "Math Optimization". ML Optimization moved into the portfolio workspace
   (`/portfolios/:id/ml-optimize[/:experimentId]`, tab next to Math Optimization); `/ml-optimize` and the earlier
-  `/machine-learning[/:id]` URLs redirect. Both pages share one layout: configuration (portfolio universe, "Use stock
-  selection", Browse, Clear; Run optimization / Run ML optimization) and run history on the left; header with badges and
-  actions, four headline metrics, every result section visible at once (`ResultSection`, no tabs), the trade proposal card
+  `/machine-learning[/:id]` URLs redirect. Both pages share one layout: Optimization history, then the form (equity universe
+  list with Browse stocks → Choose stocks page, "Use stock selection", Clear; Run optimization / Run ML optimization) on
+  the left; header with badges, currency and date on the right, five headline metrics starting with Investable value, every result section visible at once (`ResultSection`, no tabs), the trade proposal card
   (Create trade proposal / Recalculate), and "What your result means" with "How this strategy works" last.
-* Experiments without a portfolio are listed in each portfolio of their currency ("Earlier ML experiments without a
-  portfolio", `GET /ml/experiments?unlinked=true`) and linked with one click; ML trade proposals always target the
-  portfolio in the URL. Selection tray: "Math Optimization in …" and "ML Optimization in …".
+* Experiments without a portfolio are no longer listed on the ML Optimization page (card removed 2026-10-25, owner's
+  request); one opened by its link (`/machine-learning/:id` opens it in the current portfolio) can still be linked there
+  (`ExperimentPortfolio`, same currency only), and `GET /ml/experiments?unlinked=true` remains. ML trade proposals always
+  target the portfolio in the URL. Selection tray: "Math Optimization in …" and "ML Optimization in …".
 * Tests: Playwright `optimizations.spec.ts` checks both pages (no tabs, named sections visible, interpretation below the
   proposal) and a backtest window with two Math runs and one ML Optimization; other specs updated for names and URLs.
 

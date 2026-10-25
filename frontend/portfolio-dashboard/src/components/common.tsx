@@ -10,13 +10,21 @@ import { errorMessage } from '@/lib/api'
 import type { Metric } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
-/** Page title. Inside a portfolio workspace (whose name is the page's h1) sections pass `level={2}`. */
-export function PageHeader({ title, description, actions, level = 1 }: { title: string; description?: ReactNode; actions?: ReactNode; level?: 1 | 2 }) {
+/**
+ * Page title. Inside a portfolio workspace (whose name is the page's h1) sections pass `level={2}`. What a page is for goes
+ * into `info` (a tip beside the title); `description` is kept for facts about the shown data and required caveats.
+ */
+export function PageHeader({ title, description, info, actions, level = 1 }: {
+  title: string; description?: ReactNode; info?: ReactNode; actions?: ReactNode; level?: 1 | 2
+}) {
   const Heading = level === 1 ? 'h1' : 'h2'
   return (
     <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <Heading className={cn('heading-display', level === 1 ? 'text-[1.7rem]' : 'text-[1.3rem]')}>{title}</Heading>
+        <div className="flex items-center gap-2">
+          <Heading className={cn('heading-display', level === 1 ? 'text-[1.7rem]' : 'text-[1.3rem]')}>{title}</Heading>
+          {info && <InfoTip label={`About ${title}`}>{info}</InfoTip>}
+        </div>
         {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
@@ -35,6 +43,24 @@ export function InfoTip({ children, label = 'More information' }: { children: Re
       </TooltipTrigger>
       <TooltipContent className="max-w-xs text-xs leading-relaxed">{children}</TooltipContent>
     </Tooltip>
+  )
+}
+
+/**
+ * A titled row of key figures (four per row on wide screens). Pages tell a story with consecutive groups – e.g. value →
+ * performance → risk – and put each group's basis in its tip; `period` states the dates the figures cover.
+ */
+export function MetricGroup({ title, hint, period, columns = 4, children }: {
+  title: string; hint?: ReactNode; period?: ReactNode; columns?: 4 | 5; children: ReactNode
+}) {
+  return (
+    <section aria-label={title} className="space-y-2">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <h3 className="flex items-center gap-1.5 text-sm font-medium">{title}{hint && <InfoTip label={`About ${title}`}>{hint}</InfoTip>}</h3>
+        {period && <span className="text-xs text-muted-foreground tabular">{period}</span>}
+      </div>
+      <div className={cn('grid grid-cols-2 gap-3', columns === 5 ? 'md:grid-cols-3 xl:grid-cols-5' : 'md:grid-cols-4')}>{children}</div>
+    </section>
   )
 }
 

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 import { BrainCircuit, Coins, Download, Loader2, RefreshCw, Sigma, Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
@@ -94,7 +95,8 @@ function describeQuote(quote?: StockQuote) {
  * Review of the temporary selection (memory only) with actions to fetch missing prices and continue to the
  * mathematical optimizer or the ML workspace. Nothing is stored until a run is submitted.
  */
-export function SelectionTray({ className }: { className?: string }) {
+/** The temporary selection. `actions` replaces the default links into the current portfolio's optimizations. */
+export function SelectionTray({ className, actions }: { className?: string; actions?: ReactNode }) {
   const { portfolio } = usePortfolioContext()
   const analysisCurrency = portfolio?.baseCurrency ?? 'USD'
   const selection = useSelection()
@@ -131,7 +133,7 @@ export function SelectionTray({ className }: { className?: string }) {
           <Button size="sm" variant="ghost" onClick={selection.clear}>
             <Trash2 /> Clear all
           </Button>
-          {portfolio && (
+          {actions ?? (portfolio && (
             // Both name the target, so the selection is never applied to a portfolio by accident.
             <>
               <Button size="sm" variant="outline" render={<Link to={`/portfolios/${portfolio.id}/optimize?from=selection`} />}
@@ -143,7 +145,7 @@ export function SelectionTray({ className }: { className?: string }) {
                 <BrainCircuit /> ML Optimization in “{portfolio.name}”
               </Button>
             </>
-          )}
+          ))}
         </div>
       </div>
       {selection.currencies.some((c) => c !== analysisCurrency) && (

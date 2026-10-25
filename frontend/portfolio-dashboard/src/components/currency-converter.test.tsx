@@ -45,7 +45,10 @@ describe('CurrencyConverterCard', () => {
     // Default: 1,000 USD → EUR = 1000 / 1.1.
     await waitFor(() => expect(screen.getByLabelText('Converted amount')).toHaveTextContent('€909.09'))
     expect(screen.getByText(/1 USD = 0\.909091 EUR · reference rate of/)).toBeInTheDocument()
-    expect(screen.getByText(/not live/)).toBeInTheDocument()
+    // The rate basis is in the title's tip, not on the card.
+    expect(screen.queryByText(/not live/)).toBeNull()
+    await userEvent.hover(screen.getByRole('button', { name: 'About these rates' }))
+    expect(await screen.findByText(/not live/)).toBeInTheDocument()
     // The data-source name (here ECB) is not shown to users.
     expect(screen.queryByText(/ECB/)).toBeNull()
   })
@@ -108,7 +111,9 @@ describe('CurrencyConverterCard', () => {
     const user = userEvent.setup()
     renderCard()
     await screen.findByRole('list', { name: 'Exchange rates against EUR' })
-    expect(screen.getByText(/No longer published: BGN \(until/)).toBeInTheDocument()
+    await user.hover(screen.getByRole('button', { name: 'About these rates' }))
+    expect(await screen.findByText(/No longer published: BGN \(until/)).toBeInTheDocument()
+    await user.unhover(screen.getByRole('button', { name: 'About these rates' }))
     // Its published history can be charted, with the reason when the period has none …
     await user.click(screen.getByRole('combobox', { name: 'Currency shown in the chart' }))
     expect(await screen.findByText('History only (no current rate)')).toBeInTheDocument()

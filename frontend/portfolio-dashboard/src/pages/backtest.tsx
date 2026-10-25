@@ -71,8 +71,8 @@ export function BacktestPage() {
   return (
     <>
       {scoped
-        ? <PageHeader level={2} title="Backtest" description="Walk-forward historical simulation of this portfolio's Math and ML Optimizations – or of a custom strategy – with periodic rebalancing, transaction costs and benchmark comparison." />
-        : <PageHeader title="Backtesting" description="Walk-forward historical simulation of any optimization – Math or ML – or of a custom strategy, with periodic rebalancing, transaction costs and benchmark comparison." />}
+        ? <PageHeader level={2} title="Backtest" info="Walk-forward historical simulation of this portfolio's Math and ML Optimizations – or of a custom strategy – with periodic rebalancing, transaction costs and benchmark comparison." />
+        : <PageHeader title="Backtesting" info="Walk-forward historical simulation of any optimization – Math or ML – or of a custom strategy, with periodic rebalancing, transaction costs and benchmark comparison." />}
       <Alert className="mb-6">
         <AlertTriangle className="text-warn" />
         <AlertTitle>Hypothetical results</AlertTitle>

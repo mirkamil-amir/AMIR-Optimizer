@@ -36,7 +36,7 @@ export function SettingsPage() {
   }, [hash])
   return (
     <>
-      <PageHeader title="Settings" description="Your account and appearance. Portfolios are managed under My portfolios; data-provider settings are managed by administrators." />
+      <PageHeader title="Settings" info="Your account and appearance. Portfolios are managed under My portfolios; data-provider settings are managed by administrators." />
       <div className="grid gap-6 lg:grid-cols-2">
         <PortfoliosCard />
         <AccountCard />

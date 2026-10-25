@@ -318,15 +318,12 @@ public sealed class MultiPortfolioTests : IAsyncLifetime
     // ------------------------------------------------------------------ lifecycle
 
     [Fact]
-    public async Task Archive_KeepsHistoryReadable_BlocksChanges_AndIsRequiredBeforeDelete()
+    public async Task Archive_KeepsHistoryReadable_BlocksChanges_AndDeleteRemovesIt()
     {
         var p = await CreateAsync(_alice, "Lifecycle", ["AAPL", "MSFT"], cash: 10_000m);
         await BookAsync(_alice, p.Id, new RecordTransactionRequest { Type = PortfolioTransactionType.Buy, Symbol = "AAPL", Quantity = 1, Price = 100m });
         var proposal = await (await _alice.PostJsonAsync($"/api/v1/portfolios/{p.Id}/rebalance-preview",
             new RebalancePreviewRequest { TargetWeights = new Dictionary<string, double> { ["MSFT"] = 0.5 } })).ReadAsync<TradeProposalDto>();
-
-        // Deleting an active portfolio is refused – history is never lost by one action.
-        Assert.Equal(HttpStatusCode.Conflict, (await _alice.DeleteAsync($"/api/v1/portfolios/{p.Id}")).StatusCode);
 
         var renamed = await (await _alice.PutJsonAsync($"/api/v1/portfolios/{p.Id}/details", new UpdatePortfolioDetailsRequest { Name = "Renamed", Description = "purpose" }))
             .ReadAsync<PortfolioDto>();
@@ -351,6 +348,30 @@ public sealed class MultiPortfolioTests : IAsyncLifetime
         await _alice.PostJsonAsync($"/api/v1/portfolios/{p.Id}/archive", new { });
         Assert.Equal(HttpStatusCode.NoContent, (await _alice.DeleteAsync($"/api/v1/portfolios/{p.Id}")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await _alice.GetAsync($"/api/v1/portfolios/{p.Id}")).StatusCode);
+    }
+
+    [Fact]
+    public async Task ActivePortfolio_CanBeDeleted_WithItsHistory()
+    {
+        var p = await CreateAsync(_alice, "Delete me", ["AAPL", "MSFT"], cash: 10_000m);
+        await BookAsync(_alice, p.Id, new RecordTransactionRequest { Type = PortfolioTransactionType.Buy, Symbol = "AAPL", Quantity = 1, Price = 100m });
+        var run = await (await _alice.PostJsonAsync($"/api/v1/portfolios/{p.Id}/optimization-runs", new RunOptimizationRequest())).ReadAsync<OptimizationRunDto>();
+
+        Assert.Equal(HttpStatusCode.NoContent, (await _alice.DeleteAsync($"/api/v1/portfolios/{p.Id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await _alice.GetAsync($"/api/v1/portfolios/{p.Id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await _alice.GetAsync($"/api/v1/optimization-runs/{run.Id}")).StatusCode);
+    }
+
+    [Fact]
+    public async Task QuoteRefresh_CoversOnlyTheOpenPositions()
+    {
+        var p = await CreateAsync(_alice, "Refresh", ["AAPL", "MSFT"], cash: 10_000m);
+        var empty = await (await _alice.PostAsync($"/api/v1/portfolios/{p.Id}/quotes/refresh", null)).ReadAsync<QuoteRefreshResultDto>();
+        Assert.Empty(empty.Items);
+
+        await BookAsync(_alice, p.Id, new RecordTransactionRequest { Type = PortfolioTransactionType.Buy, Symbol = "AAPL", Quantity = 1, Price = 100m });
+        var result = await (await _alice.PostAsync($"/api/v1/portfolios/{p.Id}/quotes/refresh", null)).ReadAsync<QuoteRefreshResultDto>();
+        Assert.Equal("AAPL", Assert.Single(result.Items).Symbol);
     }
 
     // ------------------------------------------------------------------ cross-user protection
@@ -378,6 +399,7 @@ public sealed class MultiPortfolioTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.NotFound, (await _bob.PostJsonAsync($"/api/v1/portfolios/{p.Id}/archive", new { })).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await _bob.PostJsonAsync($"/api/v1/portfolios/{p.Id}/restore", new { })).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await _bob.DeleteAsync($"/api/v1/portfolios/{p.Id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await _bob.PostAsync($"/api/v1/portfolios/{p.Id}/quotes/refresh", null)).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await _bob.PostJsonAsync($"/api/v1/portfolios/{p.Id}/optimization-runs", new RunOptimizationRequest())).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await _bob.PostJsonAsync($"/api/v1/optimization-runs/{run.Id}/trade-proposals", new { })).StatusCode);
         // Research cannot be attached to someone else's portfolio either.

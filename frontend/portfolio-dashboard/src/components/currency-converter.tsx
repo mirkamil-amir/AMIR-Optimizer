@@ -1,12 +1,11 @@
 import { useMemo, useState } from 'react'
 import { ArrowLeftRight, Coins, X } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { TimeSeriesChart } from '@/components/charts'
-import { DataBadge, ErrorState, LoadingBlock, Signed } from '@/components/common'
+import { DataBadge, ErrorState, InfoTip, LoadingBlock, Signed } from '@/components/common'
 import { CurrencySelect } from '@/components/currency'
 import { converterCurrencies, convertAmount, crossFromBoard, currencyName, fxPhrase } from '@/lib/currency'
 import { date, pct } from '@/lib/format'
@@ -77,11 +76,16 @@ export function CurrencyConverterCard({ base, className }: { base: string; class
   return (
     <Card className={className} role="region" aria-label="Currency converter">
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
-        <CardTitle className="flex items-center gap-2 text-sm"><Coins className="size-4" aria-hidden /> Currency converter</CardTitle>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          {board.data?.isSimulated ? <DataBadge kind="simulated" /> : board.data && <Badge variant="outline">Reference rates</Badge>}
-          {asOf && <span>as of {date(asOf)}</span>}
-        </div>
+        <CardTitle className="flex items-center gap-2 text-sm">
+          <Coins className="size-4" aria-hidden /> Currency converter
+          {/* The rate basis lives in the tip; the result line below still names the date of the rate used. */}
+          <InfoTip label="About these rates">
+            {board.data?.note ?? 'Reference rates, published once per business day.'} For analysis and reporting only – not a rate at which money can be
+            exchanged; banks and brokers add spreads and fees.
+            {historical.length > 0 && ` No longer published: ${historical.map((d) => `${d.currency} (until ${date(d.lastRateDate)}, chart history only)`).join(', ')}.`}
+          </InfoTip>
+        </CardTitle>
+        {board.data?.isSimulated && <DataBadge kind="simulated" />}
       </CardHeader>
       <CardContent className="space-y-5">
         {(info.error || board.error) && <ErrorState error={info.error ?? board.error} onRetry={() => (info.error ? info.refetch() : board.refetch())} />}
@@ -196,12 +200,6 @@ export function CurrencyConverterCard({ base, className }: { base: string; class
             )}
           </div>
         </div>
-
-        <p className="text-xs text-muted-foreground">
-          {board.data?.note ?? 'Reference rates, published once per business day.'} For analysis and reporting only – not a rate at which money can be
-          exchanged; banks and brokers add spreads and fees.
-          {historical.length > 0 && ` No longer published: ${historical.map((d) => `${d.currency} (until ${date(d.lastRateDate)}, chart history only)`).join(', ')}.`}
-        </p>
       </CardContent>
     </Card>
   )

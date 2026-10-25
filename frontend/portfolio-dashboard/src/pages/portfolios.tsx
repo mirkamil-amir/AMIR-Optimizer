@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { Archive, ArchiveRestore, BarChart3, Briefcase, ListChecks, Plus, ReceiptText, Sigma, Trash2 } from 'lucide-react'
+import { Archive, ArchiveRestore, Briefcase, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -13,7 +13,7 @@ import { DataBadge, EmptyState, ErrorState, InfoTip, LoadingBlock, MetricCard, P
 import { errorMessage } from '@/lib/api'
 import { date, money, relativeTime } from '@/lib/format'
 import { portfolioPath } from '@/lib/portfolio-context'
-import { useArchivePortfolio, useDeletePortfolio, useFxInfo, usePortfolioOverview } from '@/lib/queries'
+import { useArchivePortfolio, useDeletePortfolio, useFxInfo, usePortfolioOverview, useRefreshPortfolioQuotes } from '@/lib/queries'
 import type { PortfolioSummary } from '@/lib/types'
 import { CurrencySelect } from '@/components/currency'
 import { venues } from '@/lib/markets'
@@ -41,7 +41,6 @@ export function PortfoliosPage() {
     <>
       <PageHeader
         title="My portfolios"
-        description="Each portfolio is independent: its own cash, holdings, transactions, optimization runs and history. Simulated – no real orders."
         actions={<Button render={<Link to="/stocks" />}><Plus /> Create portfolio</Button>}
       />
 
@@ -64,12 +63,12 @@ export function PortfoliosPage() {
             </div>
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
               <MetricCard label={`Total value (${ccy})`} value={data.totalValue == null ? 'Not available' : money(data.totalValue, ccy)}
-                sub={data.totalValue == null ? 'See the note below' : 'Converted at today’s reference rates'}
+                sub={data.totalValue == null ? 'See the note below' : undefined}
                 hint="Sum of the active portfolios' total values (cash + positions), each converted into this currency at today's reference rate." />
               <MetricCard label="Net contributions" value={data.totalNetContributions == null ? '—' : money(data.totalNetContributions, ccy)}
-                sub="Deposits − withdrawals" hint="Money paid into the portfolios minus money taken out. Not a gain." />
+                hint="Money paid into the portfolios minus money taken out. Not a gain." />
               <MetricCard label="Profit / loss" tone="signed" numeric={profit} value={profit == null ? '—' : money(profit, ccy, { signed: true })}
-                sub="Total value − net contributions" hint="Includes realized and unrealized P&L, fees and recorded dividends. Not a return figure: it ignores the timing of cash flows." />
+                hint="Includes realized and unrealized P&L, fees and recorded dividends. Not a return figure: it ignores the timing of cash flows." />
             </div>
             {data.totalProblems.length > 0 && (
               <ul role="status" className="space-y-0.5 text-xs text-warn">{data.totalProblems.map((p) => <li key={p}>{p}</li>)}</ul>
@@ -81,7 +80,8 @@ export function PortfoliosPage() {
               <EmptyState title="No active portfolio" description="All your portfolios are archived. Restore one below or create a new one."
                 action={<Button render={<Link to="/stocks" />}><Plus /> Create portfolio</Button>} />
             ) : (
-              <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              // Equal rows: every card has the height of the tallest one, with or without a description.
+              <ul className="grid auto-rows-fr gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {active.map((p) => <li key={p.id}><PortfolioCard p={p} /></li>)}
               </ul>
             )}
@@ -97,6 +97,23 @@ export function PortfoliosPage() {
 
 function PortfolioCard({ p }: { p: PortfolioSummary }) {
   const ccy = p.baseCurrency
+  const refresh = useRefreshPortfolioQuotes()
+  const [deleting, setDeleting] = useState(false)
+
+  async function refreshPrices() {
+    try {
+      const result = await refresh.mutateAsync(p.id)
+      const updated = result.items.filter((i) => i.outcome === 'Updated').length
+      const fresh = result.items.filter((i) => i.outcome === 'Fresh').length
+      const failed = result.items.filter((i) => i.outcome === 'Failed' || i.outcome === 'Unsupported')
+      toast.success(`${p.name}: ${updated} updated, ${fresh} already recent${failed.length ? `, ${failed.length} unavailable` : ''}`, {
+        description: failed.length ? failed.map((f) => `${f.symbol}: ${f.message ?? f.outcome}`).join(' · ') : undefined,
+      })
+    } catch (e) {
+      toast.error('Refresh failed', { description: errorMessage(e) })
+    }
+  }
+
   return (
     <Card className="h-full" aria-label={`Portfolio ${p.name}`}>
       <CardHeader className="gap-1">
@@ -109,7 +126,8 @@ function PortfolioCard({ p }: { p: PortfolioSummary }) {
             {p.usesSimulatedData && <DataBadge kind="simulated" />}
           </div>
         </div>
-        {p.description && <CardDescription className="line-clamp-2">{p.description}</CardDescription>}
+        {/* Two lines are always reserved, so cards with and without a description line up. */}
+        <CardDescription className="line-clamp-2 min-h-10">{p.description}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         <div>
@@ -135,15 +153,51 @@ function PortfolioCard({ p }: { p: PortfolioSummary }) {
           {p.stalePositions > 0 && <span className="text-warn"> · {p.stalePositions} stale price{p.stalePositions === 1 ? '' : 's'}</span>}
         </p>
       </CardContent>
-      <CardFooter className="flex flex-wrap gap-1.5">
+      <CardFooter className="mt-auto flex gap-1.5">
         <Button size="sm" render={<Link to={portfolioPath(p.id)} />} aria-label={`Open ${p.name}`}>Open</Button>
-        <Button size="sm" variant="outline" render={<Link to={portfolioPath(p.id, 'optimize')} />} aria-label={`Optimize ${p.name}`}><Sigma /> Optimize</Button>
-        <Button size="sm" variant="ghost" render={<Link to={portfolioPath(p.id, 'holdings')} />} aria-label={`Holdings of ${p.name}`}><Briefcase /> Holdings</Button>
-        <Button size="sm" variant="ghost" render={<Link to={portfolioPath(p.id, 'transactions')} />} aria-label={`Transactions of ${p.name}`}><ReceiptText /> Transactions</Button>
-        <Button size="sm" variant="ghost" render={<Link to={portfolioPath(p.id, 'runs')} />} aria-label={`Optimization runs of ${p.name}`}><ListChecks /> Runs</Button>
-        <Button size="sm" variant="ghost" render={<Link to={portfolioPath(p.id, 'backtest')} />} aria-label={`Backtests of ${p.name}`}><BarChart3 /> Backtest</Button>
+        <Button size="sm" variant="outline" onClick={() => void refreshPrices()} disabled={refresh.isPending || p.holdings === 0}
+          title={p.holdings === 0 ? 'No positions to refresh' : 'Refresh the latest quotes of the positions'} aria-label={`Refresh prices of ${p.name}`}>
+          <RefreshCw className={refresh.isPending ? 'animate-spin' : undefined} /> Refresh prices
+        </Button>
+        <Button size="sm" variant="ghost" className="ml-auto text-destructive hover:text-destructive" onClick={() => setDeleting(true)}
+          aria-label={`Delete ${p.name}`}><Trash2 /> Delete</Button>
       </CardFooter>
+      <DeletePortfolioDialog portfolio={deleting ? p : null} onClose={() => setDeleting(false)} />
     </Card>
+  )
+}
+
+/** Confirmation before a portfolio and its whole simulated history are deleted for good (active or archived). */
+function DeletePortfolioDialog({ portfolio, onClose }: { portfolio: PortfolioSummary | null; onClose: () => void }) {
+  const remove = useDeletePortfolio()
+
+  async function confirmDelete() {
+    if (!portfolio) return
+    try {
+      await remove.mutateAsync(portfolio.id)
+      toast.success(`Deleted “${portfolio.name}”`)
+    } catch (e) {
+      toast.error('Delete failed', { description: errorMessage(e) })
+    }
+    onClose()
+  }
+
+  return (
+    <AlertDialog open={!!portfolio} onOpenChange={(o) => !o && onClose()}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete “{portfolio?.name}” permanently?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This removes the portfolio and every record of it: holdings, transactions, cash ledger, proposals, Math and ML Optimizations,
+            backtests, strategy comparisons and research sessions. Stock prices are shared and stay. It cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction variant="destructive" onClick={() => void confirmDelete()} disabled={remove.isPending}>Delete permanently</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }
 
@@ -158,7 +212,6 @@ function Row({ label, value }: { label: string; value: string }) {
 
 function ArchivedList({ items }: { items: PortfolioSummary[] }) {
   const archive = useArchivePortfolio()
-  const remove = useDeletePortfolio()
   const [toDelete, setToDelete] = useState<PortfolioSummary | null>(null)
 
   async function restore(p: PortfolioSummary) {
@@ -168,16 +221,6 @@ function ArchivedList({ items }: { items: PortfolioSummary[] }) {
     } catch (e) {
       toast.error('Could not restore', { description: errorMessage(e) })
     }
-  }
-  async function confirmDelete() {
-    if (!toDelete) return
-    try {
-      await remove.mutateAsync(toDelete.id)
-      toast.success(`Deleted “${toDelete.name}”`)
-    } catch (e) {
-      toast.error('Delete failed', { description: errorMessage(e) })
-    }
-    setToDelete(null)
   }
 
   return (
@@ -199,21 +242,7 @@ function ArchivedList({ items }: { items: PortfolioSummary[] }) {
           </li>
         ))}
       </ul>
-      <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete “{toDelete?.name}” permanently?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This removes the portfolio with its holdings, transactions, cash ledger, proposals and optimization runs. It cannot be undone.
-              Research sessions that refer to it are kept.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onClick={() => void confirmDelete()}>Delete permanently</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeletePortfolioDialog portfolio={toDelete} onClose={() => setToDelete(null)} />
     </section>
   )
 }

@@ -1,5 +1,6 @@
 using System.Net;
 using PortfolioOptimizer.Application.Dtos;
+using PortfolioOptimizer.Application.Research;
 using PortfolioOptimizer.Domain;
 using PortfolioOptimizer.MachineLearning.Models;
 
@@ -261,5 +262,35 @@ public sealed class StrategyComparisonTests : IAsyncLifetime
 
         var list = await (await _user.GetAsync($"/api/v1/strategy-comparisons?portfolioId={_portfolio.Id}")).ReadAsync<PagedResult<StrategyComparisonSummaryDto>>();
         Assert.Contains(list.Items, x => x.Id == c.Summary.Id);
+    }
+    [Fact]
+    public async Task DeletingAPortfolio_RemovesAllItsOptimizationData_ButNoPrices()
+    {
+        var p = await CreatePortfolioAsync(_user, "Delete everything", "USD");
+        var run = await RunAsync(p.Id, ObjectiveKind.MinimumVariance);
+        var experiment = await ExperimentAsync(p.Id, ModelFamily.RidgeRegression, 6);
+        var end = DateOnly.FromDateTime(DateTime.UtcNow);
+        var backtest = await (await _user.PostJsonAsync("/api/v1/backtests/from-strategy", new CreateStrategyBacktestRequest
+        {
+            PortfolioId = p.Id, Strategy = Math(run), StartDate = end.AddYears(-2), EndDate = end, TransactionCostBps = 10,
+        })).ReadAsync<BacktestDto>();
+        await WaitAsync<BacktestDto>(_user, $"/api/v1/backtests/{backtest.Id}", b => b.Status);
+        var comparison = await CompareAsync(new CreateStrategyComparisonRequest { PortfolioId = p.Id, StrategyA = Math(run), StrategyB = Ml(experiment) });
+        var research = await (await _user.PostJsonAsync("/api/v1/research",
+            new StartResearchRequest { Objective = "Low risk portfolio of US stocks", Market = "US", PortfolioId = p.Id })).ReadAsync<ResearchSessionDto>();
+        var prices = (await (await _user.GetAsync("/api/v1/stocks/AAPL/prices")).ReadAsync<PagedResult<PriceBarDto>>()).TotalCount;
+
+        Assert.Equal(HttpStatusCode.NoContent, (await _user.DeleteAsync($"/api/v1/portfolios/{p.Id}")).StatusCode);
+
+        foreach (var url in new[]
+                 {
+                     $"/api/v1/portfolios/{p.Id}", $"/api/v1/optimization-runs/{run.Id}", $"/api/v1/ml/experiments/{experiment.Summary.Id}",
+                     $"/api/v1/backtests/{backtest.Id}", $"/api/v1/strategy-comparisons/{comparison.Summary.Id}", $"/api/v1/research/{research.Id}",
+                 })
+            Assert.True((await _user.GetAsync(url)).StatusCode == HttpStatusCode.NotFound, url);
+        // Shared market data stays: the stock's stored price history is unchanged.
+        Assert.Equal(prices, (await (await _user.GetAsync("/api/v1/stocks/AAPL/prices")).ReadAsync<PagedResult<PriceBarDto>>()).TotalCount);
+        // The other portfolio's optimizations are untouched.
+        Assert.Equal(HttpStatusCode.OK, (await _user.GetAsync($"/api/v1/ml/experiments/{_experiment.Summary.Id}")).StatusCode);
     }
 }

@@ -17,7 +17,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DataBadge, EmptyState, LoadingBlock } from '@/components/common'
 import { TransactionDialog } from '@/components/transaction-form'
 import { errorMessage } from '@/lib/api'
-import { date, money, relativeTime } from '@/lib/format'
 import { PortfolioScope, portfolioPath, usePortfolioContext } from '@/lib/portfolio-context'
 import { countriesOf } from '@/lib/markets'
 import { useArchivePortfolio, useHoldings, useMlExperiment, usePortfolio, useRun, useUpdatePortfolioDetails } from '@/lib/queries'
@@ -157,13 +156,6 @@ function WorkspaceHeader({ portfolio }: { portfolio: PortfolioSummary }) {
         </div>
       </div>
 
-      <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm sm:flex sm:flex-wrap">
-        <Fact label="Total value" value={portfolio.totalValue === null ? 'Not available' : money(portfolio.totalValue, ccy)} />
-        <Fact label="Cash" value={money(portfolio.cashBalance, ccy)} />
-        <Fact label="Holdings" value={String(portfolio.holdings)} />
-        <Fact label="Valued at" value={portfolio.valuationDate ? `stored prices of ${date(portfolio.valuationDate)}` : portfolio.holdings === 0 ? 'cash only' : '—'} />
-        <Fact label="Last activity" value={relativeTime(portfolio.lastActivityAtUtc)} />
-      </dl>
       {(portfolio.valuationProblems?.length ?? 0) > 0 && (
         <p role="status" className="text-xs text-warn">Value unavailable: {portfolio.valuationProblems!.join(' ')}</p>
       )}
@@ -213,7 +205,7 @@ function WorkspaceHeader({ portfolio }: { portfolio: PortfolioSummary }) {
             <AlertDialogTitle>Archive “{portfolio.name}”?</AlertDialogTitle>
             <AlertDialogDescription>
               Its holdings, transactions and optimization runs stay available to read. While archived it accepts no transactions, runs or
-              proposals, and pending proposals are cancelled. You can restore it at any time; only an archived portfolio can be deleted.
+              proposals, and pending proposals are cancelled. You can restore it at any time.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -223,15 +215,6 @@ function WorkspaceHeader({ portfolio }: { portfolio: PortfolioSummary }) {
         </AlertDialogContent>
       </AlertDialog>
     </section>
-  )
-}
-
-function Fact({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex gap-1.5">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="font-medium tabular">{value}</dd>
-    </div>
   )
 }
 

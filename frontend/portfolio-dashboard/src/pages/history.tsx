@@ -68,11 +68,13 @@ export function HistoryPage() {
     <>
       {scoped ? (
         <PageHeader level={2} title="Optimization runs"
-          description="Every Math and ML Optimization of this portfolio with its stored inputs and results. Expected returns and volatilities are historical in-sample estimates, not forecasts." />
+          info="Every Math and ML Optimization of this portfolio with its stored inputs and results."
+          description="Expected returns and volatilities are historical in-sample estimates, not forecasts." />
       ) : (
         <PageHeader
           title="Optimization history"
-          description="Every completed mathematical optimization with its stored inputs, data window and results. Expected returns and volatilities are historical in-sample estimates, not forecasts."
+          info="Every completed mathematical optimization with its stored inputs, data window and results."
+          description="Expected returns and volatilities are historical in-sample estimates, not forecasts."
         />
       )}
       {scoped && <h3 className="mb-2 text-sm font-semibold">Math Optimizations</h3>}

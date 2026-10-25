@@ -37,7 +37,7 @@ export function RealityCheckPage() {
       <Button variant="ghost" size="sm" className="-ml-2" render={<Link to={runId ? `/optimize/${runId}` : '/optimize'} />}><ArrowLeft /> Optimization result</Button>
       <PageHeader
         title="Portfolio reality check"
-        description="Challenges a saved optimization: concentration, risk, behaviour in bad periods, sensitivity to assumptions and costs. Every statement is computed from stored data and labelled by how it is supported."
+        info="Challenges a saved optimization: concentration, risk, behaviour in bad periods, sensitivity to assumptions and costs. Every statement is computed from stored data and labelled by how it is supported."
       />
       {check.error ? <ErrorState error={check.error} onRetry={() => check.refetch()} /> : !r ? <LoadingBlock height="h-96" /> : <Report r={r} />}
     </div>

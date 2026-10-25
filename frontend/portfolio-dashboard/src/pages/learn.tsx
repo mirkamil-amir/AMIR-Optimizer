@@ -20,7 +20,7 @@ export function LearnIndexPage() {
     <>
       <PageHeader
         title="Strategy guide"
-        description="How every strategy in this app works: the idea, the theory, the mathematics, a worked example and how to read your own results. Start with equal weight and minimum variance, then compare them with the return-seeking and ML strategies."
+        info="How every strategy in this app works: the idea, the theory, the mathematics, a worked example and how to read your own results. Start with equal weight and minimum variance, then compare them with the return-seeking and ML strategies."
         actions={<Button size="sm" variant="outline" render={<Link to="/learn/glossary" />}><BookOpen /> Glossary</Button>}
       />
       <div className="space-y-8">
@@ -181,7 +181,7 @@ export function GlossaryPage() {
   return (
     <>
       <Button size="sm" variant="ghost" className="mb-2 -ml-2" render={<Link to="/learn" />}><ArrowLeft /> Strategy guide</Button>
-      <PageHeader title="Glossary" description="Finance and machine-learning terms used in this app, in plain language." />
+      <PageHeader title="Glossary" info="Finance and machine-learning terms used in this app, in plain language." />
       <div className="relative mb-4 max-w-md">
         <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
         <Input value={text} onChange={(e) => setText(e.target.value)} placeholder="Search terms, e.g. Sharpe, leakage" className="pl-8" aria-label="Search glossary" />

@@ -89,7 +89,7 @@ export function HoldingsPage() {
       <PageHeader
         level={2}
         title="Holdings"
-        description={`Positions in the simulated portfolio, valued at the latest stored price in ${ccy}. Prices stay in each stock's own currency.`}
+        info={`Positions in the simulated portfolio, valued at the latest stored price in ${ccy}. Prices stay in each stock's own currency.`}
         actions={
           <>
             <ReportingCurrencySelect value={reporting} accountCurrency={account} onChange={setReporting} />
@@ -99,17 +99,17 @@ export function HoldingsPage() {
       />
       {error && <ErrorState error={error} onRetry={() => refetch()} />}
 
+      {/* Read left to right: total = cash + market value; market value − cost basis = unrealized P&L. */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-        <MetricCard label="Market value" loading={!s} value={s?.marketValue === null ? 'Not available' : money(s?.marketValue, ccy)} />
-        <MetricCard label="Cash" loading={!s} value={money(s?.cashBalance, ccy)} sub={s?.totalValue === null ? `${account} account` : `${pct(1 - (s?.investedFraction ?? 0), 1)} of total`} />
         <MetricCard label="Total value" loading={!s} value={s?.totalValue === null ? 'Not available' : money(s?.totalValue, ccy)} />
+        <MetricCard label="Cash" loading={!s} value={money(s?.cashBalance, ccy)} sub={s?.totalValue === null ? `${account} account` : `${pct(1 - (s?.investedFraction ?? 0), 1)} of total`} />
+        <MetricCard label="Market value" loading={!s} value={s?.marketValue === null ? 'Not available' : money(s?.marketValue, ccy)} />
         <MetricCard label="Cost basis" loading={!s} value={money(s?.totalCostBasis, ccy)} hint="Weighted-average cost of open positions including buy commissions." />
         <MetricCard label="Unrealized P&L" loading={!s} tone="signed" numeric={s?.unrealizedPnl} value={money(s?.unrealizedPnl, ccy, { signed: true })} />
       </div>
       <div className="mt-4 space-y-3">
         <ValuationProblems problems={s?.valuationProblems} />
         {s && <ReportingNote currency={s.currency} accountCurrency={s.accountCurrency} rate={s.accountToReportingRate} />}
-        <Warnings items={s?.warnings.filter((w) => !s.valuationProblems?.includes(w) && !w.startsWith('Reporting view'))} />
         {s?.currencyExposure && s.currencyExposure.length > 1 && (
           <div className="rounded-xl border p-4">
             <h2 className="mb-2 text-sm font-semibold">Currency exposure</h2>
@@ -149,6 +149,11 @@ export function HoldingsPage() {
             empty={<EmptyState title={search || sector !== 'all' ? 'No matching holdings' : 'No holdings yet'} description="Positions appear here after you confirm a simulated trade proposal." />}
           />
         )}
+      </div>
+
+      {/* Data notes last, as on the Overview. */}
+      <div className="mt-6">
+        <Warnings items={s?.warnings.filter((w) => !s.valuationProblems?.includes(w) && !w.startsWith('Reporting view'))} />
       </div>
 
       <HoldingSheet holding={selected} onClose={() => setSelected(null)} currency={ccy} account={account} portfolioId={portfolioId} />

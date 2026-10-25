@@ -70,7 +70,7 @@ export function ResearchHomePage() {
     <>
       <PageHeader
         title="AI research assistant"
-        description="Describe what you want to research. The assistant turns it into a brief you can edit, researches a universe, runs the real optimizer and explains the results with the evidence."
+        info="Describe what you want to research. The assistant turns it into a brief you can edit, researches a universe, runs the real optimizer and explains the results with the evidence."
         actions={<Button variant="outline" render={<Link to="/optimize" />}><Sigma /> Optimize manually</Button>}
       />
 

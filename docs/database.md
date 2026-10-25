@@ -34,8 +34,10 @@ Money and quantities are `numeric` (`decimal`); keys of user-facing records are 
   universe as part of its inputs when it is submitted; Portfolio Creation stores it as the new portfolio's universe.
 * Portfolio children: `Holdings`, `CashLedger`, `Executions`, `PortfolioTransactions` (manual journal; unique
   (portfolio, idempotency key)), `Orders`, `PaperTradeBatches`, `TradeProposals`, `OptimizationRuns` – all keyed by
-  `PortfolioId` and removed only when an archived portfolio is deleted. `ResearchSessions.PortfolioId` is optional
-  (SET NULL on delete). `Portfolios.ArchivedAtUtc` marks archived (read-only) portfolios. See [portfolios.md](portfolios.md).
+  `PortfolioId` and removed when the portfolio is deleted (active or archived). `MlExperiments`, `BacktestRuns`,
+  `StrategyComparisons` and `ResearchSessions` carry an optional `PortfolioId` (SET NULL in the schema);
+  `PortfolioService.DeleteAsync` removes the linked rows (and ML artifacts) explicitly. Shared tables – assets, prices,
+  quotes, FX – are never touched by a portfolio deletion. `Portfolios.ArchivedAtUtc` marks archived (read-only) portfolios. See [portfolios.md](portfolios.md).
 
 ## Migrations
 

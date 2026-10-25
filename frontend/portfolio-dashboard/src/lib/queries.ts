@@ -204,6 +204,18 @@ export function useDeletePortfolio() {
   })
 }
 
+/** Refreshes the quotes of one portfolio's open positions (the server reuses quotes inside its cache window). */
+export function useRefreshPortfolioQuotes() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => api.post<QuoteRefreshResult>(`${V1}/portfolios/${id}/quotes/refresh`),
+    onSuccess: (result, id) => {
+      mergeRefreshedStocks(qc, result)
+      invalidatePortfolio(qc, id)
+    },
+  })
+}
+
 // ---------------------------------------------------------------- optimization & trading
 
 export const useRuns = (id?: string) =>

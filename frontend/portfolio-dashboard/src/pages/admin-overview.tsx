@@ -62,7 +62,7 @@ export function AdminOverviewPage() {
     <>
       <PageHeader
         title="Admin overview"
-        description="Accounts, analysis activity and market-data health. Counts include genuine accounts only: automated-test accounts (reserved .test domain) are excluded and listed separately."
+        info="Accounts, analysis activity and market-data health. Counts include genuine accounts only: automated-test accounts (reserved .test domain) are excluded and listed separately."
         actions={<Button size="sm" variant="outline" render={<Link to="/admin/users" />}><Users /> Manage users</Button>}
       />
 

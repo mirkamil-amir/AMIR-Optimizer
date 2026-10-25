@@ -75,7 +75,7 @@ export function NewsPage() {
     <div>
       <PageHeader
         title="Financial news"
-        description="Recent developments from the configured sources, with publisher, publication time and a link to the original. Categories and relevance are rule-based labels with their basis shown – not predictions of price moves."
+        info="Recent developments from the configured sources, with publisher, publication time and a link to the original. Categories and relevance are rule-based labels with their basis shown – not predictions of price moves."
       />
 
       <div role="tablist" aria-label="News view" className="mb-4 flex flex-wrap gap-1 border-b">

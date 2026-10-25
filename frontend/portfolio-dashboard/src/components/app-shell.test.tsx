@@ -44,7 +44,7 @@ describe('application shell navigation', () => {
       ['Optimizer', 'AI Research', 'Financial News', 'Watchlist', 'Market Data', 'Strategy Guide', 'Glossary', 'Settings'],
     )
     expect(link(primary(), 'Optimizer')).toHaveAttribute('aria-current', 'page')
-    expect(link(optimizerNav(), 'Overview')).toHaveAttribute('aria-current', 'page')
+    expect(link(optimizerNav(), 'Portfolios Overview')).toHaveAttribute('aria-current', 'page')
   })
 
   it('marks Optimizer as the area of a child section and highlights that section', () => {

@@ -22,7 +22,12 @@ test('currency converter (overview only) shows dated reference rates, a chart an
     await expect(card.getByText(/SIMULATED/).first()).toBeVisible()             // e2e stack: simulated rates, labelled
     await expect(card.getByRole('list', { name: /Exchange rates against/ })).toBeVisible()
     await expect(card.getByLabel('Converted amount')).toHaveText(/\d/)
-    await expect(card.getByText(/not live/)).toBeVisible()
+    await expect(card.getByText(/reference rate of/)).toBeVisible()               // the result names its rate's date
+    // The rate basis is in the title's tip, not on the card.
+    await expect(card.getByText(/not live/)).toHaveCount(0)
+    await card.getByRole('button', { name: 'About these rates' }).hover()
+    await expect(page.getByText(/not live/)).toBeVisible()
+    await page.mouse.move(0, 0)
   }
   const card = page.getByRole('region', { name: 'Currency converter' })
   const before = await card.getByLabel('Converted amount').innerText()
@@ -64,7 +69,9 @@ test('currency converter (overview only) shows dated reference rates, a chart an
   await pick(page, /^BGN.*Bulgarian Lev/)
   await card.getByRole('radio', { name: '5Y' }).click()
   await expect(card.getByText(/published rates, until/)).toBeVisible()
-  await expect(card.getByText(/No longer published: BGN/)).toBeVisible()
+  await card.getByRole('button', { name: 'About these rates' }).hover()
+  await expect(page.getByText(/No longer published: BGN/)).toBeVisible()
+  await page.mouse.move(0, 0)
 })
 
 test('AMIR brand and themes: logo in the shell, dark mode and skins persist', async ({ page }) => {

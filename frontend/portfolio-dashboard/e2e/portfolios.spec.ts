@@ -67,7 +67,8 @@ test('two independent portfolios: create, optimize, record, switch, reload, isol
   await expect(page.getByRole('region', { name: 'Totals across active portfolios' })).toContainText('Across 2 active portfolios')
 
   // Portfolio A: optimize with its own universe.
-  await page.getByRole('link', { name: 'Optimize Core A' }).click()
+  await page.getByRole('link', { name: 'Open Core A' }).click()
+  await page.getByRole('navigation', { name: 'Portfolio sections' }).getByRole('link', { name: 'Math Optimization' }).click()
   await expect(page).toHaveURL(new RegExp(`/portfolios/${a}/optimize$`))
   await expect(page.getByRole('heading', { level: 1, name: 'Core A' })).toBeVisible()
   await page.getByRole('combobox', { name: 'Optimization method' }).click()
@@ -160,6 +161,12 @@ test('two independent portfolios: create, optimize, record, switch, reload, isol
   await archivedList.getByRole('button', { name: 'Restore Tech B' }).click()
   await expect(page.getByRole('region', { name: 'Archived portfolios' })).toHaveCount(0)
 
+  // An active portfolio can be deleted from its card after a confirmation.
+  await cards.getByRole('button', { name: 'Delete Tech B' }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Delete permanently' }).click()
+  await expect(cards.getByRole('link', { name: 'Tech B', exact: true })).toHaveCount(0)
+  await expect(cards.getByRole('link', { name: 'Core A', exact: true })).toBeVisible()
+
   expect(errors).toEqual([])
   await signOut(page)
 
@@ -193,4 +200,33 @@ test('overview and workspace fit narrow screens', async ({ page }) => {
       await expect(link).toBeInViewport()
     }
   }
+})
+
+test('Math Optimization: choose its stocks on the stock list and come back', async ({ page }) => {
+  test.setTimeout(120_000)
+  await newStudent(page, 'E2E Universe Chooser')
+  const id = await createPortfolio(page, 'Chooser', ['AAPL', 'MSFT'])
+  await sections(page).getByRole('link', { name: 'Math Optimization' }).click()
+  const universe = page.getByRole('list', { name: 'Stocks in the universe' })
+  await expect(universe.getByRole('listitem')).toHaveCount(2)
+  await expect(page.getByText('Configuration', { exact: true })).toHaveCount(0)
+
+  // Browse stocks: the Portfolio Creation list without the creation form, starting with the two stocks.
+  await page.getByRole('link', { name: 'Browse stocks' }).click()
+  await expect(page).toHaveURL(new RegExp(`/portfolios/${id}/optimize/stocks$`))
+  await expect(page.getByRole('heading', { name: 'Choose stocks' })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'New portfolio' })).toHaveCount(0)
+  await expect(page.getByRole('list', { name: 'Selected tickers' })).toContainText('AAPL')
+  await expect(page.getByRole('list', { name: 'Selected tickers' })).toContainText('MSFT')
+  await page.getByLabel('Search company name or ticker').fill('NVDA')
+  await page.getByRole('checkbox', { name: 'Select NVDA' }).check()
+  await page.getByRole('button', { name: 'Use 3 stocks' }).click()
+  await expect(page).toHaveURL(new RegExp(`/portfolios/${id}/optimize\\?from=selection$`))
+  await expect(universe.getByRole('listitem')).toHaveCount(3)
+  await expect(universe).toContainText('NVDA')
+
+  // Back without using: the optimization is unchanged.
+  await page.getByRole('link', { name: 'Browse stocks' }).click()
+  await page.getByRole('link', { name: 'Back to Math Optimization' }).click()
+  await expect(page).toHaveURL(new RegExp(`/portfolios/${id}/optimize$`))
 })

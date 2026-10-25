@@ -22,7 +22,7 @@ async function expectAllSectionsVisible(page: Page, sections: string[], screensh
   await expect(page.getByRole('tab')).toHaveCount(0)
   await expect(page.getByRole('button', { name: /^What your result means/ })).toHaveAttribute('aria-expanded', 'false')
   await expect(page.getByRole('button', { name: 'Inputs & methodology' })).toHaveAttribute('aria-expanded', 'false')
-  for (const name of sections) await expect(page.getByRole('region', { name })).toBeVisible()
+  for (const name of sections) await expect(page.getByRole('region', { name, exact: true })).toBeVisible()
   const proposal = await page.getByText('Trade proposal', { exact: true }).boundingBox()
   const insights = await page.getByText('What your result means', { exact: true }).boundingBox()
   expect(insights!.y).toBeGreaterThan(proposal!.y)
@@ -33,7 +33,7 @@ test('optimizations of one portfolio: Math and ML pages alike, backtest any opti
   test.setTimeout(300_000)
   // Sidebar: Mathematical and ML Optimization sit together, before the history; testing and comparing follow.
   await page.goto('/')
-  await expect(sidebar(page).getByRole('link')).toHaveText(['Overview', 'Portfolio Creation', 'Math Optimization', 'ML Optimization',
+  await expect(sidebar(page).getByRole('link')).toHaveText(['Portfolios Overview', 'Portfolio Creation', 'Math Optimization', 'ML Optimization',
     'Optimization history', 'Backtest', 'Strategy comparison'])
 
   // A portfolio with two mathematical optimizations.
@@ -50,7 +50,14 @@ test('optimizations of one portfolio: Math and ML pages alike, backtest any opti
   const portfolioId = page.url().match(/portfolios\/([0-9a-f-]{36})/)![1]
   await runOptimization(page, portfolioId, 'Minimum variance')
   await runOptimization(page, portfolioId, 'Equal weight')
-  await expectAllSectionsVisible(page, ['Allocation', 'Efficient frontier', 'Correlation', 'Risk contribution', 'Inputs & methodology'], 'math-optimization.png')
+  await expectAllSectionsVisible(page, ['Allocation', 'Efficient frontier', 'Return and risk of each stock', 'Correlation', 'Risk contribution', 'Inputs & methodology'], 'math-optimization.png')
+  for (const chart of ['Weight vs equal weight', 'Weight by sector', 'Expected return and volatility per stock']) await expect(page.getByText(chart, { exact: true })).toBeVisible()
+  // Optimization history sits above the stocks; picking the earlier run switches the results to it.
+  const history = page.getByRole('main').getByText('Optimization history', { exact: true })
+  expect((await history.boundingBox())!.y).toBeLessThan((await page.getByText('Equity universe').boundingBox())!.y)
+  await page.getByRole('link', { name: /^Minimum variance/ }).click()
+  await expect(page.getByRole('heading', { level: 2, name: 'Minimum variance' })).toBeVisible()
+  await expect(page.getByRole('link', { name: /^Minimum variance/ })).toHaveAttribute('aria-current', 'true')
 
   // ML Optimization: a tab of the same portfolio, same layout, the portfolio's universe by default.
   await page.getByRole('navigation', { name: 'Portfolio sections' }).getByRole('link', { name: 'ML Optimization' }).click()
@@ -136,7 +143,7 @@ test('optimizations of one portfolio: Math and ML pages alike, backtest any opti
   const frontier = page.getByText('Efficient frontier (latest successful Math Optimization)')
   await expect(frontier).toBeVisible({ timeout: 30_000 })
   expect((await frontier.boundingBox())!.y).toBeGreaterThan(vsBenchmark!.y)
-  for (const name of ['Recorded performance', 'Risk of the current holdings', 'Allocation over time']) await expect(page.getByRole('region', { name })).toBeVisible()
+  for (const name of ['Value', 'Performance', 'Risk', 'Performance history', 'Risk breakdown', 'Allocation over time']) await expect(page.getByRole('region', { name, exact: true })).toBeVisible()
   // Background map: this US-only portfolio lights New York only; the portfolio list lights every exchange city.
   const map = page.getByTestId('world-map')
   await expect(map.locator('[data-country="US"]')).toHaveAttribute('data-state', 'lit')

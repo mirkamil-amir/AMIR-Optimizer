@@ -31,7 +31,7 @@ export const optimizerSections: NavSection[] = [
     title: 'Portfolios',
     items: [
       // The overview lists all of the user's portfolios; each portfolio's workspace (/portfolios/:id/…) belongs to it.
-      { to: '/', label: 'Overview', icon: LayoutDashboard, end: true, match: ['/portfolios'] },
+      { to: '/', label: 'Portfolios Overview', icon: LayoutDashboard, end: true, match: ['/portfolios'] },
       { to: '/stocks', label: 'Portfolio Creation', icon: Plus },
     ],
   },

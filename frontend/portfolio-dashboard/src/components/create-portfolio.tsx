@@ -4,7 +4,7 @@ import { Loader2, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { errorMessage } from '@/lib/api'
@@ -82,14 +82,8 @@ export function CreatePortfolioPanel() {
   }
 
   return (
-    <Card aria-labelledby="new-portfolio-title">
-      <CardHeader>
-        <CardTitle id="new-portfolio-title" className="text-base">New portfolio</CardTitle>
-        <CardDescription>
-          1 · Describe it. 2 · Choose the stocks it may invest in below. 3 · Create it. Nothing is saved until you click Create portfolio;
-          it then holds only simulated cash – nothing is bought until you confirm a trade proposal or record a transaction.
-        </CardDescription>
-      </CardHeader>
+    // The steps (describe, choose stocks, create) are in the page title's tip; the card holds only the form.
+    <Card aria-label="New portfolio">
       <CardContent>
         <form onSubmit={submit} noValidate className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)]">
           <div className="grid gap-3 sm:grid-cols-2">

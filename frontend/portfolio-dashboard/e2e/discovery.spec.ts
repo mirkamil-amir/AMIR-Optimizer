@@ -18,7 +18,7 @@ test('stock discovery: search, select across sectors, selection is temporary', a
   await expect(tray.getByRole('list', { name: 'Selected tickers' }).getByRole('listitem')).toHaveCount(2)
 
   // The selection survives client-side navigation …
-  await page.getByRole('navigation', { name: 'Optimizer sections' }).getByRole('link', { name: 'Overview', exact: true }).click()
+  await page.getByRole('navigation', { name: 'Optimizer sections' }).getByRole('link', { name: 'Portfolios Overview', exact: true }).click()
   await expect(page.getByRole('link', { name: 'Portfolio Creation: 2 stocks selected' })).toBeVisible()
 
   // … is never written to browser storage …

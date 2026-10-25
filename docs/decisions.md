@@ -2,6 +2,28 @@
 
 Short records of decisions that are not obvious from the code. Newest first. Format: context → decision → consequences.
 
+## D-40 Portfolios Overview cleanup; active portfolios can be deleted (2026-10-25)
+**Context:** the owner asked for a calmer, more professional interface: every page title carried a sentence of explanation,
+the portfolio cards had six buttons and different heights, and the converter repeated its rate basis twice. Deleting
+required archiving first. **Decision:** the sidebar entry is **Portfolios Overview**; cards share one height (two
+description lines reserved, `auto-rows-fr`) and offer Open, Refresh prices (`POST /portfolios/{id}/quotes/refresh`, open
+positions only, cache window reused) and Delete (confirmation dialog, active or archived – replaces "archive before delete"
+from D-32). What a page is for moves into an (i) tip beside the title (`PageHeader info`); visible
+subtitles are kept for facts about the shown data and required caveats (in-sample estimates on Optimization history). The
+converter's rate basis is in its title tip; the result line still names the rate's date. **Consequences:** one confirmed action
+removes every record of the portfolio – holdings, ledger, transactions, proposals, Math and ML Optimizations (with model
+artifacts), backtests, comparisons and research sessions (owner's request, 2026-10-25); shared instruments, prices, quotes
+and FX rates are never touched. Refused (409) while one of its optimizations, backtests or comparisons is queued or running. The
+portfolio Overview follows the same idea: its key figures form one story in three titled rows (`MetricGroup`: Value →
+Performance → [portfolio vs benchmark and allocation] → Risk, basis in each row's tip, covered dates beside the title), charts follow, and every data note of the page
+is collected at the end (Holdings likewise). Math and ML Optimization: the form starts with the equity universe as a list
+(name, remove, "Browse stocks" → Choose stocks page), no Configuration header; the results start with **Investable value**
+(the portfolio's total value today) and Holdings · cash before expected return. **Optimization history** (formerly Run
+history) sits above the form on both pages; choosing a run scrolls its results into view. Math Optimization adds views of
+the stored run (`lib/run-charts.ts`, no new estimates): weight vs equal weight, weight by sector, expected return and
+volatility per stock (in-sample) and the in-sample drawdown next to the in-sample cumulative return. The allocation table sits between the donut and the two weight charts. The workspace header keeps only name, currency, badges, description and
+actions; its figures live in the Value row and the valuation date beside the Value title, above the Holdings card.
+
 ## D-39 Typography and readability over the map (2026-10-24)
 **Context:** text placed directly on the background map (e.g. the market list of Portfolio Creation) became hard to read
 where dots or highlighted countries ran through it, and the interface used one generic sans-serif. **Decision:** a
@@ -107,7 +129,7 @@ of portfolio A under B, created portfolios only in Settings, had no manual trans
 portfolio (remounted on switch); old URLs redirect. "Stock selection" became **Portfolio Creation** (details + universe +
 review; nothing stored before Create). A typed, idempotent, append-only journal records buys, sells, deposits,
 withdrawals, dividends and fees in time order; cash events are corrected by reversals, trades by opposite trades.
-Portfolios are archived before they can be deleted. History is not snapshotted but rebuilt from ledger + stored prices
+Portfolios were archived before they could be deleted (dropped in D-40). History is not snapshotted but rebuilt from ledger + stored prices
 (deterministic, nothing redundant); deposits/withdrawals are external flows in the time-weighted return. Research sessions
 may carry an owner-checked portfolio context. **Consequences:** additive migration only; no back-dated imports, no trade
 reversal, no money-weighted or combined return; backtests/ML/comparisons stay per user. Details: [portfolios.md](portfolios.md).

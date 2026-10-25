@@ -10,7 +10,7 @@ namespace PortfolioOptimizer.Application.Portfolios;
 
 /// <summary>Portfolios are private: every query is restricted to the current user's portfolios (others → 404).</summary>
 public sealed class PortfolioService(IApplicationDbContext db, PriceQueryService prices, Fx.FxService fx, PortfolioValuationService valuations,
-    ICurrentUser currentUser, IAuditLog audit, TimeProvider clock)
+    IModelArtifactStore artifacts, ICurrentUser currentUser, IAuditLog audit, TimeProvider clock)
 {
     public const string OverviewMethodology =
         "Each portfolio is valued in its own currency at the latest stored prices (positions in other currencies at the reference rate " +
@@ -193,15 +193,32 @@ public sealed class PortfolioService(IApplicationDbContext db, PriceQueryService
     }
 
     /// <summary>
-    /// Permanently deletes an archived portfolio with its entire simulated history (runs, proposals, ledger, transactions).
-    /// Active portfolios must be archived first, so history is never removed by a single accidental action.
+    /// Permanently deletes a portfolio (active or archived) with every record of it: holdings, ledger, transactions, proposals,
+    /// Math and ML Optimizations (with their model artifacts), backtests, strategy comparisons and research sessions. Shared
+    /// data – instruments, prices, quotes, FX rates – is never touched. The client confirms first; refused (409) while one of
+    /// its optimizations, backtests or comparisons is still queued or running.
     /// </summary>
     public async Task DeleteAsync(Guid id, CancellationToken ct)
     {
         var portfolio = await LoadAsync(id, ct, tracking: true);
-        if (!portfolio.IsArchived)
-            throw new ConflictException("Archive the portfolio before deleting it. Archiving keeps the history; deleting removes it permanently.");
+        var experiments = db.MlExperiments.Where(e => e.PortfolioId == id);
+        var backtests = db.Backtests.Where(r => r.PortfolioId == id);
+        var comparisons = db.StrategyComparisons.Where(c => c.PortfolioId == id);
+        var busy = new[] { JobStatus.Queued, JobStatus.Running };
+        if (await experiments.AnyAsync(e => busy.Contains(e.Status), ct) || await backtests.AnyAsync(r => busy.Contains(r.Status), ct)
+            || await comparisons.AnyAsync(c => busy.Contains(c.Status), ct))
+            throw new ConflictException("An optimization, backtest or comparison of this portfolio is still running. Delete it once it has finished.");
+        var experimentIds = await experiments.Select(e => e.Id).ToListAsync(ct);
+        var sessions = db.ResearchSessions.Where(r => r.PortfolioId == id);
+
         await using var tx = await db.Database.BeginTransactionAsync(ct);
+        await comparisons.ExecuteDeleteAsync(ct);
+        await backtests.ExecuteDeleteAsync(ct);
+        // Prediction sets reference model versions (restrict); versions and training events cascade with the experiment.
+        await db.MlPredictionSets.Where(p => experimentIds.Contains(p.ExperimentId)).ExecuteDeleteAsync(ct);
+        await experiments.ExecuteDeleteAsync(ct);
+        await db.ResearchEvents.Where(e => sessions.Select(r => r.Id).Contains(e.SessionId)).ExecuteDeleteAsync(ct);
+        await sessions.ExecuteDeleteAsync(ct);
         await db.Orders.Where(o => o.PortfolioId == id).ExecuteDeleteAsync(ct);
         await db.PaperTradeBatches.Where(b => b.PortfolioId == id).ExecuteDeleteAsync(ct);
         await db.TradeProposals.Where(p => p.PortfolioId == id).ExecuteDeleteAsync(ct);
@@ -209,7 +226,16 @@ public sealed class PortfolioService(IApplicationDbContext db, PriceQueryService
         db.Portfolios.Remove(portfolio);
         await db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
+        foreach (var experimentId in experimentIds) await artifacts.DeleteExperimentAsync(experimentId, ct);
         await audit.RecordAsync(AuditActions.PortfolioDeleted, "Portfolio", id.ToString(), portfolio.Name, ct: ct);
+    }
+
+    /// <summary>Symbols of the portfolio's open positions (owner-scoped), e.g. to refresh their quotes.</summary>
+    public async Task<IReadOnlyList<string>> HeldSymbolsAsync(Guid id, CancellationToken ct)
+    {
+        await EnsureExistsAsync(id, ct);
+        return await db.Holdings.AsNoTracking().Where(h => h.PortfolioId == id && h.Quantity > 0).OrderBy(h => h.Symbol)
+            .Select(h => h.Symbol).ToListAsync(ct);
     }
 
     public async Task<PagedResult<TransactionDto>> GetTransactionsAsync(Guid id, int page, int pageSize, string? symbol, CancellationToken ct)

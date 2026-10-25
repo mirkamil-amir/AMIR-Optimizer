@@ -40,7 +40,7 @@ export function WatchlistPage() {
     <div>
       <PageHeader
         title="Watchlist"
-        description="Stocks you follow – latest available price, change over a period, price history and company news. Watching a stock is not a purchase and never changes a portfolio or run."
+        info="Stocks you follow – latest available price, change over a period, price history and company news. Watching a stock is not a purchase and never changes a portfolio or run."
         actions={
           <>
             <RangePicker value={range} onChange={setRange} ranges={listRanges} label="Change period" />

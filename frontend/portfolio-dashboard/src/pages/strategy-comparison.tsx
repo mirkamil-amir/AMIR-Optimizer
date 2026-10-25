@@ -61,7 +61,7 @@ export function StrategyComparisonPage() {
       <PageHeader
         level={scoped ? 2 : 1}
         title="Strategy comparison"
-        description={description}
+        info={description}
         actions={<Badge variant="outline" className="gap-1"><GitCompareArrows className="size-3" /> Shared evaluation engine</Badge>}
       />
       <div className="grid gap-6 xl:grid-cols-[380px_minmax(0,1fr)]">

@@ -134,7 +134,7 @@ export function AdminUsersPage() {
 
   return (
     <>
-      <PageHeader title="User management" description="Review applications, approve or reject accounts, suspend access and assign the administrator role. Every action is audited." />
+      <PageHeader title="User management" info="Review applications, approve or reject accounts, suspend access and assign the administrator role. Every action is audited." />
       <Card className="py-4">
         <CardContent className="space-y-3 px-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -199,7 +199,7 @@ export function AdminUsersPage() {
 export function AdminSettingsPage() {
   return (
     <>
-      <PageHeader title="Administration" description="Data provider and defaults, the shared instrument catalogue and the audit trail. Administrators only – enforced by the server." />
+      <PageHeader title="Administration" info="Data provider and defaults, the shared instrument catalogue and the audit trail. Administrators only – enforced by the server." />
       <Tabs defaultValue="settings">
         <TabsList>
           <TabsTrigger value="settings">Data &amp; defaults</TabsTrigger>
