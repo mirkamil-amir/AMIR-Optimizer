@@ -1,6 +1,6 @@
-# MaTrix – Portfolio Viewer
+# MatrixView
 
-**MaTrix** (formerly AMIR Optimizer) is named after the covariance matrix at the heart of the optimizer. The logo
+**MatrixView** (formerly AMIR Optimizer) is named after the covariance matrix at the heart of the optimizer. The logo
 is a 4×4 correlation matrix – the risk model at the core
 of the optimizer – with its diagonal in gold on a graded navy tile; the name is set in Sora
 (`frontend/…/src/components/brand.tsx`, `public/favicon.svg`).
@@ -97,9 +97,9 @@ Offline demo: start with `MarketData__DefaultProvider=Mock` on a new database, o
 
 ## Using the platform
 
-Navigation: the top bar holds **Optimizer · AI Research · Financial News · Watchlist · Market Data · Strategy Guide ·
-Glossary · Settings**; the left sidebar lists the Optimizer's sections (Overview, Portfolio Creation, **Math Optimization**, **ML
-Optimization**, Optimization history, Backtest, Strategy comparison) and, for administrators, **Administration** with
+Navigation: the top bar holds **Viewer · AI Research · Financial News · Watchlist · Market Data · Strategy Guide ·
+Glossary · Settings**; the left sidebar lists the Viewer's sections (View, New, **Math** and **ML** – the Math
+and ML Optimization –, History, Backtesting, Comparison) and, for administrators, **Administration** with
 **Admin settings**.
 
 **Portfolios.** You can keep several independent portfolios. **Overview** (`/`) lists all of yours with value, cash,
@@ -136,7 +136,7 @@ figures Geist (both bundled with the app). Details: [portfolios.md](docs/portfol
    and say "cannot be valued" instead of showing a guessed total when a rate is missing. See [currencies](docs/currency.md).
 1. **Sign in / apply.** New users apply on `/register`; their account stays *Pending* until an administrator
    approves it under **Users**. Pending, rejected and suspended accounts can sign in but only see their status page.
-2. **Portfolio Creation (stock selection).** Navigate region → market → index → sector (regions fold; a region, market
+2. **New portfolio (stock selection).** Navigate region → market → index → sector (regions fold; a region, market
    or index is a filter of its own), search by company or ticker, sort; active filters are removable chips, "Selected
    only" reviews the selection, and the list pages with 25–200 rows and its position ("51–100 of 2,153"); selection and
    paging controls sit above and below the list. "Fetch prices" in the selection downloads every stock that lacks

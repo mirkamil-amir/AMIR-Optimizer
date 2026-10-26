@@ -111,6 +111,38 @@ public sealed class MultiPortfolioTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.BadRequest, (await _alice.GetAsync("/api/v1/portfolios/overview?currency=usd")).StatusCode);
     }
 
+    [Fact]
+    public async Task Overview_ShowsEveryPortfolioInTheChosenCurrency_NotOnlyTheTotal()
+    {
+        var dollars = await CreateAsync(_alice, "Dollars", ["AAPL", "MSFT"], cash: 20_000m);
+        var euros = await CreateAsync(_alice, "Euros", ["SAP.DE", "ADS.DE"], currency: "EUR", cash: 10_000m);
+        await BookAsync(_alice, euros.Id, new RecordTransactionRequest { Type = PortfolioTransactionType.Buy, Symbol = "SAP.DE", Quantity = 5, Price = 100m });
+
+        var usd = await (await _alice.GetAsync("/api/v1/portfolios/overview?currency=USD")).ReadAsync<PortfolioOverviewDto>();
+        var eurCard = usd.Portfolios.Single(p => p.Id == euros.Id);
+        var usdCard = usd.Portfolios.Single(p => p.Id == dollars.Id);
+        var inUsd = Assert.IsType<PortfolioInCurrencyDto>(eurCard.InCurrency);
+
+        // The EUR portfolio's value, invested part, cash, contributions and P&L are all in USD; its own figures stay in EUR.
+        Assert.Equal("USD", inUsd.Currency);
+        Assert.Empty(inUsd.Problems);
+        Assert.NotEqual(eurCard.TotalValue, inUsd.TotalValue);
+        Assert.NotEqual(eurCard.NetContributions, inUsd.NetContributions);
+        Assert.Equal(inUsd.TotalValue, inUsd.MarketValue + inUsd.Cash);
+        Assert.Equal(inUsd.TotalValue - inUsd.NetContributions, inUsd.ProfitLoss);
+        Assert.Equal(10_000m, eurCard.NetContributions);
+        // A portfolio already in the chosen currency is unchanged.
+        Assert.Equal(usdCard.TotalValue, usdCard.InCurrency!.TotalValue);
+        Assert.Equal(usdCard.ProfitLoss, usdCard.InCurrency.ProfitLoss);
+        // The total is the sum of the cards in that currency.
+        Assert.Equal(usd.Portfolios.Where(p => p.Status == "Active").Sum(p => p.InCurrency!.TotalValue), usd.TotalValue);
+        Assert.Equal(usd.Portfolios.Where(p => p.Status == "Active").Sum(p => p.InCurrency!.NetContributions), usd.TotalNetContributions);
+
+        // The other way round: the USD portfolio in EUR.
+        var eur = await (await _alice.GetAsync("/api/v1/portfolios/overview?currency=EUR")).ReadAsync<PortfolioOverviewDto>();
+        Assert.NotEqual(usdCard.TotalValue, eur.Portfolios.Single(p => p.Id == dollars.Id).InCurrency!.TotalValue);
+    }
+
     // ------------------------------------------------------------------ isolation between portfolios of one user
 
     [Fact]

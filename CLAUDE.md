@@ -1,4 +1,4 @@
-# MaTrix – Claude Code notes
+# MatrixView – Claude Code notes
 
 @AGENTS.md
 
@@ -9,10 +9,13 @@
 - UI names: "Math Optimization" (`/portfolios/:id/optimize`, an `OptimizationRun`) and "ML Optimization"
   (`/portfolios/:id/ml-optimize`, an `MlExperiment` linked to that portfolio) – two tabs of a portfolio with one shared
   layout (results in `ResultSection`s, never tabs; "What your result means" last). Keep both pages alike when changing
-  one. Backtest and Strategy comparison work on any optimization of one portfolio. Use these names in UI text, docs and tests.
-- Portfolio tabs: Overview · Holdings · Math Optimization · ML Optimization · Optimization runs · Backtest ·
-  Strategy comparison · Transactions – every tab stays under `/portfolios/:id/…` (no Performance tab: its charts are on the Overview, each
-  once). The background world map (`components/world-map.tsx`) is decorative and `aria-hidden` (its text counterpart is the
+  one. Backtesting and Comparison work on any optimization of one portfolio. Use these names in explanatory UI text, docs and
+  tests; navigation uses the short labels below (owner's choice, 2026-10-27).
+- Navigation labels: top bar "Viewer"; sidebar View · New · Math · ML · History · Backtesting · Comparison. Portfolio tabs:
+  Overview · Math · ML · History · Backtesting · Comparison · Transactions – every tab stays under `/portfolios/:id/…` (no
+  Performance or Holdings tab: their charts, cards and the positions table are on the Overview, each once; no efficient
+  frontier there). A page title that repeats the tab or sidebar entry right above it is screen-reader only
+  (`PageHeader titleHidden`); the app name is just "MatrixView" (no tagline). The background world map (`components/world-map.tsx`) is decorative and `aria-hidden` (its text counterpart is the
   header's `MapControl`); pages light markets with `useMapHighlight`, stock interactions use `useMapSignal`. The camera is a
   CSS transform set imperatively (`lib/map-camera.ts`) – never put camera positions into React state or context.
 - No decorative icons (the owner finds them childish): buttons, navigation, badges, alerts, empty states and toasts are

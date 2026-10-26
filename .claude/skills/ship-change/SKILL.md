@@ -1,6 +1,6 @@
 ---
 name: ship-change
-description: Checklist to finish any code change in MaTrix – build, all test suites (backend with PostgreSQL, ML, Vitest, Playwright), EF migration, security/ownership checks, container rebuild and docs. Use after editing backend, frontend, ML or schema code, before reporting the change as done.
+description: Checklist to finish any code change in MatrixView – build, all test suites (backend with PostgreSQL, ML, Vitest, Playwright), EF migration, security/ownership checks, container rebuild and docs. Use after editing backend, frontend, ML or schema code, before reporting the change as done.
 ---
 
 # Ship a change

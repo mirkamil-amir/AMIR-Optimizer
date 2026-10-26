@@ -1,5 +1,8 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using PortfolioOptimizer.Api.Security;
 using PortfolioOptimizer.Application.Abstractions;
 using PortfolioOptimizer.Application.Dtos;
 using PortfolioOptimizer.Application.Fx;
@@ -34,6 +37,15 @@ public sealed class FxController(FxService fx) : ControllerBase
     public Task<FxBoardDto> Board([FromQuery(Name = "base"), Required, RegularExpression("^[A-Z]{3}$")] string @base,
         [FromQuery, Required, RegularExpression("^[A-Z]{3}(,[A-Z]{3}){0,31}$")] string quotes, CancellationToken ct) =>
         fx.BoardAsync(@base, quotes.Split(','), ct);
+
+    /// <summary>Downloads the missing exchange rates of every published currency since <c>startDate</c> (administrators).</summary>
+    /// <response code="202">Download started, or nothing was missing (<c>started: false</c>).</response>
+    [HttpPost("sync")]
+    [Authorize(Policy = Policies.Administrator)]
+    [EnableRateLimiting("expensive")]
+    [ProducesResponseType<FxSyncDto>(StatusCodes.Status202Accepted)]
+    public async Task<ActionResult<FxSyncDto>> Sync(FxSyncRequest request, CancellationToken ct) =>
+        Accepted(await fx.SyncAllAsync(request.StartDate, ct));
 
     /// <summary>The latest usable rate from <paramref name="from"/> to <paramref name="to"/> (422 with the reason when none is available).</summary>
     [HttpGet("rate")]

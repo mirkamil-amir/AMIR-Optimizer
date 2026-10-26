@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import { Link, useParams } from 'react-router'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -9,18 +10,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Progress } from '@/components/ui/progress'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import { DataTable } from '@/components/data-table'
-import { ChartCard, TimeSeriesChart } from '@/components/charts'
+import { DataTable, type Column } from '@/components/data-table'
+import { MatrixLoader, WorkingPanel } from '@/components/matrix-loader'
 import { DataBadge, ErrorState, LoadingBlock, PageHeader } from '@/components/common'
 import { errorMessage } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { cn } from '@/lib/utils'
-import { useCreateAsset, useMarketStatus, usePrices, useSync, useUpdateAsset } from '@/lib/queries'
-import type { AssetCoverage } from '@/lib/types'
-import { date, dateTime, money, relativeTime } from '@/lib/format'
+import { useCreateAsset, useFxSync, useMarketStatus, useSync, useUpdateAsset } from '@/lib/queries'
+import type { AssetCoverage, DataFreshness, FxCoverage } from '@/lib/types'
+import { date, dateTime, money, num, relativeTime } from '@/lib/format'
 
 const historyOptions = [
   { value: '1', label: '1 year' },
@@ -34,22 +34,88 @@ export function MarketDataPage() {
   // Provider names, terms and job sources are shown to administrators only.
   const { isAdministrator } = useAuth()
   const sync = useSync()
+  const fxSync = useFxSync()
   const update = useUpdateAsset()
   const [years, setYears] = useState('5')
-  const [preview, setPreview] = useState<string | null>(null)
   const [addOpen, setAddOpen] = useState(false)
-  const running = data?.recentJobs.find((j) => j.status === 'Queued' || j.status === 'Running')
+  const { section = '' } = useParams()
+  // Jobs run one at a time: one may be running while others wait in the queue behind it.
+  const active = data?.recentJobs.filter((j) => j.status === 'Queued' || j.status === 'Running') ?? []
+  const running = active.find((j) => j.status === 'Running') ?? active[0]
+  const queued = active.filter((j) => j !== running).length
+  // Symbols still waiting for their download (not yet logged by their job): their row shows the loader.
+  const downloading = new Set(active.flatMap((j) => j.symbols.filter((s) => !j.logs.some((l) => l.symbol === s))))
+  const stocks = useMemo(() => (data?.coverage ?? []).filter((c) => c.assetType !== 'Index'), [data])
+  const indexes = useMemo(() => (data?.coverage ?? []).filter((c) => c.assetType === 'Index'), [data])
+  const currencies = data?.currencies ?? []
+  const current = SECTIONS.find((x) => x.path === section) ?? SECTIONS[0]
 
-  async function runSync(symbols?: string[], force = false) {
+  // One set of columns for stocks, ETFs and indexes.
+  const columns: Column<AssetCoverage>[] = [
+    { key: 'symbol', header: 'Symbol', sortValue: (c) => c.symbol, cell: (c) => <div><div className="font-medium">{c.symbol}</div><div className="max-w-44 truncate text-xs text-muted-foreground">{c.name}</div></div> },
+    {
+      key: 'status', header: 'Status', sortValue: (c) => c.freshness,
+      cell: (c) => c.observations === 0 && !c.isEnabled ? <DataBadge kind="missing" label="Not tracked" /> : freshnessBadge(c.freshness, c.isSimulated),
+    },
+    { key: 'obs', header: 'Observations', align: 'right', sortValue: (c) => c.observations, cell: (c) => c.observations.toLocaleString() },
+    { key: 'range', header: 'Coverage', sortValue: (c) => c.firstDate, cell: (c) => c.firstDate ? <span className="text-xs">{date(c.firstDate)} – {date(c.lastDate)}</span> : '—' },
+    { key: 'adj', header: 'Adj. close', cell: (c) => c.observations === 0 ? '—' : c.hasAdjustedClose ? <Badge variant="secondary">Yes</Badge> : <Badge variant="outline" className="text-warn" title="Returns exclude dividends">Raw only</Badge> },
+    { key: 'px', header: 'Latest price', align: 'right', sortValue: (c) => c.latestPrice, cell: (c) => <span title={c.latestPriceAsOfUtc ? dateTime(c.latestPriceAsOfUtc) : undefined}>{c.currency ? money(c.latestPrice, c.currency) : num(c.latestPrice)}</span> },
+    { key: 'ret', header: 'Retrieved', sortValue: (c) => c.lastRetrievedAtUtc, cell: (c) => <span className="text-xs text-muted-foreground">{relativeTime(c.lastRetrievedAtUtc)}</span> },
+    {
+      key: 'msg', header: 'Last sync',
+      // Successful syncs show "OK"; routine notes (e.g. a history refresh after a dividend) stay available as a tooltip.
+      cell: (c) => c.lastSyncSuccess === false
+        ? <span className="text-xs text-loss" title={c.lastSyncMessage ?? ''}>Failed: {(c.lastSyncMessage ?? '').slice(0, 60)}</span>
+        : <span className="text-xs text-muted-foreground" title={c.lastSyncMessage && c.lastSyncMessage !== 'Already up to date.' ? c.lastSyncMessage : undefined}>{c.lastSyncSuccess ? 'OK' : '—'}</span>,
+    },
+    {
+      key: 'enabled', header: 'Enabled',
+      cell: (c) => (
+        <span onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+          <Switch checked={c.isEnabled} aria-label={`${c.isEnabled ? 'Disable' : 'Enable'} ${c.symbol}`}
+            onCheckedChange={(on) => update.mutate({ symbol: c.symbol, isEnabled: on }, { onError: (e) => toast.error(errorMessage(e)) })} />
+        </span>
+      ),
+    },
+    {
+      key: 'act', header: '',
+      cell: (c) => downloading.has(c.symbol)
+        ? <MatrixLoader className="size-5 text-[var(--brand)] dark:text-[var(--brand-accent)]" label={`Downloading ${c.symbol}`} />
+        : <Button size="xs" variant="ghost" disabled={!!running} onClick={(e) => { e.stopPropagation(); runSync([c.symbol], true) }}>{c.observations === 0 ? 'Download' : 'Refresh'}</Button>,
+    },
+  ]
+
+  function historyStart() {
     const start = new Date()
     start.setFullYear(start.getFullYear() - Number(years))
+    return start.toISOString().slice(0, 10)
+  }
+
+  async function runSync(symbols?: string[], force = false, assetTypes?: ('Equity' | 'Etf' | 'Index')[]) {
     try {
-      const job = await sync.mutateAsync({ symbols, startDate: start.toISOString().slice(0, 10), forceFullRefresh: force })
+      const job = await sync.mutateAsync({ symbols, assetTypes, startDate: historyStart(), forceFullRefresh: force })
       toast.success('Download queued', { description: isAdministrator ? `${job.assetsTotal} asset(s) from ${job.source}` : `${job.assetsTotal} asset(s)` })
     } catch (e) {
       toast.error('Could not start download', { description: errorMessage(e) })
     }
   }
+
+  /** The sync of the open page: its tracked instruments, or every exchange rate (only what is missing is downloaded). */
+  async function syncSection() {
+    if (current.path === 'currencies') {
+      try {
+        const r = await fxSync.mutateAsync({ startDate: historyStart() })
+        if (r.started) toast.success('Exchange-rate download started', { description: `${r.currencies.length} currencies since ${date(r.from)}` })
+        else toast.info('Exchange rates are complete', { description: `Every rate since ${date(r.from)} is already stored.` })
+      } catch (e) {
+        toast.error('Could not start the exchange-rate download', { description: errorMessage(e) })
+      }
+    } else {
+      await runSync(undefined, false, current.path === 'indexes' ? ['Index'] : ['Equity', 'Etf'])
+    }
+  }
+  const sectionBusy = current.path === 'currencies' ? !!data?.fxDownloadRunning || fxSync.isPending : !!running || sync.isPending
 
   if (isLoading) return <LoadingBlock height="h-96" />
   if (error || !data) return <ErrorState error={error} onRetry={() => refetch()} />
@@ -65,7 +131,8 @@ export function MarketDataPage() {
               <SelectTrigger className="w-32" aria-label="History length"><SelectValue /></SelectTrigger>
               <SelectContent>{historyOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
             </Select>
-            <Button onClick={() => runSync()} disabled={!!running || sync.isPending}>Sync all enabled</Button>
+            {/* Each page syncs its own data: tracked stocks & ETFs, tracked indexes, or all exchange rates (administrators). */}
+            {isAdministrator && <Button onClick={syncSection} disabled={sectionBusy}>Sync {current.label.toLowerCase()}</Button>}
             <Button variant="outline" onClick={() => setAddOpen(true)}>Add asset</Button>
           </>
         }
@@ -77,59 +144,63 @@ export function MarketDataPage() {
         </div>
       )}
 
-      {running && (
-        <Card className="mb-4">
-          <CardContent className="space-y-2 py-4">
-            <div className="flex items-center justify-between text-sm">
-              <span className="flex items-center gap-2">Downloading{isAdministrator ? ` from ${running.source}` : ''}…</span>
-              <span className="tabular text-muted-foreground">{running.assetsCompleted + running.assetsFailed} / {running.assetsTotal}</span>
-            </div>
-            <Progress value={((running.assetsCompleted + running.assetsFailed) / Math.max(1, running.assetsTotal)) * 100} />
-          </CardContent>
-        </Card>
+      {data.fxDownloadRunning && (
+        <WorkingPanel className="mb-4" title="Downloading exchange rates…" detail="Missing daily reference rates, in two-year steps per currency; the list updates as they arrive." />
       )}
 
-      <DataTable<AssetCoverage>
-        caption="Data coverage"
-        rows={data.coverage}
-        rowKey={(c) => c.symbol}
-        initialSort={{ key: 'symbol', dir: 'asc' }}
-        onRowClick={(c) => setPreview(c.symbol)}
-        columns={[
-          { key: 'symbol', header: 'Symbol', sortValue: (c) => c.symbol, cell: (c) => <div><div className="font-medium">{c.symbol}</div><div className="max-w-44 truncate text-xs text-muted-foreground">{c.name}</div></div> },
-          {
-            key: 'status', header: 'Status', sortValue: (c) => c.freshness,
-            cell: (c) => c.freshness === 'Missing' ? <DataBadge kind="missing" /> : c.isSimulated ? <DataBadge kind="simulated" /> : c.freshness === 'Stale' ? <DataBadge kind="stale" /> : <DataBadge kind="live" label="Fresh" />,
-          },
-          { key: 'obs', header: 'Observations', align: 'right', sortValue: (c) => c.observations, cell: (c) => c.observations.toLocaleString() },
-          { key: 'range', header: 'Coverage', sortValue: (c) => c.firstDate, cell: (c) => c.firstDate ? <span className="text-xs">{date(c.firstDate)} – {date(c.lastDate)}</span> : '—' },
-          { key: 'adj', header: 'Adj. close', cell: (c) => c.observations === 0 ? '—' : c.hasAdjustedClose ? <Badge variant="secondary">Yes</Badge> : <Badge variant="outline" className="text-warn" title="Returns exclude dividends">Raw only</Badge> },
-          { key: 'px', header: 'Latest price', align: 'right', sortValue: (c) => c.latestPrice, cell: (c) => <span title={c.latestPriceAsOfUtc ? dateTime(c.latestPriceAsOfUtc) : undefined}>{money(c.latestPrice)}</span> },
-          { key: 'ret', header: 'Retrieved', sortValue: (c) => c.lastRetrievedAtUtc, cell: (c) => <span className="text-xs text-muted-foreground">{relativeTime(c.lastRetrievedAtUtc)}</span> },
-          {
-            key: 'msg', header: 'Last sync',
-            // Successful syncs show "OK"; routine notes (e.g. a history refresh after a dividend) stay available as a tooltip.
-            cell: (c) => c.lastSyncSuccess === false
-              ? <span className="text-xs text-loss" title={c.lastSyncMessage ?? ''}>Failed: {(c.lastSyncMessage ?? '').slice(0, 60)}</span>
-              : <span className="text-xs text-muted-foreground" title={c.lastSyncMessage && c.lastSyncMessage !== 'Already up to date.' ? c.lastSyncMessage : undefined}>{c.lastSyncSuccess ? 'OK' : '—'}</span>,
-          },
-          {
-            key: 'enabled', header: 'Enabled',
-            cell: (c) => (
-              <span onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-                <Switch checked={c.isEnabled} aria-label={`${c.isEnabled ? 'Disable' : 'Enable'} ${c.symbol}`}
-                  onCheckedChange={(on) => update.mutate({ symbol: c.symbol, isEnabled: on }, { onError: (e) => toast.error(errorMessage(e)) })} />
-              </span>
-            ),
-          },
-          {
-            key: 'act', header: '',
-            cell: (c) => <Button size="xs" variant="ghost" disabled={!!running} onClick={(e) => { e.stopPropagation(); runSync([c.symbol], true) }}>Refresh</Button>,
-          },
-        ]}
-      />
+      {running && (
+        <WorkingPanel className="mb-4"
+          title={running.status === 'Queued' ? 'Download queued – waiting to start…' : 'Downloading price history…'}
+          percent={running.status === 'Running' ? ((running.assetsCompleted + running.assetsFailed) / Math.max(1, running.assetsTotal)) * 100 : null}
+          detail={[
+            `${(running.assetsCompleted + running.assetsFailed).toLocaleString()} of ${running.assetsTotal.toLocaleString()} stocks`,
+            isAdministrator ? `from ${running.source}` : null,
+            running.logs.length ? `last: ${running.logs[running.logs.length - 1].symbol}` : null,
+            running.assetsFailed ? `${running.assetsFailed} failed` : null,
+            queued ? `${queued} more download${queued === 1 ? '' : 's'} waiting (downloads run one after another)` : null,
+          ].filter(Boolean).join(' · ')} />
+      )}
 
-      {preview && <PricePreview symbol={preview} />}
+      <nav aria-label="Market data sections" className="nav-scroll -mx-1 mb-4 overflow-x-auto border-b">
+        <ul className="flex min-w-max gap-0.5 px-1">
+          {SECTIONS.map((x) => (
+            <li key={x.path}>
+              <Link to={x.path ? `/market-data/${x.path}` : '/market-data'} aria-current={x.path === current.path ? 'page' : undefined}
+                className={cn(
+                  'inline-flex border-b-2 px-3 py-2 text-sm whitespace-nowrap transition-colors focus-visible:rounded-t-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset',
+                  x.path === current.path ? 'border-primary font-semibold text-foreground' : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground',
+                )}>
+                {x.label}<span className="ml-1.5 text-xs text-muted-foreground tabular">{({ '': stocks.length, indexes: indexes.length, currencies: currencies.length })[x.path].toLocaleString()}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </nav>
+
+      {current.path === '' && (
+        <SearchableTable key="stocks" label="stocks & ETFs" hint={current.hint} rows={stocks} columns={columns} rowKey={(c) => c.symbol} initialSort={{ key: 'symbol', dir: 'asc' }}
+          matches={(c, q) => c.symbol.toLowerCase().includes(q) || (c.name ?? '').toLowerCase().includes(q) || c.currency.toLowerCase() === q}
+          placeholder="Search symbol, name or currency" summary={`${stocks.filter((c) => c.observations > 0).length.toLocaleString()} with prices`} />
+      )}
+      {current.path === 'indexes' && (
+        <SearchableTable key="indexes" label="indexes" hint={current.hint} rows={indexes} columns={columns} rowKey={(c) => c.symbol} initialSort={{ key: 'symbol', dir: 'asc' }}
+          matches={(c, q) => c.symbol.toLowerCase().includes(q) || (c.name ?? '').toLowerCase().includes(q) || c.currency.toLowerCase() === q}
+          placeholder="Search symbol, name or currency" summary={`${indexes.filter((c) => c.observations > 0).length.toLocaleString()} with prices`} />
+      )}
+      {current.path === 'currencies' && (
+        <SearchableTable key="currencies" label="currencies" hint={current.hint} rows={currencies} rowKey={(c) => c.currency} initialSort={{ key: 'currency', dir: 'asc' }}
+          matches={(c, q) => c.currency.toLowerCase().includes(q)} placeholder="Search currency code, e.g. JPY"
+          empty="No exchange rates stored yet. They are downloaded when an analysis or a trade needs a conversion."
+          columns={[
+    { key: 'currency', header: 'Currency', sortValue: (c) => c.currency, cell: (c) => <span className="font-medium">{c.currency}</span> },
+    { key: 'status', header: 'Status', sortValue: (c) => c.freshness, cell: (c) => freshnessBadge(c.freshness, c.isSimulated) },
+    { key: 'rate', header: '1 EUR =', align: 'right', sortValue: (c) => c.latestUnitsPerEur, cell: (c) => <span title={`Rate of ${date(c.lastDate)}`}>{num(c.latestUnitsPerEur, 4)} {c.currency}</span> },
+    { key: 'obs', header: 'Observations', align: 'right', sortValue: (c) => c.observations, cell: (c) => c.observations.toLocaleString() },
+    { key: 'range', header: 'Coverage', sortValue: (c) => c.firstDate, cell: (c) => <span className="text-xs">{date(c.firstDate)} – {date(c.lastDate)}</span> },
+    { key: 'ret', header: 'Retrieved', sortValue: (c) => c.lastRetrievedAtUtc, cell: (c) => <span className="text-xs text-muted-foreground">{relativeTime(c.lastRetrievedAtUtc)}</span> },
+    ...(isAdministrator ? [{ key: 'src', header: 'Source', cell: (c: FxCoverage) => <span className="text-xs">{c.source}</span> }] : []),
+  ]} />
+      )}
 
       <div className={cn('mt-6 grid gap-4', isAdministrator && 'lg:grid-cols-2')}>
         {isAdministrator && <Card>
@@ -183,31 +254,45 @@ export function MarketDataPage() {
   )
 }
 
-function PricePreview({ symbol }: { symbol: string }) {
-  const { data, isLoading } = usePrices(symbol)
-  if (isLoading) return <div className="mt-4"><LoadingBlock height="h-72" /></div>
-  if (!data || data.items.length < 2) return <p className="mt-4 text-sm text-muted-foreground">No stored prices for {symbol}.</p>
-  const items = data.items
-  const hasAdj = items.every((p) => p.adjustedClose !== null)
+/** The three pages of Market Data; each lists its instruments with the same search and paging. */
+const SECTIONS = [
+  { path: '', label: 'Stocks & ETFs', hint: 'Every stock and index ETF of the catalogue – the same instruments as New portfolio. Not tracked: no prices downloaded yet; Download fetches them and keeps them fresh.' },
+  { path: 'indexes', label: 'Indexes', hint: 'Stock indices used as benchmarks (e.g. ^GSPC, ^GDAXI). They are not investable; their prices are index points in the currency of their market.' },
+  { path: 'currencies', label: 'Currencies', hint: 'Daily reference exchange rates, stored as units per 1 EUR – the pivot of every conversion: any other pair is calculated from two of these rates of the same day. Missing history is downloaded when an analysis needs it.' },
+] as const
+
+/**
+ * One Market Data list: search box, row count, and the paged table (rows per page, first/previous/next/last) inside a box
+ * that scrolls under a fixed header. Each page keeps its own search (keyed by section).
+ */
+function SearchableTable<T>({ label, hint, rows, columns, rowKey, initialSort, matches, placeholder, summary, empty }: {
+  label: string; hint: string; rows: T[]; columns: Column<T>[]; rowKey: (row: T) => string; initialSort: { key: string; dir: 'asc' | 'desc' }
+  matches: (row: T, query: string) => boolean; placeholder: string; summary?: string; empty?: string
+}) {
+  const [search, setSearch] = useState('')
+  const q = search.trim().toLowerCase()
+  const filtered = useMemo(() => (q ? rows.filter((r) => matches(r, q)) : rows), [rows, q, matches])
   return (
-    <ChartCard
-      className="mt-4"
-      title={`${symbol} price history`}
-      description={`${items[0].isSimulated ? 'Simulated, ' : ''}USD, ${date(items[0].date)} – ${date(items[items.length - 1].date)} · ${items.length.toLocaleString()} observations`}
-      hint="Raw close is the traded price. Adjusted close is back-adjusted for splits and dividends and is used for return calculations."
-      legend={hasAdj ? [{ name: 'Raw close', color: 'var(--series-1)' }, { name: 'Adjusted close', color: 'var(--series-2)', dashed: true }] : undefined}
-      table={{ columns: ['Date', 'Close', 'Adj. close', 'Volume'], rows: items.slice(-260).reverse().map((p) => [p.date, money(p.close), p.adjustedClose !== null ? money(p.adjustedClose) : '—', p.volume?.toLocaleString() ?? '—']) }}
-    >
-      <TimeSeriesChart
-        dates={items.map((p) => p.date)}
-        series={[
-          { name: 'Raw close', values: items.map((p) => p.close) },
-          ...(hasAdj ? [{ name: 'Adjusted close', values: items.map((p) => p.adjustedClose), dashed: true }] : []),
-        ]}
-        format={(v) => money(v, 'USD', { decimals: 0 })}
-      />
-    </ChartCard>
+    <section aria-label={label} className="space-y-3">
+      <p className="text-sm text-muted-foreground">{hint}</p>
+      <div className="flex flex-wrap items-center gap-3">
+        <Input placeholder={placeholder} aria-label={`Search ${label}`} className="bg-card sm:w-80" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <span className="text-xs text-muted-foreground tabular">
+          {q ? `${filtered.length.toLocaleString()} of ${rows.length.toLocaleString()} ${label}` : `${rows.length.toLocaleString()} ${label}${summary ? ` · ${summary}` : ''}`}
+        </span>
+      </div>
+      {rows.length === 0 && empty ? <p className="rounded-lg border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">{empty}</p> : (
+        <DataTable<T> caption={label} rows={filtered} rowKey={rowKey} initialSort={initialSort} columns={columns}
+          pageSize={50} pageResetKey={q} maxRows={15}
+          empty={<p className="rounded-lg border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">No {label} match “{search}”.</p>} />
+      )}
+    </section>
   )
+}
+
+/** Freshness of the latest stored day (same rule for prices and exchange rates). */
+function freshnessBadge(freshness: DataFreshness, simulated: boolean) {
+  return freshness === 'Missing' ? <DataBadge kind="missing" /> : simulated ? <DataBadge kind="simulated" /> : freshness === 'Stale' ? <DataBadge kind="stale" /> : <DataBadge kind="live" label="Fresh" />
 }
 
 const assetSchema = z.object({

@@ -31,7 +31,7 @@ Money and quantities are `numeric` (`decimal`); keys of user-facing records are 
   never other users' results.
 * Shared: catalogue, universes, prices, quotes, settings, data jobs, news articles and their fetch state (never copied per user).
 * **Not persisted:** the stock selection (browser memory only) and anything a page merely displays. A run stores its
-  universe as part of its inputs when it is submitted; Portfolio Creation stores it as the new portfolio's universe.
+  universe as part of its inputs when it is submitted; New portfolio stores it as the new portfolio's universe.
 * Portfolio children: `Holdings`, `CashLedger`, `Executions`, `PortfolioTransactions` (manual journal; unique
   (portfolio, idempotency key)), `Orders`, `PaperTradeBatches`, `TradeProposals`, `OptimizationRuns` – all keyed by
   `PortfolioId` and removed when the portfolio is deleted (active or archived). `MlExperiments`, `BacktestRuns`,

@@ -2,7 +2,7 @@ import { keepPreviousData, useQueries, useMutation, useQuery, useQueryClient } f
 import { api } from './api'
 import type {
   AppSettings, Asset, AuditEvent, Backtest, BacktestRequest, BacktestSummary, CashEntry, CatalogueImportResult, HoldingsResponse,
-  MarketDataStatus, OptimizationRun, OptimizationRunSummary, Order, PagedResult, PaperTradeResult, Performance, Portfolio,
+  FxSync, MarketDataStatus, OptimizationRun, OptimizationRunSummary, Order, PagedResult, PaperTradeResult, Performance, Portfolio,
   PortfolioSettings, PortfolioSummary, PriceBar, Risk, RunStatus, Sector, StockDetail, StockListItem, SyncJob, TradeProposal,
   Transaction, UserAccountStatus, UserSummary, MlCatalog, MlExperiment, MlExperimentRequest, MlExperimentSummary, MlBacktest,
   MlPredictionSet, StrategyComparison, StrategyComparisonRequest, StrategyComparisonSummary, Market, QuoteRefreshRun, QuoteRefreshResult,
@@ -289,7 +289,7 @@ export const useMarketStatus = (poll = false) =>
   useQuery({
     queryKey: keys.status,
     queryFn: () => api.get<MarketDataStatus>(`${V1}/market-data/status`),
-    refetchInterval: (q) => (poll || q.state.data?.recentJobs.some((j) => j.status === 'Queued' || j.status === 'Running') ? 2000 : 60_000),
+    refetchInterval: (q) => (poll || q.state.data?.fxDownloadRunning || q.state.data?.recentJobs.some((j) => j.status === 'Queued' || j.status === 'Running') ? 2000 : 60_000),
   })
 
 /** Compact data status (counts, latest retrieval, running download) for the navigation and dashboards. */
@@ -312,8 +312,17 @@ export const usePrices = (symbol?: string, from?: string) =>
 export function useSync() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: { symbols?: string[]; startDate?: string; provider?: string; forceFullRefresh?: boolean }) =>
+    mutationFn: (body: { symbols?: string[]; assetTypes?: ('Equity' | 'Etf' | 'Index')[]; startDate?: string; provider?: string; forceFullRefresh?: boolean }) =>
       api.post<SyncJob>(`${V1}/market-data/sync`, body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.status }),
+  })
+}
+
+/** Downloads the missing exchange rates of every published currency since `startDate` (administrators; Market Data → Currencies). */
+export function useFxSync() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { startDate?: string }) => api.post<FxSync>(`${V1}/fx/sync`, body),
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.status }),
   })
 }

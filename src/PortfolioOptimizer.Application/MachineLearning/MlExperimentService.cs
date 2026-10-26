@@ -321,7 +321,7 @@ public sealed class MlExperimentService(
                 assets.TryGetValue(p.Symbol, out var a);
                 LatestPrice? lp = a is null ? null : latest.GetValueOrDefault(a.Id);
                 return new MlPredictionDto(p.Symbol, a?.Name, p.Sector ?? a?.Sector, lp?.Price, lp?.PriceDate, p.PredictedValue, p.Score, p.Rank,
-                    p.Selected, p.TargetWeight, p.IntervalLow, p.IntervalHigh, p.Drivers);
+                    p.Selected, p.TargetWeight, p.IntervalLow, p.IntervalHigh, p.Drivers, a?.Currency);
             }).ToList());
     }
 

@@ -156,7 +156,17 @@ public sealed partial class UniverseService(IApplicationDbContext db, IAuditLog 
         // Membership counts in memory from three set queries (no per-member EXISTS subqueries; see AssetIdsWithPricesAsync).
         var withPrices = await prices.AssetIdsWithPricesAsync(activeSource, ct);
         var withQuotes = (await db.LatestQuotes.AsNoTracking().Where(q => q.Source == activeSource).Select(q => q.AssetId).ToListAsync(ct)).ToHashSet();
-        var counts = (await db.IndexMemberships.AsNoTracking().Select(m => new { m.IndexCode, m.AssetId }).ToListAsync(ct))
+        var memberships = await db.IndexMemberships.AsNoTracking().Select(m => new { m.IndexCode, m.AssetId }).ToListAsync(ct);
+        // Instruments per market by the stock chooser's rule (StockDiscoveryService.Filter): listed there or a member of its indices.
+        var indexCountry = indices.ToDictionary(i => i.Code, i => i.Country);
+        var listed = await db.Assets.AsNoTracking().Where(a => a.AssetType != AssetType.Index).Select(a => new { a.Id, a.Country }).ToListAsync(ct);
+        var stockIds = listed.Select(a => a.Id).ToHashSet();
+        var instruments = listed.Select(a => (a.Country, a.Id))
+            .Concat(memberships.Where(m => stockIds.Contains(m.AssetId) && indexCountry.ContainsKey(m.IndexCode))
+                .Select(m => (Country: indexCountry[m.IndexCode], Id: m.AssetId)))
+            .GroupBy(x => x.Country)
+            .ToDictionary(g => g.Key, g => g.Select(x => x.Id).Distinct().Count());
+        var counts = memberships
             .GroupBy(m => m.IndexCode)
             .ToDictionary(g => g.Key, g => new
             {
@@ -173,7 +183,7 @@ public sealed partial class UniverseService(IApplicationDbContext db, IAuditLog 
                     counts.TryGetValue(i.Code, out var c);
                     return new MarketIndexDto(i.Code, i.Name, i.Country, i.Currency, i.BenchmarkSymbol, i.IsHistorical, i.Description,
                         c?.Members ?? 0, c?.WithPrices ?? 0, c?.WithQuotes ?? 0, i.Source, i.SourceUrl, i.SourceRevision, i.Licence, i.VerifiedOn);
-                }).ToList());
+                }).ToList(), instruments.GetValueOrDefault(g.Key));
             })
             .OrderBy(m => Array.FindIndex(Markets.Venues.ToArray(), v => v.Country == m.Country) is var x && x < 0 ? 99 : x)
             .ToList();

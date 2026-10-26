@@ -43,8 +43,9 @@ function Section() {
 function renderAt(path: string) {
   const router = createMemoryRouter([
     { path: '/', element: <p>my portfolios</p> },
-    { path: '/holdings', element: <ToCurrentPortfolio section="holdings" /> },
-    { path: '/portfolios/:portfolioId', element: <PortfolioWorkspace />, children: [{ index: true, element: <Section /> }, { path: 'holdings', element: <Section /> }] },
+    { path: '/holdings', element: <ToCurrentPortfolio section="" /> },
+    { path: '/trades', element: <ToCurrentPortfolio section="transactions" /> },
+    { path: '/portfolios/:portfolioId', element: <PortfolioWorkspace />, children: [{ index: true, element: <Section /> }, { path: 'transactions', element: <Section /> }] },
   ], { initialEntries: [path] })
   render(<TooltipProvider><PortfolioProvider><RouterProvider router={router} /></PortfolioProvider></TooltipProvider>)
   return router
@@ -60,16 +61,16 @@ describe('portfolio workspace', () => {
     expect(within(screen.getByRole('navigation', { name: 'Portfolio sections' })).getByRole('link', { name: 'Overview' })).toHaveAttribute('aria-current', 'page')
   })
 
-  it('keeps every section inside the portfolio, with Backtest and Strategy comparison last and no Performance tab', async () => {
+  it('keeps every section inside the portfolio, with short labels and no Performance or Holdings tab', async () => {
     data.portfolios = [summary('a', 'Core')]
     renderAt('/portfolios/a')
     const nav = await screen.findByRole('navigation', { name: 'Portfolio sections' })
     const links = within(nav).getAllByRole('link')
     expect(links.map((l) => l.textContent)).toEqual([
-      'Overview', 'Holdings', 'Math Optimization', 'ML Optimization', 'Optimization runs', 'Backtest', 'Strategy comparison', 'Transactions',
+      'Overview', 'Math', 'ML', 'History', 'Backtesting', 'Comparison', 'Transactions',
     ])
     for (const link of links) expect(link.getAttribute('href')).toMatch(/^\/portfolios\/a(\/|$)/)
-    expect(within(nav).getByRole('link', { name: 'Optimization runs' })).toHaveAttribute('href', '/portfolios/a/runs')
+    expect(within(nav).getByRole('link', { name: 'History' })).toHaveAttribute('href', '/portfolios/a/runs')
   })
 
   it('shows a safe not-found state for an unknown or foreign id', async () => {
@@ -81,10 +82,10 @@ describe('portfolio workspace', () => {
 
   it('resets section state when switching to another portfolio', async () => {
     data.portfolios = [summary('a', 'Core'), summary('b', 'Tech')]
-    const router = renderAt('/portfolios/a/holdings')
+    const router = renderAt('/portfolios/a/transactions')
     await userEvent.type(await screen.findByLabelText('draft'), 'weights for A')
     expect(screen.getByLabelText('draft')).toHaveValue('weights for A')
-    await act(() => router.navigate('/portfolios/b/holdings'))
+    await act(() => router.navigate('/portfolios/b/transactions'))
     expect(screen.getByText('section of b (scoped)')).toBeInTheDocument()
     expect(screen.getByLabelText('draft')).toHaveValue('')
     expect(screen.getByRole('heading', { level: 1, name: 'Tech' })).toBeInTheDocument()
@@ -99,9 +100,16 @@ describe('portfolio workspace', () => {
 
   it('sends an old portfolio-less URL to the most recently opened active portfolio', async () => {
     data.portfolios = [summary('x', 'Archived one', { status: 'Archived' }), summary('a', 'Core')]
+    const router = renderAt('/trades')
+    expect(await screen.findByText('section of a (scoped)')).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/portfolios/a/transactions')
+  })
+
+  it('sends the old Holdings URL to the Overview of the current portfolio (Holdings merged into it)', async () => {
+    data.portfolios = [summary('a', 'Core')]
     const router = renderAt('/holdings')
     expect(await screen.findByText('section of a (scoped)')).toBeInTheDocument()
-    expect(router.state.location.pathname).toBe('/portfolios/a/holdings')
+    expect(router.state.location.pathname).toBe('/portfolios/a')
   })
 
   it('sends an old URL to the portfolio list when the user has no portfolio', async () => {

@@ -39,7 +39,7 @@ export function TradesPage() {
     <>
       <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h2 className="text-lg font-semibold">Transactions</h2>
+          <h2 className="sr-only">Transactions</h2>
           <p className="text-sm text-muted-foreground">
             Recorded transactions, trade proposals, simulated orders, executions and the cash ledger. Append-only: corrections are new entries.
           </p>

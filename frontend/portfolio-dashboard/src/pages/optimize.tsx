@@ -152,6 +152,7 @@ export function OptimizePage() {
     <>
       <PageHeader
         level={2}
+        titleHidden
         title="Math Optimization"
         info="Configure the universe and constraints of this portfolio, run a mean-variance optimization, then review its allocation and confirm a simulated trade proposal. A result never changes holdings by itself."
       />

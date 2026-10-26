@@ -1,10 +1,9 @@
 import { useId } from 'react'
 import { cn } from '@/lib/utils'
 
-/** MaTrix (spelled so by the owner): named after the covariance/correlation matrix at the core of the optimizer and the logo. */
+/** MatrixView (named by the owner): named after the covariance/correlation matrix at the core of the optimizer and the logo. */
 export const BRAND = {
-  name: 'MaTrix',
-  tagline: 'Portfolio Viewer',
+  name: 'MatrixView',
 } as const
 
 /** Opacity of an off-diagonal dot: correlation fades with the distance from the diagonal. */
@@ -35,16 +34,15 @@ export function MatrixMark({ className, title = BRAND.name }: { className?: stri
   )
 }
 
-/** Mark with the name (Sora); the full version adds the tagline. */
+/** Mark with the name (Sora); `compact` is the smaller size of the top bar. */
 export function MatrixWordmark({ compact = false, className }: { compact?: boolean; className?: string }) {
   return (
-    <div className={cn('flex items-center gap-2.5', className)} title={`${BRAND.name} – ${BRAND.tagline}`}>
+    <div className={cn('flex items-center gap-2.5', className)} title={BRAND.name}>
       <MatrixMark className={compact ? 'size-9' : 'size-11'} />
       <div className="leading-none">
         <div className={cn('font-brand font-semibold tracking-[0.01em]', compact ? 'text-[20px]' : 'text-[24px]')}>
           {BRAND.name}
         </div>
-        {!compact && <div className="mt-1.5 text-[11px] text-muted-foreground">{BRAND.tagline}</div>}
       </div>
     </div>
   )

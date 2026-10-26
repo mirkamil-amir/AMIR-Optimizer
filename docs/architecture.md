@@ -124,7 +124,7 @@ limits, least-privilege database role, audit trail.
   both self-hosted (`@fontsource-variable`); map and surface tokens in `index.css` (content veil, translucent cards,
   `.map-surface` for dense text next to the map).
 * Navigation: `components/app-shell.tsx` renders the primary top bar and the sidebar from `lib/navigation.ts`
-  (primary areas, Optimizer sections, administration; route-to-area matching) – see D-31.
+  (primary areas, Viewer sections, administration; route-to-area matching) – see D-31.
 * `lib/` – pure, unit-tested logic: `api.ts` (fetch + antiforgery), `auth.tsx`, `selection.tsx` (memory only),
   `queries.ts` (TanStack Query hooks), `identity.ts` (header labels), `quote-status.ts`, `interpretation.ts`
   (result explanations), `strategy-guide.ts` + `worked-examples.ts` (12-part strategy explanations), `glossary.ts`,

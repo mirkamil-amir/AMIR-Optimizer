@@ -2,6 +2,24 @@
 
 Short records of decisions that are not obvious from the code. Newest first. Format: context → decision → consequences.
 
+## D-46 Short navigation labels; MatrixView without tagline (2026-10-27)
+**Context:** the owner found the navigation long and every page repeating its tab name as a large title. **Decision:**
+top bar "Viewer"; sidebar View · New · Math · ML · History · Backtesting · Comparison; portfolio tabs Overview · Math · ML ·
+History · Backtesting · Comparison · Transactions (the portfolio's run list is "History" like its sidebar entry). A title
+that repeats the entry right above it is screen-reader only (`PageHeader titleHidden`), as is "My portfolios" on View;
+the workspace header lost its "My portfolios" link. The app is "MatrixView" (no tagline). Explanatory text keeps
+"Math Optimization" / "ML Optimization". **Consequences:** shorter navigation; tests address links with `exact: true`.
+
+## D-45 Holdings on the Overview; portfolios in another currency include the currency effect (2026-10-26)
+**Context:** the Overview and the Holdings tab showed the same value cards; on My portfolios the currency box converted only
+the total, and converted net contributions at today's rate, so profit/loss in another currency was just the native P&L ×
+today's rate. **Decision:** the Holdings tab is merged into the Overview (cost basis, currency exposure, positions table and
+reporting currency added once; old URLs redirect); the Overview's efficient frontier was removed (it stays on each run).
+In another currency every portfolio card is converted on the server (`PortfolioSummaryDto.InCurrency`): today's value like
+the Holdings reporting view, every deposit and withdrawal at the rate of its own date (as the performance view does), and
+the total is the sum of the cards. **Consequences:** profit/loss differs by currency when exchange rates moved since the
+money came in; a missing rate leaves that figure empty with the reason.
+
 ## D-44 One common window for large universes; whole-selection price check (2026-10-25)
 **Context:** a Math Optimization of 2,158 stocks from 35 markets failed with "Only 30 aligned daily returns": returns use
 only the dates every stock traded, so one recent listing or one stock whose prices stopped in August cut the window of
@@ -116,8 +134,8 @@ converter shows amount, from, swap, to and the converted amount in one line, wit
 header keeps Selection and Account only (map and theme are on larger screens and under Account › Appearance).
 Logo: a 4×4 correlation matrix with a gold diagonal (the risk model at the core of the optimizer), chosen by the owner
 from nine rendered concepts; it replaces the "A over three bars" mark in the sidebar, sign-in pages, settings and favicon.
-Name: the product is renamed **MaTrix** (the owner's spelling; after the covariance matrix and the logo); the wordmark reads
-"MaTrix" only, the page title is "MaTrix - Portfolio Viewer", and the tagline "Portfolio Viewer" replaces the AMIR acronym.
+Name: the product is renamed **MatrixView** (the owner's spelling; after the covariance matrix and the logo); the wordmark reads
+"MatrixView" only, the page title is "MatrixView - Portfolio Viewer", and the tagline "Portfolio Viewer" replaces the AMIR acronym.
 The header shows the user's name without the role. Currency converter: the rate list and the chart follow the From box
 (list = rates per one From unit, chart = To per From; clicking a row makes it To; To never equals From and falls back to
 the first listed currency, so the chart is drawn without a click); the separate base and chart selectors

@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { admin, approve, register, requireAdminCredentials, signIn, signOut, strongPassword, uniqueEmail, acceptDownloadIfAsked } from './helpers'
 
-// Several independent portfolios per user: Portfolio Creation, the overview, a workspace per portfolio, recorded
+// Several independent portfolios per user: New portfolio, the overview, a workspace per portfolio, recorded
 // transactions, isolation between portfolios and between users, deep links and narrow layouts.
 test.beforeAll(requireAdminCredentials)
 
@@ -18,7 +18,7 @@ async function newStudent(page: Page, name: string) {
 async function createPortfolio(page: Page, name: string, symbols: string[], description?: string) {
   await page.goto('/')
   await page.getByRole('link', { name: 'Create portfolio' }).first().click()
-  await expect(page.getByRole('heading', { name: 'Portfolio Creation' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'New portfolio' })).toBeVisible()
   await page.getByLabel('Name', { exact: true }).fill(name)
   if (description) await page.getByLabel('Description (optional)').fill(description)
   const search = page.getByLabel('Search company name or ticker')
@@ -46,7 +46,7 @@ test('two independent portfolios: create, optimize, record, switch, reload, isol
   await expect(page.getByRole('heading', { name: 'My portfolios' })).toBeVisible()
   await expect(page.getByText('No portfolios yet')).toBeVisible()
 
-  // Abandoning Portfolio Creation stores nothing.
+  // Abandoning New portfolio stores nothing.
   await page.goto('/stocks')
   await page.getByLabel('Name', { exact: true }).fill('Never created')
   await page.goto('/')
@@ -54,7 +54,7 @@ test('two independent portfolios: create, optimize, record, switch, reload, isol
 
   const a = await createPortfolio(page, 'Core A', ['AAPL', 'MSFT', 'JPM', 'XOM'], 'Long-term diversified')
   // The temporary selection was used for A and cleared.
-  await expect(page.getByRole('link', { name: 'Portfolio Creation: 0 stocks selected' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'New portfolio: 0 stocks selected' })).toBeVisible()
   const b = await createPortfolio(page, 'Tech B', ['NVDA', 'GOOGL', 'AMZN'])
   expect(a).not.toBe(b)
 
@@ -68,7 +68,7 @@ test('two independent portfolios: create, optimize, record, switch, reload, isol
 
   // Portfolio A: optimize with its own universe.
   await page.getByRole('link', { name: 'Open Core A' }).click()
-  await page.getByRole('navigation', { name: 'Portfolio sections' }).getByRole('link', { name: 'Math Optimization' }).click()
+  await page.getByRole('navigation', { name: 'Portfolio sections' }).getByRole('link', { name: 'Math', exact: true }).click()
   await expect(page).toHaveURL(new RegExp(`/portfolios/${a}/optimize$`))
   await expect(page.getByRole('heading', { level: 1, name: 'Core A' })).toBeVisible()
   await page.getByRole('combobox', { name: 'Optimization method' }).click()
@@ -80,11 +80,11 @@ test('two independent portfolios: create, optimize, record, switch, reload, isol
   const runUrl = page.url()
   const allocation = page.getByRole('table', { name: 'Recommended allocation' })
   await expect(allocation).not.toContainText('NVDA')
-  // An optimization changes no holdings (the holdings page may show target weights, but no position is held).
+  // An optimization changes no holdings (the Overview's holdings may show target weights, but no position is held).
   const held = async (id: string) => ((await (await page.request.get(`/api/v1/portfolios/${id}/holdings`)).json()) as { holdings: { symbol: string; quantity: number }[] })
     .holdings.filter((h) => h.quantity > 0).map((h) => h.symbol)
   expect(await held(a)).toEqual([])
-  await sections(page).getByRole('link', { name: 'Holdings' }).click()
+  await sections(page).getByRole('link', { name: 'Overview' }).click()
 
   // Record a deposit and a buy in A.
   await page.getByRole('button', { name: 'Record transaction' }).click()
@@ -124,23 +124,25 @@ test('two independent portfolios: create, optimize, record, switch, reload, isol
   await expect(page).toHaveURL(new RegExp(`/portfolios/${b}/transactions$`))
   await expect(page.getByRole('heading', { level: 1, name: 'Tech B' })).toBeVisible()
   await expect(page.getByText('Nothing recorded yet')).toBeVisible()
-  await sections(page).getByRole('link', { name: 'Holdings' }).click()
+  await sections(page).getByRole('link', { name: 'Overview' }).click()
+  await expect(page.getByRole('region', { name: 'Holdings', exact: true })).toBeVisible()
   await expect(page.getByRole('row', { name: /AAPL/ })).toHaveCount(0)
   expect(await held(b)).toEqual([])
-  await sections(page).getByRole('link', { name: 'Math Optimization' }).click()
+  await sections(page).getByRole('link', { name: 'Math', exact: true }).click()
   await expect(page.getByText('No optimization yet')).toBeVisible()
 
   // Back to A: its run and history are still there; its Optimization runs tab lists only its own runs and stays inside it.
   await page.goto(runUrl)
   await expect(page.getByText('What your result means')).toBeVisible({ timeout: 30_000 })
-  await sections(page).getByRole('link', { name: 'Optimization runs' }).click()
+  await sections(page).getByRole('link', { name: 'History', exact: true }).click()
   await expect(page).toHaveURL(new RegExp(`/portfolios/${a}/runs$`))
   await expect(page.getByRole('heading', { level: 1, name: 'Core A' })).toBeVisible()
   await expect(page.getByRole('combobox', { name: 'Portfolio filter' })).toHaveCount(0)
   await expect(page.getByRole('table', { name: 'Math Optimizations of this portfolio' }).getByRole('row')).toHaveCount(2)
 
-  // A deep link survives a reload; back/forward keep the portfolio.
+  // A deep link survives a reload; back/forward keep the portfolio. The former Holdings URL opens the Overview.
   await page.goto(`/portfolios/${a}/holdings`)
+  await expect(page).toHaveURL(new RegExp(`/portfolios/${a}$`))
   await page.reload()
   await expect(page.getByRole('heading', { level: 1, name: 'Core A' })).toBeVisible()
   await expect(page.getByRole('row', { name: /AAPL/ }).first()).toBeVisible()
@@ -194,8 +196,8 @@ test('overview and workspace fit narrow screens', async ({ page }) => {
     }
     // Every section of the workspace is reachable (the tab bar scrolls when narrow).
     await page.goto(`/portfolios/${id}`)
-    for (const name of ['Overview', 'Holdings', 'Math Optimization', 'ML Optimization', 'Optimization runs', 'Backtest', 'Strategy comparison', 'Transactions']) {
-      const link = sections(page).getByRole('link', { name })
+    for (const name of ['Overview', 'Math', 'ML', 'History', 'Backtesting', 'Comparison', 'Transactions']) {
+      const link = sections(page).getByRole('link', { name, exact: true })
       await link.scrollIntoViewIfNeeded()
       await expect(link).toBeInViewport()
     }
@@ -206,12 +208,12 @@ test('Math Optimization: choose its stocks on the stock list and come back', asy
   test.setTimeout(120_000)
   await newStudent(page, 'E2E Universe Chooser')
   const id = await createPortfolio(page, 'Chooser', ['AAPL', 'MSFT'])
-  await sections(page).getByRole('link', { name: 'Math Optimization' }).click()
+  await sections(page).getByRole('link', { name: 'Math', exact: true }).click()
   const universe = page.getByRole('list', { name: 'Stocks in the universe' })
   await expect(universe.getByRole('listitem')).toHaveCount(2)
   await expect(page.getByText('Configuration', { exact: true })).toHaveCount(0)
 
-  // Browse stocks: the Portfolio Creation list without the creation form, starting with the two stocks.
+  // Browse stocks: the New portfolio list without the creation form, starting with the two stocks.
   await page.getByRole('link', { name: 'Browse stocks' }).click()
   await expect(page).toHaveURL(new RegExp(`/portfolios/${id}/optimize/stocks$`))
   await expect(page.getByRole('heading', { name: 'Choose stocks' })).toBeVisible()

@@ -67,7 +67,17 @@ public sealed class ApiTests : IAsyncLifetime
         var status = await (await _client.GetAsync("/api/v1/market-data/status")).ReadAsync<MarketDataStatusDto>();
         Assert.Equal("Mock", status.ActiveProvider);
         Assert.True(status.ActiveProviderIsSimulated);
-        Assert.All(status.Coverage, c => Assert.True(c.Observations > 500 && c.IsSimulated));
+        Assert.All(status.Coverage.Where(c => c.IsEnabled), c => Assert.True(c.Observations > 500 && c.IsSimulated));
+        // Catalogue instruments nobody downloaded yet are listed too, as missing (downloadable), not hidden.
+        Assert.All(status.Coverage.Where(c => c.Observations == 0), c => Assert.Equal(DataFreshness.Missing, c.Freshness));
+        // The latest price is in the instrument's own trading currency, and the status says which.
+        Assert.All(status.Coverage, c => Assert.Matches("^[A-Z]{3}$", c.Currency));
+        Assert.Contains(status.Coverage, c => c.Currency == "USD");
+        // The whole catalogue, by type (Market Data shows stocks & ETFs, indexes and currencies in separate boxes).
+        Assert.Contains(status.Coverage, c => c.AssetType == AssetType.Index);
+        Assert.Contains(status.Coverage, c => c.AssetType == AssetType.Equity);
+        Assert.NotNull(status.Currencies);
+        Assert.All(status.Currencies!, c => Assert.True(c.Observations > 0 && c.LatestUnitsPerEur > 0 && c.FirstDate <= c.LastDate));
     }
 
     [Fact]

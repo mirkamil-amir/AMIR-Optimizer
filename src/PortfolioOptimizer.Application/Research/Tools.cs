@@ -275,7 +275,7 @@ public sealed class SaveHypothesisTool(OptimizationService optimizations, Portfo
             var mine = await portfolios.ListAsync(ct);
             var active = mine.Where(p => p.Status == "Active").ToList();
             var match = active.FirstOrDefault(p => p.BaseCurrency == args.Config.Currency) ?? active.FirstOrDefault()
-                        ?? throw new ConflictException("You have no portfolio yet. Create one with Portfolio Creation, then save again.");
+                        ?? throw new ConflictException("You have no portfolio yet. Create one with New portfolio, then save again.");
             portfolio = await portfolios.LoadAsync(match.Id, ct);
         }
         portfolio.EnsureActive();

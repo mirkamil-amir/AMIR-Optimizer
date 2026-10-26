@@ -14,15 +14,20 @@ import { cn } from '@/lib/utils'
  * Page title. Inside a portfolio workspace (whose name is the page's h1) sections pass `level={2}`. What a page is for goes
  * into `info` (a tip beside the title); `description` is kept for facts about the shown data and required caveats.
  */
-export function PageHeader({ title, description, info, actions, level = 1 }: {
-  title: string; description?: ReactNode; info?: ReactNode; actions?: ReactNode; level?: 1 | 2
+/**
+ * Page title with optional explanation, description and actions. `titleHidden`: the title repeats the navigation entry right
+ * above it (a portfolio tab, the View page), so it is announced to screen readers but not shown.
+ */
+export function PageHeader({ title, description, info, actions, level = 1, titleHidden = false }: {
+  title: string; description?: ReactNode; info?: ReactNode; actions?: ReactNode; level?: 1 | 2; titleHidden?: boolean
 }) {
   const Heading = level === 1 ? 'h1' : 'h2'
+  if (titleHidden && !description && !actions) return <Heading className="sr-only">{title}</Heading>
   return (
     <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <div className="flex items-center gap-2">
-          <Heading className={cn('heading-display', level === 1 ? 'text-[1.7rem]' : 'text-[1.3rem]')}><InfoTip of={title}>{info}</InfoTip></Heading>
+        <div className={cn('flex items-center gap-2', titleHidden && 'sr-only')}>
+          <Heading className={cn('heading-display', level === 1 ? 'text-[1.7rem]' : 'text-[1.3rem]')}>{titleHidden ? title : <InfoTip of={title}>{info}</InfoTip>}</Heading>
         </div>
         {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
       </div>

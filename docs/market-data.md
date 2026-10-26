@@ -228,6 +228,20 @@ admin ──► POST /admin/catalogue/quote-refresh;  scheduler (every 12 h) ─
   Each price shows when it applies (exchange time) and when it was retrieved. Nothing is called live or real-time.
 * Quotes are stored per provider (`LatestQuotes`); analyses use only the active provider's data (no mixing).
 
+## Market Data pages
+
+`/market-data` (Stocks & ETFs), `/market-data/indexes` and `/market-data/currencies` list the **whole catalogue**, not
+only tracked instruments: an instrument nobody has downloaded yet is "Not tracked" with a Download button (a download makes
+it tracked). Each page has the same list – search, rows per page, first/previous/next/last (`RangePager`, shared with the
+stock chooser) inside a box that scrolls under a fixed header – and its own sync for administrators: tracked stocks & ETFs
+or tracked indexes (`SyncRequest.AssetTypes`), or every exchange rate of the FX source paired with the active price source
+(`POST /api/v1/fx/sync`, gaps only). Latest prices show each instrument's own trading currency, never converted.
+Downloads show the MatrixView loader with progress, the last stock and how many downloads wait (jobs run one at a time,
+so a manual download can wait behind the scheduled refresh); exchange-rate downloads use the same panel
+(`MarketDataStatusDto.FxDownloadRunning`). The stock chooser's market counts are distinct instruments
+(`MarketDto.Instruments`), so "All markets" equals "All sectors"; the navigation's stale badge counts tracked
+instruments only.
+
 ## Daily history
 
 Unchanged from earlier versions: incremental downloads with a 7-day overlap, normalization (`PriceNormalizer`),

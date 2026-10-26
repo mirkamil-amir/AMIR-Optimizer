@@ -18,8 +18,9 @@ export interface UniverseScope {
 }
 
 /** Stocks of a market (members of its current indices; the historical DAX 30 is not counted twice). */
+/** Stocks and ETFs of a market, each once – the rows the chooser lists for it (index members summed only as a fallback). */
 export function marketCount(m: Market) {
-  return m.indices.filter((i) => !i.isHistorical).reduce((n, i) => n + i.members, 0)
+  return m.instruments || m.indices.filter((i) => !i.isHistorical).reduce((n, i) => n + i.members, 0)
 }
 
 /**

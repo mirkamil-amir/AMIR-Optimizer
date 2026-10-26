@@ -8,7 +8,7 @@ export function NoPortfolio() {
   return (
     <EmptyState
       title="No portfolio yet"
-      description="Create a simulated portfolio with Portfolio Creation: a name, a currency, starting cash and the stocks it may invest in."
+      description="Create a simulated portfolio with New portfolio: a name, a currency, starting cash and the stocks it may invest in."
       action={<Button render={<Link to="/stocks" />}>Create a portfolio</Button>}
     />
   )

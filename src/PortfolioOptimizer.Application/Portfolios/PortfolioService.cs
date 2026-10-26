@@ -15,8 +15,10 @@ public sealed class PortfolioService(IApplicationDbContext db, PriceQueryService
     public const string OverviewMethodology =
         "Each portfolio is valued in its own currency at the latest stored prices (positions in other currencies at the reference rate " +
         "of the price date) plus cash. Profit/loss = total value − net contributions (deposits − withdrawals), so cash moved in or out " +
-        "is never counted as a gain or loss. The total over active portfolios converts each portfolio's value with today's reference " +
-        "rate; it is not a combined return, and it is shown only when every active portfolio can be valued and converted.";
+        "is never counted as a gain or loss. In another currency, today's value is converted at the latest reference rates and every " +
+        "deposit and withdrawal at the rate of its own date, so profit/loss includes the currency effect since the money came in. " +
+        "The total adds the active portfolios in that currency; it is not a combined return, and it is shown only when every active " +
+        "portfolio can be valued and converted.";
 
     public async Task<IReadOnlyList<PortfolioSummaryDto>> ListAsync(CancellationToken ct) =>
         (await SummariesAsync(currentUser.RequireUserId(), ct)).Select(s => s.Summary).ToList();
@@ -30,39 +32,81 @@ public sealed class PortfolioService(IApplicationDbContext db, PriceQueryService
         if (!(await fx.SupportedCurrenciesAsync(ct)).Contains(target))
             throw new ValidationException("currency", $"{target} is not supported: no exchange rates are published for it.");
         var rows = await SummariesAsync(owner, ct);
-        var active = rows.Where(r => r.Summary.Status == "Active").ToList();
-        var problems = new List<string>();
         var simulatedRates = await fx.ActiveSourceIsSimulatedAsync(ct);
+        var ids = rows.Select(r => r.Portfolio.Id).ToList();
+        var flows = (await db.CashLedger.AsNoTracking()
+                .Where(c => ids.Contains(c.PortfolioId) && (c.Type == CashEntryType.Deposit || c.Type == CashEntryType.Withdrawal))
+                .Select(c => new { c.PortfolioId, c.Amount, c.TimestampUtc }).ToListAsync(ct))
+            .ToLookup(c => c.PortfolioId, c => (Date: DateOnly.FromDateTime(c.TimestampUtc), c.Amount));
+        var converted = new List<PortfolioSummaryDto>(rows.Count);
+        foreach (var (s, p) in rows)
+            converted.Add(s with { InCurrency = await InCurrencyAsync(s, p, target, [.. flows[p.Id]], simulatedRates, ct) });
+
+        var active = converted.Where(s => s.Status == "Active").ToList();
+        var problems = new List<string>();
         decimal? total = 0, contributions = 0;
-        foreach (var (s, _) in active)
+        foreach (var s in active)
         {
-            if (s.TotalValue is null)
+            var c = s.InCurrency!;
+            if (c.TotalValue is null || c.NetContributions is null)
             {
-                problems.Add($"“{s.Name}” cannot be valued: {string.Join(" ", s.ValuationProblems ?? [])}".Trim());
+                problems.Add($"“{s.Name}” cannot be shown in {target}: {string.Join(" ", c.Problems)}".Trim());
                 total = null;
                 continue;
             }
-            if (s.BaseCurrency == target)
-            {
-                total += s.TotalValue;
-                contributions += s.NetContributions;
-                continue;
-            }
-            try
-            {
-                var rate = FxPrecision.Round((await fx.LatestAsync(s.BaseCurrency, target, simulatedRates, ct)).Rate);
-                total += s.TotalValue * rate;
-                contributions += s.NetContributions * rate;
-            }
-            catch (Exception ex) when (ex is FxRateUnavailableException or ValidationException)
-            {
-                problems.Add($"“{s.Name}” ({s.BaseCurrency}) cannot be converted into {target}: {ex.Message}");
-                total = null;
-            }
+            total += c.TotalValue;
+            contributions += c.NetContributions;
         }
         if (total is null) contributions = null;
-        return new PortfolioOverviewDto(rows.Select(r => r.Summary).ToList(), target, total is null ? null : Math.Round(total.Value, 2),
+        return new PortfolioOverviewDto(converted, target, total is null ? null : Math.Round(total.Value, 2),
             contributions is null ? null : Math.Round(contributions.Value, 2), active.Count, rows.Count - active.Count, problems, OverviewMethodology);
+    }
+
+    /// <summary>
+    /// One portfolio's figures in <paramref name="target"/>: today's value through <see cref="PortfolioValuationService"/> (the
+    /// Holdings reporting conversion), each deposit/withdrawal at the reference rate of its own date (carry-forward policy of
+    /// <see cref="Fx.FxTable"/>). Missing rates leave the affected amounts null with the reason.
+    /// </summary>
+    private async Task<PortfolioInCurrencyDto> InCurrencyAsync(PortfolioSummaryDto s, Portfolio p, string target,
+        IReadOnlyList<(DateOnly Date, decimal Amount)> flows, bool simulatedRates, CancellationToken ct)
+    {
+        if (s.BaseCurrency == target)
+            return new PortfolioInCurrencyDto(target, s.TotalValue, s.MarketValue, s.CashBalance, s.NetContributions, s.ProfitLoss, s.ValuationProblems ?? []);
+
+        var problems = new List<string>();
+        var value = await valuations.ValueAsync(p, target, ct);
+        problems.AddRange(value.Problems);
+        decimal? cash = value.CashFx is null && p.CashBalance != 0 ? null : value.Cash;
+
+        decimal? contributions = 0;
+        if (flows.Count > 0)
+        {
+            var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
+            try
+            {
+                var table = await fx.GetTableAsync([s.BaseCurrency, target], flows.Min(f => f.Date), today, simulatedRates, ct);
+                foreach (var (date, amount) in flows)
+                {
+                    if (table.TryRate(s.BaseCurrency, target, date, out var q, out var reason))
+                        contributions += amount * Fx.FxPrecision.Round(q!.Rate);
+                    else
+                    {
+                        problems.Add($"No {s.BaseCurrency}→{target} rate for the contribution of {date:yyyy-MM-dd}: {reason}");
+                        contributions = null;
+                        break;
+                    }
+                }
+            }
+            catch (Exception ex) when (ex is Fx.FxRateUnavailableException or ValidationException)
+            {
+                problems.Add(ex.Message);
+                contributions = null;
+            }
+        }
+        var total = value.TotalValue is { } t ? Math.Round(t, 2) : (decimal?)null;
+        var net = contributions is { } n ? Math.Round(n, 2) : (decimal?)null;
+        return new PortfolioInCurrencyDto(target, total, value.MarketValue is { } m ? Math.Round(m, 2) : null,
+            cash is { } c ? Math.Round(c, 2) : null, net, total is { } tv && net is { } nv ? tv - nv : null, problems);
     }
 
     /// <summary>One valuation per portfolio (no history replay), plus one grouped query each for contributions, runs and activity.</summary>

@@ -41,7 +41,7 @@ export function validateDraft(d: PortfolioDraft): Partial<Record<keyof Portfolio
 }
 
 /**
- * Step 1 and 3 of Portfolio Creation: details of the new portfolio and the final "Create portfolio". Step 2 – choosing the
+ * Step 1 and 3 of New portfolio: details of the new portfolio and the final "Create portfolio". Step 2 – choosing the
  * stocks it may invest in – is the stock browser on the same page (the temporary selection). Nothing is stored until the
  * user clicks Create; the chosen stocks become the portfolio's working universe for the optimizer, not holdings.
  */

@@ -15,7 +15,7 @@ test('mixed-currency portfolio: EUR base with US, German, Japanese and UK stocks
   test.setTimeout(240_000)
   const name = `Mixed EUR ${Date.now()}`
 
-  // 1. Portfolio Creation: a portfolio in EUR with stocks from four markets; the review explains the conversion.
+  // 1. New portfolio: a portfolio in EUR with stocks from four markets; the review explains the conversion.
   await page.goto('/stocks')
   await page.getByLabel('Name', { exact: true }).fill(name)
   await page.getByRole('combobox', { name: 'Portfolio currency' }).click()
@@ -47,7 +47,7 @@ test('mixed-currency portfolio: EUR base with US, German, Japanese and UK stocks
   await expect(page.getByRole('heading', { level: 1, name })).toBeVisible()
 
   // 3. Optimization in EUR with converted returns, native currency per stock and the currency exposure.
-  await page.getByRole('navigation', { name: 'Portfolio sections' }).getByRole('link', { name: 'Math Optimization' }).click()
+  await page.getByRole('navigation', { name: 'Portfolio sections' }).getByRole('link', { name: 'Math', exact: true }).click()
   await page.getByRole('combobox', { name: 'Optimization method' }).click()
   await page.getByRole('option', { name: 'Minimum variance' }).click()
   await page.getByRole('button', { name: 'Run optimization' }).click()
@@ -67,11 +67,12 @@ test('mixed-currency portfolio: EUR base with US, German, Japanese and UK stocks
   await page.getByRole('alertdialog').getByRole('button', { name: 'Confirm simulated execution' }).click()
   await expect(page.getByRole('alertdialog')).toBeHidden({ timeout: 30_000 })
 
-  // 5. Holdings in EUR: native price, rate and EUR value per position; then a USD reporting view that changes nothing.
-  await expect(page).toHaveURL(/\/portfolios\/[0-9a-f-]{36}\/holdings$/)
+  // 5. Holdings in EUR on the Overview: native price, rate and EUR value per position; then a USD reporting view that changes nothing.
+  await expect(page).toHaveURL(/\/portfolios\/[0-9a-f-]{36}$/)
   await expect(page.getByRole('heading', { level: 1, name })).toBeVisible()
   await expect(page.getByRole('columnheader', { name: /Market value \(EUR\)/ })).toBeVisible()
-  const toyota = page.getByRole('row', { name: /7203\.T/ })
+  // The Overview also has a correlation heatmap with a row per stock: look inside the Holdings section only.
+  const toyota = page.getByRole('region', { name: 'Holdings', exact: true }).getByRole('row', { name: /7203\.T/ })
   await expect(toyota).toContainText('¥')
   await expect(toyota).toContainText(/1 JPY = 0\.\d+ EUR/)
   await expect(page.getByRole('list', { name: 'Currency exposure' })).toBeVisible()

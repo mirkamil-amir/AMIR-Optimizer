@@ -71,6 +71,46 @@ public sealed class MarketDataRefreshTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task MarketDataPages_SyncSeparately_StocksIndexesAndCurrencies()
+    {
+        var types = await WithAssetTypesAsync();
+        // Track one index (indexes are catalogue-only until someone downloads or enables them).
+        var index = types.First(t => t.Value == AssetType.Index).Key;
+        (await _admin.PatchAsync($"/api/v1/assets/{Uri.EscapeDataString(index)}", System.Net.Http.Json.JsonContent.Create(new { isEnabled = true })))
+            .EnsureStatus(HttpStatusCode.OK);
+
+        // Indexes only: the job holds every enabled index and nothing else.
+        var job = await (await _admin.PostJsonAsync("/api/v1/market-data/sync", new SyncRequest { AssetTypes = [AssetType.Index] }))
+            .EnsureStatus(HttpStatusCode.Accepted).ReadAsync<SyncJobDto>();
+        Assert.NotEmpty(job.Symbols);
+        Assert.All(job.Symbols, s => Assert.Equal(AssetType.Index, types[s]));
+
+        // Stocks & ETFs: no index in the job.
+        job = await (await _admin.PostJsonAsync("/api/v1/market-data/sync", new SyncRequest { AssetTypes = [AssetType.Equity, AssetType.Etf] }))
+            .EnsureStatus(HttpStatusCode.Accepted).ReadAsync<SyncJobDto>();
+        Assert.DoesNotContain(job.Symbols, s => types[s] == AssetType.Index);
+
+        // Currencies: every published currency of the FX source paired with the (simulated) prices; only gaps are fetched.
+        var fx = await (await _admin.PostJsonAsync("/api/v1/fx/sync", new FxSyncRequest { StartDate = DateOnly.FromDateTime(DateTime.UtcNow).AddYears(-1) }))
+            .EnsureStatus(HttpStatusCode.Accepted).ReadAsync<FxSyncDto>();
+        Assert.Equal("MockFx", fx.Source);
+        Assert.Contains("USD", fx.Currencies);
+        Assert.DoesNotContain("EUR", fx.Currencies);
+        Assert.Equal(HttpStatusCode.BadRequest, (await _admin.PostJsonAsync("/api/v1/fx/sync", new FxSyncRequest { StartDate = new DateOnly(1990, 1, 1) })).StatusCode);
+
+        // Both are administrator operations.
+        var (user, _) = await _factory.CreateApprovedUserAsync(_admin);
+        Assert.Equal(HttpStatusCode.Forbidden, (await user.PostJsonAsync("/api/v1/fx/sync", new FxSyncRequest())).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await user.PostJsonAsync("/api/v1/market-data/sync", new SyncRequest { AssetTypes = [AssetType.Index] })).StatusCode);
+    }
+
+    private async Task<Dictionary<string, AssetType>> WithAssetTypesAsync()
+    {
+        var status = await (await _admin.GetAsync("/api/v1/market-data/status")).ReadAsync<MarketDataStatusDto>();
+        return status.Coverage.ToDictionary(c => c.Symbol, c => c.AssetType);
+    }
+
+    [Fact]
     public async Task Markets_ListEveryUniverse_WithProvenance()
     {
         var markets = await (await _admin.GetAsync("/api/v1/markets")).ReadAsync<List<MarketDto>>();
@@ -80,6 +120,13 @@ public sealed class MarketDataRefreshTests : IAsyncLifetime
         var indices = markets.SelectMany(m => m.Indices).ToDictionary(i => i.Code);
         Assert.Equal(40, indices["DAX40"].Members);
         Assert.Equal(30, indices["DAX30"].Members);
+        // Instruments per market count each stock or ETF once – also those only in a historical index (DAX 30 of 2021) or in
+        // none (SPY) – so "All markets" equals the chooser's total ("All sectors").
+        var all = await (await _admin.GetAsync("/api/v1/stocks?pageSize=1")).ReadAsync<PagedResult<StockListItemDto>>();
+        Assert.Equal(all.TotalCount, markets.Sum(m => m.Instruments));
+        var germany = markets.Single(m => m.Country == "DE");
+        Assert.True(germany.Instruments >= indices["DAX40"].Members);
+        Assert.True(markets.Single(m => m.Country == "US").Instruments > indices["SP500"].Members);   // SPY is in no index
         Assert.True(indices["DAX30"].IsHistorical);
         Assert.False(indices["DAX40"].IsHistorical);
         Assert.Equal(100, indices["FTSE100"].Members);
