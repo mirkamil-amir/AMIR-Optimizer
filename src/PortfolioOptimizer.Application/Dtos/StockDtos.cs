@@ -24,7 +24,10 @@ public sealed record MarketIndexDto(
     DateOnly? VerifiedOn);
 
 /// <summary>A market (country) and its index universes.</summary>
-public sealed record MarketDto(string Country, string Name, IReadOnlyList<MarketIndexDto> Indices);
+/// <param name="Instruments">Stocks and ETFs of the market: its listings plus members of its indices listed elsewhere – the
+/// rows the stock chooser shows for it (indices themselves excluded). Unlike summing index members, a stock in two indices,
+/// in a historical index only, or in none (e.g. SPY) counts once.</param>
+public sealed record MarketDto(string Country, string Name, IReadOnlyList<MarketIndexDto> Indices, int Instruments = 0);
 
 /// <summary>A background quote refresh cycle (started by a sign-in, the scheduler or an administrator).</summary>
 public sealed record QuoteRefreshRunDto(

@@ -65,7 +65,7 @@ hidden and purged.
   `components/world-map.test.tsx` – debounced and interrupted moves, manual view, resize, reduced motion, cleanup), build,
   lint (no errors).
 * `./scripts/e2e.sh` 34 passed (`optimizations.spec.ts` now covers the portfolio tabs, the merged Overview and the map;
-  `portfolios.spec.ts` the in-portfolio Optimization runs tab). Map and typography were checked in light and dark mode at
+  `portfolios.spec.ts` the in-portfolio History tab). Map and typography were checked in light and dark mode at
   1440/820/390 px with throwaway screenshot specs (deleted). Frame rate was not measured.
 
 ## Results (2026-10-19, performance)
@@ -89,7 +89,7 @@ hidden and purged.
 * Vitest 136 (incl. `portfolio-workspace.test.tsx`: URL decides the portfolio, unknown id, state reset on switch, archived
   read-only, old-URL redirects; `create-portfolio.test.ts`; navigation model with workspace routes).
 * `./scripts/e2e.sh`: 32 passed in one full run (incl. the setup step),
-  incl. `portfolios.spec.ts`: two portfolios created via Portfolio Creation, optimized, transactions recorded and rejected,
+  incl. `portfolios.spec.ts`: two portfolios created via New portfolio, optimized, transactions recorded and rejected,
   switch, reload, back, archive/restore, a second user denied in the UI and by the API (404), 820/390 px without horizontal scroll.
 * Migration `MultiPortfolio` rehearsed twice on a restored copy of the development database: identical counts, idempotent.
 

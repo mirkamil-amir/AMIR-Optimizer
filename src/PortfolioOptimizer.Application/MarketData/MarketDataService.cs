@@ -12,6 +12,7 @@ public sealed class MarketDataService(
     IMarketDataProviderRegistry providers,
     IBackgroundJobQueue queue,
     PriceQueryService prices,
+    Fx.FxDownloader fxDownloader,
     ICurrentUser currentUser,
     IAuditLog audit,
     TimeProvider clock,
@@ -117,7 +118,9 @@ public sealed class MarketDataService(
         List<string> symbols;
         if (request.Symbols.Count == 0)
         {
-            symbols = await db.Assets.Where(a => a.IsEnabled).OrderBy(a => a.Symbol).Select(a => a.Symbol).ToListAsync(ct);
+            var types = request.AssetTypes;
+            symbols = await db.Assets.Where(a => a.IsEnabled && (types.Count == 0 || types.Contains(a.AssetType)))
+                .OrderBy(a => a.Symbol).Select(a => a.Symbol).ToListAsync(ct);
         }
         else
         {
@@ -127,7 +130,9 @@ public sealed class MarketDataService(
             if (unknown.Count > 0)
                 throw new ValidationException("symbols", $"Unknown asset(s): {string.Join(", ", unknown)}. Add them to the universe first.");
         }
-        if (symbols.Count == 0) throw new ValidationException("symbols", "No enabled assets to synchronize.");
+        if (symbols.Count == 0)
+            throw new ValidationException("symbols", request.AssetTypes.Count == 0 ? "No enabled assets to synchronize."
+                : $"No tracked {string.Join(" or ", request.AssetTypes.Select(t => t == AssetType.Index ? "indexes" : t == AssetType.Etf ? "ETFs" : "stocks"))} to synchronize; download one first.");
 
         var job = new MarketDataSyncJob
         {
@@ -494,11 +499,9 @@ public sealed class MarketDataService(
     {
         var settings = await prices.SettingsAsync(ct);
         var source = settings.ActiveProvider;
-        // Tracked instruments plus any catalogue instrument with stored prices (the full catalogue is browsed via /stocks).
-        var withPrices = (await prices.AssetIdsWithPricesAsync(source, ct)).ToList();
-        var assets = await db.Assets.AsNoTracking()
-            .Where(a => a.IsEnabled || withPrices.Contains(a.Id))
-            .OrderBy(a => a.Symbol).ToListAsync(ct);
+        // The whole catalogue: tracked instruments and those nobody has downloaded yet (shown as "Missing", downloadable), so the
+        // counts match the stock chooser.
+        var assets = await db.Assets.AsNoTracking().OrderBy(a => a.Symbol).ToListAsync(ct);
         var stats = await db.HistoricalPrices.AsNoTracking()
             .Where(p => p.Source == source)
             .GroupBy(p => p.AssetId)
@@ -527,11 +530,26 @@ public sealed class MarketDataService(
             var freshness = Freshness(s?.Last, today, settings.StalePriceDays);
             return new AssetCoverageDto(a.Id, a.Symbol, a.Name, a.IsEnabled, source, providers.Providers.Any(p => p.Name == source && p.IsSimulated),
                 s?.Count ?? 0, s?.First, s?.Last, s is not null && s.AdjCount == s.Count, s?.Retrieved, freshness,
-                lp?.Price, lp?.AsOfUtc, log?.Message, log?.Success);
+                lp?.Price, lp?.AsOfUtc, log?.Message, log?.Success, a.Currency, a.AssetType);
         }).ToList();
 
         var jobs = await db.SyncJobs.AsNoTracking().OrderByDescending(j => j.RequestedAtUtc).Take(10).Include(j => j.Logs).ToListAsync(ct);
         var active = providers.Providers.FirstOrDefault(p => p.Name == source);
+
+        // Exchange rates of the FX source that converts this price source (simulated prices use simulated rates).
+        var fxSource = active?.IsSimulated == true ? Fx.FxSources.Mock : Fx.FxSources.Ecb;
+        var fxStats = await db.FxRates.AsNoTracking().Where(r => r.Source == fxSource)
+            .GroupBy(r => r.Currency)
+            .Select(g => new { Currency = g.Key, Count = g.Count(), First = g.Min(r => r.Date), Last = g.Max(r => r.Date), Retrieved = g.Max(r => r.RetrievedAtUtc), Simulated = g.Any(r => r.IsSimulated) })
+            .ToListAsync(ct);
+        var lastRates = fxStats.Count == 0 ? [] : await db.FxRates.AsNoTracking()
+            .Where(r => r.Source == fxSource && fxStats.Select(s => s.Last).Contains(r.Date))
+            .Select(r => new { r.Currency, r.Date, r.UnitsPerEur }).ToListAsync(ct);
+        var currencies = fxStats.Select(s => new FxCoverageDto(s.Currency, fxSource, s.Simulated, s.Count, s.First, s.Last,
+                lastRates.First(r => r.Currency == s.Currency && r.Date == s.Last).UnitsPerEur, s.Retrieved,
+                Freshness(s.Last, today, settings.StalePriceDays)))
+            .OrderBy(c => c.Currency).ToList();
+
         return new MarketDataStatusDto(
             source,
             active?.IsSimulated ?? false,
@@ -539,7 +557,9 @@ public sealed class MarketDataService(
             coverage,
             jobs.Select(j => j.ToDto()).ToList(),
             settings.StalePriceDays,
-            clock.GetUtcNow().UtcDateTime);
+            clock.GetUtcNow().UtcDateTime,
+            currencies,
+            fxDownloader.IsRunning(fxSource));
     }
 
     /// <summary>Fresh / stale / missing by the date of the last stored close (the one rule for status and summary).</summary>

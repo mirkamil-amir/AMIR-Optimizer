@@ -4,13 +4,14 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
-  AllocationDonut, ChartCard, CorrelationHeatmap, FrontierChart, MonthlyReturnsGrid, RiskContributionChart, TimeSeriesChart,
+  AllocationDonut, ChartCard, CorrelationHeatmap, MonthlyReturnsGrid, RiskContributionChart, TimeSeriesChart,
   WeightsOverTimeChart, timeSeriesTable,
 } from '@/components/charts'
 import { DataBadge, EmptyState, ErrorState, LoadingBlock, MetricCard, MetricGroup, MetricValue, ResultSection, Signed, Warnings } from '@/components/common'
-import { ValuationProblems } from '@/components/currency'
+import { CurrencyExposureList, ReportingCurrencySelect, ReportingNote, ValuationProblems } from '@/components/currency'
+import { HoldingsTable } from '@/components/holdings-table'
 import { portfolioPath, usePortfolioContext } from '@/lib/portfolio-context'
-import { useHoldings, useMarketSummary, usePerformance, useProposals, useRisk, useRun, useRuns, useTransactions } from '@/lib/queries'
+import { useHoldings, useMarketSummary, usePerformance, useProposals, useRisk, useRuns, useTransactions } from '@/lib/queries'
 import { date, dateTime, money, num, objectiveLabels, pct, qty, relativeTime } from '@/lib/format'
 import { NoPortfolio } from './shared'
 
@@ -34,7 +35,7 @@ function rangeStart(key: string): string | undefined {
 /**
  * Overview of one portfolio – everything about its state and recorded history on one page (it replaced the separate
  * Performance section on 2026-10-24). Key figures first, as one story: Value → Performance → portfolio vs benchmark and
- * allocation → Risk; then the efficient frontier of the latest successful Math Optimization, performance history, risk breakdown,
+ * allocation → Risk; then the holdings (table and currency exposure; the Holdings tab was merged here on 2026-10-26), performance history, risk breakdown,
  * allocation over time and recent activity; all data notes last. Every chart appears once. Recorded history is not a backtest.
  */
 export function OverviewPage() {
@@ -42,12 +43,12 @@ export function OverviewPage() {
   const [params] = useSearchParams()
   const created = params.get('created') === '1'
   const [range, setRange] = useState('All')
-  const holdings = useHoldings(portfolioId)
-  const perf = usePerformance(portfolioId, rangeStart(range))
+  // Reporting currency: converts the whole page for viewing; the portfolio currency stays its accounting currency.
+  const [reporting, setReporting] = useState<string>()
+  const holdings = useHoldings(portfolioId, reporting)
+  const perf = usePerformance(portfolioId, rangeStart(range), reporting)
   const risk = useRisk(portfolioId)
   const runs = useRuns(portfolioId)
-  const latestOk = runs.data?.items.find((r) => r.status === 'Succeeded')
-  const run = useRun(latestOk?.id)
   const proposals = useProposals(portfolioId)
   const tx = useTransactions(portfolioId, 1, undefined, 6)
   const status = useMarketSummary()
@@ -61,7 +62,8 @@ export function OverviewPage() {
   if (!isLoading && !portfolioId) return <NoPortfolio />
   const id = portfolioId ?? ''
   const s = holdings.data?.summary
-  const ccy = portfolio?.baseCurrency ?? 'USD'
+  const account = portfolio?.baseCurrency ?? 'USD'
+  const ccy = s?.currency ?? reporting ?? account
   const hasHoldings = (holdings.data?.holdings ?? []).some((h) => h.quantity > 0)
   const p = perf.data
   const hasSeries = !!p && p.series.length > 1
@@ -71,9 +73,11 @@ export function OverviewPage() {
     <>
       {/* One vertical rhythm (1.25 rem) from the heading through the key figures and charts below. */}
       <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="heading-display text-[1.3rem]">Overview</h2>
+        {/* The tab above already says Overview: the heading is for screen readers only. */}
+        <h2 className="sr-only">Overview</h2>
         <div className="flex flex-wrap items-center gap-2">
           {s?.usesSimulatedData && <DataBadge kind="simulated" />}
+          <ReportingCurrencySelect value={reporting} accountCurrency={account} onChange={setReporting} />
           <div className="flex items-center gap-1 rounded-lg border bg-background p-0.5" role="group" aria-label="Date range">
             {ranges.map((r) => (
               <Button key={r.key} size="sm" variant={range === r.key ? 'secondary' : 'ghost'} aria-pressed={range === r.key} onClick={() => setRange(r.key)}>{r.key}</Button>
@@ -100,7 +104,7 @@ export function OverviewPage() {
             hint="Change of held positions between the last two daily closes. Shares bought at the last close are excluded." />
           <MetricCard label="Cash · invested" loading={!s} value={money(s?.cashBalance, ccy)} sub={`${pct(s?.investedFraction, 1)} invested (${money(s?.marketValue, ccy, { compact: true })})`} hint="Uninvested simulated cash and the share of total value held in equities." />
           <MetricCard label="Unrealized P&L" loading={!s} tone="signed" numeric={s?.unrealizedPnl} value={money(s?.unrealizedPnl, ccy, { signed: true })}
-            sub="Open positions vs cost" hint="Market value − weighted-average cost basis (buy commissions are included in cost)." />
+            sub={`Cost basis ${money(s?.totalCostBasis, ccy)}`} hint="Market value − cost basis. Cost basis: weighted-average cost of the open positions including buy commissions." />
           <MetricCard label="Holdings" loading={!portfolio} value={String(portfolio?.holdings ?? '—')} sub={`Stock${portfolio?.holdings === 1 ? '' : 's'} held`}
             hint="Number of open positions (stocks and ETFs with a quantity above zero)." />
         </MetricGroup>
@@ -197,26 +201,19 @@ export function OverviewPage() {
 
       {s?.totalValue === null && <div className="mt-5"><ValuationProblems problems={s?.valuationProblems} /></div>}
 
-      <div className="mt-5">
-        {runs.isLoading || (latestOk && run.isLoading) ? <LoadingBlock height="h-80" /> : run.data ? (
-          <ChartCard title="Efficient frontier (latest successful Math Optimization)"
-            description={`${objectiveLabels[run.data.objective] ?? run.data.objective} · estimation window ${date(run.data.periodStart)} – ${date(run.data.periodEnd)} · in-sample estimates, not forecasts`}
-            legend={[{ name: 'Efficient frontier', color: 'var(--series-1)' }, { name: 'Selected portfolio', color: 'var(--series-2)' }, { name: 'Reference portfolios', color: 'var(--series-3)' }, { name: 'Individual assets', color: 'var(--chart-axis)' }]}
-            actions={<Button variant="link" size="sm" render={<Link to={portfolioPath(id, `optimize/${run.data.id}`)} />}>Open run</Button>}>
-            <FrontierChart frontier={run.data.analytics.frontier}
-              assets={run.data.analytics.assetStatistics.map((a) => ({ symbol: a.symbol, volatility: a.volatility, expectedReturn: a.expectedReturn }))}
-              selected={{ volatility: run.data.volatility!, expectedReturn: run.data.expectedReturn!, sharpeRatio: run.data.sharpeRatio }}
-              references={run.data.analytics.references} />
-          </ChartCard>
-        ) : (
-          <Card>
-            <CardHeader><CardTitle className="text-sm">Efficient frontier</CardTitle></CardHeader>
-            <CardContent>
-              <EmptyState title="No successful Math Optimization yet" description="The frontier of the latest successful Math Optimization of this portfolio appears here."
-                action={<Button render={<Link to={portfolioPath(id, 'optimize')} />}>Optimize</Button>} />
-            </CardContent>
-          </Card>
-        )}
+      {s && <div className="mt-5"><ReportingNote currency={s.currency} accountCurrency={s.accountCurrency} rate={s.accountToReportingRate} /></div>}
+
+      <div className="mt-8">
+        <ResultSection title="Holdings" hint={`Positions valued at the latest stored price in ${ccy}; prices stay in each stock's own currency. Select a row for its price history, risk contribution and transactions.`}>
+          {s?.currencyExposure && s.currencyExposure.length > 1 && (
+            <div className="rounded-xl border bg-card p-4">
+              <h4 className="mb-2 text-sm font-semibold">Currency exposure</h4>
+              <CurrencyExposureList items={s.currencyExposure} />
+              <p className="mt-2 text-xs text-muted-foreground">Share of total value by the currency the holdings trade in. Positions are unhedged: their value in {ccy} moves with the exchange rate.</p>
+            </div>
+          )}
+          <HoldingsTable data={holdings.data} loading={holdings.isLoading} currency={ccy} account={account} portfolioId={id} />
+        </ResultSection>
       </div>
 
       <div className="mt-8 space-y-8">
@@ -366,13 +363,13 @@ export function OverviewPage() {
       {/* All data notes of the page in one place, at the end. */}
       <div className="mt-8 space-y-3">
         {s?.totalValue !== null && <ValuationProblems problems={s?.valuationProblems} />}
-        <Warnings items={[...new Set([...(s?.warnings.filter((w) => !s.valuationProblems?.includes(w)) ?? []), ...(p?.warnings ?? []), ...(risk.data?.warnings ?? [])])]} />
+        <Warnings items={[...new Set([...(s?.warnings.filter((w) => !s.valuationProblems?.includes(w) && !w.startsWith('Reporting view')) ?? []), ...(p?.warnings ?? []), ...(risk.data?.warnings ?? [])])]} />
       </div>
     </>
   )
 }
 
-/** Shown once after Portfolio Creation: what to do next with the new (still cash-only) portfolio. */
+/** Shown once after New portfolio: what to do next with the new (still cash-only) portfolio. */
 function NextSteps({ id }: { id: string }) {
   return (
     <section aria-label="Next steps" className="mb-5 rounded-xl border border-primary/30 bg-primary/5 p-4">

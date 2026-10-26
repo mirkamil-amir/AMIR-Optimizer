@@ -26,12 +26,11 @@ import { cn } from '@/lib/utils'
 /** Sections of one portfolio, in the order of the tab bar; every one stays inside `/portfolios/:id/…`. */
 const SECTIONS = [
   { path: '', label: 'Overview' },
-  { path: 'holdings', label: 'Holdings' },
-  { path: 'optimize', label: 'Math Optimization' },
-  { path: 'ml-optimize', label: 'ML Optimization' },
-  { path: 'runs', label: 'Optimization runs' },
-  { path: 'backtest', label: 'Backtest' },
-  { path: 'comparison', label: 'Strategy comparison' },
+  { path: 'optimize', label: 'Math' },
+  { path: 'ml-optimize', label: 'ML' },
+  { path: 'runs', label: 'History' },
+  { path: 'backtest', label: 'Backtesting' },
+  { path: 'comparison', label: 'Comparison' },
   { path: 'transactions', label: 'Transactions' },
 ] as const
 
@@ -113,7 +112,6 @@ function WorkspaceHeader({ portfolio }: { portfolio: PortfolioSummary }) {
     <section aria-label="Current portfolio" className="mb-6 space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 space-y-1">
-          <Link to="/" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">My portfolios</Link>
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="heading-display truncate text-[1.8rem]">{portfolio.name}</h1>
             <Badge variant="outline" className="tabular">{ccy}</Badge>

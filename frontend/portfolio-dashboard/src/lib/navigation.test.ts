@@ -8,7 +8,7 @@ const sidebarPaths = (admin: boolean) => sidebarSections(admin).flatMap((s) => s
 describe('navigation model', () => {
   it('has exactly eight primary destinations in the required order', () => {
     expect(primaryNav.map((p) => p.label)).toEqual([
-      'Optimizer', 'AI Research', 'Financial News', 'Watchlist', 'Market Data', 'Strategy Guide', 'Glossary', 'Settings',
+      'Viewer', 'AI Research', 'Financial News', 'Watchlist', 'Market Data', 'Strategy Guide', 'Glossary', 'Settings',
     ])
     expect(primaryNav.map((p) => p.to)).toEqual(['/', '/research', '/news', '/watchlist', '/market-data', '/learn', '/learn/glossary', '/settings'])
   })
@@ -25,7 +25,7 @@ describe('navigation model', () => {
       '/', '/backtest', '/history', '/ml-optimize', '/optimize', '/stocks', '/strategy-comparison',
     ])
     // Holdings, transactions and performance are sections of each portfolio's workspace, not global sidebar entries.
-    expect(optimizerSections.flatMap((s) => s.items.map((i) => i.label))).toContain('Portfolio Creation')
+    expect(optimizerSections.flatMap((s) => s.items.map((i) => i.label))).toContain('New')
     expect(optimizerSections.flatMap((s) => s.items.map((i) => i.label))).not.toContain('Stock selection')
     expect(new Set(sidebarPaths(true)).size).toBe(sidebarPaths(true).length)
   })
@@ -43,7 +43,7 @@ describe('navigation model', () => {
     ['/', 'optimizer'], ['/stocks', 'optimizer'], ['/stocks/AAPL', 'optimizer'], ['/optimize/12', 'optimizer'],
     ['/history', 'optimizer'], ['/reality-check/7', 'optimizer'], ['/machine-learning/3', 'optimizer'],
     ['/holdings', 'optimizer'], ['/portfolios/p1', 'optimizer'], ['/portfolios/p1/transactions', 'optimizer'], ['/research', 'research'], ['/research/abc', 'research'], ['/news', 'news'],
-    ['/watchlist', 'watchlist'], ['/market-data', 'market-data'], ['/learn', 'strategy-guide'], ['/learn/max-sharpe', 'strategy-guide'],
+    ['/watchlist', 'watchlist'], ['/market-data', 'market-data'], ['/market-data/currencies', 'market-data'], ['/learn', 'strategy-guide'], ['/learn/max-sharpe', 'strategy-guide'],
     ['/learn/glossary', 'glossary'], ['/settings', 'settings'], ['/settings/', 'settings'],
   ])('assigns %s to the %s area', (path, id) => {
     expect(primaryForPath(path)?.id).toBe(id)

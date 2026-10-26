@@ -60,7 +60,8 @@ export function StrategyComparisonPage() {
     <>
       <PageHeader
         level={scoped ? 2 : 1}
-        title="Strategy comparison"
+        titleHidden={!!scoped}
+        title="Comparison"
         info={description}
         actions={<Badge variant="outline" className="gap-1">Shared evaluation engine</Badge>}
       />

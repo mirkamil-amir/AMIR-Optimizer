@@ -25,31 +25,31 @@ export const optimizerSections: NavSection[] = [
     title: 'Portfolios',
     items: [
       // The overview lists all of the user's portfolios; each portfolio's workspace (/portfolios/:id/…) belongs to it.
-      { to: '/', label: 'Portfolios Overview', end: true, match: ['/portfolios'] },
-      { to: '/stocks', label: 'Portfolio Creation' },
+      { to: '/', label: 'View', end: true, match: ['/portfolios'] },
+      { to: '/stocks', label: 'New' },
     ],
   },
   {
     title: 'Optimize',
     items: [
       // Opens the optimizer of the most recently opened portfolio; inside a workspace its own optimizer is highlighted.
-      { to: '/optimize', label: 'Math Optimization', match: ['/portfolios/*/optimize'] },
+      { to: '/optimize', label: 'Math', match: ['/portfolios/*/optimize'] },
       // Like Math Optimization: the ML Optimization of the current portfolio (earlier /machine-learning URLs redirect).
-      { to: '/ml-optimize', label: 'ML Optimization', match: ['/portfolios/*/ml-optimize', '/machine-learning'] },
-      { to: '/history', label: 'Optimization history', match: ['/reality-check', '/portfolios/*/runs'] },
+      { to: '/ml-optimize', label: 'ML', match: ['/portfolios/*/ml-optimize', '/machine-learning'] },
+      { to: '/history', label: 'History', match: ['/reality-check', '/portfolios/*/runs'] },
     ],
   },
   {
     title: 'Test & compare',
     items: [
       // All of the user's backtests and comparisons; a portfolio's own tabs (/portfolios/:id/backtest, …/comparison) belong here too.
-      { to: '/backtest', label: 'Backtest', match: ['/portfolios/*/backtest'] },
-      { to: '/strategy-comparison', label: 'Strategy comparison', match: ['/portfolios/*/comparison'] },
+      { to: '/backtest', label: 'Backtesting', match: ['/portfolios/*/backtest'] },
+      { to: '/strategy-comparison', label: 'Comparison', match: ['/portfolios/*/comparison'] },
     ],
   },
 ]
 
-/** Administration stays in the sidebar, below the Optimizer sections, for administrators only. */
+/** Administration stays in the sidebar, below the Viewer sections, for administrators only. */
 export const adminSection: NavSection = {
   title: 'Administration',
   items: [
@@ -64,7 +64,7 @@ const optimizerEntries = optimizerSections.flatMap((s) => s.items)
 /** Top navigation, in this order. Optimizer owns every route of its sidebar sections. */
 export const primaryNav: PrimaryEntry[] = [
   {
-    id: 'optimizer', to: '/', label: 'Optimizer', end: true,
+    id: 'optimizer', to: '/', label: 'Viewer', end: true,
     // Earlier portfolio-less URLs (/holdings, /trades, /analytics) redirect into a portfolio workspace.
     match: [...optimizerEntries.flatMap((e) => [...(e.end ? [] : [e.to]), ...(e.match ?? [])]), '/holdings', '/trades', '/analytics'],
   },
@@ -78,7 +78,7 @@ export const primaryNav: PrimaryEntry[] = [
   { id: 'settings', to: '/settings', label: 'Settings' },
 ]
 
-/** Sidebar sections for the current user: Optimizer sections, plus Administration for administrators. */
+/** Sidebar sections for the current user: Viewer sections, plus Administration for administrators. */
 export function sidebarSections(isAdministrator: boolean): NavSection[] {
   return isAdministrator ? [...optimizerSections, adminSection] : optimizerSections
 }

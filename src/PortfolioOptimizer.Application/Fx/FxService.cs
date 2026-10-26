@@ -351,6 +351,23 @@ public sealed class FxService(IApplicationDbContext db, IEnumerable<IFxRateProvi
         return downloader.IsRunning(provider.Name);
     }
 
+    /// <summary>
+    /// Downloads, in the background, the missing rates of every currency the active FX source publishes for [from, today]
+    /// (Market Data → Currencies → Sync). Only gaps are fetched, in the downloader's contiguous chunks; nothing is filled in.
+    /// </summary>
+    public async Task<Dtos.FxSyncDto> SyncAllAsync(DateOnly? startDate, CancellationToken ct)
+    {
+        var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
+        var from = startDate ?? today.AddYears(-5);
+        if (from > today || from < new DateOnly(1999, 1, 4))
+            throw new ValidationException("startDate", "Choose a start between 1999-01-04 (the first euro reference rates) and today.");
+        var simulated = await ActiveSourceIsSimulatedAsync(ct);
+        var provider = ProviderFor(simulated);
+        var currencies = SupportedCurrencies(simulated).Where(c => c != FxTable.Pivot).Order().ToList();
+        var started = await StartDownloadAsync(currencies, from, today, simulated, ct);
+        return new Dtos.FxSyncDto(started, provider.Name, currencies, from, today);
+    }
+
     /// <summary>True while rates of the source used with these prices are being downloaded.</summary>
     public bool IsDownloading(bool simulatedPrices) => downloader.IsRunning(ProviderFor(simulatedPrices).Name);
 

@@ -12,7 +12,7 @@ const labels = { optimize: 'Math Optimization', 'ml-optimize': 'ML Optimization'
 
 /**
  * Choose the stocks of a Math or ML Optimization (`/portfolios/:id/optimize/stocks`, `…/ml-optimize/stocks`): the stock
- * list of Portfolio Creation without the creation form. It starts with the optimization's current stocks (passed in the
+ * list of New portfolio without the creation form. It starts with the optimization's current stocks (passed in the
  * navigation state), works on the temporary selection, and "Use" returns to the optimization with it as the universe.
  */
 export function ChooseStocksPage({ section }: { section: keyof typeof labels }) {

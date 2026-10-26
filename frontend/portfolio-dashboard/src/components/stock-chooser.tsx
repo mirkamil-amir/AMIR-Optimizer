@@ -1,6 +1,6 @@
 import { useDeferredValue, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { StockDetailDialog } from '@/components/stock-detail-dialog'
 import { Switch } from '@/components/ui/switch'
-import { DataTable, type Column } from '@/components/data-table'
+import { DataTable, RangePager, type Column } from '@/components/data-table'
 import { EmptyState, ErrorState, InfoTip, LoadingBlock } from '@/components/common'
 import { QuoteCell, SelectionTray } from '@/components/stock-selection'
 import { UniverseNav, type UniverseScope } from '@/components/universe-nav'
@@ -27,7 +27,6 @@ import { countryOfSymbol } from '@/lib/markets'
 import { useMapSignal } from '@/lib/world-map'
 import { MatrixLoader } from '@/components/matrix-loader'
 
-const pageSizes = [25, 50, 100, 200] as const
 
 const sortOptions: { value: StockSort; label: string }[] = [
   { value: 'name', label: 'Company name A–Z' },
@@ -39,7 +38,7 @@ const sortOptions: { value: StockSort; label: string }[] = [
 
 /**
  * "Choose stocks": markets, indices and sectors on the left, a searchable list with prices on the right and the temporary
- * selection on top. Used by Portfolio Creation and by the stock choice of Math and ML Optimization; `trayActions` replaces
+ * selection on top. Used by New portfolio and by the stock choice of Math and ML Optimization; `trayActions` replaces
  * the selection tray's default buttons (the optimization pages bring their own "use these stocks").
  */
 export function StockChooser({ trayActions }: { trayActions?: ReactNode }) {
@@ -285,34 +284,6 @@ export function StockChooser({ trayActions }: { trayActions?: ReactNode }) {
 
       <StockDetailDialog symbol={detail} items={items} markets={markets.data} onNavigate={setDetail} onClose={() => setDetail(null)} />
     </>
-  )
-}
-
-/** Paging for a large list: position ("51–100 of 2,158"), first/previous/next/last and the number of rows per page. */
-function RangePager({ page, pageSize, total, totalPages, onPage, onPageSize }: {
-  page: number; pageSize: number; total: number; totalPages: number; onPage: (p: number) => void; onPageSize: (n: number) => void
-}) {
-  if (total === 0) return null
-  const from = (page - 1) * pageSize + 1
-  const to = Math.min(total, page * pageSize)
-  return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
-      <div className="flex items-center gap-2">
-        <span>Rows per page</span>
-        <Select value={String(pageSize)} onValueChange={(v) => onPageSize(Number(v))} items={pageSizes.map((n) => ({ value: String(n), label: String(n) }))}>
-          <SelectTrigger size="sm" className="w-20" aria-label="Rows per page"><SelectValue /></SelectTrigger>
-          <SelectContent>{pageSizes.map((n) => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}</SelectContent>
-        </Select>
-      </div>
-      <div className="flex items-center gap-1">
-        <span className="mr-2 tabular">{num(from, 0)}–{num(to, 0)} of {num(total, 0)}</span>
-        <Button variant="outline" size="icon-sm" aria-label="First page" disabled={page <= 1} onClick={() => onPage(1)}><ChevronsLeft /></Button>
-        <Button variant="outline" size="icon-sm" aria-label="Previous page" disabled={page <= 1} onClick={() => onPage(page - 1)}><ChevronLeft /></Button>
-        <span className="px-1 tabular">Page {page} of {totalPages}</span>
-        <Button variant="outline" size="icon-sm" aria-label="Next page" disabled={page >= totalPages} onClick={() => onPage(page + 1)}><ChevronRight /></Button>
-        <Button variant="outline" size="icon-sm" aria-label="Last page" disabled={page >= totalPages} onClick={() => onPage(totalPages)}><ChevronsRight /></Button>
-      </div>
-    </div>
   )
 }
 

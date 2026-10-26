@@ -3,7 +3,7 @@ import { ADMIN_STATE, acceptDownloadIfAsked } from './helpers'
 
 test.use({ storageState: ADMIN_STATE })
 
-const sidebar = (page: Page) => page.getByRole('navigation', { name: 'Optimizer sections' }).first()
+const sidebar = (page: Page) => page.getByRole('navigation', { name: 'Viewer sections' }).first()
 
 async function runOptimization(page: Page, portfolioId: string, method: string) {
   await page.goto(`/portfolios/${portfolioId}/optimize`)
@@ -43,8 +43,8 @@ test('optimizations of one portfolio: Math and ML pages alike, backtest any opti
   test.setTimeout(300_000)
   // Sidebar: Mathematical and ML Optimization sit together, before the history; testing and comparing follow.
   await page.goto('/')
-  await expect(sidebar(page).getByRole('link')).toHaveText(['Portfolios Overview', 'Portfolio Creation', 'Math Optimization', 'ML Optimization',
-    'Optimization history', 'Backtest', 'Strategy comparison'])
+  await expect(sidebar(page).getByRole('link')).toHaveText(['View', 'New', 'Math', 'ML',
+    'History', 'Backtesting', 'Comparison'])
 
   // A portfolio with two mathematical optimizations.
   const name = `Strategies ${Date.now()}`
@@ -70,7 +70,7 @@ test('optimizations of one portfolio: Math and ML pages alike, backtest any opti
   await expect(page.getByRole('link', { name: /^Minimum variance/ })).toHaveAttribute('aria-current', 'true')
 
   // ML Optimization: a tab of the same portfolio, same layout, the portfolio's universe by default.
-  await page.getByRole('navigation', { name: 'Portfolio sections' }).getByRole('link', { name: 'ML Optimization' }).click()
+  await page.getByRole('navigation', { name: 'Portfolio sections' }).getByRole('link', { name: 'ML', exact: true }).click()
   await expect(page).toHaveURL(new RegExp(`/portfolios/${portfolioId}/ml-optimize$`))
   await page.getByLabel('History (years)').fill('5')
   await page.getByRole('button', { name: 'Run ML optimization' }).click()
@@ -83,7 +83,7 @@ test('optimizations of one portfolio: Math and ML pages alike, backtest any opti
   await expect(page.getByRole('list', { name: 'Features of this model' }).getByRole('listitem').first()).toContainText('Why a model may use it')
 
   // Backtest: the box lists every optimization of the chosen portfolio; one is picked on its own (no custom strategy form).
-  await sidebar(page).getByRole('link', { name: 'Backtest', exact: true }).click()
+  await sidebar(page).getByRole('link', { name: 'Backtesting', exact: true }).click()
   await expect(page.getByText('Custom strategy')).toHaveCount(0)
   const box = page.getByRole('region', { name: 'Backtest an optimization' })
   await box.getByRole('combobox', { name: 'Portfolio' }).click()
@@ -113,7 +113,7 @@ test('optimizations of one portfolio: Math and ML pages alike, backtest any opti
   if (process.env.SCREENSHOT_DIR) await page.screenshot({ path: `${process.env.SCREENSHOT_DIR}/backtest-result.png`, fullPage: true })
 
   // Comparison: two mathematical optimizations of the same portfolio (no hybrid – it needs one ML strategy).
-  await sidebar(page).getByRole('link', { name: 'Strategy comparison', exact: true }).click()
+  await sidebar(page).getByRole('link', { name: 'Comparison', exact: true }).click()
   await page.getByRole('combobox', { name: 'Portfolio' }).click()
   await page.getByRole('option', { name: new RegExp(`^${name}`) }).click()
   await page.getByRole('combobox', { name: 'Strategy A' }).click()
@@ -143,16 +143,16 @@ test('optimizations of one portfolio: Math and ML pages alike, backtest any opti
   // The portfolio's own tabs: its backtests, comparisons and runs, without leaving the portfolio.
   const tabs = page.getByRole('navigation', { name: 'Portfolio sections' })
   await page.goto(`/portfolios/${portfolioId}`)
-  await tabs.getByRole('link', { name: 'Backtest' }).click()
+  await tabs.getByRole('link', { name: 'Backtesting', exact: true }).click()
   await expect(page).toHaveURL(new RegExp(`/portfolios/${portfolioId}/backtest$`))
   await expect(page.getByRole('link', { name: /Math: Minimum Variance/ })).toBeVisible()
   await page.getByRole('link', { name: /Math: Minimum Variance/ }).click()
   await expect(page).toHaveURL(new RegExp(`/portfolios/${portfolioId}/backtest/[0-9a-f-]{36}$`))
-  await tabs.getByRole('link', { name: 'Strategy comparison' }).click()
+  await tabs.getByRole('link', { name: 'Comparison', exact: true }).click()
   await expect(page).toHaveURL(new RegExp(`/portfolios/${portfolioId}/comparison$`))
   await expect(page.getByText(/^A: Minimum Variance/).first()).toBeVisible({ timeout: 60_000 })
   await expect(page.getByRole('combobox', { name: 'Portfolio', exact: true })).toHaveCount(0)   // the portfolio is fixed here
-  await tabs.getByRole('link', { name: 'Optimization runs' }).click()
+  await tabs.getByRole('link', { name: 'History', exact: true }).click()
   await expect(page).toHaveURL(new RegExp(`/portfolios/${portfolioId}/runs$`))
   await expect(page.getByRole('table', { name: 'Math Optimizations of this portfolio' }).getByRole('row')).toHaveCount(3)
   await expect(page.getByRole('table', { name: 'ML Optimizations of this portfolio' }).getByRole('row')).toHaveCount(2)
@@ -173,13 +173,16 @@ test('optimizations of one portfolio: Math and ML pages alike, backtest any opti
   await page.getByRole('option', { name: 'All objectives' }).click()
   await expect(mathRuns).toHaveCount(2)
 
-  // Overview: the former Performance charts, each once; the efficient frontier right below Portfolio vs benchmark.
+  // Overview: the former Performance charts and the former Holdings page, each once; no efficient frontier any more.
   await tabs.getByRole('link', { name: 'Overview' }).click()
   await expect(tabs.getByRole('link', { name: 'Performance' })).toHaveCount(0)
   const vsBenchmark = await page.getByText('Portfolio vs benchmark', { exact: true }).boundingBox()
-  const frontier = page.getByText('Efficient frontier (latest successful Math Optimization)')
-  await expect(frontier).toBeVisible({ timeout: 30_000 })
-  expect((await frontier.boundingBox())!.y).toBeGreaterThan(vsBenchmark!.y)
+  const holdingsSection = page.getByRole('region', { name: 'Holdings', exact: true })
+  await expect(holdingsSection).toBeVisible({ timeout: 30_000 })
+  expect((await holdingsSection.boundingBox())!.y).toBeGreaterThan(vsBenchmark!.y)
+  await expect(holdingsSection.getByRole('textbox', { name: 'Search holdings' })).toBeVisible()
+  await expect(page.getByText(/^Efficient frontier/)).toHaveCount(0)
+  await expect(tabs.getByRole('link', { name: 'Holdings' })).toHaveCount(0)
   for (const name of ['Value', 'Performance', 'Risk', 'Performance history', 'Risk breakdown', 'Allocation over time']) await expect(page.getByRole('region', { name, exact: true })).toBeVisible()
   // Background map: this US-only portfolio lights New York only; the portfolio list lights every exchange city.
   const map = page.getByTestId('world-map')

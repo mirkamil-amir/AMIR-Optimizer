@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
-import { UniverseNav, type UniverseScope } from './universe-nav'
+import { UniverseNav, marketCount, type UniverseScope } from './universe-nav'
 import type { Market, MarketIndex } from '@/lib/types'
 
 const index = (code: string, name: string, country: string, members: number, isHistorical = false): MarketIndex => ({
@@ -29,6 +29,12 @@ describe('UniverseNav', () => {
     expect(screen.getByRole('button', { name: /^All markets/ })).toHaveTextContent('622')
     expect(screen.queryByRole('button', { name: /^Germany/ })).toBeNull()
     expect(screen.getByRole('button', { name: /^Middle East & Africa/ })).toBeInTheDocument()
+  })
+
+  it('counts each stock of a market once when the server sends instrument counts (also SPY or historical-only members)', () => {
+    const counted = markets.map((m) => ({ ...m, instruments: m.country === 'DE' ? 44 : m.country === 'US' ? 504 : marketCount(m) }))
+    render(<UniverseNav markets={counted} sectors={[]} scope={{}} onChange={vi.fn()} loading={false} />)
+    expect(screen.getByRole('button', { name: /^Europe/ })).toHaveTextContent('84')   // 44 in Germany (DAX 40 + 4 of the DAX 30 only) + 40
   })
 
   it('selects a whole region as several markets', async () => {

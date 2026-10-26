@@ -61,6 +61,7 @@ export function MlOptimizePage() {
     <>
       <PageHeader
         level={2}
+        titleHidden
         title="ML Optimization"
         info="Configure a machine-learning model for this portfolio's universe, train and test it chronologically, then review its ranking-based allocation and confirm a simulated trade proposal. A result never changes holdings by itself."
       />
@@ -657,7 +658,7 @@ function AllocationSection({ e }: { e: MlExperiment }) {
     { key: 'rank', header: 'Rank', sortValue: (p) => p.rank, cell: (p) => p.rank },
     { key: 'symbol', header: 'Stock', sortValue: (p) => p.symbol, cell: (p) => <div><div className="font-semibold">{p.symbol}</div><div className="max-w-40 truncate text-[11px] text-muted-foreground">{p.name ?? ''}</div></div> },
     { key: 'sector', header: 'Sector', cell: (p) => <span className="text-xs">{p.sector ?? '—'}</span>, className: 'hidden lg:table-cell' },
-    { key: 'price', header: 'Latest price', align: 'right', sortValue: (p) => p.latestPrice, cell: (p) => <span title={p.latestPriceDate ? `as of ${date(p.latestPriceDate)}` : ''}>{money(p.latestPrice)}</span> },
+    { key: 'price', header: 'Latest price', align: 'right', sortValue: (p) => p.latestPrice, cell: (p) => <span title={p.latestPriceDate ? `as of ${date(p.latestPriceDate)}` : ''}>{p.currency ? money(p.latestPrice, p.currency) : num(p.latestPrice)}</span> },
     {
       key: 'pred', header: valueLabel, align: 'right', sortValue: (p) => p.predictedValue,
       cell: (p) => (

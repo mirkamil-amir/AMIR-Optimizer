@@ -3,7 +3,7 @@ import { validateDraft, type PortfolioDraft } from './create-portfolio'
 
 const draft = (over: Partial<PortfolioDraft> = {}): PortfolioDraft => ({ name: 'Core', description: '', currency: 'USD', capital: '100000', maxWeight: '', ...over })
 
-describe('Portfolio Creation validation', () => {
+describe('New portfolio validation', () => {
   it('accepts a complete draft', () => {
     expect(validateDraft(draft())).toEqual({})
     expect(validateDraft(draft({ maxWeight: '25', description: 'x'.repeat(500) }))).toEqual({})

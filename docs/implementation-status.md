@@ -1,5 +1,39 @@
 # Implementation status
 
+## 2026-10-26: MatrixView; per-portfolio currency view
+
+* 2026-10-27: navigation labels shortened – Math, ML, History (sidebar and portfolio tab, formerly Optimization history /
+  Optimization runs), Backtesting, Comparison; the title repeating a tab (and "My portfolios" on View) is screen-reader only;
+  the workspace header lost its "My portfolios" link (sidebar View); the app is just "MatrixView" (no tagline).
+* Renamed: the app MaTrix → **MatrixView**; top bar Optimizer → **Viewer**; sidebar Portfolios Overview → **View**,
+  Portfolio Creation → **New** (page heading "New portfolio"). Older entries below keep the names of their time.
+* My portfolios: the currency box converts every card, not only the total – value, invested, cash, net contributions and
+  profit/loss (`PortfolioSummaryDto.InCurrency`). Today's value at the latest rates (Holdings reporting conversion); each
+  deposit/withdrawal at the rate of its own date, so P&L includes the currency effect. The total is the sum of the cards
+  (before: contributions at today's rate, which hid the currency effect).
+
+## 2026-10-26: Holdings merged into the Overview
+
+* The Holdings tab is gone; the Overview has its parts once each: reporting currency (whole page), cost basis (in the
+  Unrealized P&L card), currency exposure, the positions table (search, sector, closed/target-only, side panel per stock)
+  (`components/holdings-table.tsx`). `/portfolios/:id/holdings` and `/holdings` open the Overview; a simulated execution
+  opens it too. The Overview's efficient frontier (latest Math Optimization) was removed – it stays on the run's page.
+* Market data: the coverage table has a search box (symbol, name, currency), pages of 50 sorted rows (`DataTable pageSize`)
+  and scrolls inside a fixed height (about 15 rows, header stays); its price chart was removed. Downloads show the MatrixView
+  loader (`WorkingPanel`: progress, last stock, queued downloads) and a loader on each row still waiting for its prices.
+* Market data has three pages – `/market-data` (Stocks & ETFs), `/market-data/indexes`, `/market-data/currencies` – with
+  the same list: search, rows per page, first/previous/next/last (`RangePager`, shared with the stock chooser, inside
+  `DataTable pageSize`), a box that scrolls under a fixed header; downloads, providers and jobs stay below on each page.
+  Each page has its own sync (administrators): tracked stocks & ETFs or tracked indexes (`SyncRequest.AssetTypes`), or every
+  exchange rate (`POST /fx/sync`; `MarketDataStatusDto.FxDownloadRunning` shows the MatrixView loader while rates arrive).
+* Market data lists the whole catalogue (not only tracked instruments) in three boxes: Stocks & ETFs (search, pages;
+  untracked ones are "Not tracked" with Download), Indexes, and Currencies (stored ECB rates per currency: 1 EUR = …,
+  coverage, freshness; `MarketDataStatusDto.Currencies`). The stock chooser's market counts are distinct instruments
+  (`MarketDto.Instruments`: listings plus members of its indices), so "All markets" equals "All sectors" – before it summed
+  current index members and missed SPY (no index) and four stocks only in the historical DAX 30.
+  Latest prices show each instrument's own trading currency (`AssetCoverageDto.Currency`; also `MlPredictionDto.Currency`
+  on ML Optimization) – they were all labelled USD before.
+
 ## 2026-10-25 (4): large optimizations, faster downloads (D-43)
 
 * Optimizer: exact maximum return (greedy LP), warm-started capped frontier, early polish, OSQP-style check interval.
@@ -33,13 +67,13 @@
   and every benchmark downloaded, agorot and cents converted. `./scripts/test.sh`, Vitest 183, Playwright 35.
 * Not done: point-in-time constituents (as before); holiday calendars; the Philippines (no provider data).
 
-## 2026-10-25: MaTrix – UI polish, deletable optimizations, new brand (D-40)
+## 2026-10-25: MatrixView – UI polish, deletable optimizations, new brand (D-40)
 
-* Brand: renamed **MaTrix** (page title "MaTrix - Portfolio Viewer"); logo = 4×4 correlation matrix with a gold diagonal
+* Brand: renamed **MatrixView** (page title "MatrixView - Portfolio Viewer"); logo = 4×4 correlation matrix with a gold diagonal
   (chosen from nine concepts), also the favicon. Navigation (top bar and sidebar) in Sora (chosen from nine fonts); entries
   magnify near the pointer like a dock (`lib/nav-zoom.ts`), the selected one stays enlarged. Sidebar without headings.
 * No decorative icons anywhere; explanations open from their label (no ⓘ, no underline). Header shows the name only.
-* Portfolio tabs: Overview · Holdings · Math Optimization · ML Optimization · Optimization runs · Backtest · Strategy
+* Portfolio tabs: Overview · Math Optimization · ML Optimization · Optimization runs · Backtest · Strategy
   comparison · Transactions. Optimization runs: scrolling lists with search and filters; Math and ML Optimizations can be
   deleted (bin + confirmation; `DELETE /api/v1/optimization-runs/{id}`, integration-tested incl. cross-user and archived).
 * Math/ML Optimization: one "What your result means" box (paragraphs by kind, inputs & methodology, data notes); ML feature
@@ -79,7 +113,7 @@
   stocks from pinned Wikipedia revisions plus 18 index ETFs (curated); all 441 symbols and their currencies were checked
   against the price provider on 2026-10-24 (three SGX listings trade in USD and are recorded so). Venues, sessions, index
   benchmarks, Alpha Vantage `.TRT` for Toronto, research-brief markets; symbols may contain `&` (`M&M.NS`).
-* Portfolio workspace: tabs Overview · Holdings · Math Optimization · ML Optimization · Optimization runs ·
+* Portfolio workspace: tabs Overview · Math Optimization · ML Optimization · Optimization runs ·
   Backtest · Strategy comparison · Transactions. Performance merged into the Overview (date range, efficient frontier right under portfolio
   vs benchmark, recorded performance, risk, allocation over time – duplicates removed). Optimization runs (Math and ML),
   Backtest and Strategy comparison stay inside the portfolio and list only its work; the portfolio is fixed there.
@@ -242,7 +276,7 @@
 
 * Converter card (rates board, pair chart, calculator) on the overview and stock-selection pages, backed by
   `/fx/history` and `/fx/board`; labelled reference rates with dates, never "live".
-* Brand: MaTrix (formerly AMIR Optimizer); SVG mark (a correlation matrix with a gold diagonal) in the sidebar, sign-in pages, favicon, tab title.
+* Brand: MatrixView (formerly AMIR Optimizer); SVG mark (a correlation matrix with a gold diagonal) in the sidebar, sign-in pages, favicon, tab title.
 * Light / dark / system mode and five colour skins; header toggle and Settings → Appearance; persisted per browser.
 * Verified by unit, integration, Vitest and e2e tests and by screenshots (light, dark Ocean, Violet).
 

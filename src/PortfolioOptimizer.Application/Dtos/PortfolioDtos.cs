@@ -63,7 +63,7 @@ public sealed record CreatePortfolioRequest
     /// <summary>Optional settings; defaults are used when omitted.</summary>
     public PortfolioSettingsDto? Settings { get; init; }
     /// <summary>
-    /// Working universe chosen in Portfolio Creation (used with default settings when <see cref="Settings"/> is omitted).
+    /// Working universe chosen in New portfolio (used with default settings when <see cref="Settings"/> is omitted).
     /// It is the set the optimizer may use – not holdings: nothing is bought until a proposal is confirmed.
     /// </summary>
     [MaxLength(500)] public List<string>? Universe { get; init; }
@@ -112,7 +112,24 @@ public sealed record PortfolioSummaryDto(
     bool UsesSimulatedData = false,
     DateTime? LatestOptimizationAtUtc = null,
     /// <summary>Latest ledger booking (trade, deposit, dividend …).</summary>
-    DateTime? LastActivityAtUtc = null);
+    DateTime? LastActivityAtUtc = null,
+    /// <summary>The same figures in the overview's chosen currency (overview only; null in plain lists).</summary>
+    PortfolioInCurrencyDto? InCurrency = null);
+
+/// <summary>
+/// A portfolio's figures in a reporting currency, for viewing only (nothing is exchanged). Today's value is converted like the
+/// Holdings reporting view (positions at the rate of their price date, cash at the latest rate); every deposit and withdrawal at
+/// the rate of its own date, so <see cref="ProfitLoss"/> includes the currency effect since the money came in. Null amounts
+/// with <see cref="Problems"/> when a rate is missing – never a plausible-looking number.
+/// </summary>
+public sealed record PortfolioInCurrencyDto(
+    string Currency,
+    decimal? TotalValue,
+    decimal? MarketValue,
+    decimal? Cash,
+    decimal? NetContributions,
+    decimal? ProfitLoss,
+    IReadOnlyList<string> Problems);
 
 /// <summary>
 /// The user's portfolios plus totals over the active ones in <paramref name="Currency"/>. The total is null – never a partial

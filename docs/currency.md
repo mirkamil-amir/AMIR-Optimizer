@@ -130,7 +130,8 @@ selection). A mixed selection keeps the requested benchmark, converted.
 
 ## API
 
-`GET /api/v1/fx/currencies` (source, convention, supported currencies) · `GET /api/v1/fx/rate?from=&to=` (latest usable
+`POST /api/v1/fx/sync` (administrators, Market Data → Currencies → Sync: downloads the missing rates of every published
+currency since `startDate`, default five years, through `FxDownloader` – gaps only, contiguous chunks) · `GET /api/v1/fx/currencies` (source, convention, supported currencies) · `GET /api/v1/fx/rate?from=&to=` (latest usable
 rate with date and source, 422 with the reason when unavailable) · `GET /api/v1/fx/history?from=&to=&days=` (only days
 with a published rate – nothing carried forward, for charts) · `GET /api/v1/fx/board?base=&quotes=` (latest published rate
 per quote with 1-day and 1-month change; a quote without a recent rate shows its reason instead of a number) · `GET /portfolios/{id}/holdings?currency=` ·
@@ -141,7 +142,7 @@ per quote with 1-day and 1-month change; a quote without a recent rate shows its
 
 `components/currency-converter.tsx` on the overview page. Every currency the FX source publishes (ECB: 29 + EUR, incl. TRY) is
 available in grouped drop-downs (`CurrencySelect` in `components/currency.tsx`: portfolio currency and majors first, then
-"More currencies", each with its English name). The same drop-down is used for the portfolio currency (Portfolio Creation),
+"More currencies", each with its English name). The same drop-down is used for the portfolio currency (New portfolio),
 the currency of the overview totals and the reporting currency on holdings ("EUR (portfolio)" marks the base currency):
 
 * **Rate board** against a selectable base: the majors (`majorCurrencies` in `lib/currency.ts`: USD, EUR, GBP, JPY, CHF, CAD,

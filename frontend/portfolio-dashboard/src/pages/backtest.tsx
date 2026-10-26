@@ -45,7 +45,7 @@ export function BacktestPage() {
   return (
     <>
       {scoped
-        ? <PageHeader level={2} title="Backtest" info={`Walk-forward historical simulation of one of this portfolio's Math or ML Optimizations, with periodic rebalancing, transaction costs and benchmark comparison. ${HYPOTHETICAL}`} />
+        ? <PageHeader level={2} titleHidden title="Backtesting" info={`Walk-forward historical simulation of one of this portfolio's Math or ML Optimizations, with periodic rebalancing, transaction costs and benchmark comparison. ${HYPOTHETICAL}`} />
         : <PageHeader title="Backtesting" info={`Walk-forward historical simulation of any Math or ML Optimization of your portfolios, with periodic rebalancing, transaction costs and benchmark comparison. ${HYPOTHETICAL}`} />}
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
         <div className="min-w-0 space-y-4">

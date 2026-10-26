@@ -64,8 +64,11 @@ public sealed record PriceBarDto(
 
 public sealed record SyncRequest
 {
-    /// <summary>Symbols to refresh. Empty = all enabled assets.</summary>
+    /// <summary>Symbols to refresh. Empty = all enabled assets (of <see cref="AssetTypes"/> when given).</summary>
     public List<string> Symbols { get; init; } = [];
+
+    /// <summary>With no symbols: only enabled assets of these types (Market Data syncs stocks &amp; ETFs and indexes separately).</summary>
+    public List<AssetType> AssetTypes { get; init; } = [];
 
     /// <summary>First date to download. Defaults to 5 years ago.</summary>
     public DateOnly? StartDate { get; init; }
@@ -125,7 +128,26 @@ public sealed record AssetCoverageDto(
     decimal? LatestPrice,
     DateTime? LatestPriceAsOfUtc,
     string? LastSyncMessage,
-    bool? LastSyncSuccess);
+    bool? LastSyncSuccess,
+    /// <summary>Trading currency of the instrument; <see cref="LatestPrice"/> is in it (never converted).</summary>
+    string Currency = "",
+    /// <summary>Stock, index ETF or index (Market Data shows them in separate boxes).</summary>
+    AssetType AssetType = AssetType.Equity);
+
+/// <summary>
+/// Stored exchange rates of one currency from the FX source paired with the active price source (ECB, or simulated rates
+/// with simulated prices). Rates are stored as units per 1 EUR, the pivot of every conversion.
+/// </summary>
+public sealed record FxCoverageDto(
+    string Currency,
+    string Source,
+    bool IsSimulated,
+    int Observations,
+    DateOnly FirstDate,
+    DateOnly LastDate,
+    decimal LatestUnitsPerEur,
+    DateTime LastRetrievedAtUtc,
+    DataFreshness Freshness);
 
 /// <summary>
 /// Compact data status for the navigation (every page): freshness counts of the tracked instruments, the latest retrieval
@@ -142,6 +164,16 @@ public sealed record MarketDataSummaryDto(
     int StalePriceDays,
     DateTime AsOfUtc);
 
+/// <summary>Exchange-rate download for every currency of the FX source paired with the active price source (only missing ranges).</summary>
+public sealed record FxSyncRequest
+{
+    /// <summary>First date of the rates to have stored. Defaults to 5 years ago.</summary>
+    public DateOnly? StartDate { get; init; }
+}
+
+/// <param name="Started">False when every rate of the range is already stored (nothing to download).</param>
+public sealed record FxSyncDto(bool Started, string Source, IReadOnlyList<string> Currencies, DateOnly From, DateOnly To);
+
 public sealed record MarketDataStatusDto(
     string ActiveProvider,
     bool ActiveProviderIsSimulated,
@@ -149,7 +181,10 @@ public sealed record MarketDataStatusDto(
     IReadOnlyList<AssetCoverageDto> Coverage,
     IReadOnlyList<SyncJobDto> RecentJobs,
     int StalePriceDays,
-    DateTime GeneratedAtUtc);
+    DateTime GeneratedAtUtc,
+    IReadOnlyList<FxCoverageDto>? Currencies = null,
+    /// <summary>An exchange-rate download of that source is running.</summary>
+    bool FxDownloadRunning = false);
 
 public sealed record ProviderStatusDto(
     string Name,

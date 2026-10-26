@@ -49,7 +49,7 @@ function SidebarGroups({ sections, activeTo, onNavigate }: { sections: NavSectio
   ))
 }
 
-/** Left sidebar: the Optimizer workspace's sections and, for administrators, the administration area. */
+/** Left sidebar: the Viewer's sections and, for administrators, the administration area. */
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const { isAdministrator } = useAuth()
   const { pathname } = useLocation()
@@ -62,7 +62,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   }, [])
   return (
     <div ref={ref} className="flex flex-col gap-4">
-      <nav className="flex flex-col gap-4" aria-label="Optimizer sections">
+      <nav className="flex flex-col gap-4" aria-label="Viewer sections">
         <SidebarGroups sections={optimizerSections} activeTo={activeTo} onNavigate={onNavigate} />
       </nav>
       {isAdministrator && (
@@ -148,7 +148,7 @@ function DataStatus() {
 function SelectionIndicator() {
   const { count } = useSelection()
   return (
-    <Button variant="outline" size="sm" render={<Link to="/stocks" />} aria-label={`Portfolio Creation: ${count} stock${count === 1 ? '' : 's'} selected`}>
+    <Button variant="outline" size="sm" render={<Link to="/stocks" />} aria-label={`New portfolio: ${count} stock${count === 1 ? '' : 's'} selected`}>
       <span>Selection</span>
       <Badge variant="secondary" className="tabular">{count}</Badge>
     </Button>
@@ -210,7 +210,7 @@ function UserMenu() {
 export function AppShell() {
   const [open, setOpen] = useState(false)
   const { isAdministrator } = useAuth()
-  const menuLabel = isAdministrator ? 'Optimizer and administration menu' : 'Optimizer menu'
+  const menuLabel = isAdministrator ? 'Viewer and administration menu' : 'Viewer menu'
   return (
     <WorldMapProvider>
     <div className="min-h-svh bg-muted/30">

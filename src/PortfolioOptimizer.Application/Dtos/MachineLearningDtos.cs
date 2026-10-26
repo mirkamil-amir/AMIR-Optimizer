@@ -206,7 +206,9 @@ public sealed record MlPredictionDto(
     double TargetWeight,
     double? IntervalLow,
     double? IntervalHigh,
-    IReadOnlyList<FeatureContribution> Drivers);
+    IReadOnlyList<FeatureContribution> Drivers,
+    /// <summary>Trading currency of the stock; <see cref="LatestPrice"/> is in it (never converted).</summary>
+    string? Currency = null);
 
 public sealed record MlExperimentDto(
     MlExperimentSummaryDto Summary,

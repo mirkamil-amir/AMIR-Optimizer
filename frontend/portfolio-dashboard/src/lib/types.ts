@@ -105,6 +105,22 @@ export interface AssetCoverage {
   latestPriceAsOfUtc: string | null
   lastSyncMessage: string | null
   lastSyncSuccess: boolean | null
+  /** Trading currency of the instrument; latestPrice is in it. */
+  currency: string
+  assetType: 'Equity' | 'Etf' | 'Index'
+}
+
+/** Stored exchange rates of one currency (units per 1 EUR, the pivot of every conversion). */
+export interface FxCoverage {
+  currency: string
+  source: string
+  isSimulated: boolean
+  observations: number
+  firstDate: string
+  lastDate: string
+  latestUnitsPerEur: number
+  lastRetrievedAtUtc: string
+  freshness: DataFreshness
 }
 
 export interface MarketDataStatus {
@@ -115,6 +131,18 @@ export interface MarketDataStatus {
   recentJobs: SyncJob[]
   stalePriceDays: number
   generatedAtUtc: string
+  currencies: FxCoverage[] | null
+  /** An exchange-rate download of that source is running. */
+  fxDownloadRunning: boolean
+}
+
+/** Result of starting an exchange-rate download (`started` false: nothing of the range was missing). */
+export interface FxSync {
+  started: boolean
+  source: string
+  currencies: string[]
+  from: string
+  to: string
 }
 
 export interface AppSettings {
@@ -178,6 +206,22 @@ export interface PortfolioSummary {
   usesSimulatedData: boolean
   latestOptimizationAtUtc: string | null
   lastActivityAtUtc: string | null
+  /** The same figures in the overview's chosen currency (overview only). */
+  inCurrency?: PortfolioInCurrency | null
+}
+
+/**
+ * A portfolio's figures in a reporting currency (viewing only): today's value at the latest rates, every deposit and
+ * withdrawal at the rate of its own date – so profit/loss includes the currency effect. Null amounts come with problems.
+ */
+export interface PortfolioInCurrency {
+  currency: string
+  totalValue: number | null
+  marketValue: number | null
+  cash: number | null
+  netContributions: number | null
+  profitLoss: number | null
+  problems: string[]
 }
 
 export type PortfolioStatus = 'Active' | 'Archived'
@@ -774,6 +818,8 @@ export interface Market {
   country: string
   name: string
   indices: MarketIndex[]
+  /** Stocks and ETFs of the market, each once (its listings plus members of its indices listed elsewhere). */
+  instruments?: number
 }
 
 export interface QuoteRefreshRun {
@@ -992,6 +1038,8 @@ export interface MlPrediction {
   symbol: string; name: string | null; sector: string | null; latestPrice: number | null; latestPriceDate: string | null
   predictedValue: number; score: number; rank: number; selected: boolean; targetWeight: number
   intervalLow: number | null; intervalHigh: number | null; drivers: FeatureContribution[]
+  /** Trading currency of the stock; latestPrice is in it. */
+  currency: string | null
 }
 export interface MlPredictionSet {
   id: string; modelVersionId: string; modelVersion: number; modelRole: string; modelTrainedThrough: string; asOfDate: string; createdAtUtc: string

@@ -5,8 +5,8 @@ test.use({ storageState: ADMIN_STATE })
 
 test('stock discovery: search, select across sectors, selection is temporary', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('navigation', { name: 'Optimizer sections' }).getByRole('link', { name: 'Portfolio Creation' }).click()
-  await expect(page.getByRole('heading', { name: 'Portfolio Creation' })).toBeVisible()
+  await page.getByRole('navigation', { name: 'Viewer sections' }).getByRole('link', { name: 'New', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'New portfolio' })).toBeVisible()
 
   const search = page.getByLabel('Search company name or ticker')
   await search.fill('AAPL')
@@ -18,8 +18,8 @@ test('stock discovery: search, select across sectors, selection is temporary', a
   await expect(tray.getByRole('list', { name: 'Selected tickers' }).getByRole('listitem')).toHaveCount(2)
 
   // The selection survives client-side navigation …
-  await page.getByRole('navigation', { name: 'Optimizer sections' }).getByRole('link', { name: 'Portfolios Overview', exact: true }).click()
-  await expect(page.getByRole('link', { name: 'Portfolio Creation: 2 stocks selected' })).toBeVisible()
+  await page.getByRole('navigation', { name: 'Viewer sections' }).getByRole('link', { name: 'View', exact: true }).click()
+  await expect(page.getByRole('link', { name: 'New portfolio: 2 stocks selected' })).toBeVisible()
 
   // … is never written to browser storage …
   const stored = await page.evaluate(() => JSON.stringify({ ...localStorage }) + JSON.stringify({ ...sessionStorage }))
@@ -27,7 +27,7 @@ test('stock discovery: search, select across sectors, selection is temporary', a
 
   // … and is gone after a reload.
   await page.reload()
-  await expect(page.getByRole('link', { name: 'Portfolio Creation: 0 stocks selected' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'New portfolio: 0 stocks selected' })).toBeVisible()
 })
 
 test('the selection hands its universe to the optimizer', async ({ page }) => {
@@ -49,7 +49,7 @@ test('ML workspace and strategy comparison pages load', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'ML Optimization', exact: true })).toBeVisible()
 
   await page.goto('/strategy-comparison')
-  await expect(page.getByRole('heading', { name: /strategy comparison/i })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Comparison', exact: true })).toBeVisible()
 })
 
 test.describe('own session', () => {
@@ -61,7 +61,7 @@ test.describe('own session', () => {
     await page.goto('/stocks')
     await page.getByLabel('Search company name or ticker').fill('AAPL')
     await page.getByRole('checkbox', { name: 'Select AAPL' }).check()
-    await expect(page.getByRole('link', { name: 'Portfolio Creation: 1 stock selected' })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'New portfolio: 1 stock selected' })).toBeVisible()
     await signOut(page)
     expect(await page.evaluate(() => (history.state as { usr?: { from?: string } } | null)?.usr?.from)).toBeUndefined()
     await expect(page.getByRole('link', { name: /stocks? selected/ })).toHaveCount(0)

@@ -20,7 +20,6 @@ const PortfoliosPage = lazy(() => import('@/pages/portfolios').then((m) => ({ de
 const PortfolioWorkspace = lazy(() => import('@/pages/portfolio-workspace').then((m) => ({ default: m.PortfolioWorkspace })))
 const ToCurrentPortfolio = lazy(() => import('@/pages/portfolio-workspace').then((m) => ({ default: m.ToCurrentPortfolio })))
 const RunRedirect = lazy(() => import('@/pages/portfolio-workspace').then((m) => ({ default: m.RunRedirect })))
-const HoldingsPage = lazy(() => import('@/pages/holdings').then((m) => ({ default: m.HoldingsPage })))
 const OptimizePage = lazy(() => import('@/pages/optimize').then((m) => ({ default: m.OptimizePage })))
 const ChooseStocksPage = lazy(() => import('@/pages/choose-stocks').then((m) => ({ default: m.ChooseStocksPage })))
 const TradesPage = lazy(() => import('@/pages/trades').then((m) => ({ default: m.TradesPage })))
@@ -76,13 +75,12 @@ const router = createBrowserRouter([
             children: [
               { index: true, element: <OverviewPage /> },
               { path: 'optimize', element: <OptimizePage /> },
-              // The stock list of Portfolio Creation without the creation form, to choose an optimization's universe.
+              // The stock list of New portfolio without the creation form, to choose an optimization's universe.
               { path: 'optimize/stocks', element: <ChooseStocksPage section="optimize" /> },
               { path: 'ml-optimize/stocks', element: <ChooseStocksPage section="ml-optimize" /> },
               { path: 'optimize/:runId', element: <OptimizePage /> },
               { path: 'ml-optimize', element: <MlOptimizePage /> },
               { path: 'ml-optimize/:experimentId', element: <MlOptimizePage /> },
-              { path: 'holdings', element: <HoldingsPage /> },
               { path: 'transactions', element: <TradesPage /> },
               { path: 'runs', element: <HistoryPage /> },
               { path: 'backtest', element: <BacktestPage /> },
@@ -91,6 +89,8 @@ const router = createBrowserRouter([
               { path: 'comparison/:comparisonId', element: <StrategyComparisonPage /> },
               // Performance (value, returns, risk, allocation, efficient frontier) is part of the Overview since 2026-10-24.
               { path: 'performance', element: <Navigate to=".." relative="path" replace /> },
+              // Holdings (cards, currency exposure, positions table) are part of the Overview since 2026-10-26.
+              { path: 'holdings', element: <Navigate to=".." relative="path" replace /> },
             ],
           },
           { path: '/research', element: <ResearchHomePage /> },
@@ -100,7 +100,7 @@ const router = createBrowserRouter([
           { path: '/watchlist', element: <WatchlistPage /> },
           { path: '/news', element: <NewsPage /> },
           // Earlier portfolio-less URLs keep working: they open the section of the right portfolio.
-          { path: '/holdings', element: <ToCurrentPortfolio section="holdings" /> },
+          { path: '/holdings', element: <ToCurrentPortfolio section="" /> },
           { path: '/optimize', element: <ToCurrentPortfolio section="optimize" /> },
           { path: '/optimize/:runId', element: <RunRedirect /> },
           { path: '/history', element: <HistoryPage /> },
@@ -116,6 +116,8 @@ const router = createBrowserRouter([
           { path: '/backtest', element: <BacktestPage /> },
           { path: '/backtest/:backtestId', element: <BacktestPage /> },
           { path: '/market-data', element: <MarketDataPage /> },
+          // Market Data pages: Stocks & ETFs (above), Indexes and Currencies – one shared search-and-paging table.
+          { path: '/market-data/:section', element: <MarketDataPage /> },
           { path: '/settings', element: <SettingsPage /> },
           { path: '/learn', element: <LearnIndexPage /> },
           { path: '/learn/glossary', element: <GlossaryPage /> },

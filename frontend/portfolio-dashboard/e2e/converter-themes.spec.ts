@@ -8,12 +8,12 @@ async function pick(page: Page, name: RegExp) {
   await option.click()
 }
 
-// Currency converter on the overview and stock-selection pages, the MaTrix brand, and switchable themes.
+// Currency converter on the overview and stock-selection pages, the MatrixView brand, and switchable themes.
 test.use({ storageState: ADMIN_STATE })
 
 test('currency converter (overview only) shows dated reference rates, a chart and a calculator', async ({ page }) => {
   await page.goto('/stocks')
-  await expect(page.getByRole('heading', { name: 'Portfolio Creation' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'New portfolio' })).toBeVisible()
   await expect(page.getByRole('region', { name: 'Currency converter' })).toHaveCount(0)
   for (const path of ['/']) {
     await page.goto(path)
@@ -68,11 +68,11 @@ test('currency converter (overview only) shows dated reference rates, a chart an
   await page.mouse.move(0, 0)
 })
 
-test('MaTrix brand and themes: logo in the shell, dark mode and skins persist', async ({ page }) => {
+test('MatrixView brand and themes: logo in the shell, dark mode and skins persist', async ({ page }) => {
   await page.goto('/')
-  await expect(page).toHaveTitle('MaTrix - Portfolio Viewer')
-  await expect(page.getByRole('link', { name: 'MaTrix – home' })).toBeVisible()
-  await expect(page.locator('[title*="Portfolio Viewer"]').first()).toBeAttached()
+  await expect(page).toHaveTitle('MatrixView')
+  await expect(page.getByRole('link', { name: 'MatrixView – home' })).toBeVisible()
+  await expect(page.locator('[title="MatrixView"]').first()).toBeAttached()
 
   await page.goto('/settings#appearance')
   await page.getByRole('radio', { name: /Dark/ }).click()

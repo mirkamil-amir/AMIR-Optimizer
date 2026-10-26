@@ -7,24 +7,24 @@ import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { DataTable, type Column } from '@/components/data-table'
 import { TimeSeriesChart } from '@/components/charts'
-import { DataBadge, EmptyState, ErrorState, LoadingBlock, MetricCard, PageHeader, Signed, Warnings } from '@/components/common'
-import { CurrencyExposureList, FxNote, ReportingCurrencySelect, ReportingNote, ValuationProblems } from '@/components/currency'
-import { usePortfolioContext } from '@/lib/portfolio-context'
-import { useHoldings, usePrices, useRisk, useTransactions } from '@/lib/queries'
-import type { Holding } from '@/lib/types'
+import { DataBadge, EmptyState, LoadingBlock, Signed } from '@/components/common'
+import { FxNote } from '@/components/currency'
+import { usePrices, useRisk, useTransactions } from '@/lib/queries'
+import type { Holding, HoldingsResponse } from '@/lib/types'
 import { date, dateTime, money, pct, qty } from '@/lib/format'
-import { NoPortfolio } from './shared'
 
-export function HoldingsPage() {
-  const { portfolioId, portfolio, isLoading } = usePortfolioContext()
-  const [reporting, setReporting] = useState<string>()
-  const { data, error, refetch, isLoading: loading } = useHoldings(portfolioId, reporting)
+/**
+ * The positions of one portfolio (Overview, since 2026-10-26 – the Holdings tab was merged into it): search, sector filter,
+ * closed and target-only positions, and a side panel per stock with its price, risk contribution and transactions.
+ * Valued at the latest stored price in `currency`; prices stay in each stock's own currency.
+ */
+export function HoldingsTable({ data, loading, currency: ccy, account, portfolioId }: {
+  data: HoldingsResponse | undefined; loading: boolean; currency: string; account: string; portfolioId: string
+}) {
   const [search, setSearch] = useState('')
   const [sector, setSector] = useState<string>('all')
   const [showClosed, setShowClosed] = useState(false)
   const [selected, setSelected] = useState<Holding | null>(null)
-  const account = portfolio?.baseCurrency ?? 'USD'
-  const ccy = data?.summary.currency ?? reporting ?? account
 
   const sectors = useMemo(() => [...new Set((data?.holdings ?? []).map((h) => h.sector ?? 'Unclassified'))].sort(), [data])
   const rows = useMemo(() => (data?.holdings ?? []).filter((h) =>
@@ -32,9 +32,6 @@ export function HoldingsPage() {
     (sector === 'all' || (h.sector ?? 'Unclassified') === sector) &&
     (search === '' || h.symbol.toLowerCase().includes(search.toLowerCase()) || (h.name ?? '').toLowerCase().includes(search.toLowerCase())),
   ), [data, search, sector, showClosed])
-
-  if (!isLoading && !portfolioId) return <NoPortfolio />
-  const s = data?.summary
 
   const columns: Column<Holding>[] = [
     {
@@ -85,40 +82,7 @@ export function HoldingsPage() {
 
   return (
     <>
-      <PageHeader
-        level={2}
-        title="Holdings"
-        info={`Positions in the simulated portfolio, valued at the latest stored price in ${ccy}. Prices stay in each stock's own currency.`}
-        actions={
-          <>
-            <ReportingCurrencySelect value={reporting} accountCurrency={account} onChange={setReporting} />
-            {s && (s.usesSimulatedData ? <DataBadge kind="simulated" /> : <DataBadge kind="cached" label={`Prices of ${date(s.valuationDate)}`} />)}
-          </>
-        }
-      />
-      {error && <ErrorState error={error} onRetry={() => refetch()} />}
-
-      {/* Read left to right: total = cash + market value; market value − cost basis = unrealized P&L. */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-        <MetricCard label="Total value" loading={!s} value={s?.totalValue === null ? 'Not available' : money(s?.totalValue, ccy)} />
-        <MetricCard label="Cash" loading={!s} value={money(s?.cashBalance, ccy)} sub={s?.totalValue === null ? `${account} account` : `${pct(1 - (s?.investedFraction ?? 0), 1)} of total`} />
-        <MetricCard label="Market value" loading={!s} value={s?.marketValue === null ? 'Not available' : money(s?.marketValue, ccy)} />
-        <MetricCard label="Cost basis" loading={!s} value={money(s?.totalCostBasis, ccy)} hint="Weighted-average cost of open positions including buy commissions." />
-        <MetricCard label="Unrealized P&L" loading={!s} tone="signed" numeric={s?.unrealizedPnl} value={money(s?.unrealizedPnl, ccy, { signed: true })} />
-      </div>
-      <div className="mt-4 space-y-3">
-        <ValuationProblems problems={s?.valuationProblems} />
-        {s && <ReportingNote currency={s.currency} accountCurrency={s.accountCurrency} rate={s.accountToReportingRate} />}
-        {s?.currencyExposure && s.currencyExposure.length > 1 && (
-          <div className="rounded-xl border bg-card p-4">
-            <h2 className="mb-2 text-sm font-semibold">Currency exposure</h2>
-            <CurrencyExposureList items={s.currencyExposure} />
-            <p className="mt-2 text-xs text-muted-foreground">Share of total value by the currency the holdings trade in. Positions are unhedged: their value in {ccy} moves with the exchange rate.</p>
-          </div>
-        )}
-      </div>
-
-      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative sm:w-72">
           <Input placeholder="Search symbol or name" aria-label="Search holdings" className="bg-card" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
@@ -150,17 +114,12 @@ export function HoldingsPage() {
         )}
       </div>
 
-      {/* Data notes last, as on the Overview. */}
-      <div className="mt-6">
-        <Warnings items={s?.warnings.filter((w) => !s.valuationProblems?.includes(w) && !w.startsWith('Reporting view'))} />
-      </div>
-
       <HoldingSheet holding={selected} onClose={() => setSelected(null)} currency={ccy} account={account} portfolioId={portfolioId} />
     </>
   )
 }
 
-function HoldingSheet({ holding, onClose, currency, account, portfolioId }: { holding: Holding | null; onClose: () => void; currency: string; account: string; portfolioId?: string }) {
+function HoldingSheet({ holding, onClose, currency, account, portfolioId }: { holding: Holding | null; onClose: () => void; currency: string; account: string; portfolioId: string }) {
   const oneYearAgo = useMemo(() => new Date(Date.now() - 365 * 864e5).toISOString().slice(0, 10), [])
   const prices = usePrices(holding?.symbol, oneYearAgo)
   const tx = useTransactions(holding ? portfolioId : undefined, 1, holding?.symbol, 20)

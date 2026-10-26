@@ -40,6 +40,7 @@ export function PortfoliosPage() {
     <>
       <PageHeader
         title="My portfolios"
+        titleHidden
         actions={<Button render={<Link to="/stocks" />}>Create portfolio</Button>}
       />
 
@@ -63,9 +64,9 @@ export function PortfoliosPage() {
                 sub={data.totalValue == null ? 'See the note below' : undefined}
                 hint="Sum of the active portfolios' total values (cash + positions), each converted into this currency at today's reference rate." />
               <MetricCard label="Net contributions" value={data.totalNetContributions == null ? '—' : money(data.totalNetContributions, ccy)}
-                hint="Money paid into the portfolios minus money taken out. Not a gain." />
+                hint="Money paid into the portfolios minus money taken out, each deposit and withdrawal converted at the rate of its own date. Not a gain." />
               <MetricCard label="Profit / loss" tone="signed" numeric={profit} value={profit == null ? '—' : money(profit, ccy, { signed: true })}
-                hint="Includes realized and unrealized P&L, fees and recorded dividends. Not a return figure: it ignores the timing of cash flows." />
+                hint="Includes realized and unrealized P&L, fees, recorded dividends and – in another currency – the currency effect since the money came in. Not a return figure: it ignores the timing of cash flows." />
             </div>
             {data.totalProblems.length > 0 && (
               <ul role="status" className="space-y-0.5 text-xs text-warn">{data.totalProblems.map((p) => <li key={p}>{p}</li>)}</ul>
@@ -93,7 +94,12 @@ export function PortfoliosPage() {
 }
 
 function PortfolioCard({ p }: { p: PortfolioSummary }) {
-  const ccy = p.baseCurrency
+  // Amounts in the currency chosen at the top (converted by the server), or in the portfolio's own currency.
+  const view = p.inCurrency
+  const converted = !!view && view.currency !== p.baseCurrency
+  const ccy = view?.currency ?? p.baseCurrency
+  const total = view ? view.totalValue : p.totalValue
+  const profitLoss = view ? view.profitLoss : p.profitLoss
   const refresh = useRefreshPortfolioQuotes()
   const [deleting, setDeleting] = useState(false)
 
@@ -119,7 +125,7 @@ function PortfolioCard({ p }: { p: PortfolioSummary }) {
             <Link to={portfolioPath(p.id)} className="hover:underline focus-visible:underline">{p.name}</Link>
           </CardTitle>
           <div className="flex shrink-0 items-center gap-1">
-            <Badge variant="outline" className="tabular">{ccy}</Badge>
+            <Badge variant="outline" className="tabular" title="The portfolio's own currency">{p.baseCurrency}</Badge>
             {p.usesSimulatedData && <DataBadge kind="simulated" />}
           </div>
         </div>
@@ -128,18 +134,21 @@ function PortfolioCard({ p }: { p: PortfolioSummary }) {
       </CardHeader>
       <CardContent className="space-y-3">
         <div>
-          <div className="text-xs text-muted-foreground">Total value</div>
-          <div className="text-xl font-semibold tabular">{p.totalValue === null ? 'Not available' : money(p.totalValue, ccy)}</div>
-          {p.totalValue === null && <p className="text-xs text-warn">{p.valuationProblems?.join(' ') || 'A position cannot be valued.'}</p>}
+          <div className="text-xs text-muted-foreground">Total value{converted ? ` in ${ccy}` : ''}</div>
+          <div className="text-xl font-semibold tabular">{total === null ? 'Not available' : money(total, ccy)}</div>
+          {converted && p.totalValue !== null && <div className="text-xs text-muted-foreground tabular">{money(p.totalValue, p.baseCurrency)} in its own currency</div>}
+          {total === null && <p className="text-xs text-warn">{(converted ? view!.problems : p.valuationProblems)?.join(' ') || 'A position cannot be valued.'}</p>}
         </div>
         <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
-          <Row label="Cash" value={money(p.cashBalance, ccy)} />
-          <Row label="Invested" value={p.marketValue === null ? '—' : money(p.marketValue, ccy)} />
+          <Row label="Cash" value={(view ? view.cash : p.cashBalance) === null ? '—' : money(view ? view.cash : p.cashBalance, ccy)} />
+          <Row label="Invested" value={(view ? view.marketValue : p.marketValue) === null ? '—' : money(view ? view.marketValue : p.marketValue, ccy)} />
           <Row label="Holdings" value={String(p.holdings)} />
           <div>
             <dt className="text-xs text-muted-foreground">Profit / loss</dt>
-            <dd className="tabular font-medium" title="Total value − net contributions (deposits − withdrawals)">
-              {p.profitLoss === null ? '—' : <Signed value={p.profitLoss}>{money(p.profitLoss, ccy, { signed: true })}</Signed>}
+            <dd className="tabular font-medium" title={converted
+              ? `Total value − net contributions in ${ccy}; each deposit and withdrawal at the rate of its date, so this includes the currency effect`
+              : 'Total value − net contributions (deposits − withdrawals)'}>
+              {profitLoss === null ? '—' : <Signed value={profitLoss}>{money(profitLoss, ccy, { signed: true })}</Signed>}
             </dd>
           </div>
           <Row label="Last optimization" value={p.latestOptimizationAtUtc ? relativeTime(p.latestOptimizationAtUtc) : 'none yet'} />

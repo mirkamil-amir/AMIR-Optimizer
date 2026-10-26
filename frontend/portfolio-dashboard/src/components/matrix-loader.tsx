@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils'
 const DOTS = [0, 1, 2, 3].flatMap((row) => [0, 1, 2, 3].map((col) => ({ row, col })))
 
 /**
- * "Working" indicator in the shape of the MaTrix logo: the 16 dots of the correlation matrix light up one after another,
+ * "Working" indicator in the shape of the MatrixView logo: the 16 dots of the correlation matrix light up one after another,
  * so a download, optimization or training visibly runs. Inherits the text colour and the size of an icon (1em, or the
  * `size-*` of the surrounding button). With reduced motion the dots pulse together slowly instead of sweeping.
  */

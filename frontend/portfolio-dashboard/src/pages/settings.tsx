@@ -207,7 +207,7 @@ function PortfoliosCard() {
       </CardHeader>
       <CardContent className="flex flex-wrap gap-2">
         <Button render={<Link to="/" />}>My portfolios</Button>
-        <Button variant="outline" render={<Link to="/stocks" />}>Portfolio Creation</Button>
+        <Button variant="outline" render={<Link to="/stocks" />}>New portfolio</Button>
       </CardContent>
     </Card>
   )
