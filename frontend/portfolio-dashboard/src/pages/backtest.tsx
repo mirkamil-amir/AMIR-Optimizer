@@ -172,7 +172,7 @@ function BacktestAnOptimization({ fixedPortfolioId }: { fixedPortfolioId?: strin
         </div>
         {end <= start && <p className="text-xs text-destructive">The end must be after the start.</p>}
         <Button className="w-full" onClick={submit} disabled={!chosen || end <= start || create.isPending || missingData.checking}>
-          {(create.isPending || missingData.checking) && <MatrixLoader />} Run backtest
+          {(create.isPending || missingData.checking) && <MatrixLoader />} {create.isPending ? 'Rewinding…' : 'Rewind'}
         </Button>
         {missingData.dialog}
       </CardContent>

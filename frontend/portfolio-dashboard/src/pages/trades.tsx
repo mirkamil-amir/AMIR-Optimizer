@@ -52,7 +52,7 @@ export function TradesPage() {
           <TabsTrigger value="proposals">Proposals</TabsTrigger>
           <TabsTrigger value="transactions">Executions</TabsTrigger>
           <TabsTrigger value="orders">Orders</TabsTrigger>
-          <TabsTrigger value="cash">Cash ledger</TabsTrigger>
+          <TabsTrigger value="cash">Cash</TabsTrigger>
         </TabsList>
         <TabsContent value="journal" className="mt-4"><Journal currency={ccy} readOnly={archived} /></TabsContent>
         <TabsContent value="proposals" className="mt-4"><Proposals currency={ccy} /></TabsContent>

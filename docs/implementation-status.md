@@ -2,6 +2,12 @@
 
 ## 2026-10-26: MatrixView; per-portfolio currency view
 
+* 2026-10-27: branded navigation (D-47) – sidebar Lens · Forge · Solver · Pattern · Trace · Rewind · Arena, portfolio tabs
+  Core · Solver · Pattern · Trace · Rewind · Arena · Ledger, each with its plain name as tooltip and screen-reader
+  description; Ledger's "Cash ledger" sub-tab is "Cash". Lens shows its title "My portfolios" again, with Forge a portfolio on
+  the same row; the totals' currency sits in their heading line ("Across 3 active portfolios in USD"). Main buttons echo their tab: Forge portfolio, Solve, Learn patterns,
+  Rewind, Face off; links between sections read Open Solver/Pattern/Trace/Rewind/Arena/Lens/Forge; money, deletion, data
+  and account actions keep literal labels.
 * 2026-10-27: navigation labels shortened – Math, ML, History (sidebar and portfolio tab, formerly Optimization history /
   Optimization runs), Backtesting, Comparison; the title repeating a tab (and "My portfolios" on View) is screen-reader only;
   the workspace header lost its "My portfolios" link (sidebar View); the app is just "MatrixView" (no tagline).

@@ -63,11 +63,11 @@ test.describe('as administrator', () => {
     await primary(page).getByRole('link', { name: 'Viewer' }).click()
     await expect(page).toHaveURL(/\/$/)
     for (const [name, heading, url] of [
-      ['New', 'New portfolio', /\/stocks$/],
-      ['Backtesting', 'Backtesting', /\/backtest$/],
-      ['History', 'History', /\/history$/],
-      ['ML', 'ML Optimization', /\/portfolios\/[0-9a-f-]{36}\/ml-optimize$/],
-      ['Comparison', 'Comparison', /\/strategy-comparison$/],
+      ['Forge', 'New portfolio', /\/stocks$/],
+      ['Rewind', 'Backtesting', /\/backtest$/],
+      ['Trace', 'History', /\/history$/],
+      ['Pattern', 'ML Optimization', /\/portfolios\/[0-9a-f-]{36}\/ml-optimize$/],
+      ['Arena', 'Comparison', /\/strategy-comparison$/],
     ] as const) {
       await optimizer(page).getByRole('link', { name, exact: true }).click()
       await expect(page).toHaveURL(url)
@@ -83,7 +83,7 @@ test.describe('as administrator', () => {
     // Back and forward follow the history; the active items follow the URL.
     await page.goBack()
     await expect(page).toHaveURL(/\/ml-optimize$/)
-    await expect(optimizer(page).getByRole('link', { name: 'ML', exact: true })).toHaveAttribute('aria-current', 'page')
+    await expect(optimizer(page).getByRole('link', { name: 'Pattern', exact: true })).toHaveAttribute('aria-current', 'page')
     await page.goForward()
     await expect(page).toHaveURL(/\/strategy-comparison$/)
 
@@ -126,7 +126,7 @@ test.describe('as administrator', () => {
         await expect(optimizer(page)).toBeHidden()
         await page.getByRole('button', { name: 'Open Viewer and administration menu' }).click()
         const sheet = page.getByRole('dialog')
-        await sheet.getByRole('link', { name: 'Comparison', exact: true }).click()
+        await sheet.getByRole('link', { name: 'Arena', exact: true }).click()
         await expect(page).toHaveURL(/\/strategy-comparison$/)
         await expect(sheet).toBeHidden()
       } else {

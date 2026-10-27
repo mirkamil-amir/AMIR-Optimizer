@@ -25,9 +25,16 @@ describe('navigation model', () => {
       '/', '/backtest', '/history', '/ml-optimize', '/optimize', '/stocks', '/strategy-comparison',
     ])
     // Holdings, transactions and performance are sections of each portfolio's workspace, not global sidebar entries.
-    expect(optimizerSections.flatMap((s) => s.items.map((i) => i.label))).toContain('New')
+    expect(optimizerSections.flatMap((s) => s.items.map((i) => i.label))).toContain('Forge')
     expect(optimizerSections.flatMap((s) => s.items.map((i) => i.label))).not.toContain('Stock selection')
     expect(new Set(sidebarPaths(true)).size).toBe(sidebarPaths(true).length)
+  })
+
+  it('gives every branded Viewer entry its plain name as hint', () => {
+    expect(optimizerSections.flatMap((s) => s.items.map((i) => [i.label, i.hint?.split(':')[0]]))).toEqual([
+      ['Lens', 'Portfolios'], ['Forge', 'New portfolio'], ['Solver', 'Math Optimization'], ['Pattern', 'ML Optimization'],
+      ['Trace', 'History'], ['Rewind', 'Backtesting'], ['Arena', 'Comparison'],
+    ])
   })
 
   it('keeps Admin settings in the administration section, for administrators only', () => {

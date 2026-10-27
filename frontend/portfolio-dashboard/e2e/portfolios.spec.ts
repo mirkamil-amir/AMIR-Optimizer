@@ -17,7 +17,7 @@ async function newStudent(page: Page, name: string) {
 
 async function createPortfolio(page: Page, name: string, symbols: string[], description?: string) {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Create portfolio' }).first().click()
+  await page.getByRole('link', { name: 'Forge a portfolio' }).first().click()
   await expect(page.getByRole('heading', { name: 'New portfolio' })).toBeVisible()
   await page.getByLabel('Name', { exact: true }).fill(name)
   if (description) await page.getByLabel('Description (optional)').fill(description)
@@ -26,7 +26,7 @@ async function createPortfolio(page: Page, name: string, symbols: string[], desc
     await search.fill(s)
     await page.getByRole('checkbox', { name: `Select ${s}` }).check()
   }
-  await page.getByRole('button', { name: 'Create portfolio' }).click()
+  await page.getByRole('button', { name: 'Forge portfolio' }).click()
   await expect(page).toHaveURL(/\/portfolios\/[0-9a-f-]{36}\?created=1$/)
   await expect(page.getByRole('heading', { level: 1, name })).toBeVisible()
   await expect(page.getByRole('region', { name: 'Next steps' })).toBeVisible()
@@ -68,12 +68,12 @@ test('two independent portfolios: create, optimize, record, switch, reload, isol
 
   // Portfolio A: optimize with its own universe.
   await page.getByRole('link', { name: 'Open Core A' }).click()
-  await page.getByRole('navigation', { name: 'Portfolio sections' }).getByRole('link', { name: 'Math', exact: true }).click()
+  await page.getByRole('navigation', { name: 'Portfolio sections' }).getByRole('link', { name: 'Solver', exact: true }).click()
   await expect(page).toHaveURL(new RegExp(`/portfolios/${a}/optimize$`))
   await expect(page.getByRole('heading', { level: 1, name: 'Core A' })).toBeVisible()
   await page.getByRole('combobox', { name: 'Optimization method' }).click()
   await page.getByRole('option', { name: 'Minimum variance' }).click()
-  await page.getByRole('button', { name: 'Run optimization' }).click()
+  await page.getByRole('button', { name: 'Solve', exact: true }).click()
   await acceptDownloadIfAsked(page)
   await expect(page.getByText('What your result means')).toBeVisible({ timeout: 30_000 })
   await expect(page).toHaveURL(new RegExp(`/portfolios/${a}/optimize/[0-9a-f-]{36}$`))
@@ -84,7 +84,7 @@ test('two independent portfolios: create, optimize, record, switch, reload, isol
   const held = async (id: string) => ((await (await page.request.get(`/api/v1/portfolios/${id}/holdings`)).json()) as { holdings: { symbol: string; quantity: number }[] })
     .holdings.filter((h) => h.quantity > 0).map((h) => h.symbol)
   expect(await held(a)).toEqual([])
-  await sections(page).getByRole('link', { name: 'Overview' }).click()
+  await sections(page).getByRole('link', { name: 'Core' }).click()
 
   // Record a deposit and a buy in A.
   await page.getByRole('button', { name: 'Record transaction' }).click()
@@ -114,7 +114,7 @@ test('two independent portfolios: create, optimize, record, switch, reload, isol
   await expect(dialog.getByRole('alert')).toContainText(/Insufficient cash/)
   await dialog.getByRole('button', { name: 'Cancel' }).click()
 
-  await sections(page).getByRole('link', { name: 'Transactions' }).click()
+  await sections(page).getByRole('link', { name: 'Ledger' }).click()
   const recorded = page.getByRole('table', { name: 'Recorded transactions' })
   await expect(recorded.getByRole('row')).toHaveCount(3) // header + deposit + buy
 
@@ -124,17 +124,17 @@ test('two independent portfolios: create, optimize, record, switch, reload, isol
   await expect(page).toHaveURL(new RegExp(`/portfolios/${b}/transactions$`))
   await expect(page.getByRole('heading', { level: 1, name: 'Tech B' })).toBeVisible()
   await expect(page.getByText('Nothing recorded yet')).toBeVisible()
-  await sections(page).getByRole('link', { name: 'Overview' }).click()
+  await sections(page).getByRole('link', { name: 'Core' }).click()
   await expect(page.getByRole('region', { name: 'Holdings', exact: true })).toBeVisible()
   await expect(page.getByRole('row', { name: /AAPL/ })).toHaveCount(0)
   expect(await held(b)).toEqual([])
-  await sections(page).getByRole('link', { name: 'Math', exact: true }).click()
+  await sections(page).getByRole('link', { name: 'Solver', exact: true }).click()
   await expect(page.getByText('No optimization yet')).toBeVisible()
 
   // Back to A: its run and history are still there; its Optimization runs tab lists only its own runs and stays inside it.
   await page.goto(runUrl)
   await expect(page.getByText('What your result means')).toBeVisible({ timeout: 30_000 })
-  await sections(page).getByRole('link', { name: 'History', exact: true }).click()
+  await sections(page).getByRole('link', { name: 'Trace', exact: true }).click()
   await expect(page).toHaveURL(new RegExp(`/portfolios/${a}/runs$`))
   await expect(page.getByRole('heading', { level: 1, name: 'Core A' })).toBeVisible()
   await expect(page.getByRole('combobox', { name: 'Portfolio filter' })).toHaveCount(0)
@@ -196,7 +196,7 @@ test('overview and workspace fit narrow screens', async ({ page }) => {
     }
     // Every section of the workspace is reachable (the tab bar scrolls when narrow).
     await page.goto(`/portfolios/${id}`)
-    for (const name of ['Overview', 'Math', 'ML', 'History', 'Backtesting', 'Comparison', 'Transactions']) {
+    for (const name of ['Core', 'Solver', 'Pattern', 'Trace', 'Rewind', 'Arena', 'Ledger']) {
       const link = sections(page).getByRole('link', { name, exact: true })
       await link.scrollIntoViewIfNeeded()
       await expect(link).toBeInViewport()
@@ -208,7 +208,7 @@ test('Math Optimization: choose its stocks on the stock list and come back', asy
   test.setTimeout(120_000)
   await newStudent(page, 'E2E Universe Chooser')
   const id = await createPortfolio(page, 'Chooser', ['AAPL', 'MSFT'])
-  await sections(page).getByRole('link', { name: 'Math', exact: true }).click()
+  await sections(page).getByRole('link', { name: 'Solver', exact: true }).click()
   const universe = page.getByRole('list', { name: 'Stocks in the universe' })
   await expect(universe.getByRole('listitem')).toHaveCount(2)
   await expect(page.getByText('Configuration', { exact: true })).toHaveCount(0)

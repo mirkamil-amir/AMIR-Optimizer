@@ -44,13 +44,13 @@ describe('application shell navigation', () => {
       ['Viewer', 'AI Research', 'Financial News', 'Watchlist', 'Market Data', 'Strategy Guide', 'Glossary', 'Settings'],
     )
     expect(link(primary(), 'Viewer')).toHaveAttribute('aria-current', 'page')
-    expect(link(optimizerNav(), 'View')).toHaveAttribute('aria-current', 'page')
+    expect(link(optimizerNav(), 'Lens')).toHaveAttribute('aria-current', 'page')
   })
 
   it('marks Optimizer as the area of a child section and highlights that section', () => {
     renderAt('/stocks/AAPL')
     expect(link(primary(), 'Viewer')).toHaveAttribute('aria-current', 'true')
-    expect(link(optimizerNav(), 'New')).toHaveAttribute('aria-current', 'page')
+    expect(link(optimizerNav(), 'Forge')).toHaveAttribute('aria-current', 'page')
     expect(link(primary(), 'Watchlist')).not.toHaveAttribute('aria-current')
   })
 

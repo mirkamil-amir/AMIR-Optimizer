@@ -11,6 +11,8 @@ export interface NavEntry {
   end?: boolean
   /** Further path prefixes that belong to this entry (e.g. detail pages reached from it); `*` matches one path segment. */
   match?: string[]
+  /** The everyday name and what the page does, shown on hover/focus and given to screen readers as the description. */
+  hint?: string
 }
 
 export interface NavSection { title: string; items: NavEntry[] }
@@ -19,32 +21,48 @@ export type PrimaryId = 'optimizer' | 'research' | 'news' | 'watchlist' | 'marke
 
 export interface PrimaryEntry extends NavEntry { id: PrimaryId }
 
+/**
+ * Names of the Viewer's sections, shared by the sidebar and a portfolio's tab bar so one page has one name everywhere.
+ * The names follow the brand; `hint` keeps the plain term (owner's choice, 2026-10-27).
+ */
+export const SECTION_NAMES = {
+  view: { label: 'Lens', hint: 'Portfolios: all of your portfolios at a glance' },
+  new: { label: 'Forge', hint: 'New portfolio: choose stocks and build a portfolio from them' },
+  overview: { label: 'Core', hint: 'Overview: value, performance, holdings and positions of this portfolio' },
+  math: { label: 'Solver', hint: 'Math Optimization: weights from a mean-variance optimizer' },
+  ml: { label: 'Pattern', hint: 'ML Optimization: weights from a model that ranks stocks by patterns in past prices' },
+  history: { label: 'Trace', hint: 'History: every Math and ML Optimization run so far' },
+  backtest: { label: 'Rewind', hint: 'Backtesting: replay an optimization on past prices' },
+  comparison: { label: 'Arena', hint: 'Comparison: several optimizations side by side over the same period' },
+  transactions: { label: 'Ledger', hint: 'Transactions: recorded bookings, proposals, executions, orders and cash' },
+} as const
+
 /** Sections of the Optimizer workspace, shown in the left sidebar. */
 export const optimizerSections: NavSection[] = [
   {
     title: 'Portfolios',
     items: [
       // The overview lists all of the user's portfolios; each portfolio's workspace (/portfolios/:id/…) belongs to it.
-      { to: '/', label: 'View', end: true, match: ['/portfolios'] },
-      { to: '/stocks', label: 'New' },
+      { to: '/', ...SECTION_NAMES.view, end: true, match: ['/portfolios'] },
+      { to: '/stocks', ...SECTION_NAMES.new },
     ],
   },
   {
     title: 'Optimize',
     items: [
       // Opens the optimizer of the most recently opened portfolio; inside a workspace its own optimizer is highlighted.
-      { to: '/optimize', label: 'Math', match: ['/portfolios/*/optimize'] },
-      // Like Math Optimization: the ML Optimization of the current portfolio (earlier /machine-learning URLs redirect).
-      { to: '/ml-optimize', label: 'ML', match: ['/portfolios/*/ml-optimize', '/machine-learning'] },
-      { to: '/history', label: 'History', match: ['/reality-check', '/portfolios/*/runs'] },
+      { to: '/optimize', ...SECTION_NAMES.math, match: ['/portfolios/*/optimize'] },
+      // Like Solver: the ML Optimization of the current portfolio (earlier /machine-learning URLs redirect).
+      { to: '/ml-optimize', ...SECTION_NAMES.ml, match: ['/portfolios/*/ml-optimize', '/machine-learning'] },
+      { to: '/history', ...SECTION_NAMES.history, match: ['/reality-check', '/portfolios/*/runs'] },
     ],
   },
   {
     title: 'Test & compare',
     items: [
       // All of the user's backtests and comparisons; a portfolio's own tabs (/portfolios/:id/backtest, …/comparison) belong here too.
-      { to: '/backtest', label: 'Backtesting', match: ['/portfolios/*/backtest'] },
-      { to: '/strategy-comparison', label: 'Comparison', match: ['/portfolios/*/comparison'] },
+      { to: '/backtest', ...SECTION_NAMES.backtest, match: ['/portfolios/*/backtest'] },
+      { to: '/strategy-comparison', ...SECTION_NAMES.comparison, match: ['/portfolios/*/comparison'] },
     ],
   },
 ]

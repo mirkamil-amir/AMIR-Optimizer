@@ -41,16 +41,16 @@ test('mixed-currency portfolio: EUR base with US, German, Japanese and UK stocks
   }
   await expect(fetch).toBeHidden({ timeout: 15_000 })
 
-  await page.getByRole('button', { name: 'Create portfolio' }).click()
+  await page.getByRole('button', { name: 'Forge portfolio' }).click()
   await expect(page.getByText(`Portfolio “${name}” created`)).toBeVisible()
   await expect(page).toHaveURL(/\/portfolios\/[0-9a-f-]{36}\?created=1$/)
   await expect(page.getByRole('heading', { level: 1, name })).toBeVisible()
 
   // 3. Optimization in EUR with converted returns, native currency per stock and the currency exposure.
-  await page.getByRole('navigation', { name: 'Portfolio sections' }).getByRole('link', { name: 'Math', exact: true }).click()
+  await page.getByRole('navigation', { name: 'Portfolio sections' }).getByRole('link', { name: 'Solver', exact: true }).click()
   await page.getByRole('combobox', { name: 'Optimization method' }).click()
   await page.getByRole('option', { name: 'Minimum variance' }).click()
-  await page.getByRole('button', { name: 'Run optimization' }).click()
+  await page.getByRole('button', { name: 'Solve', exact: true }).click()
   // The fresh e2e database lacks older GBP rates for the lookback: the app asks before running; accept the download.
   await acceptDownloadIfAsked(page)
   await expect(page.getByText(/^In EUR · FX converted$/)).toBeVisible({ timeout: 120_000 })

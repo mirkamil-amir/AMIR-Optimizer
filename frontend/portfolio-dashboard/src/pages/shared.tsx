@@ -8,8 +8,8 @@ export function NoPortfolio() {
   return (
     <EmptyState
       title="No portfolio yet"
-      description="Create a simulated portfolio with New portfolio: a name, a currency, starting cash and the stocks it may invest in."
-      action={<Button render={<Link to="/stocks" />}>Create a portfolio</Button>}
+      description="Create a simulated portfolio in Forge: a name, a currency, starting cash and the stocks it may invest in."
+      action={<Button render={<Link to="/stocks" />}>Forge a portfolio</Button>}
     />
   )
 }

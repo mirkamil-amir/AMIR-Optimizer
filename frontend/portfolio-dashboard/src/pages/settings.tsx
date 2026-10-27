@@ -206,8 +206,8 @@ function PortfoliosCard() {
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-wrap gap-2">
-        <Button render={<Link to="/" />}>My portfolios</Button>
-        <Button variant="outline" render={<Link to="/stocks" />}>New portfolio</Button>
+        <Button render={<Link to="/" />}>Open Lens</Button>
+        <Button variant="outline" render={<Link to="/stocks" />}>Open Forge</Button>
       </CardContent>
     </Card>
   )

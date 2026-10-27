@@ -22,21 +22,25 @@ import { relativeTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { WorldMapProvider } from '@/lib/world-map'
 import { attachNavZoom } from '@/lib/nav-zoom'
+import { NavHint } from '@/components/nav-hint'
 
 function SidebarLink({ entry, active, onNavigate }: { entry: NavEntry; active: boolean; onNavigate?: () => void }) {
   return (
-    <Link
-      to={entry.to}
-      onClick={onNavigate}
-      aria-current={active ? 'page' : undefined}
-      data-zoom-active={active ? '' : undefined}
-      className={cn(
-        'nav-zoom font-nav flex items-center rounded-md px-2.5 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
-        active && 'bg-muted font-semibold text-foreground shadow-[inset_2px_0_0_var(--sidebar-primary)]',
-      )}
-    >
-      <span>{entry.label}</span>
-    </Link>
+    <NavHint hint={entry.hint} side="right">
+      <Link
+        to={entry.to}
+        onClick={onNavigate}
+        aria-current={active ? 'page' : undefined}
+        aria-description={entry.hint}
+        data-zoom-active={active ? '' : undefined}
+        className={cn(
+          'nav-zoom font-nav flex items-center rounded-md px-2.5 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
+          active && 'bg-muted font-semibold text-foreground shadow-[inset_2px_0_0_var(--sidebar-primary)]',
+        )}
+      >
+        <span>{entry.label}</span>
+      </Link>
+    </NavHint>
   )
 }
 
@@ -196,7 +200,7 @@ function UserMenu() {
           </DropdownMenuLabel>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => navigate('/')}>My portfolios</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => navigate('/')}>Open Lens</DropdownMenuItem>
         <DropdownMenuItem onClick={() => navigate('/settings')}>Account settings</DropdownMenuItem>
         <DropdownMenuItem onClick={() => navigate('/settings#appearance')}>Appearance &amp; themes</DropdownMenuItem>
         {user.isAdministrator && <DropdownMenuItem onClick={() => navigate('/admin')}>Administration</DropdownMenuItem>}

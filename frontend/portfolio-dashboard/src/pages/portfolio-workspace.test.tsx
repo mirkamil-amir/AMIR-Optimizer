@@ -53,35 +53,38 @@ function renderAt(path: string) {
 
 describe('portfolio workspace', () => {
   it('takes the portfolio from the URL and names it in the header', async () => {
-    data.portfolios = [summary('a', 'Core'), summary('b', 'Tech', { description: 'Research ideas' })]
+    data.portfolios = [summary('a', 'Growth'), summary('b', 'Tech', { description: 'Research ideas' })]
     renderAt('/portfolios/b')
     expect(await screen.findByRole('heading', { level: 1, name: 'Tech' })).toBeInTheDocument()
     expect(screen.getByText('Research ideas')).toBeInTheDocument()
     expect(screen.getByText('section of b (scoped)')).toBeInTheDocument()
-    expect(within(screen.getByRole('navigation', { name: 'Portfolio sections' })).getByRole('link', { name: 'Overview' })).toHaveAttribute('aria-current', 'page')
+    expect(within(screen.getByRole('navigation', { name: 'Portfolio sections' })).getByRole('link', { name: 'Core' })).toHaveAttribute('aria-current', 'page')
   })
 
   it('keeps every section inside the portfolio, with short labels and no Performance or Holdings tab', async () => {
-    data.portfolios = [summary('a', 'Core')]
+    data.portfolios = [summary('a', 'Growth')]
     renderAt('/portfolios/a')
     const nav = await screen.findByRole('navigation', { name: 'Portfolio sections' })
     const links = within(nav).getAllByRole('link')
     expect(links.map((l) => l.textContent)).toEqual([
-      'Overview', 'Math', 'ML', 'History', 'Backtesting', 'Comparison', 'Transactions',
+      'Core', 'Solver', 'Pattern', 'Trace', 'Rewind', 'Arena', 'Ledger',
     ])
     for (const link of links) expect(link.getAttribute('href')).toMatch(/^\/portfolios\/a(\/|$)/)
-    expect(within(nav).getByRole('link', { name: 'History' })).toHaveAttribute('href', '/portfolios/a/runs')
+    expect(within(nav).getByRole('link', { name: 'Trace' })).toHaveAttribute('href', '/portfolios/a/runs')
+    // The branded names keep their plain term for screen readers (and as tooltip).
+    expect(within(nav).getByRole('link', { name: 'Rewind' })).toHaveAccessibleDescription(/^Backtesting:/)
+    expect(within(nav).getByRole('link', { name: 'Ledger' })).toHaveAccessibleDescription(/^Transactions:/)
   })
 
   it('shows a safe not-found state for an unknown or foreign id', async () => {
-    data.portfolios = [summary('a', 'Core')]
+    data.portfolios = [summary('a', 'Growth')]
     renderAt('/portfolios/someone-elses')
     expect(await screen.findByText('Portfolio not found')).toBeInTheDocument()
     expect(screen.queryByText(/section of/)).toBeNull()
   })
 
   it('resets section state when switching to another portfolio', async () => {
-    data.portfolios = [summary('a', 'Core'), summary('b', 'Tech')]
+    data.portfolios = [summary('a', 'Growth'), summary('b', 'Tech')]
     const router = renderAt('/portfolios/a/transactions')
     await userEvent.type(await screen.findByLabelText('draft'), 'weights for A')
     expect(screen.getByLabelText('draft')).toHaveValue('weights for A')
@@ -99,14 +102,14 @@ describe('portfolio workspace', () => {
   })
 
   it('sends an old portfolio-less URL to the most recently opened active portfolio', async () => {
-    data.portfolios = [summary('x', 'Archived one', { status: 'Archived' }), summary('a', 'Core')]
+    data.portfolios = [summary('x', 'Archived one', { status: 'Archived' }), summary('a', 'Growth')]
     const router = renderAt('/trades')
     expect(await screen.findByText('section of a (scoped)')).toBeInTheDocument()
     expect(router.state.location.pathname).toBe('/portfolios/a/transactions')
   })
 
   it('sends the old Holdings URL to the Overview of the current portfolio (Holdings merged into it)', async () => {
-    data.portfolios = [summary('a', 'Core')]
+    data.portfolios = [summary('a', 'Growth')]
     const router = renderAt('/holdings')
     expect(await screen.findByText('section of a (scoped)')).toBeInTheDocument()
     expect(router.state.location.pathname).toBe('/portfolios/a')

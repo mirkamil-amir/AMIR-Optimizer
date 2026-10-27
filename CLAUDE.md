@@ -10,9 +10,13 @@
   (`/portfolios/:id/ml-optimize`, an `MlExperiment` linked to that portfolio) – two tabs of a portfolio with one shared
   layout (results in `ResultSection`s, never tabs; "What your result means" last). Keep both pages alike when changing
   one. Backtesting and Comparison work on any optimization of one portfolio. Use these names in explanatory UI text, docs and
-  tests; navigation uses the short labels below (owner's choice, 2026-10-27).
-- Navigation labels: top bar "Viewer"; sidebar View · New · Math · ML · History · Backtesting · Comparison. Portfolio tabs:
-  Overview · Math · ML · History · Backtesting · Comparison · Transactions – every tab stays under `/portfolios/:id/…` (no
+  tests; navigation uses the branded labels below (owner's choice, 2026-10-27, D-47).
+- Navigation labels (`SECTION_NAMES` in `lib/navigation.ts`, shared by sidebar and tabs): top bar "Viewer"; sidebar
+  Lens · Forge · Solver · Pattern · Trace · Rewind · Arena. Portfolio tabs: Core · Solver · Pattern · Trace · Rewind · Arena ·
+  Ledger (Ledger's sub-tabs keep plain names). Each entry's `hint` gives the plain name (Backtesting, …) as tooltip and
+  `aria-description`; page titles, docs and explanatory text keep the plain names. Buttons: a section's main action
+  echoes its tab (Forge portfolio, Solve, Learn patterns, Rewind, Face off) and section links say "Open <tab>"; money,
+  deletion, data, account and admin actions stay literal (D-47). Every tab stays under `/portfolios/:id/…` (no
   Performance or Holdings tab: their charts, cards and the positions table are on the Overview, each once; no efficient
   frontier there). A page title that repeats the tab or sidebar entry right above it is screen-reader only
   (`PageHeader titleHidden`); the app name is just "MatrixView" (no tagline). The background world map (`components/world-map.tsx`) is decorative and `aria-hidden` (its text counterpart is the

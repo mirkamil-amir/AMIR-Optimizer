@@ -2,6 +2,24 @@
 
 Short records of decisions that are not obvious from the code. Newest first. Format: context → decision → consequences.
 
+## D-47 Branded navigation labels with plain-name tips (2026-10-27)
+**Context:** the owner wanted the sidebar and the portfolio tabs to sound like MatrixView rather than generic labels.
+**Decision:** one shared set of names (`SECTION_NAMES` in `lib/navigation.ts`): sidebar Lens (portfolios) · Forge (new
+portfolio) · Solver (Math Optimization) · Pattern (ML Optimization) · Trace (history) · Rewind (backtesting) · Arena
+(comparison); portfolio tabs Core (overview) · Solver · Pattern · Trace · Rewind · Arena · Ledger (transactions). Names
+that suggest prediction or profit (Oracle, Alpha, Edge), "Neural" (most models are not networks) and "Pulse" (sounds
+live) were rejected. Each entry carries its plain name as a tooltip (`NavHint`, 500 ms delay) and `aria-description`;
+page titles, explanatory text and docs keep the plain names. Ledger's sub-tabs stay plain (Recorded, Proposals,
+Executions, Orders, Cash – formerly "Cash ledger"); the top bar keeps "Viewer". **Consequences:** a page no longer has
+the same name as its tab, so the hidden titles of D-46 now name the plain term; "My portfolios" on Lens is visible again
+(with its create button on its row; the totals' currency moved into their heading line); tests address links by the new names.
+Buttons follow the same rule: a section's main action echoes its tab (Forge portfolio · Solve · Learn patterns · Rewind ·
+Face off, while running Forging…/Solving…/Learning…/Rewinding…/Matching…) and links to a section say "Open <tab>" /
+"Back to Lens". Everything with consequences stays literal: money and bookings (Record transaction, Create trade
+proposal, Confirm simulated execution, Reverse, Rebalance), deletion and archiving, price and data actions (Refresh
+prices, Download and continue), account and admin actions, everyday controls (Cancel, Save, Close, …) and the
+unbranded top-bar areas. No verb that suggests winning or prediction.
+
 ## D-46 Short navigation labels; MatrixView without tagline (2026-10-27)
 **Context:** the owner found the navigation long and every page repeating its tab name as a large title. **Decision:**
 top bar "Viewer"; sidebar View · New · Math · ML · History · Backtesting · Comparison; portfolio tabs Overview · Math · ML ·
@@ -113,7 +131,7 @@ a unit test keeps it in sync with `FeatureCatalog.cs`. The workspace header keep
 actions; its figures live in the Value row and the valuation date beside the Value title, above the Holdings card. The Holdings
 tab follows the Overview (before Math and ML Optimization); its currency exposure, search, sector filter and table use the
 same 82 % card surface as its key figures.
-Transactions is the last tab; its Executions, Orders and Cash ledger sub-tabs sit on the same card as Recorded. Optimization
+Transactions is the last tab; its Executions, Orders and Cash (formerly Cash ledger) sub-tabs sit on the same card as Recorded. Optimization
 runs: no pages – the latest runs scroll inside each list (about ten visible) with search and filters. Backtest: no
 "Hypothetical results" banner (the caveat is in the title tip and in each result's folded "Data notes & methodology" box,
 together with the data notes, the simulated settings and the methodology); the optimization is picked from an inline list
