@@ -166,7 +166,7 @@ export function OptimizePage() {
           {run.isLoading || runs.isLoading ? <LoadingBlock height="h-96" /> : run.error ? <ErrorState error={run.error} /> : run.data ? (
             <RunResults run={run.data} />
           ) : (
-            <EmptyState title="No optimization yet" description="Configure the inputs on the left and click Run optimization." />
+            <EmptyState title="No optimization yet" description="Configure the inputs on the left and click Solve." />
           )}
         </div>
       </div>
@@ -362,12 +362,12 @@ function ConfigFormInner({ portfolio: portfolioData, assets: assetList }: { port
             <InfoTip>Every run stores its own inputs. Turn this on to also make this universe and these constraints the portfolio's saved configuration.</InfoTip>
           </div>
           {benchmark && !watchedUniverse.includes(benchmark) && coverage.get(benchmark)?.freshness === 'Missing' && (
-            <p className="text-xs text-warn">The benchmark has no price data – synchronize it on the Market data page.</p>
+            <p className="text-xs text-warn">The benchmark has no price data – synchronize it in Atlas (Market Data).</p>
           )}
 
           <Button type="submit" className="w-full" disabled={runMutation.isPending || missingData.checking}>
             {(runMutation.isPending || missingData.checking) && <MatrixLoader />}
-            {runMutation.isPending ? 'Optimizing…' : 'Run optimization'}
+            {runMutation.isPending ? 'Solving…' : 'Solve'}
           </Button>
           <p className="text-[11px] text-muted-foreground">Saves these settings to the portfolio and stores the run for reproducibility.</p>
         </form>

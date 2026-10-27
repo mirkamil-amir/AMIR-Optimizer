@@ -20,18 +20,20 @@ import { PortfolioScope, portfolioPath, usePortfolioContext } from '@/lib/portfo
 import { countriesOf } from '@/lib/markets'
 import { useArchivePortfolio, useHoldings, useMlExperiment, usePortfolio, useRun, useUpdatePortfolioDetails } from '@/lib/queries'
 import { useMapHighlight } from '@/lib/world-map'
+import { SECTION_NAMES } from '@/lib/navigation'
+import { NavHint } from '@/components/nav-hint'
 import type { PortfolioSummary } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
-/** Sections of one portfolio, in the order of the tab bar; every one stays inside `/portfolios/:id/…`. */
+/** Sections of one portfolio, in the order of the tab bar (named like the sidebar); every one stays inside `/portfolios/:id/…`. */
 const SECTIONS = [
-  { path: '', label: 'Overview' },
-  { path: 'optimize', label: 'Math' },
-  { path: 'ml-optimize', label: 'ML' },
-  { path: 'runs', label: 'History' },
-  { path: 'backtest', label: 'Backtesting' },
-  { path: 'comparison', label: 'Comparison' },
-  { path: 'transactions', label: 'Transactions' },
+  { path: '', ...SECTION_NAMES.overview },
+  { path: 'optimize', ...SECTION_NAMES.math },
+  { path: 'ml-optimize', ...SECTION_NAMES.ml },
+  { path: 'runs', ...SECTION_NAMES.history },
+  { path: 'backtest', ...SECTION_NAMES.backtest },
+  { path: 'comparison', ...SECTION_NAMES.comparison },
+  { path: 'transactions', ...SECTION_NAMES.transactions },
 ] as const
 
 /** The section of the current URL inside `/portfolios/:id/…` (run and experiment pages belong to their optimization section). */
@@ -61,7 +63,7 @@ export function PortfolioWorkspace() {
       <EmptyState
         title="Portfolio not found"
         description="It may have been deleted, or the link does not belong to your account."
-        action={<Button render={<Link to="/" />}>My portfolios</Button>}
+        action={<Button render={<Link to="/" />}>Back to Lens</Button>}
       />
     )
   }
@@ -170,16 +172,19 @@ function WorkspaceHeader({ portfolio }: { portfolio: PortfolioSummary }) {
             const active = section === s.path
             return (
               <li key={s.path}>
-                <Link
-                  to={portfolioPath(portfolio.id, s.path || undefined)}
-                  aria-current={active ? 'page' : undefined}
-                  className={cn(
-                    'inline-flex border-b-2 px-3 py-2 text-sm whitespace-nowrap transition-colors focus-visible:rounded-t-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset',
-                    active ? 'border-primary font-semibold text-foreground' : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground',
-                  )}
-                >
-                  {s.label}
-                </Link>
+                <NavHint hint={s.hint} side="bottom">
+                  <Link
+                    to={portfolioPath(portfolio.id, s.path || undefined)}
+                    aria-current={active ? 'page' : undefined}
+                    aria-description={s.hint}
+                    className={cn(
+                      'inline-flex border-b-2 px-3 py-2 text-sm whitespace-nowrap transition-colors focus-visible:rounded-t-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset',
+                      active ? 'border-primary font-semibold text-foreground' : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground',
+                    )}
+                  >
+                    {s.label}
+                  </Link>
+                </NavHint>
               </li>
             )
           })}
@@ -280,7 +285,7 @@ export function ExperimentRedirect() {
     return (
       <EmptyState title="ML experiment not found"
         description="It may have been deleted, or the link does not belong to your account."
-        action={<Button render={<Link to="/ml-optimize" />}>ML Optimization</Button>} />
+        action={<Button render={<Link to="/ml-optimize" />}>Open Pattern</Button>} />
     )
   }
   if (!experiment.data || isLoading) return <LoadingBlock height="h-96" />
@@ -296,7 +301,7 @@ export function RunRedirect() {
     return (
       <EmptyState title="Optimization run not found"
         description="It may have been deleted with its portfolio, or the link does not belong to your account."
-        action={<Button render={<Link to="/history" />}>Optimization history</Button>} />
+        action={<Button render={<Link to="/history" />}>Open Trace</Button>} />
     )
   }
   if (!run.data) return <LoadingBlock height="h-96" />

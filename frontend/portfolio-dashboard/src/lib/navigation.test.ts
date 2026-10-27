@@ -8,7 +8,7 @@ const sidebarPaths = (admin: boolean) => sidebarSections(admin).flatMap((s) => s
 describe('navigation model', () => {
   it('has exactly eight primary destinations in the required order', () => {
     expect(primaryNav.map((p) => p.label)).toEqual([
-      'Viewer', 'AI Research', 'Financial News', 'Watchlist', 'Market Data', 'Strategy Guide', 'Glossary', 'Settings',
+      'Matrix', 'AI Probe', 'Wire', 'Radar', 'Atlas', 'Codex', 'Lexicon', 'Settings',
     ])
     expect(primaryNav.map((p) => p.to)).toEqual(['/', '/research', '/news', '/watchlist', '/market-data', '/learn', '/learn/glossary', '/settings'])
   })
@@ -25,9 +25,23 @@ describe('navigation model', () => {
       '/', '/backtest', '/history', '/ml-optimize', '/optimize', '/stocks', '/strategy-comparison',
     ])
     // Holdings, transactions and performance are sections of each portfolio's workspace, not global sidebar entries.
-    expect(optimizerSections.flatMap((s) => s.items.map((i) => i.label))).toContain('New')
+    expect(optimizerSections.flatMap((s) => s.items.map((i) => i.label))).toContain('Forge')
     expect(optimizerSections.flatMap((s) => s.items.map((i) => i.label))).not.toContain('Stock selection')
     expect(new Set(sidebarPaths(true)).size).toBe(sidebarPaths(true).length)
+  })
+
+  it('gives every branded top-bar area its plain name as hint and keeps Settings plain', () => {
+    expect(primaryNav.map((p) => [p.label, p.hint?.split(':')[0]])).toEqual([
+      ['Matrix', 'Portfolio workspace'], ['AI Probe', 'AI Research'], ['Wire', 'Financial News'], ['Radar', 'Watchlist'],
+      ['Atlas', 'Market Data'], ['Codex', 'Strategy Guide'], ['Lexicon', 'Glossary'], ['Settings', undefined],
+    ])
+  })
+
+  it('gives every branded Matrix entry its plain name as hint', () => {
+    expect(optimizerSections.flatMap((s) => s.items.map((i) => [i.label, i.hint?.split(':')[0]]))).toEqual([
+      ['Lens', 'Portfolios'], ['Forge', 'New portfolio'], ['Solver', 'Math Optimization'], ['Pattern', 'ML Optimization'],
+      ['Trace', 'History'], ['Rewind', 'Backtesting'], ['Arena', 'Comparison'],
+    ])
   })
 
   it('keeps Admin settings in the administration section, for administrators only', () => {

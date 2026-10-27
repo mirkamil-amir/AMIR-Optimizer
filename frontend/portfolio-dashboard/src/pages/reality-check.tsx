@@ -34,7 +34,7 @@ export function RealityCheckPage() {
 
   return (
     <div className="space-y-6">
-      <Button variant="ghost" size="sm" className="-ml-2" render={<Link to={runId ? `/optimize/${runId}` : '/optimize'} />}>Optimization result</Button>
+      <Button variant="ghost" size="sm" className="-ml-2" render={<Link to={runId ? `/optimize/${runId}` : '/optimize'} />}>Solver result</Button>
       <PageHeader
         title="Portfolio reality check"
         info="Challenges a saved optimization: concentration, risk, behaviour in bad periods, sensitivity to assumptions and costs. Every statement is computed from stored data and labelled by how it is supported."
@@ -156,9 +156,9 @@ function Report({ r }: { r: RealityCheck }) {
             <CardDescription className="text-xs">Educational suggestions – not recommendations to buy or sell.</CardDescription></CardHeader>
           <CardContent className="px-4"><ul className="list-disc space-y-1 pl-4 text-sm">{r.nextSteps.map((s) => <li key={s}>{s}</li>)}</ul>
             <div className="mt-3 flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" render={<Link to="/backtest" />}>Backtest</Button>
-              <Button size="sm" variant="outline" render={<Link to="/strategy-comparison" />}>Strategy comparison</Button>
-              <Button size="sm" variant="outline" render={<Link to="/learn" />}>Strategy guide</Button>
+              <Button size="sm" variant="outline" render={<Link to="/backtest" />}>Open Rewind</Button>
+              <Button size="sm" variant="outline" render={<Link to="/strategy-comparison" />}>Open Arena</Button>
+              <Button size="sm" variant="outline" render={<Link to="/learn" />}>Open Codex</Button>
             </div>
           </CardContent>
         </Card>

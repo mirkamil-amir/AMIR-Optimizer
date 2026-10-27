@@ -191,7 +191,7 @@ function NewComparisonCard({ fixedPortfolioId }: { fixedPortfolioId?: string }) 
           <InfoTip>Only for one mathematical and one ML optimization: a separate, clearly labelled extra strategy. The two strategies themselves stay unchanged.</InfoTip>
         </div>
         <Button className="w-full" onClick={submit} disabled={!strategyA || !strategyB || create.isPending || missingData.checking}>
-          {(create.isPending || missingData.checking) && <MatrixLoader />} Compare strategies
+          {(create.isPending || missingData.checking) && <MatrixLoader />} {create.isPending ? 'Matching…' : 'Face off'}
         </Button>
         {missingData.dialog}
       </CardContent>

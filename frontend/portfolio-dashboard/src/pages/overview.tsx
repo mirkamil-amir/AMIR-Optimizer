@@ -83,7 +83,7 @@ export function OverviewPage() {
               <Button key={r.key} size="sm" variant={range === r.key ? 'secondary' : 'ghost'} aria-pressed={range === r.key} onClick={() => setRange(r.key)}>{r.key}</Button>
             ))}
           </div>
-          <Button render={<Link to={portfolioPath(id, 'optimize')} />}>Optimize</Button>
+          <Button render={<Link to={portfolioPath(id, 'optimize')} />}>Open Solver</Button>
         </div>
       </div>
       {created && <NextSteps id={id} />}
@@ -157,7 +157,7 @@ export function OverviewPage() {
                     description={hasHoldings
                       ? 'Realized performance accumulates with each new daily close after your first simulated execution. Meanwhile, see the in-sample comparison in the optimizer or run a backtest.'
                       : 'Optimize the portfolio and confirm the simulated purchases, or record your own transactions, to start tracking performance.'}
-                    action={<Button variant="outline" render={<Link to={portfolioPath(id, hasHoldings ? 'backtest' : 'optimize')} />}>{hasHoldings ? 'Run a backtest' : 'Go to optimizer'} </Button>}
+                    action={<Button variant="outline" render={<Link to={portfolioPath(id, hasHoldings ? 'backtest' : 'optimize')} />}>{hasHoldings ? 'Open Rewind' : 'Open Solver'}</Button>}
                   />
                 </CardContent>
               </Card>

@@ -72,7 +72,7 @@ test('optimizing a selection explains the actual result', async ({ page }) => {
   // Minimum variance is always feasible (maximum Sharpe is undefined when no stock beats the risk-free rate).
   await page.getByRole('combobox', { name: 'Optimization method' }).click()
   await page.getByRole('option', { name: 'Minimum variance' }).click()
-  await page.getByRole('button', { name: 'Run optimization' }).click()
+  await page.getByRole('button', { name: 'Solve', exact: true }).click()
   await acceptDownloadIfAsked(page)
   const insights = page.getByText('What your result means')
   await expect(insights).toBeVisible({ timeout: 30_000 })
@@ -89,7 +89,7 @@ test('optimizing a selection explains the actual result', async ({ page }) => {
   await expect(page.getByText(/use the same data that chose the weights/)).toBeVisible()
   await expect(page.getByRole('table', { name: 'Sensitivity scenarios' })).toContainText('Equal weight (reference)')
   await expect(page.getByText(/not a recommendation to buy or sell/)).toBeVisible()
-  await page.getByRole('link', { name: 'Optimization result' }).click()
+  await page.getByRole('link', { name: 'Solver result' }).click()
 
   await page.getByRole('link', { name: /How this strategy works/ }).click()
   await expect(page).toHaveURL(/\/learn\//)

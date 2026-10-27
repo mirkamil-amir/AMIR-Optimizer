@@ -20,7 +20,7 @@ export function LearnIndexPage() {
       <PageHeader
         title="Strategy guide"
         info="How every strategy in this app works: the idea, the theory, the mathematics, a worked example and how to read your own results. Start with equal weight and minimum variance, then compare them with the return-seeking and ML strategies."
-        actions={<Button size="sm" variant="outline" render={<Link to="/learn/glossary" />}>Glossary</Button>}
+        actions={<Button size="sm" variant="outline" render={<Link to="/learn/glossary" />}>Open Lexicon</Button>}
       />
       <div className="space-y-8">
         {families.map((f) => (
@@ -132,7 +132,7 @@ export function StrategyGuidePage() {
 
   return (
     <>
-      <Button size="sm" variant="ghost" className="mb-2 -ml-2" render={<Link to="/learn" />}>Strategy guide</Button>
+      <Button size="sm" variant="ghost" className="mb-2 -ml-2" render={<Link to="/learn" />}>Back to Codex</Button>
       <PageHeader title={g.name} description={g.tagline} actions={<Button size="sm" render={<Link to={g.appLink.to} />}>Try it </Button>} />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_220px]">
         <div className="space-y-2">
@@ -179,7 +179,7 @@ export function GlossaryPage() {
   const entries = useMemo(() => glossary.filter((e) => !query || e.term.toLowerCase().includes(query) || e.definition.toLowerCase().includes(query)), [query])
   return (
     <>
-      <Button size="sm" variant="ghost" className="mb-2 -ml-2" render={<Link to="/learn" />}>Strategy guide</Button>
+      <Button size="sm" variant="ghost" className="mb-2 -ml-2" render={<Link to="/learn" />}>Back to Codex</Button>
       <PageHeader title="Glossary" info="Finance and machine-learning terms used in this app, in plain language." />
       <div className="relative mb-4 max-w-md">
         <Input value={text} onChange={(e) => setText(e.target.value)} placeholder="Search terms, e.g. Sharpe, leakage" aria-label="Search glossary" />

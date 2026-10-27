@@ -30,7 +30,7 @@ export function StockPage() {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Button variant="ghost" size="sm" render={<Link to="/watchlist" />} className="-ml-2">Watchlist</Button>
+        <Button variant="ghost" size="sm" render={<Link to="/watchlist" />} className="-ml-2">Back to Radar</Button>
         <WatchlistStepper symbol={s.symbol} />
       </div>
       <PageHeader

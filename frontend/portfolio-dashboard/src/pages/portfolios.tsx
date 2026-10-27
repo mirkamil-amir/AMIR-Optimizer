@@ -40,23 +40,25 @@ export function PortfoliosPage() {
     <>
       <PageHeader
         title="My portfolios"
-        titleHidden
-        actions={<Button render={<Link to="/stocks" />}>Create portfolio</Button>}
+        info="Every portfolio of your account. Each one is private and independent: its own currency, cash, holdings and optimizations."
+        actions={<Button render={<Link to="/stocks" />}>Forge a portfolio</Button>}
       />
 
       {overview.error ? <ErrorState error={overview.error} onRetry={() => overview.refetch()} /> : !data ? <LoadingBlock height="h-72" /> : data.portfolios.length === 0 ? (
         <EmptyState
           title="No portfolios yet"
           description="Create your first portfolio: give it a name, a currency and simulated starting cash, pick the stocks it may invest in, then run an optimization or record transactions."
-          action={<Button render={<Link to="/stocks" />}>Create your first portfolio</Button>}
+          action={<Button render={<Link to="/stocks" />}>Forge your first portfolio</Button>}
         />
       ) : (
         <>
           <section aria-label="Totals across active portfolios" className="mb-6 space-y-2">
-            <div className="flex flex-wrap items-center justify-between gap-2">
+            {/* The currency belongs to the totals, so it sits in their heading line, not beside the page's actions. */}
+            <div className="flex flex-wrap items-center gap-2">
               <h2 className="flex items-center gap-1.5 text-sm font-medium">
                 <InfoTip of={`Across ${data.activePortfolios} active portfolio${data.activePortfolios === 1 ? '' : 's'}`}>{data.methodology}</InfoTip>
               </h2>
+              <span aria-hidden className="text-sm text-muted-foreground">in</span>
               <CurrencySelect value={ccy} onChange={setCurrency} supported={fx.data?.currencies} label="Currency of the totals" className="w-28" />
             </div>
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
@@ -76,7 +78,7 @@ export function PortfoliosPage() {
           <section aria-label="Active portfolios">
             {active.length === 0 ? (
               <EmptyState title="No active portfolio" description="All your portfolios are archived. Restore one below or create a new one."
-                action={<Button render={<Link to="/stocks" />}>Create portfolio</Button>} />
+                action={<Button render={<Link to="/stocks" />}>Forge a portfolio</Button>} />
             ) : (
               // Equal rows: every card has the height of the tallest one, with or without a description.
               <ul className="grid auto-rows-fr gap-4 md:grid-cols-2 xl:grid-cols-3">

@@ -74,7 +74,7 @@ export function MlOptimizePage() {
         <div className="min-w-0 scroll-mt-4" id="optimization-results">
           {activeId ? <ExperimentResults id={activeId} portfolioId={portfolioId!} /> : list.isLoading ? <LoadingBlock height="h-96" /> : (
             <EmptyState title="No ML optimization yet"
-              description="Configure the model on the left and click Run ML optimization." />
+              description="Configure the model on the left and click Learn patterns." />
           )}
         </div>
       </div>
@@ -266,7 +266,7 @@ function NewExperimentForm({ catalog, portfolio }: { catalog: MlCatalog; portfol
         </details>
 
         <Button className="w-full" onClick={submit} disabled={create.isPending || missingData.checking || universe.length < 5}>
-          {(create.isPending || missingData.checking) && <MatrixLoader />} {create.isPending ? 'Starting…' : 'Run ML optimization'}
+          {(create.isPending || missingData.checking) && <MatrixLoader />} {create.isPending ? 'Learning…' : 'Learn patterns'}
         </Button>
         {missingData.dialog}
         {universe.length > 0 && universe.length < 5 && <p className="text-xs text-warn">Select at least 5 stocks.</p>}
