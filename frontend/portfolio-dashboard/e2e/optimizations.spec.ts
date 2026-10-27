@@ -3,7 +3,7 @@ import { ADMIN_STATE, acceptDownloadIfAsked } from './helpers'
 
 test.use({ storageState: ADMIN_STATE })
 
-const sidebar = (page: Page) => page.getByRole('navigation', { name: 'Viewer sections' }).first()
+const sidebar = (page: Page) => page.getByRole('navigation', { name: 'Matrix sections' }).first()
 
 async function runOptimization(page: Page, portfolioId: string, method: string) {
   await page.goto(`/portfolios/${portfolioId}/optimize`)

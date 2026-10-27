@@ -11,7 +11,7 @@
   layout (results in `ResultSection`s, never tabs; "What your result means" last). Keep both pages alike when changing
   one. Backtesting and Comparison work on any optimization of one portfolio. Use these names in explanatory UI text, docs and
   tests; navigation uses the branded labels below (owner's choice, 2026-10-27, D-47).
-- Navigation labels (`SECTION_NAMES` in `lib/navigation.ts`, shared by sidebar and tabs): top bar "Viewer"; sidebar
+- Navigation labels (`SECTION_NAMES` in `lib/navigation.ts`, shared by sidebar and tabs): top bar Matrix · AI Probe · Wire · Radar · Atlas · Codex · Lexicon · Settings; sidebar
   Lens · Forge · Solver · Pattern · Trace · Rewind · Arena. Portfolio tabs: Core · Solver · Pattern · Trace · Rewind · Arena ·
   Ledger (Ledger's sub-tabs keep plain names). Each entry's `hint` gives the plain name (Backtesting, …) as tooltip and
   `aria-description`; page titles, docs and explanatory text keep the plain names. Buttons: a section's main action

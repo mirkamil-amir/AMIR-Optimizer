@@ -30,7 +30,7 @@ function renderAt(path: string) {
 }
 
 const primary = () => screen.getByRole('navigation', { name: 'Primary' })
-const optimizerNav = () => screen.getAllByRole('navigation', { name: 'Viewer sections' })[0]
+const optimizerNav = () => screen.getAllByRole('navigation', { name: 'Matrix sections' })[0]
 const link = (nav: HTMLElement, name: string) => within(nav).getByRole('link', { name })
 
 describe('application shell navigation', () => {
@@ -41,48 +41,48 @@ describe('application shell navigation', () => {
   it('shows the eight primary destinations in order and marks the current one', () => {
     renderAt('/')
     expect(within(primary()).getAllByRole('link').map((a) => a.textContent)).toEqual(
-      ['Viewer', 'AI Research', 'Financial News', 'Watchlist', 'Market Data', 'Strategy Guide', 'Glossary', 'Settings'],
+      ['Matrix', 'AI Probe', 'Wire', 'Radar', 'Atlas', 'Codex', 'Lexicon', 'Settings'],
     )
-    expect(link(primary(), 'Viewer')).toHaveAttribute('aria-current', 'page')
+    expect(link(primary(), 'Matrix')).toHaveAttribute('aria-current', 'page')
     expect(link(optimizerNav(), 'Lens')).toHaveAttribute('aria-current', 'page')
   })
 
   it('marks Optimizer as the area of a child section and highlights that section', () => {
     renderAt('/stocks/AAPL')
-    expect(link(primary(), 'Viewer')).toHaveAttribute('aria-current', 'true')
+    expect(link(primary(), 'Matrix')).toHaveAttribute('aria-current', 'true')
     expect(link(optimizerNav(), 'Forge')).toHaveAttribute('aria-current', 'page')
-    expect(link(primary(), 'Watchlist')).not.toHaveAttribute('aria-current')
+    expect(link(primary(), 'Radar')).not.toHaveAttribute('aria-current')
   })
 
   it('opens each primary destination, and back/forward keep the active item in step', async () => {
     const router = renderAt('/backtest')
-    for (const [name, path] of [['AI Research', '/research'], ['Financial News', '/news'], ['Watchlist', '/watchlist'], ['Market Data', '/market-data'], ['Strategy Guide', '/learn'], ['Glossary', '/learn/glossary'], ['Settings', '/settings']]) {
+    for (const [name, path] of [['AI Probe', '/research'], ['Wire', '/news'], ['Radar', '/watchlist'], ['Atlas', '/market-data'], ['Codex', '/learn'], ['Lexicon', '/learn/glossary'], ['Settings', '/settings']]) {
       await userEvent.click(link(primary(), name))
       expect(screen.getByText(`page ${path}`)).toBeInTheDocument()
       expect(link(primary(), name)).toHaveAttribute('aria-current', 'page')
-      expect(link(primary(), 'Viewer')).not.toHaveAttribute('aria-current')
+      expect(link(primary(), 'Matrix')).not.toHaveAttribute('aria-current')
       expect(within(optimizerNav()).queryByRole('link', { current: 'page' })).toBeNull()
     }
-    await userEvent.click(link(primary(), 'Viewer'))
+    await userEvent.click(link(primary(), 'Matrix'))
     expect(screen.getByText('page /')).toBeInTheDocument()
 
     await act(() => router.navigate(-1))
     expect(link(primary(), 'Settings')).toHaveAttribute('aria-current', 'page')
     await act(() => router.navigate(1))
-    expect(link(primary(), 'Viewer')).toHaveAttribute('aria-current', 'page')
+    expect(link(primary(), 'Matrix')).toHaveAttribute('aria-current', 'page')
   })
 
   it('keeps the open Optimizer section when Optimizer is selected again', async () => {
     const router = renderAt('/backtest')
-    await userEvent.click(link(primary(), 'Viewer'))
+    await userEvent.click(link(primary(), 'Matrix'))
     expect(router.state.location.pathname).toBe('/backtest')
     expect(screen.getByText('page /backtest')).toBeInTheDocument()
   })
 
   it('marks the strategy guide as the area of a single strategy page', () => {
     renderAt('/learn/max-sharpe')
-    expect(link(primary(), 'Strategy Guide')).toHaveAttribute('aria-current', 'true')
-    expect(link(primary(), 'Glossary')).not.toHaveAttribute('aria-current')
+    expect(link(primary(), 'Codex')).toHaveAttribute('aria-current', 'true')
+    expect(link(primary(), 'Lexicon')).not.toHaveAttribute('aria-current')
   })
 
   it('does not list the moved destinations in the sidebar', () => {

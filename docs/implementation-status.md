@@ -7,7 +7,8 @@
   description; Ledger's "Cash ledger" sub-tab is "Cash". Lens shows its title "My portfolios" again, with Forge a portfolio on
   the same row; the totals' currency sits in their heading line ("Across 3 active portfolios in USD"). Main buttons echo their tab: Forge portfolio, Solve, Learn patterns,
   Rewind, Face off; links between sections read Open Solver/Pattern/Trace/Rewind/Arena/Lens/Forge; money, deletion, data
-  and account actions keep literal labels.
+  and account actions keep literal labels. Top bar: Matrix · AI Probe · Wire · Radar · Atlas · Codex · Lexicon · Settings
+  with plain-name tips; links to these areas read Open Lexicon, Back to Codex, Open Codex, Back to Radar.
 * 2026-10-27: navigation labels shortened – Math, ML, History (sidebar and portfolio tab, formerly Optimization history /
   Optimization runs), Backtesting, Comparison; the title repeating a tab (and "My portfolios" on View) is screen-reader only;
   the workspace header lost its "My portfolios" link (sidebar View); the app is just "MatrixView" (no tagline).

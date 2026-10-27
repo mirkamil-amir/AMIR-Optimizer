@@ -9,7 +9,7 @@ test.use({ storageState: ADMIN_STATE })
 test('research assistant: from objective to a saved, reproducible run', async ({ page }) => {
   test.setTimeout(180_000)
   await page.goto('/')
-  await page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'AI Research' }).click()
+  await page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'AI Probe' }).click()
   await expect(page.getByRole('heading', { name: 'AI research assistant' })).toBeVisible()
 
   // 1–3: objective → brief.
@@ -86,7 +86,7 @@ test('research assistant: from objective to a saved, reproducible run', async ({
   await page.getByRole('tabpanel').getByRole('link', { name: 'Open saved run' }).click()
   await expect(page).toHaveURL(/\/portfolios\/[0-9a-f-]{36}\/optimize\/[0-9a-f-]{36}$/)
   await expect(page.getByText('What your result means')).toBeVisible({ timeout: 30_000 })
-  await page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'AI Research' }).click()
+  await page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'AI Probe' }).click()
   const row = page.getByRole('row').filter({ hasText: 'saved run' }).first()
   await expect(row.getByRole('link', { name: /United States \(S&P 500\) · minimum variance/ })).toBeVisible()
 })

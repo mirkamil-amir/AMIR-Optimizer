@@ -10,7 +10,11 @@ portfolio) · Solver (Math Optimization) · Pattern (ML Optimization) · Trace (
 that suggest prediction or profit (Oracle, Alpha, Edge), "Neural" (most models are not networks) and "Pulse" (sounds
 live) were rejected. Each entry carries its plain name as a tooltip (`NavHint`, 500 ms delay) and `aria-description`;
 page titles, explanatory text and docs keep the plain names. Ledger's sub-tabs stay plain (Recorded, Proposals,
-Executions, Orders, Cash – formerly "Cash ledger"); the top bar keeps "Viewer". **Consequences:** a page no longer has
+Executions, Orders, Cash – formerly "Cash ledger"). The top bar follows: Matrix (formerly Viewer; the sidebar is "Matrix
+sections") · AI Probe (AI research – "AI" stays visible so users know a language model is involved) · Wire (news) · Radar
+(watchlist) · Atlas (market data) · Codex (strategy guide) · Lexicon (glossary) · Settings (plain, a utility). Rejected:
+Oracle/Analyst (prediction or advice), Signals (trading signals), Playbook (trading tactics), Copilot (trademark),
+Pulse/Live (prices are never live). The administration area stays plain. **Consequences:** a page no longer has
 the same name as its tab, so the hidden titles of D-46 now name the plain term; "My portfolios" on Lens is visible again
 (with its create button on its row; the totals' currency moved into their heading line); tests address links by the new names.
 Buttons follow the same rule: a section's main action echoes its tab (Forge portfolio · Solve · Learn patterns · Rewind ·

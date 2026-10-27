@@ -53,7 +53,7 @@ function SidebarGroups({ sections, activeTo, onNavigate }: { sections: NavSectio
   ))
 }
 
-/** Left sidebar: the Viewer's sections and, for administrators, the administration area. */
+/** Left sidebar: the Matrix's sections and, for administrators, the administration area. */
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const { isAdministrator } = useAuth()
   const { pathname } = useLocation()
@@ -66,7 +66,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   }, [])
   return (
     <div ref={ref} className="flex flex-col gap-4">
-      <nav className="flex flex-col gap-4" aria-label="Viewer sections">
+      <nav className="flex flex-col gap-4" aria-label="Matrix sections">
         <SidebarGroups sections={optimizerSections} activeTo={activeTo} onNavigate={onNavigate} />
       </nav>
       {isAdministrator && (
@@ -96,23 +96,26 @@ export function PrimaryNav() {
           const active = current?.id === p.id
           return (
             <li key={p.id} className="flex">
-              <Link
-                ref={active ? activeRef : undefined}
-                to={p.to}
-                // "page" on the destination itself, "true" on a child route of that area (e.g. Optimizer › Backtest).
-                aria-current={active ? (pathname === p.to ? 'page' : 'true') : undefined}
-                // Inside the Optimizer workspace the item does nothing, so the open section and its inputs are kept.
-                onClick={(e) => { if (active && p.id === 'optimizer') e.preventDefault() }}
-                data-zoom-active={active ? '' : undefined}
-                className={cn(
-                  'nav-zoom font-nav inline-flex items-center gap-2 border-b-2 px-3 py-2.5 text-[0.95rem] whitespace-nowrap transition-colors focus-visible:rounded-t-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset',
-                  active
-                    ? 'border-primary font-semibold text-foreground'
-                    : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground',
-                )}
-              >
-                <span>{p.label}</span>
-              </Link>
+              <NavHint hint={p.hint} side="bottom">
+                <Link
+                  ref={active ? activeRef : undefined}
+                  to={p.to}
+                  aria-description={p.hint}
+                  // "page" on the destination itself, "true" on a child route of that area (e.g. Optimizer › Backtest).
+                  aria-current={active ? (pathname === p.to ? 'page' : 'true') : undefined}
+                  // Inside the Optimizer workspace the item does nothing, so the open section and its inputs are kept.
+                  onClick={(e) => { if (active && p.id === 'optimizer') e.preventDefault() }}
+                  data-zoom-active={active ? '' : undefined}
+                  className={cn(
+                    'nav-zoom font-nav inline-flex items-center gap-2 border-b-2 px-3 py-2.5 text-[0.95rem] whitespace-nowrap transition-colors focus-visible:rounded-t-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset',
+                    active
+                      ? 'border-primary font-semibold text-foreground'
+                      : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground',
+                  )}
+                >
+                  <span>{p.label}</span>
+                </Link>
+              </NavHint>
             </li>
           )
         })}
@@ -214,7 +217,7 @@ function UserMenu() {
 export function AppShell() {
   const [open, setOpen] = useState(false)
   const { isAdministrator } = useAuth()
-  const menuLabel = isAdministrator ? 'Viewer and administration menu' : 'Viewer menu'
+  const menuLabel = isAdministrator ? 'Matrix and administration menu' : 'Matrix menu'
   return (
     <WorldMapProvider>
     <div className="min-h-svh bg-muted/30">

@@ -22,7 +22,7 @@ export type PrimaryId = 'optimizer' | 'research' | 'news' | 'watchlist' | 'marke
 export interface PrimaryEntry extends NavEntry { id: PrimaryId }
 
 /**
- * Names of the Viewer's sections, shared by the sidebar and a portfolio's tab bar so one page has one name everywhere.
+ * Names of the Matrix's sections, shared by the sidebar and a portfolio's tab bar so one page has one name everywhere.
  * The names follow the brand; `hint` keeps the plain term (owner's choice, 2026-10-27).
  */
 export const SECTION_NAMES = {
@@ -67,7 +67,7 @@ export const optimizerSections: NavSection[] = [
   },
 ]
 
-/** Administration stays in the sidebar, below the Viewer sections, for administrators only. */
+/** Administration stays in the sidebar, below the Matrix sections, for administrators only. */
 export const adminSection: NavSection = {
   title: 'Administration',
   items: [
@@ -79,24 +79,24 @@ export const adminSection: NavSection = {
 
 const optimizerEntries = optimizerSections.flatMap((s) => s.items)
 
-/** Top navigation, in this order. Optimizer owns every route of its sidebar sections. */
+/** Top navigation, in this order (branded like the sidebar, D-47; Settings stays plain). Optimizer owns every route of its sidebar sections. */
 export const primaryNav: PrimaryEntry[] = [
   {
-    id: 'optimizer', to: '/', label: 'Viewer', end: true,
+    id: 'optimizer', to: '/', label: 'Matrix', hint: 'Portfolio workspace: build, optimize, backtest and compare your portfolios', end: true,
     // Earlier portfolio-less URLs (/holdings, /trades, /analytics) redirect into a portfolio workspace.
     match: [...optimizerEntries.flatMap((e) => [...(e.end ? [] : [e.to]), ...(e.match ?? [])]), '/holdings', '/trades', '/analytics'],
   },
-  { id: 'research', to: '/research', label: 'AI Research' },
-  { id: 'news', to: '/news', label: 'Financial News' },
-  { id: 'watchlist', to: '/watchlist', label: 'Watchlist' },
-  { id: 'market-data', to: '/market-data', label: 'Market Data' },
+  { id: 'research', to: '/research', label: 'AI Probe', hint: 'AI Research: an assistant turns your question into a brief and runs the real optimizer on it' },
+  { id: 'news', to: '/news', label: 'Wire', hint: 'Financial News: articles from news providers, linked to stocks by the providers\' own tags' },
+  { id: 'watchlist', to: '/watchlist', label: 'Radar', hint: 'Watchlist: stocks you follow without holding them' },
+  { id: 'market-data', to: '/market-data', label: 'Atlas', hint: 'Market Data: stocks, ETFs, indexes and exchange rates of 35 markets' },
   // Strategy pages (/learn/:strategyId) belong to the guide; the longer /learn/glossary wins for the glossary.
-  { id: 'strategy-guide', to: '/learn', label: 'Strategy Guide' },
-  { id: 'glossary', to: '/learn/glossary', label: 'Glossary' },
+  { id: 'strategy-guide', to: '/learn', label: 'Codex', hint: 'Strategy Guide: how each optimization strategy and model works' },
+  { id: 'glossary', to: '/learn/glossary', label: 'Lexicon', hint: 'Glossary: the terms used in the app, explained' },
   { id: 'settings', to: '/settings', label: 'Settings' },
 ]
 
-/** Sidebar sections for the current user: Viewer sections, plus Administration for administrators. */
+/** Sidebar sections for the current user: Matrix sections, plus Administration for administrators. */
 export function sidebarSections(isAdministrator: boolean): NavSection[] {
   return isAdministrator ? [...optimizerSections, adminSection] : optimizerSections
 }

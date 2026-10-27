@@ -158,7 +158,7 @@ function Report({ r }: { r: RealityCheck }) {
             <div className="mt-3 flex flex-wrap gap-2">
               <Button size="sm" variant="outline" render={<Link to="/backtest" />}>Open Rewind</Button>
               <Button size="sm" variant="outline" render={<Link to="/strategy-comparison" />}>Open Arena</Button>
-              <Button size="sm" variant="outline" render={<Link to="/learn" />}>Strategy guide</Button>
+              <Button size="sm" variant="outline" render={<Link to="/learn" />}>Open Codex</Button>
             </div>
           </CardContent>
         </Card>

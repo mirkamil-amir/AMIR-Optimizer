@@ -362,7 +362,7 @@ function ConfigFormInner({ portfolio: portfolioData, assets: assetList }: { port
             <InfoTip>Every run stores its own inputs. Turn this on to also make this universe and these constraints the portfolio's saved configuration.</InfoTip>
           </div>
           {benchmark && !watchedUniverse.includes(benchmark) && coverage.get(benchmark)?.freshness === 'Missing' && (
-            <p className="text-xs text-warn">The benchmark has no price data – synchronize it on the Market data page.</p>
+            <p className="text-xs text-warn">The benchmark has no price data – synchronize it in Atlas (Market Data).</p>
           )}
 
           <Button type="submit" className="w-full" disabled={runMutation.isPending || missingData.checking}>

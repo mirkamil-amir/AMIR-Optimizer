@@ -11,7 +11,7 @@ test('missing prices and rates: the experiment asks, cancel starts nothing, down
     await page.getByRole('checkbox', { name: `Select ${symbol}` }).check()
   }
   // Client-side navigation keeps the in-memory selection.
-  await page.getByRole('navigation', { name: 'Viewer sections' }).first().getByRole('link', { name: 'Pattern', exact: true }).click()
+  await page.getByRole('navigation', { name: 'Matrix sections' }).first().getByRole('link', { name: 'Pattern', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'ML Optimization', exact: true })).toBeVisible()
   await page.getByRole('button', { name: /^Use stock selection/ }).click()  // like Math Optimization: the portfolio's universe unless replaced
   await page.getByLabel('History (years)').fill('15')                      // older than anything stored

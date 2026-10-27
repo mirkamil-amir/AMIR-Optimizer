@@ -1,11 +1,11 @@
 import { expect, test, type Page } from '@playwright/test'
 import { ADMIN_STATE, admin, approve, register, requireAdminCredentials, signIn, signOut, strongPassword, uniqueEmail } from './helpers'
 
-// Application navigation: eight primary areas in the top bar, Viewer sections and administration in the sidebar.
-const PRIMARY = ['Viewer', 'AI Research', 'Financial News', 'Watchlist', 'Market Data', 'Strategy Guide', 'Glossary', 'Settings']
+// Application navigation: eight primary areas in the top bar, Matrix sections and administration in the sidebar.
+const PRIMARY = ['Matrix', 'AI Probe', 'Wire', 'Radar', 'Atlas', 'Codex', 'Lexicon', 'Settings']
 
 const primary = (page: Page) => page.getByRole('navigation', { name: 'Primary' })
-const optimizer = (page: Page) => page.getByRole('navigation', { name: 'Viewer sections' }).first()
+const optimizer = (page: Page) => page.getByRole('navigation', { name: 'Matrix sections' }).first()
 
 function collectErrors(page: Page) {
   const errors: string[] = []
@@ -17,19 +17,19 @@ function collectErrors(page: Page) {
 test.describe('as administrator', () => {
   test.use({ storageState: ADMIN_STATE })
 
-  test('primary areas, Viewer sections, admin settings, deep links and history', async ({ page }) => {
+  test('primary areas, Matrix sections, admin settings, deep links and history', async ({ page }) => {
     const errors = collectErrors(page)
     await page.goto('/')
     await expect(primary(page).getByRole('link')).toHaveText(PRIMARY)
-    await expect(primary(page).getByRole('link', { name: 'Viewer' })).toHaveAttribute('aria-current', 'page')
+    await expect(primary(page).getByRole('link', { name: 'Matrix' })).toHaveAttribute('aria-current', 'page')
 
     for (const [name, heading, url] of [
-      ['AI Research', 'AI research assistant', /\/research$/],
-      ['Financial News', 'Financial news', /\/news$/],
-      ['Watchlist', 'Watchlist', /\/watchlist$/],
-      ['Market Data', 'Market data', /\/market-data$/],
-      ['Strategy Guide', 'Strategy guide', /\/learn$/],
-      ['Glossary', 'Glossary', /\/learn\/glossary$/],
+      ['AI Probe', 'AI research assistant', /\/research$/],
+      ['Wire', 'Financial news', /\/news$/],
+      ['Radar', 'Watchlist', /\/watchlist$/],
+      ['Atlas', 'Market data', /\/market-data$/],
+      ['Codex', 'Strategy guide', /\/learn$/],
+      ['Lexicon', 'Glossary', /\/learn\/glossary$/],
       ['Settings', 'Settings', /\/settings$/],
     ] as const) {
       await primary(page).getByRole('link', { name }).click()
@@ -41,7 +41,7 @@ test.describe('as administrator', () => {
     await expect(page.getByRole('main')).not.toContainText('Application settings')
 
     // Market Data has three pages with the same search and paging; Market Data stays active on each.
-    await primary(page).getByRole('link', { name: 'Market Data' }).click()
+    await primary(page).getByRole('link', { name: 'Atlas' }).click()
     const dataSections = page.getByRole('navigation', { name: 'Market data sections' })
     for (const [name, url, search] of [
       ['Indexes', /\/market-data\/indexes$/, 'Search indexes'],
@@ -54,13 +54,13 @@ test.describe('as administrator', () => {
       await expect(page.getByRole('textbox', { name: search })).toBeVisible()
       await expect(page.getByRole('button', { name: `Sync ${name.toLowerCase()}` })).toBeVisible()   // each page syncs its own data
       // "page" on /market-data itself, "true" (this area) on its subpages.
-      await expect(primary(page).getByRole('link', { name: 'Market Data' })).toHaveAttribute('aria-current', /^(page|true)$/)
+      await expect(primary(page).getByRole('link', { name: 'Atlas' })).toHaveAttribute('aria-current', /^(page|true)$/)
     }
     await expect(page.getByRole('button', { name: 'Last page' })).toBeVisible()
     await expect(page.getByRole('combobox', { name: 'Rows per page' })).toBeVisible()
 
     // Optimizer opens its overview; its sections live in the sidebar and keep Optimizer active.
-    await primary(page).getByRole('link', { name: 'Viewer' }).click()
+    await primary(page).getByRole('link', { name: 'Matrix' }).click()
     await expect(page).toHaveURL(/\/$/)
     for (const [name, heading, url] of [
       ['Forge', 'New portfolio', /\/stocks$/],
@@ -73,11 +73,11 @@ test.describe('as administrator', () => {
       await expect(page).toHaveURL(url)
       await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible()
       await expect(optimizer(page).getByRole('link', { name, exact: true })).toHaveAttribute('aria-current', 'page')
-      await expect(primary(page).getByRole('link', { name: 'Viewer' })).toHaveAttribute('aria-current', 'true')
+      await expect(primary(page).getByRole('link', { name: 'Matrix' })).toHaveAttribute('aria-current', 'true')
     }
 
     // Selecting Optimizer inside the workspace keeps the open section.
-    await primary(page).getByRole('link', { name: 'Viewer' }).click()
+    await primary(page).getByRole('link', { name: 'Matrix' }).click()
     await expect(page).toHaveURL(/\/strategy-comparison$/)
 
     // Back and forward follow the history; the active items follow the URL.
@@ -97,7 +97,7 @@ test.describe('as administrator', () => {
     await expect(primary(page).locator('[aria-current]')).toHaveCount(0)
 
     // Deep links survive a reload.
-    for (const [path, name] of [['/news', 'Financial News'], ['/backtest', 'Viewer']] as const) {
+    for (const [path, name] of [['/news', 'Wire'], ['/backtest', 'Matrix']] as const) {
       await page.goto(path)
       await page.reload()
       await expect(primary(page).getByRole('link', { name })).toHaveAttribute('aria-current', /page|true/)
@@ -124,7 +124,7 @@ test.describe('as administrator', () => {
       if (width < 1024) {
         // Narrow screens: the sidebar is a menu sheet opened from the header.
         await expect(optimizer(page)).toBeHidden()
-        await page.getByRole('button', { name: 'Open Viewer and administration menu' }).click()
+        await page.getByRole('button', { name: 'Open Matrix and administration menu' }).click()
         const sheet = page.getByRole('dialog')
         await sheet.getByRole('link', { name: 'Arena', exact: true }).click()
         await expect(page).toHaveURL(/\/strategy-comparison$/)
@@ -133,9 +133,9 @@ test.describe('as administrator', () => {
         await expect(optimizer(page)).toBeVisible()
       }
       // Keyboard: the primary links are focusable in order.
-      await primary(page).getByRole('link', { name: 'Viewer' }).focus()
+      await primary(page).getByRole('link', { name: 'Matrix' }).focus()
       await page.keyboard.press('Tab')
-      await expect(primary(page).getByRole('link', { name: 'AI Research' })).toBeFocused()
+      await expect(primary(page).getByRole('link', { name: 'AI Probe' })).toBeFocused()
     })
   }
 })
