@@ -1,0 +1,115 @@
+{
+  "$comment": "Maps code to the formula reference (docs/quant/formula-reference.md) and to skills. Read by scripts/quant/maintain.py. Globs: ** = any directories, * = within one path segment.",
+  "formulaReference": "docs/quant/formula-reference.md",
+  "formulaIndex": "docs/quant/formula-index.json",
+  "quantPaths": [
+    "src/PortfolioOptimizer.Optimization/**/*.cs",
+    "src/PortfolioOptimizer.MachineLearning/**/*.cs",
+    "src/PortfolioOptimizer.Application/Fx/*.cs",
+    "src/PortfolioOptimizer.Application/Analytics/*.cs",
+    "src/PortfolioOptimizer.Application/Optimization/OptimizationService.cs",
+    "src/PortfolioOptimizer.Application/Comparisons/StrategyComparisonEngine.cs",
+    "src/PortfolioOptimizer.Application/Trading/TradeProposalCalculator.cs",
+    "src/PortfolioOptimizer.Application/Portfolios/PortfolioValuationService.cs",
+    "src/PortfolioOptimizer.Application/MarketData/PriceNormalizer.cs",
+    "src/PortfolioOptimizer.Application/MarketData/PriceHistory.cs",
+    "src/PortfolioOptimizer.Application/News/EventPriceComparison.cs",
+    "src/PortfolioOptimizer.Domain/Portfolio.cs",
+    "frontend/portfolio-dashboard/src/lib/worked-examples.ts"
+  ],
+  "noFormulaFiles": {
+    "src/PortfolioOptimizer.Optimization/MetricValue.cs": "result wrapper for unavailable metrics; no calculation",
+    "src/PortfolioOptimizer.MachineLearning/Models/ModelArtifact.cs": "artifact serialization and checksum",
+    "src/PortfolioOptimizer.MachineLearning/Training/ExperimentModels.cs": "configuration and result records",
+    "src/PortfolioOptimizer.Application/Fx/FxDownloader.cs": "download orchestration of FX history (chunks, background); stores provider rates unchanged"
+  },
+  "reviewPaths": {
+    "API contract (units and meaning of quantitative fields)": [
+      "src/PortfolioOptimizer.Application/Dtos/*.cs",
+      "frontend/portfolio-dashboard/src/lib/types.ts"
+    ],
+    "Schema of financial data": [
+      "src/PortfolioOptimizer.Domain/*.cs",
+      "src/PortfolioOptimizer.Infrastructure/Persistence/AppDbContext.cs",
+      "src/PortfolioOptimizer.Infrastructure/Persistence/Migrations/*.cs"
+    ],
+    "Configuration that controls calculations": [
+      "src/PortfolioOptimizer.Api/appsettings*.json",
+      "src/PortfolioOptimizer.Application/MarketData/Markets.cs",
+      "src/PortfolioOptimizer.Infrastructure/Fx/*.cs",
+      "src/PortfolioOptimizer.Infrastructure/MarketData/*Provider.cs"
+    ],
+    "Explanations shown to students": [
+      "frontend/portfolio-dashboard/src/lib/interpretation.ts",
+      "frontend/portfolio-dashboard/src/lib/strategy-guide.ts",
+      "frontend/portfolio-dashboard/src/lib/glossary.ts"
+    ]
+  },
+  "skills": {
+    "quant-formulas": [
+      "docs/quant/**",
+      "src/PortfolioOptimizer.Optimization/Statistics/*.cs",
+      "src/PortfolioOptimizer.Optimization/AnalyticsConventions.cs",
+      "frontend/portfolio-dashboard/src/lib/worked-examples.ts"
+    ],
+    "optimization-backtesting": [
+      "src/PortfolioOptimizer.Optimization/Portfolio/*.cs",
+      "src/PortfolioOptimizer.Optimization/Solvers/*.cs",
+      "src/PortfolioOptimizer.Optimization/Backtesting/*.cs",
+      "src/PortfolioOptimizer.Application/Optimization/*.cs",
+      "src/PortfolioOptimizer.Application/Backtesting/*.cs",
+      "src/PortfolioOptimizer.Application/Comparisons/*.cs",
+      "src/PortfolioOptimizer.Application/Analytics/RealityCheckService.cs"
+    ],
+    "market-data-fx": [
+      "src/PortfolioOptimizer.Application/Fx/*.cs",
+      "src/PortfolioOptimizer.Application/MarketData/*.cs",
+      "src/PortfolioOptimizer.Application/News/EventPriceComparison.cs",
+      "src/PortfolioOptimizer.Infrastructure/Fx/*.cs",
+      "src/PortfolioOptimizer.Infrastructure/MarketData/*.cs",
+      "src/PortfolioOptimizer.Infrastructure/Seed/universes/*"
+    ],
+    "ml-pipeline": [
+      "src/PortfolioOptimizer.MachineLearning/**/*.cs",
+      "src/PortfolioOptimizer.Application/MachineLearning/*.cs"
+    ],
+    "ml-experiment": [
+      "src/PortfolioOptimizer.Api/Controllers/MachineLearningController.cs",
+      "src/PortfolioOptimizer.Application/Dtos/MachineLearningDtos.cs"
+    ],
+    "portfolio-accounting": [
+      "src/PortfolioOptimizer.Domain/Portfolio.cs",
+      "src/PortfolioOptimizer.Domain/PortfolioTransactions.cs",
+      "src/PortfolioOptimizer.Application/Portfolios/*.cs",
+      "src/PortfolioOptimizer.Application/Trading/*.cs",
+      "src/PortfolioOptimizer.Application/Analytics/PortfolioAnalyticsService.cs"
+    ],
+    "platform-architecture": [
+      "src/PortfolioOptimizer.Api/**",
+      "src/PortfolioOptimizer.Infrastructure/Persistence/**",
+      "src/PortfolioOptimizer.Infrastructure/Jobs/*.cs",
+      "src/PortfolioOptimizer.Infrastructure/Identity/*.cs",
+      "src/PortfolioOptimizer.Infrastructure/DependencyInjection.cs",
+      "frontend/portfolio-dashboard/src/lib/api.ts",
+      "frontend/portfolio-dashboard/src/lib/queries.ts",
+      "frontend/portfolio-dashboard/src/lib/types.ts",
+      "docker-compose.yml",
+      "deploy/**"
+    ],
+    "run-app": [
+      "docker-compose.yml",
+      "src/PortfolioOptimizer.Api/Properties/launchSettings.json"
+    ],
+    "ship-change": [
+      "scripts/test.sh",
+      "scripts/e2e.sh"
+    ],
+    "maintain-knowledge": [
+      "scripts/quant/**",
+      ".github/workflows/**",
+      ".claude/skills/**",
+      "AGENTS.md",
+      "CLAUDE.md"
+    ]
+  }
+}

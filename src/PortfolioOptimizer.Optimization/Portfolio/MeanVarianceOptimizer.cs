@@ -470,7 +470,7 @@ public sealed class MeanVarianceOptimizer(IQuadraticProgramSolver solver) : IPor
         }
 
         if (!string.IsNullOrWhiteSpace(note)) diagnostics.Add(note);
-        if (spec.TurnoverIgnored) diagnostics.Add("Turnover limit not applied: the portfolio has no current holdings.");
+        if (spec.TurnoverIgnored) diagnostics.Add("Turnover limit not applied: the portfolio holds none of these assets.");
         var stats = PortfolioMath.Statistics(w, input.ExpectedReturns, input.Covariance, input.RiskFreeRate);
         return new OptimizationResult(
             OptimizationStatus.Optimal, input.Objective, input.Symbols, w, stats,

@@ -106,7 +106,8 @@ validated (≥ 0, Σ ≤ 1). A paper-trade proposal can be created from the resu
 
 At each rebalance signal date *t* the strategy (re)trains, if due, on samples whose labels were realized by *t*
 (label end ≤ *t*), scores every stock with features at *t*, builds weights, and the shared simulator fills orders at
-the **next trading day's close** with proportional costs. Retraining frequency and an optional rolling training
+the **next trading day's close** with proportional costs (later when an exchange is closed, see
+[backtesting](quantitative-strategies.md#backtesting)). Retraining frequency and an optional rolling training
 window are configurable. The rebalance log records the model's training cutoff and sample count at every decision.
 An equal-weight strategy on the same universe and dates and the benchmark run alongside.
 

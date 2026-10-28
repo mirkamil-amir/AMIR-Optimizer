@@ -82,3 +82,7 @@ reason in `error` – report it; never substitute numbers.
   when the user asked for these numbers; otherwise use `./scripts/e2e.sh`. Delete only experiments you created as probes
   (`DELETE $B/ml/experiments/{id}`, 204); never others.
 - `rm -f $J` when done.
+
+Changing the ML code itself (features, labels, splits, models, metrics): `/ml-pipeline`; metric definitions:
+`docs/quant/formula-reference.md` (F-ML-*). Backtests fill orders up to five trading days after the signal while an
+exchange is closed (F-BT-002), so rebalance dates in `rebalances[]` can differ from signal dates by more than a day.

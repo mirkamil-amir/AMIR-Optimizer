@@ -34,6 +34,7 @@ Read this file before changing code; details are in `docs/` (linked below).
 | `tests/*` | unit, ML, integration (real PostgreSQL) | `IntegrationTests/ApiFactory.cs` |
 | `frontend/.../e2e` | Playwright | `admin.setup.ts` (environment guard), `journeys.spec.ts`, `research.spec.ts` (watchlist, news), `research-agent.spec.ts` (AI research journey), `multi-currency.spec.ts` (EUR portfolio with four markets), `navigation.spec.ts` (top bar, sidebar, admin area, viewports), `portfolios.spec.ts` (two portfolios, two users), `missing-data.spec.ts` (download dialog), `optimizations.spec.ts` (backtest window, comparison of two runs, portfolio tabs, Overview layout, world map) |
 | `tools/` | `universe-builder` (constituent CSVs, curated index-ETF lists), `world-map` (country outlines of the background map), `PortfolioOptimizer.DataMigration` (SQLite import) | |
+| `docs/quant`, `scripts/quant` | formula reference (every formula → code, tests, status), audit and risk register, maintenance tool | `formula-reference.md`, `maintain.py`, `manifest.json` |
 
 ## Run and test
 
@@ -44,6 +45,17 @@ Secrets live in `.env` (gitignored) – load with `set -a; . ./.env; set +a`; ne
 * Local: `podman compose up -d db`; API `dotnet run` in `src/PortfolioOptimizer.Api` with `ConnectionStrings__DefaultConnection` (owner role) → :5080; `npm run dev` in the frontend → :5173.
 * Tests: `./scripts/test.sh` (unit + ML + integration), `npm test`, `npm run build`, `npm run lint`, `./scripts/e2e.sh` (disposable stack). Details: [docs/testing.md](docs/testing.md).
 * Migration: `ConnectionStrings__DefaultConnection=… dotnet ef migrations add <Name> -p src/PortfolioOptimizer.Infrastructure -s src/PortfolioOptimizer.Api -o Persistence/Migrations`, then `dotnet build`.
+* Knowledge checks: `python3 scripts/quant/maintain.py validate|check-skills|review-changes|audit|test-quant|full-check`
+  ([docs/quant/README.md](docs/quant/README.md)); CI runs them in `.github/workflows/quant-maintenance.yml`.
+
+## Skills (`.claude/skills/<name>/SKILL.md`)
+
+Load the skill of the subsystem before changing it: `quant-formulas` (metrics, conventions, verifying a formula),
+`optimization-backtesting` (optimizer, solver, backtest simulator, comparisons, reality check), `market-data-fx`
+(providers, normalization, FX conversion), `ml-pipeline` (ML code), `portfolio-accounting` (ledger, proposals, valuation,
+recorded performance), `platform-architecture` (API, auth, persistence, jobs, frontend data flow), `maintain-knowledge`
+(formula reference, skills, CI). Operational: `run-app`, `ship-change`, `ml-experiment`. A change to quantitative code
+updates its entry in [docs/quant/formula-reference.md](docs/quant/formula-reference.md) in the same change.
 
 ## Business rules you must not break
 
@@ -173,4 +185,5 @@ protection (Stooq); force-pushing or committing without being asked.
 [agentic architecture](docs/agentic-architecture.md) · [threat model](docs/threat-model.md) · [agent evaluation](docs/agent-evaluation.md) ·
 [portfolios](docs/portfolios.md) · [performance](docs/performance.md) · [decisions](docs/decisions.md) · [limitations](docs/limitations.md) · [watchlist](docs/watchlist.md) ·
 [financial news](docs/financial-news.md) · [portfolio reality check](docs/portfolio-reality-check.md) ·
+[formula reference](docs/quant/formula-reference.md) · [quant audit](docs/quant/audit-2026-10-28.md) · [subsystem inventory](docs/quant/subsystem-inventory.md) ·
 [roadmap](docs/roadmap.md) · [launch readiness](docs/launch-readiness.md) · [currencies & FX](docs/currency.md) · [currency audit](docs/currency-audit.md)

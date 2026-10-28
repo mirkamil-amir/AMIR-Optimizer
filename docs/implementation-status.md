@@ -1,5 +1,21 @@
 # Implementation status
 
+## 2026-10-28: quantitative audit, formula reference, maintenance tooling
+
+* Backtests across markets with different holidays (audit Q-01/Q-01b, [quant audit](quant/audit-2026-10-28.md)): an
+  execution day on which one exchange is closed no longer sells that market's positions into cash until the next
+  rebalance – the rebalance waits up to 5 trading days, then trades around still-closed positions; a signal date on a
+  holiday of one exchange keeps its stocks in the optimization (latest close ≤ signal). Changes results of multi-market
+  backtests, comparisons and ML walk-forward backtests when they are re-run (stored results keep their numbers).
+* The independent allocation validator applies the turnover limit under the same rule as the optimizer (only when an
+  asset of the universe is held); before, such runs failed validation (Q-02).
+* [Formula reference](quant/formula-reference.md): 65 entries mapped to code symbols, tests and skills, each with a
+  verification status; [subsystem inventory](quant/subsystem-inventory.md); remaining-risk register in the audit.
+* `scripts/quant/maintain.py` (validate, index, check-skills, review-changes, audit, test-quant, full-check) and the
+  `quant-maintenance` GitHub Actions workflow (added, not yet run on GitHub). Seven subsystem skills added
+  (`quant-formulas`, `optimization-backtesting`, `market-data-fx`, `ml-pipeline`, `portfolio-accounting`,
+  `platform-architecture`, `maintain-knowledge`); `ship-change`, `ml-experiment`, `run-app` updated.
+
 ## 2026-10-26: MatrixView; per-portfolio currency view
 
 * 2026-10-27: branded navigation (D-47) – sidebar Lens · Forge · Solver · Pattern · Trace · Rewind · Arena, portfolio tabs

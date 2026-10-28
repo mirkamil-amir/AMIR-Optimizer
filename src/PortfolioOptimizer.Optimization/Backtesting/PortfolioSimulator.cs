@@ -38,6 +38,12 @@ public sealed class PriceGrid
         return new PriceGrid(symbols, calendar, prices, dates);
     }
 
+    /// <summary>
+    /// A symbol whose latest price is more than this many calendar days old counts as no longer trading (suspended, delisted
+    /// or before its listing) rather than closed for a holiday. Covers a week-long exchange closure (Golden Week, Lunar New Year).
+    /// </summary>
+    public const int StaleAfterDays = 10;
+
     /// <summary>Signal dates: the first trading day, then the last trading day of each month/quarter (never the final day).</summary>
     public int[] SignalIndices(RebalanceFrequency frequency)
     {
@@ -89,14 +95,22 @@ public sealed record SimulationResult(double[] Values, IReadOnlyList<RebalanceEv
 /// benchmark) so that comparisons use identical conventions:
 /// <list type="number">
 /// <item>Signal at the close of a signal date (the strategy sees only data dated ≤ that date).</item>
-/// <item>Orders fill at the next trading day's close net of proportional costs (bps of traded value); an asset without a
-/// price on the execution day is not bought (its target weight stays in cash).</item>
+/// <item>Orders fill at the next trading day's close net of proportional costs (bps of traded value). An exchange can be
+/// closed on that day while others trade (holidays differ between markets): the rebalance then waits for the first day on
+/// which every asset to be bought, sold or kept has a price, at most <see cref="MaxExecutionDelayDays"/> trading days.
+/// After that, assets that are still closed keep their units (nothing can be traded on a closed exchange) and the other
+/// assets are traded towards their targets within the remaining value. An asset whose latest price is more than
+/// <see cref="PriceGrid.StaleAfterDays"/> days old counts as no longer trading: it is not bought, and a held position is
+/// sold at its last price.</item>
 /// <item>Holdings earn returns from the execution day; cash earns zero; fractional units; missing prices are carried
 /// forward for valuation only.</item>
 /// </list>
 /// </summary>
 public static class PortfolioSimulator
 {
+    /// <summary>Trading days an execution may wait for closed exchanges to reopen before it trades around them.</summary>
+    public const int MaxExecutionDelayDays = 5;
+
     public static SimulationResult Run(
         PriceGrid grid,
         IReadOnlyList<int> signalIndices,
@@ -112,21 +126,25 @@ public static class PortfolioSimulator
         var n = symbols.Length;
         var units = new double[n];
         var lastPrice = new double?[n];
+        var lastDate = new DateOnly?[n];
         var cash = initialCapital;
         var values = new double[calendar.Length];
         var events = new List<RebalanceEvent>();
         var signalSet = signalIndices.ToHashSet();
-        (DateOnly Signal, PortfolioDecision Decision)? pending = null;
+        (DateOnly Signal, PortfolioDecision Decision, int Delay)? pending = null;
 
         for (var t = 0; t < calendar.Length; t++)
         {
             ct.ThrowIfCancellationRequested();
             var date = calendar[t];
+            var tradable = new bool[n];
             for (var i = 0; i < n; i++)
             {
-                if (grid.Prices[symbols[i]].TryGetValue(date, out var p)) lastPrice[i] = p;
+                if (grid.Prices[symbols[i]].TryGetValue(date, out var p)) { lastPrice[i] = p; lastDate[i] = date; tradable[i] = true; }
                 else if (units[i] > 0) warnings?.Add($"{symbols[i]} has no price on {date:yyyy-MM-dd}; last available price carried forward for valuation.");
             }
+            // No price today but a recent one: its exchange is closed today (a holiday), the asset still trades.
+            bool Closed(int i) => !tradable[i] && lastDate[i] is { } d && date.DayNumber - d.DayNumber <= PriceGrid.StaleAfterDays;
 
             // 1) Execute the decision taken at the previous signal date, at today's close.
             if (pending is { } order)
@@ -135,34 +153,60 @@ public static class PortfolioSimulator
                 var value = Value(cash, units, lastPrice);
                 if (order.Decision.Weights is { } weights)
                 {
-                    var target = (double[])weights.Clone();
-                    for (var i = 0; i < n; i++)
+                    var involved = Enumerable.Range(0, n).Where(i => weights[i] > 0 || units[i] > 0).ToList();
+                    if (involved.Any(Closed) && order.Delay < MaxExecutionDelayDays && t < calendar.Length - 1)
                     {
-                        if (target[i] > 0 && !grid.Prices[symbols[i]].ContainsKey(date))
+                        pending = order with { Delay = order.Delay + 1 }; // wait for the closed exchanges to reopen
+                    }
+                    else
+                    {
+                        var target = (double[])weights.Clone();
+                        var frozen = new bool[n];
+                        for (var i = 0; i < n; i++)
                         {
-                            warnings?.Add($"{symbols[i]} could not be traded on {date:yyyy-MM-dd} (no price); its target weight was left in cash.");
+                            if (tradable[i]) continue;
+                            if (Closed(i))
+                            {
+                                frozen[i] = units[i] > 0;
+                                if (frozen[i] || target[i] > 0)
+                                    warnings?.Add($"{symbols[i]} could not be traded on {date:yyyy-MM-dd} (its exchange was closed); " +
+                                                  (frozen[i] ? "the position was kept unchanged." : "its target weight was left in cash."));
+                            }
+                            else if (target[i] > 0 || units[i] > 0)
+                            {
+                                warnings?.Add($"{symbols[i]} has no price within {PriceGrid.StaleAfterDays} days of {date:yyyy-MM-dd} (no longer trading); " +
+                                              "it was not bought and a held position was sold at its last price.");
+                            }
                             target[i] = 0;
                         }
-                    }
 
-                    var currentW = Weights(units, lastPrice, value);
-                    var bps = transactionCostBps / 10_000d;
-                    // Costs reduce the investable value; a few fixed-point passes suffice for bps-level costs.
-                    var costs = 0d;
-                    for (var pass = 0; pass < 3; pass++)
-                    {
-                        var net = value - costs;
-                        costs = bps * Enumerable.Range(0, n).Sum(i => Math.Abs(net * target[i] - units[i] * (lastPrice[i] ?? 0)));
-                    }
-                    var investable = value - costs;
-                    for (var i = 0; i < n; i++)
-                        units[i] = target[i] > 0 ? investable * target[i] / lastPrice[i]!.Value : 0;
-                    cash = investable - Enumerable.Range(0, n).Sum(i => units[i] * (lastPrice[i] ?? 0));
-                    var newW = Weights(units, lastPrice, value);
+                        var currentW = Weights(units, lastPrice, value);
+                        var frozenValue = Enumerable.Range(0, n).Where(i => frozen[i]).Sum(i => units[i] * lastPrice[i]!.Value);
+                        var targetSum = target.Sum();
+                        var bps = transactionCostBps / 10_000d;
+                        // Costs reduce the investable value; kept positions take their share of it first, and the traded targets are
+                        // scaled down if they no longer fit. A few fixed-point passes suffice for bps-level costs.
+                        var costs = 0d;
+                        var scale = 1d;
+                        for (var pass = 0; pass < 3; pass++)
+                        {
+                            var net = value - costs;
+                            scale = targetSum > 0 ? Math.Clamp((net - frozenValue) / (net * targetSum), 0, 1) : 1;
+                            costs = bps * Enumerable.Range(0, n).Where(i => !frozen[i])
+                                .Sum(i => Math.Abs(scale * net * target[i] - units[i] * (lastPrice[i] ?? 0)));
+                        }
+                        var investable = value - costs;
+                        if (targetSum > 0) scale = Math.Clamp((investable - frozenValue) / (investable * targetSum), 0, 1); // cash never negative
+                        for (var i = 0; i < n; i++)
+                            if (!frozen[i]) units[i] = target[i] > 0 ? scale * investable * target[i] / lastPrice[i]!.Value : 0;
+                        cash = investable - Enumerable.Range(0, n).Sum(i => units[i] * (lastPrice[i] ?? 0));
+                        var newW = Weights(units, lastPrice, value);
 
-                    events.Add(new RebalanceEvent(order.Signal, date,
-                        Enumerable.Range(0, n).Where(i => target[i] > 0).ToDictionary(i => symbols[i], i => target[i]),
-                        order.Decision.EligibleSymbols, PerformanceMetrics.Turnover(currentW, newW), costs, value, order.Decision.Succeeded, order.Decision.Message));
+                        events.Add(new RebalanceEvent(order.Signal, date,
+                            Enumerable.Range(0, n).Where(i => target[i] > 0 || frozen[i])
+                                .ToDictionary(i => symbols[i], i => frozen[i] ? units[i] * lastPrice[i]!.Value / investable : scale * target[i]),
+                            order.Decision.EligibleSymbols, PerformanceMetrics.Turnover(currentW, newW), costs, value, order.Decision.Succeeded, order.Decision.Message));
+                    }
                 }
                 else
                 {
@@ -182,7 +226,9 @@ public static class PortfolioSimulator
                     if (w.Any(x => x < -1e-12 || !double.IsFinite(x)) || w.Sum() > 1 + 1e-6)
                         throw new InvalidOperationException("Decision weights must be finite, non-negative and sum to at most 1.");
                 }
-                pending = (date, decision);
+                if (pending is { } superseded)
+                    warnings?.Add($"The rebalance of {superseded.Signal:yyyy-MM-dd} was still waiting for closed exchanges and was replaced by the one of {date:yyyy-MM-dd}.");
+                pending = (date, decision, 0);
             }
 
             values[t] = Value(cash, units, lastPrice);

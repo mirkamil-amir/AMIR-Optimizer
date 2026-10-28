@@ -46,7 +46,8 @@ Documentation: [AGENTS.md](AGENTS.md) (start here when changing code) · [archit
 [implementation status](docs/implementation-status.md) · [decisions](docs/decisions.md) ·
 [limitations](docs/limitations.md) · [watchlist](docs/watchlist.md) · [financial news](docs/financial-news.md) ·
 [portfolio reality check](docs/portfolio-reality-check.md) · [roadmap](docs/roadmap.md) ·
-[launch readiness & regulatory questions](docs/launch-readiness.md) · [audit (first upgrade)](docs/audit.md) · [report (first upgrade)](docs/final-report.md)
+[launch readiness & regulatory questions](docs/launch-readiness.md) · [audit (first upgrade)](docs/audit.md) · [report (first upgrade)](docs/final-report.md) ·
+[formula reference & quant audit](docs/quant/README.md)
 
 ## Quick start (containers)
 

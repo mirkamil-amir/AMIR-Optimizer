@@ -154,9 +154,17 @@ and time-weighted returns that remove external cash flows.
 ## Backtesting
 
 * Signal at the close of each rebalance date *s* (last trading day of the month/quarter; and the first day), using
-  only adjusted closes dated ≤ *s* over the lookback window.
+  only adjusted closes dated ≤ *s* over the lookback window. A stock whose exchange is closed on *s* uses its latest
+  close before *s*; a stock without a price in the last 10 days (`PriceGrid.StaleAfterDays`) is not investable.
 * Orders fill at the **next trading day's** adjusted close, net of proportional costs; holdings earn returns from
   that close onward. A unit test perturbs all prices after a signal date and asserts earlier decisions are unchanged.
+* Markets have different holidays (the calendar is the union of all stocks' trading days). If an exchange of a stock to
+  be bought, sold or kept is closed on the execution day, the whole rebalance waits for the first day on which all of
+  them trade, at most 5 trading days (`PortfolioSimulator.MaxExecutionDelayDays`); after that, stocks that are still
+  closed keep their units and the others are traded towards their targets within the remaining value (cash never goes
+  negative). A stock that stopped trading (no price for more than 10 days) is not bought and a held position is sold at
+  its last price. Until 2026-10-28 a closed exchange on the execution day sold that market's stocks into cash until the
+  next rebalance (audit finding Q-01, [quant audit](quant/audit-2026-10-28.md)).
 * An asset becomes investable only when it has a full lookback window (no back-filling), so late listings enter
   later. If optimization fails at a rebalance, holdings are kept and the event is logged.
 * Fractional units, cash at 0%, dividends reinvested through adjusted prices.

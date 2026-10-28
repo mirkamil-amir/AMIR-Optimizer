@@ -10,6 +10,7 @@ access or live market hours. Real-provider checks are separate and opt-in.
 | Integration | `tests/PortfolioOptimizer.IntegrationTests` | the real API on real PostgreSQL: auth/approval/roles, owner isolation, stock discovery, universes, sign-in quote refresh, page/single refresh, currency rules, ML, comparisons, SQLite import, test-data purge, admin overview | `./scripts/test.sh` (all .NET suites) |
 | Frontend unit | `frontend/portfolio-dashboard/src/**/*.test.ts(x)` (Vitest + Testing Library) | API client (antiforgery, retries), selection (memory only), route guards, header identity ("Admin Investor"), quote states, interpretations, worked examples, strategy-guide structure, market resolution and map camera, components | `npm test` |
 | End-to-end | `frontend/portfolio-dashboard/e2e` (Playwright) | sign-in, registration + approval, roles, personalized header, automatic prices + single refresh, markets/indices, selection → optimization with interpretation, strategy guide, glossary, admin overview, sign-out | `./scripts/e2e.sh` |
+| Knowledge checks | `scripts/quant/maintain.py` | formula reference metadata, code/test/skill references, quantitative-file coverage, generated index, doc links, skills; change review | `python3 scripts/quant/maintain.py full-check` ([quant README](quant/README.md)) |
 | Live smoke (opt-in) | `LiveProviderSmokeTests` in the unit project | one stock per market from real Yahoo; Alpha Vantage US + Xetra (2 of 25 daily requests) | `PO_LIVE_SMOKE=1 ALPHAVANTAGE_API_KEY=… dotnet test tests/PortfolioOptimizer.UnitTests --filter LiveProviderSmokeTests` |
 
 Setup once per shell: `export PATH="$HOME/.dotnet:/opt/homebrew/opt/node@22/bin:$PATH" DOTNET_ROOT="$HOME/.dotnet"`.
@@ -49,7 +50,9 @@ hidden and purged.
 
 ## Writing tests
 
-* Financial math: closed-form or hand-computed expectations (unit tests). Never assert on live data.
+* Financial math: closed-form or hand-computed expectations, or an independent re-implementation from the published
+  definition (`IndependentFormulaTests`) – never the production function compared with itself. Never assert on live
+  data. Reference the formula ID (`docs/quant/formula-reference.md`) in the test's summary and list the test in the entry.
 * ML: anything that uses time must prove it cannot see the future (change data after *t*, assert nothing at *t* moves).
 * API behaviour: `IntegrationTests` with `ApiFactory`; use `CreateApprovedUserAsync` for a second user and assert
   that other users' ids return 404.

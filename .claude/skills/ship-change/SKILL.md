@@ -17,8 +17,13 @@ Toolchain once per shell: `export PATH="$HOME/.dotnet:/opt/homebrew/opt/node@22/
    unsafe methods are antiforgery-protected automatically; expensive work → `[EnableRateLimiting(RateLimitPolicies.Expensive)]`;
    audit security-relevant actions via `IAuditLog`.
 3. **Backend tests:** `./scripts/test.sh` – unit, ML and integration (real PostgreSQL) must all pass. Add tests:
-   financial math → `UnitTests` (closed-form / hand-computed expectations); ML logic → `MachineLearning.Tests`
-   (leakage: data after t must not change anything at t); API behaviour → `IntegrationTests` (`ApiFactory`).
+   financial math → `UnitTests` (closed-form / hand-computed expectations or an independent re-implementation, never
+   the production function against itself); ML logic → `MachineLearning.Tests` (leakage: data after t must not change
+   anything at t); API behaviour → `IntegrationTests` (`ApiFactory`).
+   **Quantitative code changed?** `python3 scripts/quant/maintain.py review-changes` lists the affected formula entries,
+   skills and tests: update each entry in `docs/quant/formula-reference.md` (Status, Code, Tests, Verified), run
+   `python3 scripts/quant/maintain.py index --write`, and load the subsystem skill (`/quant-formulas`,
+   `/optimization-backtesting`, `/ml-pipeline`, `/market-data-fx`, `/portfolio-accounting`).
 4. **ML changes:** feature formula changed → bump `FeatureCatalog.Version`. Keep the ML project free of
    mean-variance optimizer references (architecture test). Never report training metrics as performance.
 5. **API contract changed?** Update DTOs in `Application/Dtos`, mirror them in `frontend/.../src/lib/types.ts` and hooks in `lib/queries.ts`.
@@ -38,6 +43,9 @@ Toolchain once per shell: `export PATH="$HOME/.dotnet:/opt/homebrew/opt/node@22/
    tabs: a tab from before the rebuild requests old bundle files and fails with "Failed to fetch dynamically imported module".
 10. **Docs:** `README.md` (usage/config/API) and the matching `docs/*.md` (architecture, database, market-data,
     quantitative-strategies, machine-learning, security, testing, deployment, decisions, implementation-status,
-    limitations). Strategy or model change → also `frontend/src/lib/strategy-guide.ts` and `interpretation.ts`.
-    Durable rules/pitfalls → `AGENTS.md` (keep it short; `CLAUDE.md` imports it).
-11. Report what was verified (commands + pass counts) and what was not. Commit only if the user asks.
+    limitations, `docs/quant/*`). Strategy or model change → also `frontend/portfolio-dashboard/src/lib/strategy-guide.ts`
+    and `interpretation.ts`. Durable rules/pitfalls → `AGENTS.md` (keep it short; `CLAUDE.md` imports it); a skill whose
+    subsystem changed → its `SKILL.md` (`/maintain-knowledge`).
+11. **Knowledge checks:** `python3 scripts/quant/maintain.py validate && python3 scripts/quant/maintain.py check-skills`
+    (formula reference, index, doc links, skills) – CI runs the same (`.github/workflows/quant-maintenance.yml`).
+12. Report what was verified (commands + pass counts) and what was not. Commit only if the user asks.

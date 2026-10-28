@@ -48,6 +48,26 @@ public sealed class AllocationValidatorTests
         Assert.Contains(r.Violations, x => x.Contains("AZN.L is excluded"));
     }
 
+    /// <summary>
+    /// Holdings outside the universe give all-zero current weights: the optimizer then ignores the turnover limit (every
+    /// allocation is a purchase), and the validator must agree – it rejected every such run before 2026-10-28.
+    /// </summary>
+    [Fact]
+    public void TurnoverLimit_WithoutHoldingsInTheUniverse_IsNotApplied_LikeTheOptimizer()
+    {
+        var c = Constraints with { MaxTurnover = 0.2, MaxHoldings = null };
+        double[,] cov = { { 0.09, 0.02, 0.01, 0.01 }, { 0.02, 0.06, 0.01, 0.01 }, { 0.01, 0.01, 0.05, 0.005 }, { 0.01, 0.01, 0.005, 0.04 } };
+        double[] current = [0, 0, 0, 0];
+        var result = new MeanVarianceOptimizer().Optimize(new OptimizationInput(Symbols, [0.10, 0.08, 0.06, 0.07], cov,
+            OptimizationObjective.MinimumVariance, c, 0.02, current));
+        Assert.True(result.Succeeded, result.Message);
+        Assert.Contains(result.Diagnostics, d => d.Contains("Turnover limit not applied"));
+
+        var r = AllocationValidator.Validate(Symbols, result.Weights!, c, result.Statistics!.ExpectedReturn, result.Statistics.Volatility, current);
+        Assert.True(r.IsValid, string.Join(" ", r.Violations));
+        Assert.DoesNotContain("turnover", r.Checks);
+    }
+
     [Fact]
     public void NonFiniteEstimates_AreRejected()
     {

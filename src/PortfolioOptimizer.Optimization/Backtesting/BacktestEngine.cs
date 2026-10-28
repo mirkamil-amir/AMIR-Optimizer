@@ -75,7 +75,8 @@ public sealed record BacktestResult(
 /// Event-driven daily backtest with explicit timing:
 /// <list type="number">
 /// <item>Signal: at the close of a rebalance date s, weights are estimated using only adjusted closes dated ≤ s.</item>
-/// <item>Execution: orders are filled at the adjusted close of the next trading day e &gt; s, net of proportional costs.</item>
+/// <item>Execution: orders are filled at the adjusted close of the next trading day e &gt; s, net of proportional costs
+/// (later, by at most a few days, when an exchange of a traded asset is closed on that day – see <see cref="PortfolioSimulator"/>).</item>
 /// <item>Returns: the new holdings earn returns from e onwards.</item>
 /// </list>
 /// Assets enter the investable set only once they have a full lookback window; there is no back-filling of missing history.
@@ -190,7 +191,8 @@ public sealed class BacktestEngine(IPortfolioOptimizer optimizer, AnalyticsConve
             if (allowed is not null && !allowed.Contains(s)) continue;
             var dates = grid.SortedDates[s];
             var end = grid.CountUpTo(s, ctx.Date); // count of dates ≤ signal
-            if (end == 0 || dates[end - 1] != ctx.Date) continue; // must trade on the signal date
+            // The latest close on or before the signal date (its exchange may be closed that day); none recently → not trading.
+            if (end == 0 || ctx.Date.DayNumber - dates[end - 1].DayNumber > PriceGrid.StaleAfterDays) continue;
             if (end < lookback + 1) continue; // insufficient history: not yet investable
             var window = new List<PricePoint>(lookback + 1);
             for (var k = end - lookback - 1; k < end; k++) window.Add(new PricePoint(dates[k], grid.Prices[s][dates[k]]));

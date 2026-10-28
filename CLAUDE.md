@@ -5,7 +5,9 @@
 ## Claude-specific
 
 - Skills: `/run-app` (start + verify the stack), `/ship-change` (checklist after any change), `/ml-experiment`
-  (run ML Optimizations through the API, backtest/compare them within a portfolio, report honestly).
+  (run ML Optimizations through the API, backtest/compare them within a portfolio, report honestly); subsystem skills
+  `/quant-formulas`, `/optimization-backtesting`, `/market-data-fx`, `/ml-pipeline`, `/portfolio-accounting`,
+  `/platform-architecture`, `/maintain-knowledge` (see AGENTS.md › Skills).
 - UI names: "Math Optimization" (`/portfolios/:id/optimize`, an `OptimizationRun`) and "ML Optimization"
   (`/portfolios/:id/ml-optimize`, an `MlExperiment` linked to that portfolio) – two tabs of a portfolio with one shared
   layout (results in `ResultSection`s, never tabs; "What your result means" last). Keep both pages alike when changing

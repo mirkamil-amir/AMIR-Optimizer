@@ -1,0 +1,78 @@
+# Formula reference, skills and quantitative regression tests (docs/quant/README.md).
+# Tiered: the knowledge checks run on every change (seconds, Python only); the .NET quantitative suites run only when
+# quantitative code, tests or the formula reference changed, and weekly. No secrets, no network calls in the checks.
+name: quant-maintenance
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  knowledge:
+    runs-on: ubuntu-latest
+    outputs:
+      quant: ${{ steps.scope.outputs.quant }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Base revision
+        id: base
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "ref=$(git merge-base HEAD origin/${{ github.base_ref }})" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = "push" ] && [ -n "${{ github.event.before }}" ] && git cat-file -e "${{ github.event.before }}" 2>/dev/null; then
+            echo "ref=${{ github.event.before }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "ref=HEAD~1" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Validate formula reference, index and doc links
+        run: python3 scripts/quant/maintain.py validate
+      - name: Check skills
+        run: python3 scripts/quant/maintain.py check-skills
+      - name: Review changes
+        run: |
+          strict=""
+          if [ "${{ github.event_name }}" = "pull_request" ]; then strict="--strict"; fi
+          python3 scripts/quant/maintain.py review-changes --base "${{ steps.base.outputs.ref }}" --output review.md $strict
+          cat review.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: quant-change-review
+          path: review.md
+          if-no-files-found: ignore
+      - name: Decide whether quantitative tests are needed
+        id: scope
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "quant=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          changed=$(git diff --name-only "${{ steps.base.outputs.ref }}" HEAD)
+          if echo "$changed" | grep -qE '^(src/PortfolioOptimizer\.(Optimization|MachineLearning|Application|Domain)/|tests/PortfolioOptimizer\.(UnitTests|MachineLearning\.Tests)/|docs/quant/|scripts/quant/|global\.json|Directory\.Build\.props)'; then
+            echo "quant=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "quant=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Audit (weekly)
+        if: github.event_name == 'schedule'
+        run: python3 scripts/quant/maintain.py audit | tee -a "$GITHUB_STEP_SUMMARY"
+
+  quant-tests:
+    needs: knowledge
+    if: needs.knowledge.outputs.quant == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Quantitative regression suites (.NET unit + ML)
+        run: python3 scripts/quant/maintain.py test-quant --no-frontend

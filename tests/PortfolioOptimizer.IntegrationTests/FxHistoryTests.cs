@@ -96,7 +96,8 @@ public sealed class FxHistoryTests : IAsyncLifetime
         var second = await (await _client.GetAsync("/api/v1/fx/history?from=EUR&to=ZAR&days=3000")).ReadAsync<FxHistoryDto>();
         Assert.InRange(_provider.Calls - 2, 1, 4);                       // only the missing older part, in chunks
         Assert.True(second.Points.Count > 2100, $"{second.Points.Count} points");
-        Assert.True(second.Points[0].Date <= DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-2999));
+        // The first published rate can be up to two days after the window start when that falls on a weekend (no ECB rates).
+        Assert.True(second.Points[0].Date <= DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-2997), $"first point {second.Points[0].Date}");
         AssertContinuous(second.Points);
     }
 
