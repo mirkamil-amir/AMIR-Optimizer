@@ -70,3 +70,5 @@ Stop with `podman compose down` (keeps data; `-v` deletes database **and** model
 - Node tooling hangs with idle CPU → iCloud offloaded `node_modules`: `rm -rf node_modules && npm ci`.
 - Sync job failed (429) → Yahoo throttling; retry later. Offline: `MarketData__DefaultProvider=Mock` on a new database.
 - "Model artifact unavailable" → artifacts directory differs between local (`data/model-artifacts`) and container (`model-artifacts` volume) runs.
+
+Related: `/ship-change` (after a change), `/platform-architecture` (what runs where, health checks, jobs).

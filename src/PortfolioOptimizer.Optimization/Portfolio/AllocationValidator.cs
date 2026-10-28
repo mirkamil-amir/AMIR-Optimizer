@@ -82,7 +82,8 @@ public static class AllocationValidator
                     v.Add($"{symbols[i]}: position {weights[i]:P4} below the minimum position {minPosition:P2}.");
         }
 
-        if (c.MaxTurnover is { } maxTurnover && currentWeights is { Count: > 0 } current && current.Count == weights.Count)
+        // Same rule as the optimizer: the limit applies only when some of the assets are held (otherwise every allocation is a purchase).
+        if (c.MaxTurnover is { } maxTurnover && currentWeights is { Count: > 0 } current && current.Count == weights.Count && current.Any(w => w > 0))
         {
             checks.Add("turnover");
             var turnover = 0.5 * weights.Select((w, i) => Math.Abs(w - current[i])).Sum();

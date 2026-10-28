@@ -73,9 +73,11 @@
   the caller's wait does not – the download continues in the background, D-35).
 * A web request waits at most 25 s for a long rate history: the first interactive analysis needing years of new rates may
   exclude stocks with a note; a later run (or any background job, which waits up to 5 min) has them.
-* Backtests: when a stock has no price on the execution day (a holiday on its exchange only), its target weight stays in
-  cash until the next rebalance (shown as "Invested" below 100 % in the rebalance log); a signal date on which few markets
-  trade (e.g. Good Friday) can make the weight caps infeasible, and the previous holdings are then kept ("held").
+* Backtests: when an exchange is closed on the execution day (a holiday on that market only), the rebalance waits up to
+  5 trading days for it; after a longer closure its stocks keep their units until the next rebalance. Execution prices
+  are then up to a week later than the signal (still no look-ahead: the decision is fixed at the signal close). There
+  is no exchange holiday calendar: a missing price for up to 10 days is read as a closure, a longer gap as "no longer
+  trading" (the position is sold at its last price, which overstates what a delisting would return).
 * The missing-data dialog covers ML experiments, backtests (custom and of an optimization), optimizations and strategy
   comparisons.
 * Comparisons take exactly two optimizations, both of one portfolio. ML experiments created before 2026-10-24 have no
@@ -104,6 +106,9 @@
 * Explanation quality was not evaluated with users.
 
 ## Quant & ML
+- Open quantitative risks are tracked in the [quant audit's risk register](quant/audit-2026-10-28.md#remaining-risk-register),
+  notably: annualization assumes 252 observations a year, which a union calendar with Sunday sessions (Tel Aviv before
+  2026) exceeds; the Overview "Total return" (on net contributions) is shown next to the benchmark's price return.
 - Large universes optimize on the stocks that share a common window: recent listings and stocks whose prices stopped
   are left out (listed in the run's diagnostics), not modelled with shorter histories. At most 500 stocks per Math
   Optimization.
@@ -126,8 +131,8 @@
 - Model artifacts are stored on a local volume, not object storage.
 - No e-mail confirmation, password reset by e-mail or multi-factor authentication.
 - The backup/restore procedure in [deployment](deployment.md) is documented but was not rehearsed end to end.
-- Playwright tests run against an already running stack and are not wired into a CI pipeline (none exists in this
-  repository).
+- Playwright and integration (PostgreSQL) tests are not wired into CI; the `quant-maintenance` workflow (added
+  2026-10-28, not yet run on GitHub) runs the knowledge checks and the .NET unit + ML suites only.
 - macOS: when the repository lives in an iCloud-synced folder (`~/Desktop`, `~/Documents`), iCloud can offload
   `node_modules` files, making Node tooling extremely slow or time out. Keep the repository outside synced folders.
 
@@ -137,4 +142,4 @@
   (block bootstrap).
 - Dividends and splits in the paper portfolio; FX conversion; holiday calendars.
 - Shared job queue and object storage for horizontal scaling; OpenID Connect and MFA.
-- CI pipeline running unit, integration (Testcontainers) and Playwright tests on every change.
+- CI for integration (Testcontainers) and Playwright tests (unit + ML run in `quant-maintenance`).

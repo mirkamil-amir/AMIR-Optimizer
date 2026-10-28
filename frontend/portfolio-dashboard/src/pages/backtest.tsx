@@ -263,7 +263,7 @@ function BacktestResults({ bt }: { bt: Backtest }) {
 
           {r.rebalances.length > 1 && (
             <Card>
-              <CardHeader><CardTitle className="text-sm">Target weights at each rebalance</CardTitle><CardDescription className="text-xs">Set at the signal date’s close, executed at the next trading day’s close.</CardDescription></CardHeader>
+              <CardHeader><CardTitle className="text-sm">Target weights at each rebalance</CardTitle><CardDescription className="text-xs">Set at the signal date’s close, executed at the next trading day’s close (up to five trading days later while an exchange is closed).</CardDescription></CardHeader>
               <CardContent><WeightsOverTimeChart points={r.rebalances.filter((e) => e.optimizationSucceeded).map((e) => ({ date: e.executionDate, weights: e.weights }))} /></CardContent>
             </Card>
           )}
