@@ -20,7 +20,7 @@ jobs:
     outputs:
       quant: ${{ steps.scope.outputs.quant }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Base revision
@@ -43,7 +43,7 @@ jobs:
           if [ "${{ github.event_name }}" = "pull_request" ]; then strict="--strict"; fi
           python3 scripts/quant/maintain.py review-changes --base "${{ steps.base.outputs.ref }}" --output review.md $strict
           cat review.md >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: quant-change-review
@@ -70,8 +70,8 @@ jobs:
     if: needs.knowledge.outputs.quant == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
       - name: Quantitative regression suites (.NET unit + ML)

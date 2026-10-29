@@ -27,8 +27,8 @@ jobs:
       ALPHAVANTAGE_API_KEY: ${{ secrets.ALPHAVANTAGE_API_KEY }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
       - name: Select tests
@@ -48,7 +48,7 @@ jobs:
         run: >-
           dotnet test tests/PortfolioOptimizer.UnitTests --filter "${{ steps.filter.outputs.value }}"
           --logger "console;verbosity=normal" --logger "trx;LogFileName=live-smoke.trx" --results-directory TestResults
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: live-smoke-results
