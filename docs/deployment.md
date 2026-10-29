@@ -44,6 +44,10 @@ git pull
 podman compose up --build -d     # migrate runs before the new API starts; the API refuses an outdated schema
 ```
 
+Prebuilt images: pushing a tag `v*` publishes `ghcr.io/<owner>/matrixview-api` and `ghcr.io/<owner>/matrixview-web`
+(`.github/workflows/container-images.yml`); the `migrate` service uses the API image with the `migrate` command.
+`docker-compose.yml` still builds from source.
+
 Back up first (below). Migrations are forward-only; rolling back code to a version with fewer migrations needs the
 backup taken before the upgrade. Example: `MultiPortfolio` (2026-10-17) only adds columns and a table and was rehearsed on
 a copy of the development database ([portfolios.md](portfolios.md#migration-20261017113808_multiportfolio)); rolling it back
