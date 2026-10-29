@@ -1,13 +1,16 @@
-import { useCallback, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
   Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ReferenceLine,
   ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis,
 } from 'recharts'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { PannableArea } from '@/components/pannable-area'
 import { InfoTip } from '@/components/common'
 import { axisDate, monthNames, pct, shortDate, date as fmtDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { MATRIX, cellAt, cellSize, visibleRange } from '@/lib/matrix-window'
 
 // Categorical slots in fixed order (validated palette); never cycled. Past 8 series → fold into "Other".
 export const SERIES_VARS = ['--series-1', '--series-2', '--series-3', '--series-4', '--series-5', '--series-6', '--series-7', '--series-8']
@@ -354,55 +357,112 @@ export function correlationColor(v: number) {
   return `color-mix(in oklab, ${v >= 0 ? 'var(--diverging-pos)' : 'var(--diverging-neg)'} ${a}%, var(--diverging-mid))`
 }
 
+/**
+ * Correlation matrix as a heatmap. It sits in a `PannableArea` (both scroll bars, pull with the mouse) with the symbols
+ * of rows and columns pinned while scrolling, and draws only the cells in view (`lib/matrix-window.ts`), so a matrix of
+ * hundreds of stocks stays fast; "Full screen" opens the same matrix over the whole window. Every value is also in the
+ * card's data-table view.
+ */
 export function CorrelationHeatmap({ symbols, matrix }: { symbols: string[]; matrix: number[][] }) {
   const [hover, setHover] = useState<{ i: number; j: number } | null>(null)
+  const [fullScreen, setFullScreen] = useState(false)
   if (symbols.length === 0) return null
+  const legend = (
+    <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+      <span>−1</span>
+      <span className="h-2 w-40 rounded-full" style={{ background: 'linear-gradient(90deg, var(--diverging-neg), var(--diverging-mid), var(--diverging-pos))' }} aria-hidden />
+      <span>+1</span>
+      <span className="ml-auto tabular" aria-live="polite">{hover ? `${symbols[hover.i]} · ${symbols[hover.j]}: ${matrix[hover.i][hover.j].toFixed(3)}` : `${symbols.length} × ${symbols.length} · hover a cell for details, drag to move`}</span>
+    </div>
+  )
   return (
     <div className="max-w-3xl">
-      <div className="overflow-x-auto">
-        <div
-          className="grid gap-[2px] text-[10px]"
-          style={{ gridTemplateColumns: `3.5rem repeat(${symbols.length}, minmax(2.25rem, 1fr))` }}
-          role="table"
-          aria-label="Correlation matrix of daily returns"
-        >
-          <div role="columnheader" />
-          {symbols.map((s) => (
-            <div key={s} role="columnheader" className="truncate pb-1 text-center font-medium text-muted-foreground">{s}</div>
-          ))}
-          {symbols.map((row, i) => (
-            <div key={row} role="row" className="contents">
-              <div role="rowheader" className="flex items-center pr-1 font-medium text-muted-foreground">{row}</div>
-              {symbols.map((col, j) => {
-                const v = matrix[i][j]
-                const strong = Math.abs(v) > 0.6
-                return (
-                  <div
-                    key={col}
-                    role="cell"
-                    tabIndex={0}
-                    aria-label={`${row} vs ${col}: ${v.toFixed(2)}`}
-                    onMouseEnter={() => setHover({ i, j })}
-                    onFocus={() => setHover({ i, j })}
-                    onMouseLeave={() => setHover(null)}
-                    className={cn('flex aspect-square items-center justify-center rounded-[3px] tabular outline-none focus-visible:ring-2 focus-visible:ring-ring', hover && (hover.i === i || hover.j === j) && 'ring-1 ring-foreground/30')}
-                    style={{ background: correlationColor(v), color: strong ? '#fff' : 'var(--foreground)' }}
-                  >
-                    {v.toFixed(2)}
-                  </div>
-                )
-              })}
+      <div className="mb-2 flex justify-end">
+        <Button type="button" size="xs" variant="outline" onClick={() => setFullScreen(true)}>Full screen</Button>
+      </div>
+      {!fullScreen && <MatrixView label="Correlation matrix, scrollable" className="max-h-[32rem]" symbols={symbols} matrix={matrix} hover={hover} onHover={setHover} />}
+      {legend}
+      <Dialog open={fullScreen} onOpenChange={(open) => { setFullScreen(open); setHover(null) }}>
+        <DialogContent className="top-2 left-2 flex h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-none translate-x-0 translate-y-0 flex-col sm:max-w-none">
+          <DialogHeader>
+            <DialogTitle>Correlation of daily returns</DialogTitle>
+            <DialogDescription>{symbols.length} stocks. Scroll with the bars or the wheel, or pull the matrix with the mouse. Esc closes.</DialogDescription>
+          </DialogHeader>
+          <MatrixView label="Correlation matrix, full screen" className="min-h-0 flex-1" symbols={symbols} matrix={matrix} hover={hover} onHover={setHover} />
+          {legend}
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
+/** The scroll box with pinned labels; renders the visible window of cells only. */
+function MatrixView({ label, className, symbols, matrix, hover, onHover }: {
+  label: string; className?: string; symbols: string[]; matrix: number[][]
+  hover: { i: number; j: number } | null; onHover: (h: { i: number; j: number } | null) => void
+}) {
+  const [view, setView] = useState({ left: 0, top: 0, width: 0, height: 0 })
+  const [el, setEl] = useState<HTMLDivElement | null>(null)
+  useEffect(() => {
+    if (!el) return
+    const measure = () => setView({ left: el.scrollLeft, top: el.scrollTop, width: el.clientWidth, height: el.clientHeight })
+    measure()
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure)
+    observer?.observe(el)
+    return () => observer?.disconnect()
+  }, [el])
+
+  const n = symbols.length
+  const cell = cellSize(n, view.width)
+  const step = cell + MATRIX.gap
+  const rows = visibleRange(n, view.top, view.height, MATRIX.labelHeight, step)
+  const cols = visibleRange(n, view.left, view.width, MATRIX.labelWidth, step)
+  const area = n * step
+  const range = (r: { from: number; to: number }) => Array.from({ length: r.to - r.from + 1 }, (_, k) => r.from + k)
+  const visibleRows = range(rows)
+  const visibleCols = range(cols)
+  const fontSize = cell >= 44 ? 11 : 10
+
+  return (
+    <PannableArea label={label} className={className} viewportRef={setEl}
+      onScroll={(e) => { const t = e.currentTarget; setView({ left: t.scrollLeft, top: t.scrollTop, width: t.clientWidth, height: t.clientHeight }) }}>
+      {/* Pictures of the numbers: screen readers get them from the data-table view of the card. The pinned labels use the
+          opaque popover surface (cards are translucent over the world map), so scrolled cells never show through. */}
+      <div className="relative tabular" style={{ width: MATRIX.labelWidth + area, fontSize }} aria-hidden>
+        <div className="sticky top-0 z-20 flex bg-popover" style={{ height: MATRIX.labelHeight }}>
+          <div className="sticky left-0 z-30 shrink-0 bg-popover" style={{ width: MATRIX.labelWidth }} />
+          <div className="relative shrink-0" style={{ width: area }}>
+            {visibleCols.map((j) => (
+              <div key={j} title={symbols[j]} className="absolute top-0 truncate text-center font-medium text-muted-foreground" style={{ left: j * step, width: cell }}>{symbols[j]}</div>
+            ))}
+          </div>
+        </div>
+        <div className="flex" style={{ height: area }}>
+          <div className="sticky left-0 z-10 shrink-0 bg-popover" style={{ width: MATRIX.labelWidth }}>
+            <div className="relative h-full">
+              {visibleRows.map((i) => (
+                <div key={i} title={symbols[i]} className="absolute left-0 flex items-center truncate pr-1 pl-1 font-medium text-muted-foreground"
+                  style={{ top: i * step, height: cell, width: MATRIX.labelWidth }}>{symbols[i]}</div>
+              ))}
             </div>
-          ))}
+          </div>
+          <div className="relative shrink-0" style={{ width: area, height: area }}
+            onMouseMove={(e) => { const r = e.currentTarget.getBoundingClientRect(); onHover(cellAt(e.clientX - r.left, e.clientY - r.top, n, cell)) }}
+            onMouseLeave={() => onHover(null)}>
+            {visibleRows.flatMap((i) => visibleCols.map((j) => {
+              const v = matrix[i][j]
+              return (
+                <div key={`${i}-${j}`} data-cell={`${symbols[i]}|${symbols[j]}`}
+                  className={cn('absolute flex items-center justify-center rounded-[3px]', hover && (hover.i === i || hover.j === j) && 'ring-1 ring-foreground/30')}
+                  style={{ left: j * step, top: i * step, width: cell, height: cell, background: correlationColor(v), color: Math.abs(v) > 0.6 ? '#fff' : 'var(--foreground)' }}>
+                  {v.toFixed(2)}
+                </div>
+              )
+            }))}
+          </div>
         </div>
       </div>
-      <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-        <span>−1</span>
-        <span className="h-2 w-40 rounded-full" style={{ background: 'linear-gradient(90deg, var(--diverging-neg), var(--diverging-mid), var(--diverging-pos))' }} aria-hidden />
-        <span>+1</span>
-        <span className="ml-auto tabular">{hover ? `${symbols[hover.i]} · ${symbols[hover.j]}: ${matrix[hover.i][hover.j].toFixed(3)}` : 'Hover a cell for details'}</span>
-      </div>
-    </div>
+    </PannableArea>
   )
 }
 

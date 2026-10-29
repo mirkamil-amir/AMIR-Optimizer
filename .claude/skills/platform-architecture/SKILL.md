@@ -1,6 +1,6 @@
 ---
 name: platform-architecture
-description: MatrixView's backend and frontend plumbing – layer boundaries, API contracts (controllers, DTOs, Problem Details, frontend types and query hooks), authentication/authorization/antiforgery/rate limits, PostgreSQL persistence and EF migrations, the in-process background job worker, health checks and logging, deployment configuration – and the absence of a cache layer. Use when adding or changing an endpoint, entity, migration, job, auth rule or frontend data hook, or when diagnosing request failures, job failures or slow pages.
+description: MatrixView's backend and frontend plumbing – layer boundaries, API contracts (controllers, DTOs, Problem Details, frontend types and query hooks), authentication/authorization/antiforgery/rate limits, PostgreSQL persistence and EF migrations, the in-process background job worker, health checks and logging, deployment configuration, the absence of a cache layer – and the frontend's standard for long lists and large matrices (SearchableTable, PannableArea, windowed rendering). Use when adding or changing an endpoint, entity, migration, job, auth rule, frontend data hook or any list/table/matrix that can grow, or when diagnosing request failures, job failures or slow pages.
 ---
 
 # Platform architecture
@@ -46,11 +46,34 @@ sequential; on start, `Running` jobs are marked failed and `Queued` jobs re-enqu
 metrics or tracing exporter. Configuration via environment (`.env`, never printed or committed), e.g.
 `ConnectionStrings__DefaultConnection`, `ModelArtifacts__RootPath`; see `docs/deployment.md`.
 
+## Frontend lists and large grids (owner's requirement, 2026-10-29)
+Any list that can grow with the user's data (stocks of a universe, an allocation, predictions, eligibility, catalogue,
+history) is never a plain `<ul>` or an unpaged table. Universes reach hundreds of stocks (largest stored Math run: 228).
+* Use `SearchableTable` from `frontend/portfolio-dashboard/src/components/data-table.tsx`: search box with the row count
+  (or a `breakdown` that counts kinds apart, see `/market-data-fx` and `lib/instrument-counts.ts`), sortable
+  `DataTable`, paging with `RangePager` (rows per page 25/50/100/200, first/previous/next/last) and `maxRows`, so the
+  table scrolls under a fixed header. In-page lists: `pageSize={25}`, `maxRows` 8–12, `dense`; full-page lists keep the
+  defaults (50/15). Give it a stable `caption` – e2e specs find tables by it ("Recommended allocation", "Stocks in the
+  universe"). Its search box never submits a surrounding form (Enter is swallowed) – the optimization forms rely on it.
+* Inside a grid or flex column wrap it in `min-w-0` (a `<fieldset>` is as wide as its content by default: the universe
+  table once widened the phone page by 9 px). Check 390 px for horizontal scroll.
+* Data for many named stocks: `useStocksBySymbols` (one request per 200 symbols, the API's page limit). A single
+  `useStocks({ symbols, pageSize: 200 })` silently drops everything after 200.
+* Two-dimensional content larger than the screen (correlation matrix): `PannableArea` (`components/pannable-area.tsx`
+  – both scroll bars, mouse drag pans, touch keeps native scrolling, focusable region), labels pinned with `sticky` on an
+  **opaque** surface (`bg-popover`; cards are translucent over the world map), a "Full screen" button opening the same
+  view in a viewport-sized `Dialog`, and **windowed rendering** – only the visible cells plus overscan
+  (`lib/matrix-window.ts`). Rendering all 52,000 cells of a 228-stock matrix took 5.9 s to open; the window takes 0.2 s.
+  Keep the card's data-table view as the accessible source of every value.
+* Tests: `data-table.test.tsx` (SearchableTable), `pannable-area.test.tsx`, `correlation-heatmap.test.tsx`,
+  `lib/matrix-window.test.ts`.
+
 ## Making a change safely
 1. New endpoint: controller → service → DTO → `types.ts` + `queries.ts` → integration test with authorization
    (anonymous 401, other user 404) in `tests/PortfolioOptimizer.IntegrationTests` (`ApiFactory`).
 2. New entity/column: migration + `dotnet build`; owned entity gets `OwnerId` and a cross-user test.
-3. Frontend: guards are cosmetic; pages under `/portfolios/:id/…` take the portfolio from the URL.
+3. Frontend: guards are cosmetic; pages under `/portfolios/:id/…` take the portfolio from the URL; long lists and big
+   matrices follow "Frontend lists and large grids" above.
 4. Run `/ship-change`.
 
 ## Tests and diagnosis

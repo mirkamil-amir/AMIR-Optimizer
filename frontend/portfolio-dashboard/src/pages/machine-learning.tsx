@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch'
 import { AllocationDonut, ChartCard, TimeSeriesChart, seriesColor, timeSeriesTable } from '@/components/charts'
 import { CalibrationChart, SignedBarChart } from '@/components/analysis-charts'
-import { DataTable, Pager, type Column } from '@/components/data-table'
+import { Pager, SearchableTable, type Column } from '@/components/data-table'
 import { Collapsible, DataBadge, EmptyState, ErrorState, InfoTip, LoadingBlock, MetricCard, PageHeader, ResultSection, SectionTitle, Warnings } from '@/components/common'
 import { featureMeanings } from '@/lib/ml-features'
 import { UniverseField } from '@/components/universe-field'
@@ -687,7 +687,11 @@ function AllocationSection({ e }: { e: MlExperiment }) {
 
   return (
     <>
-      <DataTable rows={set.predictions} columns={columns} rowKey={(p) => p.symbol} dense caption="Stock predictions and ranking" initialSort={{ key: 'rank', dir: 'asc' }} />
+      {/* Searchable and paged like every long list: an experiment can rank hundreds of stocks. */}
+      <SearchableTable label="stock predictions" rows={set.predictions} columns={columns} rowKey={(p) => p.symbol} dense pageSize={25} maxRows={12}
+        initialSort={{ key: 'rank', dir: 'asc' }} placeholder="Search symbol, name or sector"
+        matches={(p, q) => p.symbol.toLowerCase().includes(q) || (p.name ?? '').toLowerCase().includes(q) || (p.sector ?? '').toLowerCase().includes(q)}
+        breakdown={`${set.predictions.length.toLocaleString()} stocks ranked · ${set.predictions.filter((p) => p.selected).length.toLocaleString()} selected`} />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <ChartCard title="ML portfolio" hint="Built from the ranking with the experiment's construction rules – not by the mean-variance optimizer."
@@ -840,24 +844,26 @@ function SetupSection({ e }: { e: MlExperiment }) {
 
 function EligibilityTable({ rows }: { rows: AssetEligibility[] }) {
   const dash = (v: number | null) => (v === null ? '—' : num(v, 0))
+  const columns: Column<AssetEligibility>[] = [
+    { key: 'symbol', header: 'Stock', sortValue: (a) => a.symbol, cell: (a) => <span className="font-medium">{a.symbol}</span> },
+    { key: 'stored', header: 'Stored', align: 'right', sortValue: (a) => a.storedPrices, cell: (a) => num(a.storedPrices, 0) },
+    { key: 'span', header: 'In span', align: 'right', sortValue: (a) => a.pricesInBenchmarkSpan, cell: (a) => num(a.pricesInBenchmarkSpan, 0) },
+    { key: 'fx', header: 'No FX rate', align: 'right', sortValue: (a) => a.pricesWithoutFx, cell: (a) => num(a.pricesWithoutFx, 0) },
+    { key: 'usable', header: 'Usable', align: 'right', sortValue: (a) => a.usablePrices, cell: (a) => num(a.usablePrices, 0) },
+    { key: 'samples', header: 'Samples', align: 'right', sortValue: (a) => a.samples, cell: (a) => dash(a.samples) },
+    { key: 'labeled', header: 'Labeled', align: 'right', sortValue: (a) => a.labeledSamples, cell: (a) => dash(a.labeledSamples) },
+    { key: 'rank', header: 'Rank', align: 'right', sortValue: (a) => a.rank, cell: (a) => dash(a.rank) },
+    { key: 'w', header: 'Weight', align: 'right', sortValue: (a) => a.targetWeight, cell: (a) => (a.targetWeight > 0 ? `${num(a.targetWeight * 100, 1)} %` : '—') },
+    { key: 'stage', header: 'Stage', sortValue: (a) => a.stage, cell: (a) => <div className="text-xs"><div>{a.stage}</div>{a.reason && <div className="text-muted-foreground">{a.reason}</div>}</div> },
+  ]
+  const stages = [...new Set(rows.map((a) => a.stage))]
   return (
-    <Card><CardContent className="py-4">
+    <Card><CardContent className="space-y-3 py-4">
       <SectionTitle hint="Each stock's path: stored prices in the period → prices within the benchmark's stored span (the experiment's calendar) → prices without an exchange rate → usable prices → samples (decision dates with enough features; labeled = horizon elapsed) → latest prediction and weight. The stage is the last step reached.">Stock eligibility</SectionTitle>
-      <div className="overflow-x-auto">
-        <table className="w-full text-xs tabular">
-          <thead><tr className="text-left text-muted-foreground">
-            <th className="py-1">Stock</th><th>Stored</th><th>In span</th><th>No FX rate</th><th>Usable</th><th>Samples</th><th>Labeled</th><th>Rank</th><th>Weight</th><th>Stage</th>
-          </tr></thead>
-          <tbody>{rows.map((a) => (
-            <tr key={a.symbol} className="border-t align-top">
-              <td className="py-1 font-medium">{a.symbol}</td><td>{num(a.storedPrices, 0)}</td><td>{num(a.pricesInBenchmarkSpan, 0)}</td>
-              <td>{num(a.pricesWithoutFx, 0)}</td><td>{num(a.usablePrices, 0)}</td><td>{dash(a.samples)}</td><td>{dash(a.labeledSamples)}</td>
-              <td>{dash(a.rank)}</td><td>{a.targetWeight > 0 ? `${num(a.targetWeight * 100, 1)} %` : '—'}</td>
-              <td><div>{a.stage}</div>{a.reason && <div className="text-muted-foreground">{a.reason}</div>}</td>
-            </tr>
-          ))}</tbody>
-        </table>
-      </div>
+      <SearchableTable label="stocks" rows={rows} columns={columns} rowKey={(a) => a.symbol} dense pageSize={25} maxRows={12}
+        initialSort={{ key: 'symbol', dir: 'asc' }} placeholder="Search symbol, stage or reason"
+        matches={(a, q) => a.symbol.toLowerCase().includes(q) || a.stage.toLowerCase().includes(q) || (a.reason ?? '').toLowerCase().includes(q)}
+        breakdown={`${rows.length.toLocaleString()} stocks · ${stages.map((st) => `${rows.filter((a) => a.stage === st).length.toLocaleString()} ${st}`).join(' · ')}`} />
     </CardContent></Card>
   )
 }

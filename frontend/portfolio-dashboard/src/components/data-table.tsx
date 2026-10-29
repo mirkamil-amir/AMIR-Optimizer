@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { num } from '@/lib/format'
@@ -121,6 +122,46 @@ export function DataTable<T>({
         </div>
       )}
     </div>
+  )
+}
+
+/**
+ * The standard list of the app for anything that can get long (stocks of a universe, an allocation, predictions,
+ * Market Data): a search box with the row count, then the sortable `DataTable` in pages (rows per page,
+ * first/previous/next/last) inside a box that scrolls under a fixed header. A new search starts at page 1.
+ * `breakdown` replaces the plain count when the rows mix kinds that must be counted apart (see `lib/instrument-counts.ts`).
+ */
+export function SearchableTable<T>({
+  label, caption = label, hint, rows, columns, rowKey, initialSort, matches, placeholder, breakdown, empty, pageSize = 50, maxRows = 15, dense, onRowClick,
+}: {
+  label: string
+  /** Accessible name of the table (defaults to `label`). */
+  caption?: string; hint?: ReactNode; rows: T[]; columns: Column<T>[]; rowKey: (row: T) => string; initialSort?: { key: string; dir: 'asc' | 'desc' }
+  matches: (row: T, query: string) => boolean; placeholder: string; empty?: string
+  /** Replaces the plain row count when the list mixes types or tracked and not tracked instruments. */
+  breakdown?: string
+  pageSize?: number; maxRows?: number; dense?: boolean; onRowClick?: (row: T) => void
+}) {
+  const [search, setSearch] = useState('')
+  const q = search.trim().toLowerCase()
+  const filtered = useMemo(() => (q ? rows.filter((r) => matches(r, q)) : rows), [rows, q, matches])
+  return (
+    <section aria-label={label} className="min-w-0 space-y-3">
+      {hint && <p className="text-sm text-muted-foreground">{hint}</p>}
+      <div className="flex flex-wrap items-center gap-3">
+        <Input placeholder={placeholder} aria-label={`Search ${label}`} className="bg-card sm:w-80" value={search} onChange={(e) => setSearch(e.target.value)}
+          // Inside a form (the optimization settings) Enter must not submit it: the search filters as you type.
+          onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault() }} />
+        <span className="text-xs text-muted-foreground tabular">
+          {q ? `${filtered.length.toLocaleString()} of ${rows.length.toLocaleString()} ${label}` : breakdown ?? `${rows.length.toLocaleString()} ${label}`}
+        </span>
+      </div>
+      {rows.length === 0 && empty ? <p className="rounded-lg border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">{empty}</p> : (
+        <DataTable<T> caption={caption} rows={filtered} rowKey={rowKey} initialSort={initialSort} columns={columns} dense={dense} onRowClick={onRowClick}
+          pageSize={pageSize} pageResetKey={q} maxRows={maxRows}
+          empty={<p className="rounded-lg border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">No {label} match “{search}”.</p>} />
+      )}
+    </section>
   )
 }
 
