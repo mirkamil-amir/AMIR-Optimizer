@@ -2,6 +2,17 @@
 
 Short records of decisions that are not obvious from the code. Newest first. Format: context → decision → consequences.
 
+## D-48 Long lists are searchable and paged; big matrices pan, open in full screen and render a window (2026-10-29)
+**Context:** on Solver and Pattern the equity universe, the allocation and the predictions were plain lists; universes
+reach 228 stocks, the universe list loaded at most 200 names, and the 228 × 228 correlation matrix grew the page and took
+5.9 s to open as one block of ~52,000 cells.
+**Decision:** every list that grows with the data uses the shared `SearchableTable` (search, count/breakdown, sort,
+`RangePager`, fixed header); the correlation matrix sits in a `PannableArea` (scroll bars, mouse drag) with pinned labels,
+renders only the cells in view (`lib/matrix-window.ts`) and has a Full screen view. Names for many stocks come in
+200-symbol requests (`useStocksBySymbols`).
+**Consequences:** the same list everywhere (Atlas, Solver, Pattern); the matrix cells are drawn for sighted users only –
+its values stay available in the card's data-table view; the rule lives in the `platform-architecture` skill.
+
 ## D-47 Branded navigation labels with plain-name tips (2026-10-27)
 **Context:** the owner wanted the sidebar and the portfolio tabs to sound like MatrixView rather than generic labels.
 **Decision:** one shared set of names (`SECTION_NAMES` in `lib/navigation.ts`): sidebar Lens (portfolios) · Forge (new
@@ -119,7 +130,7 @@ and FX rates are never touched. Refused (409) while one of its optimizations, ba
 portfolio Overview follows the same idea: its key figures form one story in three titled rows (`MetricGroup`: Value →
 Performance → [portfolio vs benchmark and allocation] → Risk, basis in each row's tip, covered dates beside the title), charts follow, and every data note of the page
 is collected at the end (Holdings likewise). Math and ML Optimization: the form starts with the equity universe as a list
-(name, remove, "Browse stocks" → Choose stocks page), no Configuration header; the results start with **Investable value**
+(searchable and paged since D-48; name, remove, "Browse stocks" → Choose stocks page), no Configuration header; the results start with **Investable value**
 (the portfolio's total value today) and Holdings · cash before expected return. **Optimization history** (formerly Run
 history) sits above the form on both pages; choosing a run scrolls its results into view. Math Optimization adds views of
 the stored run (`lib/run-charts.ts`, no new estimates): weight vs equal weight, weight by sector, expected return and

@@ -457,6 +457,28 @@ export const useStocks = (q: StockQuery, enabled = true) => {
   })
 }
 
+/**
+ * The list entries of any number of named stocks: one request per 200 symbols (the API's page limit), so a universe of
+ * 228 stocks gets every name and history count instead of only the first 200.
+ */
+export function useStocksBySymbols(symbols: string[]) {
+  const chunks: string[][] = []
+  for (let i = 0; i < symbols.length; i += 200) chunks.push(symbols.slice(i, i + 200))
+  return useQueries({
+    queries: chunks.map((chunk) => {
+      const params = stockParams({ symbols: chunk, pageSize: 200 })
+      return {
+        queryKey: keys.stocks(params),
+        queryFn: ({ signal }: { signal: AbortSignal }) => api.get<PagedResult<StockListItem>>(`${V1}/stocks?${params}`, signal),
+      }
+    }),
+    combine: (results) => ({
+      items: results.flatMap((r) => r.data?.items ?? []),
+      isLoading: results.some((r) => r.isLoading),
+    }),
+  })
+}
+
 export const useStock = (symbol?: string) =>
   useQuery({
     queryKey: keys.stock(symbol ?? ''),

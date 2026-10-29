@@ -209,8 +209,8 @@ test('Math Optimization: choose its stocks on the stock list and come back', asy
   await newStudent(page, 'E2E Universe Chooser')
   const id = await createPortfolio(page, 'Chooser', ['AAPL', 'MSFT'])
   await sections(page).getByRole('link', { name: 'Solver', exact: true }).click()
-  const universe = page.getByRole('list', { name: 'Stocks in the universe' })
-  await expect(universe.getByRole('listitem')).toHaveCount(2)
+  const universe = page.getByRole('table', { name: 'Stocks in the universe' })
+  await expect(universe.getByRole('button', { name: /^Remove / })).toHaveCount(2)
   await expect(page.getByText('Configuration', { exact: true })).toHaveCount(0)
 
   // Browse stocks: the New portfolio list without the creation form, starting with the two stocks.
@@ -224,7 +224,7 @@ test('Math Optimization: choose its stocks on the stock list and come back', asy
   await page.getByRole('checkbox', { name: 'Select NVDA' }).check()
   await page.getByRole('button', { name: 'Use 3 stocks' }).click()
   await expect(page).toHaveURL(new RegExp(`/portfolios/${id}/optimize\\?from=selection$`))
-  await expect(universe.getByRole('listitem')).toHaveCount(3)
+  await expect(universe.getByRole('button', { name: /^Remove / })).toHaveCount(3)
   await expect(universe).toContainText('NVDA')
 
   // Back without using: the optimization is unchanged.

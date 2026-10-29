@@ -1,5 +1,19 @@
 # Implementation status
 
+## 2026-10-29: long lists and the correlation matrix (D-48)
+
+* Solver and Pattern: the equity universe, the allocation, the stock predictions and the stock eligibility are
+  searchable, sortable, paged lists (`SearchableTable`, shared with Atlas; 25 rows per page, fixed header, first/last);
+  each states what it counts ("228 stocks in the universe · 33 with a weight · 195 at 0 %"). Searching never submits the
+  optimization form.
+* The universe list now gets every stock's name and history beyond 200 stocks (requests of 200 symbols).
+* Correlation matrix: scroll bars, pull with the mouse, row and column symbols pinned, Full screen view; only visible
+  cells are drawn – opening a 228-stock matrix in full screen went from 5.9 s to 0.2 s (measured in Chromium on the
+  development stack).
+* Checked: Vitest 211 passed (new: SearchableTable, PannableArea, matrix window, heatmap), type check, lint, build;
+  screenshots of a stored 228-stock run and a 24-stock ML Optimization at 1440 px and 390 px (no horizontal scroll).
+  `./scripts/e2e.sh` not run for this change; `portfolios.spec.ts` was updated for the universe table.
+
 ## 2026-10-28: quantitative audit, formula reference, maintenance tooling
 
 * Backtests across markets with different holidays (audit Q-01/Q-01b, [quant audit](quant/audit-2026-10-28.md)): an

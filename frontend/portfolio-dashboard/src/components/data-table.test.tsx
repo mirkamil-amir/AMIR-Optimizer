@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { DataTable, type Column } from './data-table'
+import { DataTable, SearchableTable, type Column } from './data-table'
 
 type Row = { symbol: string; price: number }
 const rows: Row[] = Array.from({ length: 23 }, (_, i) => ({ symbol: `S${String(i + 1).padStart(2, '0')}`, price: 100 - i }))
@@ -54,5 +54,38 @@ describe('DataTable paging', () => {
     rerender(<Table data={rows.slice(0, 15)} reset="S" />)
     expect(screen.getByText('Page 1 of 2')).toBeInTheDocument()
     expect(bodySymbols()[0]).toBe('S01')
+  })
+})
+
+describe('SearchableTable', () => {
+  const many: Row[] = Array.from({ length: 228 }, (_, i) => ({ symbol: `S${String(i + 1).padStart(3, '0')}`, price: i }))
+  const searchable = (onSubmit = () => {}) => (
+    <form onSubmit={(e) => { e.preventDefault(); onSubmit() }}>
+      <SearchableTable label="stocks" caption="Stocks in the universe" rows={many} columns={columns} rowKey={(r) => r.symbol} pageSize={25}
+        placeholder="Search symbol" matches={(r, q) => r.symbol.toLowerCase().includes(q)} breakdown="228 stocks · 3 without enough history" />
+    </form>
+  )
+
+  it('pages a long list and shows the breakdown instead of a bare count', () => {
+    render(searchable())
+    expect(screen.getByRole('table', { name: 'Stocks in the universe' })).toBeInTheDocument()
+    expect(bodySymbols()).toHaveLength(25)
+    expect(screen.getByText('Page 1 of 10')).toBeInTheDocument()
+    expect(screen.getByText('228 stocks · 3 without enough history')).toBeInTheDocument()
+  })
+
+  it('searches across every page and starts again at page 1', async () => {
+    render(searchable())
+    await userEvent.click(screen.getByRole('button', { name: 'Last page' }))
+    await userEvent.type(screen.getByRole('textbox', { name: 'Search stocks' }), 's22')
+    expect(bodySymbols()).toEqual(['S220', 'S221', 'S222', 'S223', 'S224', 'S225', 'S226', 'S227', 'S228'])
+    expect(screen.getByText('9 of 228 stocks')).toBeInTheDocument()
+  })
+
+  it('never submits the surrounding form on Enter (the optimization settings)', async () => {
+    let submitted = 0
+    render(searchable(() => submitted++))
+    await userEvent.type(screen.getByRole('textbox', { name: 'Search stocks' }), 'S1{Enter}')
+    expect(submitted).toBe(0)
   })
 })

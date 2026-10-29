@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import { DataTable, type Column } from '@/components/data-table'
+import { SearchableTable, type Column } from '@/components/data-table'
 import { MatrixLoader, WorkingPanel } from '@/components/matrix-loader'
 import { DataBadge, ErrorState, LoadingBlock, PageHeader } from '@/components/common'
 import { errorMessage } from '@/lib/api'
@@ -263,37 +263,6 @@ const SECTIONS = [
   { path: 'indexes', syncLabel: 'indexes', label: 'Indexes', hint: 'Stock indices used as benchmarks (e.g. ^GSPC, ^GDAXI). They are not investable; their prices are index points in the currency of their market.' },
   { path: 'currencies', syncLabel: 'currencies', label: 'Currencies', hint: 'Daily reference exchange rates, stored as units per 1 EUR – the pivot of every conversion: any other pair is calculated from two of these rates of the same day. Missing history is downloaded when an analysis needs it.' },
 ] as const
-
-/**
- * One Market Data list: search box, row count, and the paged table (rows per page, first/previous/next/last) inside a box
- * that scrolls under a fixed header. Each page keeps its own search (keyed by section).
- */
-function SearchableTable<T>({ label, hint, rows, columns, rowKey, initialSort, matches, placeholder, breakdown, empty }: {
-  label: string; hint: string; rows: T[]; columns: Column<T>[]; rowKey: (row: T) => string; initialSort: { key: string; dir: 'asc' | 'desc' }
-  matches: (row: T, query: string) => boolean; placeholder: string; empty?: string
-  /** Replaces the plain row count when the list mixes types or tracked and not tracked instruments. */
-  breakdown?: string
-}) {
-  const [search, setSearch] = useState('')
-  const q = search.trim().toLowerCase()
-  const filtered = useMemo(() => (q ? rows.filter((r) => matches(r, q)) : rows), [rows, q, matches])
-  return (
-    <section aria-label={label} className="space-y-3">
-      <p className="text-sm text-muted-foreground">{hint}</p>
-      <div className="flex flex-wrap items-center gap-3">
-        <Input placeholder={placeholder} aria-label={`Search ${label}`} className="bg-card sm:w-80" value={search} onChange={(e) => setSearch(e.target.value)} />
-        <span className="text-xs text-muted-foreground tabular">
-          {q ? `${filtered.length.toLocaleString()} of ${rows.length.toLocaleString()} ${label}` : breakdown ?? `${rows.length.toLocaleString()} ${label}`}
-        </span>
-      </div>
-      {rows.length === 0 && empty ? <p className="rounded-lg border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">{empty}</p> : (
-        <DataTable<T> caption={label} rows={filtered} rowKey={rowKey} initialSort={initialSort} columns={columns}
-          pageSize={50} pageResetKey={q} maxRows={15}
-          empty={<p className="rounded-lg border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">No {label} match “{search}”.</p>} />
-      )}
-    </section>
-  )
-}
 
 /**
  * The count line of an instrument list: per type, tracked and not tracked (src/lib/instrument-counts.ts), then the

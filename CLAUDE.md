@@ -31,6 +31,9 @@
 - Typography: `.heading-display` (Sora) only for page titles, section headings and the wordmark; `.font-nav` (Sora too,
   chosen from nine options) for the top bar and sidebar; body, tables and figures stay Geist. Sidebar and top-bar entries magnify near the
   pointer (`lib/nav-zoom.ts`, CSS variable set imperatively); the selected entry stays enlarged. Text outside cards must stay readable over the map: put dense lists on `.map-surface`.
+- Long lists: `SearchableTable` (search, paging, first/last, scroll under a fixed header); big matrices: `PannableArea` +
+  windowed rendering + Full screen. Never a plain list that grows with the data – see `/platform-architecture`
+  › "Frontend lists and large grids".
 - Disk: the Podman VM disk file (`~/.local/share/containers/podman/machine`) grows with every image build and never
   shrinks by itself; when the Mac runs out of space, `podman machine ssh sudo fstrim -av` returns the VM's free blocks
   (2026-10-24: 47 → 20 GB) without deleting anything. Never prune volumes (the development database lives in one).

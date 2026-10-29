@@ -16,7 +16,7 @@ import { Switch } from '@/components/ui/switch'
 import {
   AllocationDonut, ChartCard, CorrelationHeatmap, FrontierChart, RiskContributionChart, TimeSeriesChart, timeSeriesTable,
 } from '@/components/charts'
-import { DataTable } from '@/components/data-table'
+import { DataTable, SearchableTable } from '@/components/data-table'
 import { UniverseField } from '@/components/universe-field'
 import { GroupedBarChart, groupedBarTable } from '@/components/analysis-charts'
 import { drawdownFromCumulative, equalWeight, weightsBySector } from '@/lib/run-charts'
@@ -689,14 +689,20 @@ function RunResults({ run }: { run: OptimizationRun }) {
   )
 }
 
+/** Every stock of the universe with its weight – searchable and paged, since a universe can hold hundreds of stocks. */
 function AllocationTable({ rows, currency }: { rows: Allocation[]; currency: string }) {
+  const invested = rows.filter((r) => r.weight > 1e-6).length
   return (
-    <DataTable
+    <SearchableTable
+      label="stocks in the allocation"
       caption="Recommended allocation"
       rows={rows}
       rowKey={(r) => r.symbol}
       initialSort={{ key: 'w', dir: 'desc' }}
-      dense
+      dense pageSize={25} maxRows={12}
+      placeholder="Search symbol, name, sector or currency"
+      matches={(r, q) => r.symbol.toLowerCase().includes(q) || (r.name ?? '').toLowerCase().includes(q) || (r.sector ?? '').toLowerCase().includes(q) || (r.currency ?? '').toLowerCase() === q}
+      breakdown={`${rows.length.toLocaleString()} stocks in the universe · ${invested.toLocaleString()} with a weight · ${(rows.length - invested).toLocaleString()} at 0 %`}
       columns={[
         { key: 's', header: 'Symbol', sortValue: (r) => r.symbol, cell: (r) => <div><div className="font-medium">{r.symbol}</div><div className="text-xs text-muted-foreground">{r.name}</div></div> },
         { key: 'sec', header: 'Sector', sortValue: (r) => r.sector, cell: (r) => <span className="text-xs">{r.sector ?? '—'}</span> },
