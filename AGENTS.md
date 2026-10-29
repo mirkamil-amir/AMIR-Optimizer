@@ -44,6 +44,8 @@ Secrets live in `.env` (gitignored) – load with `set -a; . ./.env; set +a`; ne
 * Stack: `podman compose up --build -d` → web http://localhost:8081, API http://localhost:5080/swagger.
 * Local: `podman compose up -d db`; API `dotnet run` in `src/PortfolioOptimizer.Api` with `ConnectionStrings__DefaultConnection` (owner role) → :5080; `npm run dev` in the frontend → :5173.
 * Tests: `./scripts/test.sh` (unit + ML + integration), `npm test`, `npm run build`, `npm run lint`, `./scripts/e2e.sh` (disposable stack). Details: [docs/testing.md](docs/testing.md).
+* CI (`.github/workflows/`): `ci.yml` runs all of the above plus a pending-migration check on every PR; `codeql.yml`,
+  `container-images.yml` (GHCR on `v*` tags), `live-smoke.yml` (weekly, real providers); see [testing.md](docs/testing.md#continuous-integration).
 * Migration: `ConnectionStrings__DefaultConnection=… dotnet ef migrations add <Name> -p src/PortfolioOptimizer.Infrastructure -s src/PortfolioOptimizer.Api -o Persistence/Migrations`, then `dotnet build`.
 * Knowledge checks: `python3 scripts/quant/maintain.py validate|check-skills|review-changes|audit|test-quant|full-check`
   ([docs/quant/README.md](docs/quant/README.md)); CI runs them in `.github/workflows/quant-maintenance.yml`.

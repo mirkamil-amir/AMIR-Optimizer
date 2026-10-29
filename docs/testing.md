@@ -48,6 +48,26 @@ E2E stack. This prevents the problem found in the 2026-10-14 audit, where e2e ru
 Test accounts use the reserved `.test` domain; see [database.md](database.md#test-data-isolation) for how they are
 hidden and purged.
 
+## Continuous integration
+
+GitHub Actions workflows in `.github/workflows/` (added 2026-10-29). None uses the development database, and only
+`live-smoke` calls a provider.
+
+| Workflow | When | What |
+|---|---|---|
+| `ci.yml` | every pull request, push to `main`, manual | `backend`: Release build, unit + ML tests, `dotnet ef migrations has-pending-model-changes` (fails when an entity or `AppDbContext` changed without a migration) · `integration`: integration tests against a `postgres:17-alpine` service container (`PO_TEST_POSTGRES`) · `frontend`: `npm ci`, lint, Vitest, `npm run build` · `e2e` (after backend + frontend): `./scripts/e2e.sh` with `COMPOSE="docker compose"`, Playwright Chromium; on failure the compose logs and the Playwright report/traces are uploaded |
+| `quant-maintenance.yml` | every change; .NET quant suites only when quantitative code changed; weekly | formula reference, skills, change review ([quant README](quant/README.md#ci)) |
+| `codeql.yml` | pull requests, push to `main`, weekly | CodeQL `security-and-quality` for C#, TypeScript, Python and the workflows (Security › Code scanning) |
+| `container-images.yml` | pull requests touching `src/` or the frontend: build only · tags `v*` or manual: build and push | `ghcr.io/<owner>/matrixview-api` and `matrixview-web` (tags: version, major.minor, commit sha) |
+| `live-smoke.yml` | weekly (Monday 07:00 UTC), manual | `PO_LIVE_SMOKE=1` tests: Yahoo, ECB, Wikipedia, news feeds; Alpha Vantage and Gemini only when the repository secrets `ALPHAVANTAGE_API_KEY` / `GEMINI_API_KEY` exist (otherwise skipped and noted in the job summary). A failure here means a provider changed its format or blocked the runner, not that the code is wrong |
+
+`.github/dependabot.yml` opens weekly grouped update PRs for NuGet, npm, GitHub Actions and the two Dockerfiles.
+
+Test results (`.trx`) are uploaded as artifacts of each run. Playwright retries a failed test once on CI
+(`retries: process.env.CI ? 1 : 0`). The workflows pass `actionlint` (with shellcheck). They had **not run on GitHub**
+when they were added. Branch protection (required checks on `main`) is configured in the repository settings, not in
+these files.
+
 ## Writing tests
 
 * Financial math: closed-form or hand-computed expectations, or an independent re-implementation from the published

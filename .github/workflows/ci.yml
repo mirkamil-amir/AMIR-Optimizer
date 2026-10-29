@@ -1,0 +1,168 @@
+# Build and test everything on every pull request and every push to main (docs/testing.md#continuous-integration).
+# Deterministic only: Mock providers, synthetic data, disposable PostgreSQL – no secrets, no provider calls.
+# The formula reference and skills are checked separately in quant-maintenance.yml.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  DOTNET_NOLOGO: "true"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+  NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
+
+jobs:
+  backend:
+    name: .NET build, unit + ML tests, migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - uses: actions/cache@v4
+        with:
+          path: .nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props', 'global.json') }}
+          restore-keys: nuget-${{ runner.os }}-
+      - name: Restore
+        run: |
+          dotnet restore PortfolioOptimizer.sln
+          dotnet tool restore
+      - name: Build (Release)
+        run: dotnet build PortfolioOptimizer.sln -c Release --no-restore
+      - name: Unit tests
+        run: >-
+          dotnet test tests/PortfolioOptimizer.UnitTests -c Release --no-build
+          --logger "trx;LogFileName=unit.trx" --results-directory TestResults
+      - name: ML tests
+        run: >-
+          dotnet test tests/PortfolioOptimizer.MachineLearning.Tests -c Release --no-build
+          --logger "trx;LogFileName=ml.trx" --results-directory TestResults
+      # A changed entity or AppDbContext without its migration fails here. The command builds the model only;
+      # the connection string is a placeholder and never opened.
+      - name: No pending EF Core model changes
+        env:
+          ConnectionStrings__DefaultConnection: Host=localhost;Database=unused;Username=unused;Password=unused
+        run: >-
+          dotnet ef migrations has-pending-model-changes
+          -p src/PortfolioOptimizer.Infrastructure -s src/PortfolioOptimizer.Api --configuration Release --no-build
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-backend
+          path: TestResults/*.trx
+          if-no-files-found: ignore
+
+  integration:
+    name: Integration tests (PostgreSQL)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      # Admin connection to the throw-away service; every test class creates and drops its own po_it_* database.
+      PO_TEST_POSTGRES: Host=localhost;Port=5432;Username=postgres;Password=postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - uses: actions/cache@v4
+        with:
+          path: .nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props', 'global.json') }}
+          restore-keys: nuget-${{ runner.os }}-
+      - name: Integration tests
+        run: >-
+          dotnet test tests/PortfolioOptimizer.IntegrationTests -c Release
+          --logger "trx;LogFileName=integration.trx" --results-directory TestResults
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-integration
+          path: TestResults/*.trx
+          if-no-files-found: ignore
+
+  frontend:
+    name: Frontend lint, unit tests, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend/portfolio-dashboard
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/portfolio-dashboard/package-lock.json
+      - run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Unit tests (Vitest)
+        run: npm test
+      - name: Type check and build
+        run: npm run build
+
+  e2e:
+    name: End-to-end (disposable stack)
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/portfolio-dashboard/package-lock.json
+      - name: Install Playwright
+        working-directory: frontend/portfolio-dashboard
+        run: |
+          npm ci
+          ./node_modules/.bin/playwright install --with-deps chromium
+      # scripts/e2e.sh builds the po-e2e compose project (E2E environment, Mock providers, random passwords).
+      # The stack is kept so its logs can be collected; the runner is discarded afterwards.
+      - name: Playwright against the e2e stack
+        env:
+          COMPOSE: docker compose
+          KEEP_E2E_STACK: "1"
+        run: ./scripts/e2e.sh
+      - name: Stack logs
+        if: failure()
+        env:
+          COMPOSE_PROJECT_NAME: po-e2e
+          POSTGRES_OWNER_PASSWORD: unused
+          APP_DB_PASSWORD: unused
+        run: docker compose logs --no-color --tail 300 migrate api web
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            frontend/portfolio-dashboard/playwright-report
+            frontend/portfolio-dashboard/test-results
+          retention-days: 14
+          if-no-files-found: ignore

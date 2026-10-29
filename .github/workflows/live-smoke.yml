@@ -1,0 +1,56 @@
+# Opt-in checks that the real external sources still answer in the format the parsers expect
+# (docs/testing.md, "Live smoke"). Weekly and on demand only – never on pull requests, so the normal suites stay
+# deterministic. Keyless sources (Yahoo, ECB, Wikipedia, news feeds) always run; Alpha Vantage (2 of 25 daily
+# requests) and Gemini only when their repository secrets are set. A failure means a provider changed, not the code.
+name: live-smoke
+
+on:
+  schedule:
+    - cron: "0 7 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-smoke
+  cancel-in-progress: false
+
+jobs:
+  providers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DOTNET_NOLOGO: "true"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+      PO_LIVE_SMOKE: "1"
+      ALPHAVANTAGE_API_KEY: ${{ secrets.ALPHAVANTAGE_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Select tests
+        id: filter
+        run: |
+          filter="FullyQualifiedName~.Live"
+          if [ -z "$ALPHAVANTAGE_API_KEY" ]; then
+            filter="$filter&FullyQualifiedName!~AlphaVantage_"
+            echo "Alpha Vantage skipped: no ALPHAVANTAGE_API_KEY secret." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [ -z "$GEMINI_API_KEY" ]; then
+            filter="$filter&FullyQualifiedName!~LiveGeminiSmokeTests"
+            echo "Gemini skipped: no GEMINI_API_KEY secret." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "value=$filter" >> "$GITHUB_OUTPUT"
+      - name: Live smoke tests
+        run: >-
+          dotnet test tests/PortfolioOptimizer.UnitTests --filter "${{ steps.filter.outputs.value }}"
+          --logger "console;verbosity=normal" --logger "trx;LogFileName=live-smoke.trx" --results-directory TestResults
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: live-smoke-results
+          path: TestResults/*.trx
+          if-no-files-found: ignore

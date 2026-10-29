@@ -62,8 +62,8 @@ change that needs no reference update is acknowledged with a commit trailer, e.g
 * `quant-tests` (only when quantitative code, tests or the reference change): `test-quant --no-frontend` on .NET 10.
 * Weekly schedule (Monday 06:00 UTC): `audit` and `test-quant`.
 
-The workflow was added on 2026-10-28 and has **not run on GitHub yet**; integration (PostgreSQL) and end-to-end suites
-stay local (`./scripts/test.sh`, `./scripts/e2e.sh`). No step calls a language model or needs a secret.
+The workflow was added on 2026-10-28. Integration (PostgreSQL) and end-to-end suites run in `ci.yml`
+([testing.md](../testing.md#continuous-integration)). No step calls a language model or needs a secret.
 
 ## Optional AI-assisted review
 
