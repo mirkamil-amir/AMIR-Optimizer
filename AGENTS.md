@@ -20,6 +20,13 @@ Read this file before changing code; details are in `docs/` (linked below).
 11. Run the relevant suites after every change (`/ship-change`).
 12. Record unresolved risks and limitations honestly (docs/implementation-status.md, docs/limitations.md).
 
+## Branches and pull requests
+
+Branch `<type>/amir-<n>-<short-description>` in lowercase (e.g. `fix/amir-2-universe-names`), pull-request title
+`AMIR-<N> <TYPE>: <DESCRIPTION>` in uppercase (e.g. `AMIR-2 FIX: UNIVERSE NAMES BEYOND 200 STOCKS`). Types: feat, fix,
+chore, docs, refactor, perf, test, ci. IDs start at AMIR-1 and count up, never reused (highest used in branches and
+merge commits + 1). Ask before every commit and push. Details: `.claude/skills/ship-change/SKILL.md` steps 13–14.
+
 ## Repository map
 
 | Path | What | Entry points |
@@ -152,7 +159,8 @@ updates its entry in [docs/quant/formula-reference.md](docs/quant/formula-refere
 Hard-coding market data or prices; calling providers from the browser; exposing or logging API keys; disabling
 authorization/antiforgery "for testing"; running e2e or seeding against a non-test database; deleting user data
 without a dry run, backup and audit; presenting in-sample or training metrics as performance; bypassing provider bot
-protection (Stooq); force-pushing or committing without being asked.
+protection (Stooq); force-pushing, committing or pushing without being asked (ask before every commit and push –
+approval is per change).
 
 ## Known pitfalls
 

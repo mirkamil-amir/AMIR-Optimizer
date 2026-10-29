@@ -69,6 +69,9 @@ Stop with `podman compose down` (keeps data; `-v` deletes database **and** model
 - `migrate` fails with authentication errors → `.env` passwords differ from those the `pgdata` volume was initialized with.
 - Node tooling hangs with idle CPU → iCloud offloaded `node_modules`: `rm -rf node_modules && npm ci`.
 - Sync job failed (429) → Yahoo throttling; retry later. Offline: `MarketData__DefaultProvider=Mock` on a new database.
+- Disk full ("no space left on device", podman "ssh: handshake failed"/"unexpected EOF", the API down after a build) →
+  `./scripts/free-space.sh` (add `--restart-vm` when podman cannot connect), without asking; then restart the stack in
+  order (db → migrate → api → web) and check `/health/ready`. See `/ship-change` step 7.
 - "Model artifact unavailable" → artifacts directory differs between local (`data/model-artifacts`) and container (`model-artifacts` volume) runs.
 
 Related: `/ship-change` (after a change), `/platform-architecture` (what runs where, health checks, jobs).

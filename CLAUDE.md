@@ -37,6 +37,8 @@
 - Disk: the Podman VM disk file (`~/.local/share/containers/podman/machine`) grows with every image build and never
   shrinks by itself; when the Mac runs out of space, `podman machine ssh sudo fstrim -av` returns the VM's free blocks
   (2026-10-24: 47 → 20 GB) without deleting anything. Never prune volumes (the development database lives in one).
+  Free space automatically when the disk is (nearly) full – `./scripts/free-space.sh` (`--check` before builds, < 10 GB
+  → run it; `--restart-vm` when podman cannot connect); one image build at a time; anything beyond the script needs a yes.
 - Integration tests in Rider/IDEs: Testcontainers reads `~/.testcontainers.properties` (Podman socket,
   `ryuk.disabled=true`) – set up on this machine; without it every integration test fails.
 - Browser checks: Playwright from `frontend/portfolio-dashboard` against http://localhost:5173 (dev) or 8081
@@ -44,4 +46,7 @@
   accounts or runs must use `./scripts/e2e.sh`, never the development stack.
 - The development database contains the user's data. Before any destructive SQL: dry run, backup
   (`pg_dump` into `../PortfolioOptimizer-backups/`), transaction, and report what was deleted.
-- Commit only when asked, on a feature branch; `main` receives the user's merged pull requests.
+- Commit only when asked, on a feature branch; `main` receives the user's merged pull requests. Ask before every
+  commit and every push – approval is per change, never carried over (owner, 2026-10-30; `/ship-change` step 13).
+  Branches `<type>/amir-<n>-<description>` (lowercase), PR titles `AMIR-<N> <TYPE>: <DESCRIPTION>` (uppercase), next
+  free number from AMIR-1 on, types feat/fix/chore/docs/refactor/perf/test/ci (`/ship-change` step 14).

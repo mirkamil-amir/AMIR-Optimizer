@@ -31,9 +31,16 @@ Toolchain once per shell: `export PATH="$HOME/.dotnet:/opt/homebrew/opt/node@22/
    `npm test` · `npm run build` · `npm run lint` (0 errors). Add a Vitest test for new logic in `lib/` or shared components.
    After `npm ci`, restore the `node_modules` → `node_modules.nosync` symlink (docs/testing.md).
 7. **Running stack:** `podman compose up --build -d` (or only `api` / `web`), then `curl -s localhost:5080/health/ready` → Healthy.
-   A schema change is applied by the `migrate` service on `up`. Builds fail with "no space left on device" when the Mac
-   is full: check `df -h /`, then `podman machine ssh sudo fstrim -av` (frees the VM's unused blocks, deletes nothing);
-   never prune volumes.
+   A schema change is applied by the `migrate` service on `up`. **Disk space – free it automatically, no need to ask**
+   (owner's rule, 2026-10-30): before every image build or `./scripts/e2e.sh` run `./scripts/free-space.sh --check`
+   (exit 1 below 10 GB free); below that, or on "no space left on device", a podman "ssh: handshake failed"/"unexpected
+   EOF" or a build dying mid-way, run `./scripts/free-space.sh` (untagged images, the disposable `po-e2e*` project,
+   fstrim) and report what it freed. VM unreachable and disk full → `./scripts/free-space.sh --restart-vm`, then restart
+   the stack in order (db until `pg_isready` → `migrate` until it exits 0 → api until `/health/ready` → web), resync the
+   VM clock and confirm the data with read-only counts. Run **one image build at a time** (two parallel builds filled the
+   Mac on 2026-10-29). The script never touches other volumes (the development database), other projects' containers or
+   images, package caches or files outside the VM – anything beyond it (npm/NuGet caches, Trash, user files) still needs
+   the owner's yes.
 8. **End-to-end** (user-visible flows: auth, prices, selection, Mathematical/ML Optimization, backtest, comparison, learn, admin): `./scripts/e2e.sh`
    from the repo root – builds a disposable `po-e2e` stack (Mock data, own DB and ports), runs Playwright, removes it.
    **Never** point Playwright at the development stack: it creates accounts (the setup step refuses non-E2E targets).
@@ -48,4 +55,18 @@ Toolchain once per shell: `export PATH="$HOME/.dotnet:/opt/homebrew/opt/node@22/
     subsystem changed → its `SKILL.md` (`/maintain-knowledge`).
 11. **Knowledge checks:** `python3 scripts/quant/maintain.py validate && python3 scripts/quant/maintain.py check-skills`
     (formula reference, index, doc links, skills) – CI runs the same (`.github/workflows/quant-maintenance.yml`).
-12. Report what was verified (commands + pass counts) and what was not. Commit only if the user asks.
+12. Report what was verified (commands + pass counts) and what was not.
+13. **Commit and push: ask first, every time** (owner's rule, 2026-10-30). Never commit, push or open a pull request on
+    your own – not even after a "commit and build" for an earlier change: each approval covers only the change it was
+    given for. Before the first commit of a change, ask in one question: commit? which base (normally the latest
+    `origin/main` – check `git fetch` first; stack on an unmerged branch only if the owner agrees)? push? A pending test
+    run is no reason to commit early; report it and ask.
+14. **Branch and pull-request names** (owner's rule, 2026-10-30). Every new branch gets the next ID, starting at AMIR-1:
+    * branch, lowercase: `<type>/amir-<n>-<short-description>`, e.g. `feat/amir-1-searchable-lists`;
+    * pull-request title, uppercase: `AMIR-<N> <TYPE>: <DESCRIPTION>`, e.g. `AMIR-1 FEAT: SEARCHABLE LISTS AND PANNABLE MATRIX`;
+    * types: `feat` (new feature), `fix` (bug fix), `chore` (maintenance, dependencies, tooling), `docs` (documentation
+      only), `refactor` (no behaviour change), `perf` (performance), `test` (tests only), `ci` (workflows);
+    * next ID = highest AMIR number used so far + 1, never reused – find it with
+      `git fetch -q origin && { git branch -a; git log --merges --format=%s origin/main; } | grep -oiE 'amir-[0-9]+' | sort -t- -k2 -n | tail -1`
+      (merge commits keep the names of deleted branches); no match → AMIR-1;
+    * propose the branch name, type and PR title together with the commit question (step 13); one branch = one ID = one PR.

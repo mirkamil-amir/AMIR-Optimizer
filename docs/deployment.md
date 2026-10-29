@@ -37,6 +37,14 @@ The init script only runs when `pgdata` is empty. Changing `APP_DB_PASSWORD` lat
 * Test data: `podman compose run --rm -e ASPNETCORE_ENVIRONMENT=Development migrate purge-test-data [--apply]`
   ([database.md](database.md#test-data-isolation)).
 
+## Disk space (development machine)
+
+Every image build grows the Podman VM disk file, which never shrinks by itself. `./scripts/free-space.sh` removes untagged
+images and the disposable e2e project (`po-e2e*`) and returns the VM's free blocks to the Mac (`fstrim`); it never touches
+other volumes, containers or images in use. `--check` exits 1 below `FREE_SPACE_MIN_GB` (default 10) free; `--restart-vm`
+first restarts an unreachable VM (restart the stack afterwards: db → migrate → api → web). 2026-10-30: images 24.4 → 6.3 GB,
+VM file 45 → 23 GB, Mac 0.1 → 27 GB free. Run one image build at a time.
+
 ## Upgrading
 
 ```bash
