@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils'
 import { useCreateAsset, useFxSync, useMarketStatus, useSync, useUpdateAsset } from '@/lib/queries'
 import type { AssetCoverage, DataFreshness, FxCoverage } from '@/lib/types'
 import { date, dateTime, money, num, relativeTime } from '@/lib/format'
+import { describeCatalogue, describeSymbols, trackedTotal } from '@/lib/instrument-counts'
 
 const historyOptions = [
   { value: '1', label: '1 year' },
@@ -95,7 +96,8 @@ export function MarketDataPage() {
   async function runSync(symbols?: string[], force = false, assetTypes?: ('Equity' | 'Etf' | 'Index')[]) {
     try {
       const job = await sync.mutateAsync({ symbols, assetTypes, startDate: historyStart(), forceFullRefresh: force })
-      toast.success('Download queued', { description: isAdministrator ? `${job.assetsTotal} asset(s) from ${job.source}` : `${job.assetsTotal} asset(s)` })
+      const what = describeSymbols(job.symbols, data?.coverage ?? [])
+      toast.success('Download queued', { description: isAdministrator ? `${what} from ${job.source}` : what })
     } catch (e) {
       toast.error('Could not start download', { description: errorMessage(e) })
     }
@@ -132,7 +134,7 @@ export function MarketDataPage() {
               <SelectContent>{historyOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
             </Select>
             {/* Each page syncs its own data: tracked stocks & ETFs, tracked indexes, or all exchange rates (administrators). */}
-            {isAdministrator && <Button onClick={syncSection} disabled={sectionBusy}>Sync {current.label.toLowerCase()}</Button>}
+            {isAdministrator && <Button onClick={syncSection} disabled={sectionBusy}>Sync {current.syncLabel}</Button>}
             <Button variant="outline" onClick={() => setAddOpen(true)}>Add asset</Button>
           </>
         }
@@ -153,7 +155,8 @@ export function MarketDataPage() {
           title={running.status === 'Queued' ? 'Download queued – waiting to start…' : 'Downloading price history…'}
           percent={running.status === 'Running' ? ((running.assetsCompleted + running.assetsFailed) / Math.max(1, running.assetsTotal)) * 100 : null}
           detail={[
-            `${(running.assetsCompleted + running.assetsFailed).toLocaleString()} of ${running.assetsTotal.toLocaleString()} stocks`,
+            // Every type the job contains (the scheduled refresh takes all tracked stocks, ETFs and indexes), never just "stocks".
+            `${(running.assetsCompleted + running.assetsFailed).toLocaleString()} of ${running.assetsTotal.toLocaleString()} tracked instruments (${describeSymbols(running.symbols, data.coverage)})`,
             isAdministrator ? `from ${running.source}` : null,
             running.logs.length ? `last: ${running.logs[running.logs.length - 1].symbol}` : null,
             running.assetsFailed ? `${running.assetsFailed} failed` : null,
@@ -170,7 +173,7 @@ export function MarketDataPage() {
                   'inline-flex border-b-2 px-3 py-2 text-sm whitespace-nowrap transition-colors focus-visible:rounded-t-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset',
                   x.path === current.path ? 'border-primary font-semibold text-foreground' : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground',
                 )}>
-                {x.label}<span className="ml-1.5 text-xs text-muted-foreground tabular">{({ '': stocks.length, indexes: indexes.length, currencies: currencies.length })[x.path].toLocaleString()}</span>
+                {x.label}<span className="ml-1.5 text-xs text-muted-foreground tabular">{x.path === 'currencies' ? currencies.length.toLocaleString() : `${trackedTotal(x.path === 'indexes' ? indexes : stocks).toLocaleString()} tracked`}</span>
               </Link>
             </li>
           ))}
@@ -180,12 +183,12 @@ export function MarketDataPage() {
       {current.path === '' && (
         <SearchableTable key="stocks" label="stocks & ETFs" hint={current.hint} rows={stocks} columns={columns} rowKey={(c) => c.symbol} initialSort={{ key: 'symbol', dir: 'asc' }}
           matches={(c, q) => c.symbol.toLowerCase().includes(q) || (c.name ?? '').toLowerCase().includes(q) || c.currency.toLowerCase() === q}
-          placeholder="Search symbol, name or currency" summary={`${stocks.filter((c) => c.observations > 0).length.toLocaleString()} with prices`} />
+          placeholder="Search symbol, name or currency" breakdown={catalogueLine(stocks)} />
       )}
       {current.path === 'indexes' && (
         <SearchableTable key="indexes" label="indexes" hint={current.hint} rows={indexes} columns={columns} rowKey={(c) => c.symbol} initialSort={{ key: 'symbol', dir: 'asc' }}
           matches={(c, q) => c.symbol.toLowerCase().includes(q) || (c.name ?? '').toLowerCase().includes(q) || c.currency.toLowerCase() === q}
-          placeholder="Search symbol, name or currency" summary={`${indexes.filter((c) => c.observations > 0).length.toLocaleString()} with prices`} />
+          placeholder="Search symbol, name or currency" breakdown={catalogueLine(indexes)} />
       )}
       {current.path === 'currencies' && (
         <SearchableTable key="currencies" label="currencies" hint={current.hint} rows={currencies} rowKey={(c) => c.currency} initialSort={{ key: 'currency', dir: 'asc' }}
@@ -229,7 +232,7 @@ export function MarketDataPage() {
             {data.recentJobs.map((j) => (
               <details key={j.id} className="rounded-md border px-3 py-2">
                 <summary className="flex cursor-pointer items-center justify-between gap-2">
-                  <span>{isAdministrator && `${j.source} · `}{j.symbols.length} asset(s)</span>
+                  <span>{isAdministrator && `${j.source} · `}{describeSymbols(j.symbols, data.coverage)}</span>
                   <span className="flex items-center gap-2 text-xs text-muted-foreground">{dateTime(j.requestedAtUtc)}<Badge variant={j.status === 'Failed' ? 'destructive' : j.status === 'Succeeded' ? 'secondary' : 'outline'}>{j.status}</Badge></span>
                 </summary>
                 <p className="mt-1 text-xs text-muted-foreground">{j.message}</p>
@@ -256,18 +259,20 @@ export function MarketDataPage() {
 
 /** The three pages of Market Data; each lists its instruments with the same search and paging. */
 const SECTIONS = [
-  { path: '', label: 'Stocks & ETFs', hint: 'Every stock and index ETF of the catalogue – the same instruments as New portfolio. Not tracked: no prices downloaded yet; Download fetches them and keeps them fresh.' },
-  { path: 'indexes', label: 'Indexes', hint: 'Stock indices used as benchmarks (e.g. ^GSPC, ^GDAXI). They are not investable; their prices are index points in the currency of their market.' },
-  { path: 'currencies', label: 'Currencies', hint: 'Daily reference exchange rates, stored as units per 1 EUR – the pivot of every conversion: any other pair is calculated from two of these rates of the same day. Missing history is downloaded when an analysis needs it.' },
+  { path: '', syncLabel: 'stocks & ETFs', label: 'Stocks & ETFs', hint: 'Every stock and index ETF of the catalogue – the same instruments as New portfolio. Not tracked: no prices downloaded yet; Download fetches them and keeps them fresh.' },
+  { path: 'indexes', syncLabel: 'indexes', label: 'Indexes', hint: 'Stock indices used as benchmarks (e.g. ^GSPC, ^GDAXI). They are not investable; their prices are index points in the currency of their market.' },
+  { path: 'currencies', syncLabel: 'currencies', label: 'Currencies', hint: 'Daily reference exchange rates, stored as units per 1 EUR – the pivot of every conversion: any other pair is calculated from two of these rates of the same day. Missing history is downloaded when an analysis needs it.' },
 ] as const
 
 /**
  * One Market Data list: search box, row count, and the paged table (rows per page, first/previous/next/last) inside a box
  * that scrolls under a fixed header. Each page keeps its own search (keyed by section).
  */
-function SearchableTable<T>({ label, hint, rows, columns, rowKey, initialSort, matches, placeholder, summary, empty }: {
+function SearchableTable<T>({ label, hint, rows, columns, rowKey, initialSort, matches, placeholder, breakdown, empty }: {
   label: string; hint: string; rows: T[]; columns: Column<T>[]; rowKey: (row: T) => string; initialSort: { key: string; dir: 'asc' | 'desc' }
-  matches: (row: T, query: string) => boolean; placeholder: string; summary?: string; empty?: string
+  matches: (row: T, query: string) => boolean; placeholder: string; empty?: string
+  /** Replaces the plain row count when the list mixes types or tracked and not tracked instruments. */
+  breakdown?: string
 }) {
   const [search, setSearch] = useState('')
   const q = search.trim().toLowerCase()
@@ -278,7 +283,7 @@ function SearchableTable<T>({ label, hint, rows, columns, rowKey, initialSort, m
       <div className="flex flex-wrap items-center gap-3">
         <Input placeholder={placeholder} aria-label={`Search ${label}`} className="bg-card sm:w-80" value={search} onChange={(e) => setSearch(e.target.value)} />
         <span className="text-xs text-muted-foreground tabular">
-          {q ? `${filtered.length.toLocaleString()} of ${rows.length.toLocaleString()} ${label}` : `${rows.length.toLocaleString()} ${label}${summary ? ` · ${summary}` : ''}`}
+          {q ? `${filtered.length.toLocaleString()} of ${rows.length.toLocaleString()} ${label}` : breakdown ?? `${rows.length.toLocaleString()} ${label}`}
         </span>
       </div>
       {rows.length === 0 && empty ? <p className="rounded-lg border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">{empty}</p> : (
@@ -288,6 +293,15 @@ function SearchableTable<T>({ label, hint, rows, columns, rowKey, initialSort, m
       )}
     </section>
   )
+}
+
+/**
+ * The count line of an instrument list: per type, tracked and not tracked (src/lib/instrument-counts.ts), then the
+ * catalogue total and how many have stored prices – never one unexplained total.
+ */
+function catalogueLine(rows: AssetCoverage[]) {
+  const withPrices = rows.filter((c) => c.observations > 0).length
+  return `${describeCatalogue(rows)} · ${rows.length.toLocaleString()} in the catalogue, ${withPrices.toLocaleString()} with prices`
 }
 
 /** Freshness of the latest stored day (same rule for prices and exchange rates). */

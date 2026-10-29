@@ -82,6 +82,8 @@ updates its entry in [docs/quant/formula-reference.md](docs/quant/formula-refere
   `/portfolios/:id/…` (the URL decides the portfolio, `PortfolioScope`); never act on a remembered portfolio silently.
 * **Prices:** never fabricate or zero-fill; label kind (Delayed quote / Last close), as-of time, retrieval time,
   cached/stale/SIMULATED. Never say "live". Store prices in ISO major units (`CurrencyUnits`). Never mix sources.
+* **Counts:** instrument counts are split by type (stocks, ETFs, indexes) and tracked/not tracked, and a download
+  job names its types – never one unexplained total (`lib/instrument-counts.ts`; `market-data-fx` skill).
 * **Currencies:** every instrument keeps its trading currency (`Asset.Currency`, derived from the venue) and native prices;
   everything that combines instruments is computed in one base currency, converted ONLY through `FxService`
   (`rate = target units per one source unit`, dated rate of each price date, ≤ 4 days carry-forward, never 1.0 or today's

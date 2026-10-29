@@ -35,6 +35,17 @@ F-MD-001..003, F-RET-004 in `docs/quant/formula-reference.md`.
   `null` totals; a symbol with > 5 % of points without a rate is excluded (`CurrencyConverter.MaxDroppedShare`).
 * Provider currency must equal the listing currency, otherwise bars are rejected (wrong exchange suffix).
 * Licensing: metadata, links and provider teasers only; provider names visible to administrators only (D-30).
+* **Instrument counts are split, never one unexplained total** (owner's requirement, 2026-10-29). The catalogue holds
+  stocks, ETFs and indexes, each tracked (`Asset.IsEnabled` – what a sync downloads) or not tracked (never downloaded).
+  A total that mixes them cannot be compared with a download job: the Atlas tab once showed "2,158 Stocks & ETFs" (incl.
+  270 not tracked) next to a "1,918 stocks" job (1,863 stocks + 25 ETFs + 30 indexes, all tracked). So every count shown
+  to users says per type how many are tracked and how many are not (`describeCatalogue`), tab badges show the tracked
+  count ("1,888 tracked"), and a job's size names its types (`describeSymbols`: "1,863 stocks, 25 ETFs, 30 indexes") –
+  never call a mixed job "stocks". Use the helpers in `frontend/portfolio-dashboard/src/lib/instrument-counts.ts`
+  (tested in `instrument-counts.test.ts`) instead of `rows.length`. The scheduled refresh
+  (`ScheduledMarketDataRefresh`) and the seed sync take **every tracked instrument of every type**; the per-page syncs
+  take only their types (`SyncRequest.AssetTypes`). Before reporting a count, check it against the database
+  (`Assets` grouped by `AssetType`, `IsEnabled`).
 
 ## Failure modes and diagnosis
 Yahoo 429/400 (throttling; retry later), Alpha Vantage quota, a listing whose prices stopped (delisted – offered again
