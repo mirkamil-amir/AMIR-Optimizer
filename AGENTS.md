@@ -20,6 +20,14 @@ Read this file before changing code; details are in `docs/` (linked below).
 11. Run the relevant suites after every change (`/ship-change`).
 12. Record unresolved risks and limitations honestly (docs/implementation-status.md, docs/limitations.md).
 
+## Branches and pull requests
+
+Branch `<type>/amir_<n>_<short_description>` in lowercase with underscores, never hyphens (e.g.
+`fix/amir_2_universe_names`); pull-request title and commit subject `<type>(AMIR-<N>): <Description>` (e.g.
+`fix(AMIR-2): Universe names beyond 200 stocks`). Types: feat, fix,
+chore, docs, refactor, perf, test, ci. IDs start at AMIR-1 and count up, never reused (highest used in branches and
+merge commits + 1). CI enforces it (`pr-title.yml` → `scripts/check-pr-name.sh`). Ask before every commit and push. Details: `.claude/skills/ship-change/SKILL.md` steps 13–14.
+
 ## Repository map
 
 | Path | What | Entry points |
@@ -45,7 +53,8 @@ Secrets live in `.env` (gitignored) – load with `set -a; . ./.env; set +a`; ne
 * Local: `podman compose up -d db`; API `dotnet run` in `src/PortfolioOptimizer.Api` with `ConnectionStrings__DefaultConnection` (owner role) → :5080; `npm run dev` in the frontend → :5173.
 * Tests: `./scripts/test.sh` (unit + ML + integration), `npm test`, `npm run build`, `npm run lint`, `./scripts/e2e.sh` (disposable stack). Details: [docs/testing.md](docs/testing.md).
 * CI (`.github/workflows/`): `ci.yml` runs all of the above plus a pending-migration check on every PR; `codeql.yml`,
-  `container-images.yml` (GHCR on `v*` tags), `live-smoke.yml` (weekly, real providers); see [testing.md](docs/testing.md#continuous-integration).
+  `container-images.yml` (GHCR on `v*` tags), `live-smoke.yml` (weekly, real providers), `pr-title.yml` (PR title and branch name); see
+  [testing.md](docs/testing.md#continuous-integration).
 * Migration: `ConnectionStrings__DefaultConnection=… dotnet ef migrations add <Name> -p src/PortfolioOptimizer.Infrastructure -s src/PortfolioOptimizer.Api -o Persistence/Migrations`, then `dotnet build`.
 * Knowledge checks: `python3 scripts/quant/maintain.py validate|check-skills|review-changes|audit|test-quant|full-check`
   ([docs/quant/README.md](docs/quant/README.md)); CI runs them in `.github/workflows/quant-maintenance.yml`.
@@ -152,7 +161,8 @@ updates its entry in [docs/quant/formula-reference.md](docs/quant/formula-refere
 Hard-coding market data or prices; calling providers from the browser; exposing or logging API keys; disabling
 authorization/antiforgery "for testing"; running e2e or seeding against a non-test database; deleting user data
 without a dry run, backup and audit; presenting in-sample or training metrics as performance; bypassing provider bot
-protection (Stooq); force-pushing or committing without being asked.
+protection (Stooq); force-pushing, committing or pushing without being asked (ask before every commit and push –
+approval is per change).
 
 ## Known pitfalls
 

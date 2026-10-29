@@ -1,0 +1,24 @@
+# Pull-request title and branch name follow the naming rule (AGENTS.md "Branches and pull requests"):
+# title "<type>(AMIR-<N>): <Description>", branch "<type>/amir_<n>_<short_description>", same type and number.
+# Runs again when the title is edited. Dependabot PRs are exempt (scripts/check-pr-name.sh).
+name: pr-title
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      # Title and branch come from the PR author: passed as environment variables, never interpolated into the script.
+      - name: Check PR title and branch name
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+          BRANCH: ${{ github.head_ref }}
+        run: ./scripts/check-pr-name.sh "$TITLE" "$BRANCH"
