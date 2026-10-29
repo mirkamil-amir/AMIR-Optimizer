@@ -62,11 +62,16 @@ Toolchain once per shell: `export PATH="$HOME/.dotnet:/opt/homebrew/opt/node@22/
     `origin/main` – check `git fetch` first; stack on an unmerged branch only if the owner agrees)? push? A pending test
     run is no reason to commit early; report it and ask.
 14. **Branch and pull-request names** (owner's rule, 2026-10-30). Every new branch gets the next ID, starting at AMIR-1:
-    * branch, lowercase: `<type>/amir-<n>-<short-description>`, e.g. `feat/amir-1-searchable-lists`;
-    * pull-request title, uppercase: `AMIR-<N> <TYPE>: <DESCRIPTION>`, e.g. `AMIR-1 FEAT: SEARCHABLE LISTS AND PANNABLE MATRIX`;
+    * branch, lowercase, words joined by underscores – never hyphens: `<type>/amir_<n>_<short_description>`,
+      e.g. `feat/amir_2_searchable_lists`;
+    * pull-request title: `<type>(AMIR-<N>): <Description>` – type lowercase, ID uppercase, description in sentence case,
+      e.g. `chore(AMIR-1): Commit, branch naming and disk space rules`; the commit subject uses the same format;
     * types: `feat` (new feature), `fix` (bug fix), `chore` (maintenance, dependencies, tooling), `docs` (documentation
       only), `refactor` (no behaviour change), `perf` (performance), `test` (tests only), `ci` (workflows);
     * next ID = highest AMIR number used so far + 1, never reused – find it with
-      `git fetch -q origin && { git branch -a; git log --merges --format=%s origin/main; } | grep -oiE 'amir-[0-9]+' | sort -t- -k2 -n | tail -1`
-      (merge commits keep the names of deleted branches); no match → AMIR-1;
-    * propose the branch name, type and PR title together with the commit question (step 13); one branch = one ID = one PR.
+      `git fetch -q origin && { git branch -a; git log --merges --format=%s origin/main; } | grep -oiE 'amir[-_][0-9]+' | grep -oE '[0-9]+' | sort -n | tail -1`
+      (merge commits keep the names of deleted branches; AMIR-1 was first pushed as `chore/amir-1-…`, before
+      underscores were the rule); no match → AMIR-1;
+    * propose the branch name, type and PR title together with the commit question (step 13); one branch = one ID = one PR;
+    * CI checks title and branch on every PR (`.github/workflows/pr-title.yml`); check before proposing:
+      `./scripts/check-pr-name.sh "<title>" "<branch>"`. Dependabot branches are exempt.

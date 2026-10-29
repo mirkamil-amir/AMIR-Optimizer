@@ -48,5 +48,6 @@
   (`pg_dump` into `../PortfolioOptimizer-backups/`), transaction, and report what was deleted.
 - Commit only when asked, on a feature branch; `main` receives the user's merged pull requests. Ask before every
   commit and every push – approval is per change, never carried over (owner, 2026-10-30; `/ship-change` step 13).
-  Branches `<type>/amir-<n>-<description>` (lowercase), PR titles `AMIR-<N> <TYPE>: <DESCRIPTION>` (uppercase), next
+  Branches `<type>/amir_<n>_<description>` (lowercase, underscores, never hyphens), PR titles and commit subjects
+  `<type>(AMIR-<N>): <Description>` (e.g. `chore(AMIR-1): Commit, branch naming and disk space rules`), next
   free number from AMIR-1 on, types feat/fix/chore/docs/refactor/perf/test/ci (`/ship-change` step 14).

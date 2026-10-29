@@ -61,6 +61,8 @@ GitHub Actions workflows in `.github/workflows/` (added 2026-10-29). None uses t
 | `container-images.yml` | pull requests touching `src/` or the frontend: build only · tags `v*` or manual: build and push | `ghcr.io/<owner>/matrixview-api` and `matrixview-web` (tags: version, major.minor, commit sha) |
 | `live-smoke.yml` | weekly (Monday 07:00 UTC), manual | `PO_LIVE_SMOKE=1` tests: Yahoo, ECB, Wikipedia, news feeds; Alpha Vantage and Gemini only when the repository secrets `ALPHAVANTAGE_API_KEY` / `GEMINI_API_KEY` exist (otherwise skipped and noted in the job summary). A failure here means a provider changed its format or blocked the runner, not that the code is wrong |
 
+| `pr-title.yml` | pull request opened, edited, reopened, new commits | `scripts/check-pr-name.sh`: title `<type>(AMIR-<N>): <Description>`, branch `<type>/amir_<n>_<short_description>`, same type and number; Dependabot branches exempt. Editing the title re-runs it. Test locally: `./scripts/check-pr-name.sh "<title>" "<branch>"` |
+
 `.github/dependabot.yml` opens weekly grouped update PRs for NuGet, npm, GitHub Actions and the two Dockerfiles.
 
 Test results (`.trx`) are uploaded as artifacts of each run. Playwright retries a failed test once on CI
