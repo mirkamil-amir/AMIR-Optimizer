@@ -31,7 +31,7 @@ public sealed class WatchlistService(
     {
         var owner = currentUser.RequireUserId();
         var r = ParseRange(range ?? "1M");
-        var entries = await db.WatchlistEntries.AsNoTracking().Where(e => e.OwnerId == owner).OrderBy(e => e.AddedAtUtc).ToListAsync(ct);
+        var entries = await db.WatchlistEntries.AsNoTracking().Where(e => e.OwnerId == owner).OrderBy(e => e.Position).ThenBy(e => e.AddedAtUtc).ToListAsync(ct);
         return new WatchlistDto(await BuildAsync(entries, r, ct), PriceHistory.Code(r), MaxEntries, Note);
     }
 
@@ -45,7 +45,9 @@ public sealed class WatchlistService(
         if (await db.WatchlistEntries.CountAsync(e => e.OwnerId == owner, ct) >= MaxEntries)
             throw new ConflictException($"A watchlist holds at most {MaxEntries} stocks. Remove one first.");
 
-        var entry = new WatchlistEntry { Id = Guid.NewGuid(), OwnerId = owner, AssetId = asset.Id, AddedAtUtc = clock.GetUtcNow().UtcDateTime };
+        // New entries go to the end of the owner's own order.
+        var last = await db.WatchlistEntries.Where(e => e.OwnerId == owner).MaxAsync(e => (int?)e.Position, ct);
+        var entry = new WatchlistEntry { Id = Guid.NewGuid(), OwnerId = owner, AssetId = asset.Id, AddedAtUtc = clock.GetUtcNow().UtcDateTime, Position = (last ?? -1) + 1 };
         db.WatchlistEntries.Add(entry);
         try { await db.SaveChangesAsync(ct); }
         catch (DbUpdateException ex) when (db.IsUniqueConstraintViolation(ex))
@@ -70,11 +72,28 @@ public sealed class WatchlistService(
         await db.SaveChangesAsync(ct);
     }
 
+    /// <summary>
+    /// Stores the caller's own order. The request must name every watched symbol exactly once – a list that changed
+    /// meanwhile (another tab added or removed a stock) is refused instead of guessing where the rest belongs.
+    /// </summary>
+    public async Task ReorderAsync(ReorderWatchlistRequest request, CancellationToken ct)
+    {
+        var owner = currentUser.RequireUserId();
+        var symbols = request.Symbols.Select(Asset.NormalizeSymbol).ToList();
+        if (symbols.Distinct().Count() != symbols.Count) throw new ValidationException("symbols", "Each symbol may appear only once.");
+        var entries = await db.WatchlistEntries.Include(e => e.Asset).Where(e => e.OwnerId == owner).ToListAsync(ct);
+        var bySymbol = entries.ToDictionary(e => e.Asset!.Symbol);
+        if (symbols.Count != entries.Count || symbols.Any(s => !bySymbol.ContainsKey(s)))
+            throw new ConflictException("Your watchlist changed meanwhile. Reload it and try again.");
+        for (var i = 0; i < symbols.Count; i++) bySymbol[symbols[i]].Position = i;
+        await db.SaveChangesAsync(ct);
+    }
+
     /// <summary>Symbols on the caller's watchlist (used for refreshes and the news filter).</summary>
     public async Task<IReadOnlyList<string>> SymbolsAsync(CancellationToken ct)
     {
         var owner = currentUser.RequireUserId();
-        return await db.WatchlistEntries.AsNoTracking().Where(e => e.OwnerId == owner).OrderBy(e => e.AddedAtUtc)
+        return await db.WatchlistEntries.AsNoTracking().Where(e => e.OwnerId == owner).OrderBy(e => e.Position).ThenBy(e => e.AddedAtUtc)
             .Select(e => e.Asset!.Symbol).ToListAsync(ct);
     }
 

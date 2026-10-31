@@ -1,5 +1,15 @@
 # Implementation status
 
+## 2026-10-31: watchlist in your own order
+
+* Radar's watchlist can be reordered by drag and drop (handle per row; pointer events, so mouse, pen and touch) or with
+  the arrow keys / Home / End on the focused handle (announced to screen readers). The order is stored per owner
+  (`WatchlistEntries.Position`, migration `WatchlistOrder` keeps every existing list in its old oldest-first order) via
+  `PUT /api/v1/watchlist/order` – the full list once, 409 if it changed meanwhile, 400 for duplicates; integration-tested
+  incl. another user and anonymous. The list scrolls in its own box and is paged (25 by default); dragging near the
+  box's edge scrolls it. Reorder math in `lib/reorder.ts`, the component in `components/sortable-list.tsx`.
+* Stock list full screen: "Price history" now follows "5 years".
+
 ## 2026-10-31: Forge stock list in the portfolio currency
 
 * New portfolio (Forge): the portfolio currency is page state shared by the form and the stock list – a "Prices in"

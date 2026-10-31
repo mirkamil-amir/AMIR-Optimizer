@@ -1,4 +1,4 @@
-import { useDeferredValue, useState } from 'react'
+import { useDeferredValue, useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -11,9 +11,12 @@ import { QuoteCell, QuoteProvenance, RefreshQuoteButton } from '@/components/sto
 import { ChangeText, RangePicker, Sparkline } from '@/components/watchlist'
 import { errorMessage } from '@/lib/api'
 import { date } from '@/lib/format'
-import { useAddToWatchlist, useRefreshWatchlist, useRemoveFromWatchlist, useStocks, useWatchlist } from '@/lib/queries'
+import { useAddToWatchlist, useRefreshWatchlist, useRemoveFromWatchlist, useReorderWatchlist, useStocks, useWatchlist } from '@/lib/queries'
 import type { HistoryRange, WatchlistItem } from '@/lib/types'
 import { MatrixLoader } from '@/components/matrix-loader'
+import { RangePager } from '@/components/data-table'
+import { SortableList } from '@/components/sortable-list'
+import { moveItem } from '@/lib/reorder'
 
 const listRanges: HistoryRange[] = ['1M', '3M', '6M', '1Y', '5Y']
 
@@ -60,18 +63,58 @@ export function WatchlistPage() {
           description="Search above by company name or ticker (e.g. “Siemens”, “AAPL”, “7203.T”) and add stocks to follow their prices and news."
         />
       ) : (
-        <div className="space-y-2" aria-live="polite">
-          {items.map((i) => <WatchRow key={i.id} item={i} range={range} />)}
-          <p className="pt-2 text-xs text-muted-foreground">
-            {list.data!.note} {items.length} of {list.data!.maxEntries} slots used.
-          </p>
-        </div>
+        <WatchList items={items} range={range} note={`${list.data!.note} ${items.length} of ${list.data!.maxEntries} slots used.`} />
       )}
     </div>
   )
 }
 
-function WatchRow({ item, range }: { item: WatchlistItem; range: HistoryRange }) {
+/**
+ * The watched stocks in the user's own order: drag a row by its handle (or use the arrow keys on it) to move it, the
+ * order is saved for the account. The list scrolls inside its box and is split into pages (25 rows by default).
+ */
+function WatchList({ items, range, note }: { items: WatchlistItem[]; range: HistoryRange; note: string }) {
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState<number>(25)
+  const [box, setBox] = useState<HTMLDivElement | null>(null)
+  const reorder = useReorderWatchlist()
+  const totalPages = Math.max(1, Math.ceil(items.length / pageSize))
+  const current = Math.min(page, totalPages)
+  const offset = (current - 1) * pageSize
+  const pageItems = items.slice(offset, offset + pageSize)
+
+  const goTo = (p: number) => { setPage(p); box?.scrollTo({ top: 0 }) }
+  const move = async (from: number, to: number) => {
+    const order = moveItem(items.map((i) => i.stock.symbol), offset + from, offset + to)
+    try {
+      await reorder.mutateAsync(order)
+    } catch (e) {
+      toast.error('Could not save the new order', { description: errorMessage(e) })
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <div ref={setBox} className="max-h-[calc(100dvh-15rem)] min-h-48 overflow-y-auto rounded-xl pr-1" tabIndex={-1}>
+        <SortableList
+          items={pageItems}
+          getKey={(i) => i.id}
+          getLabel={(i) => i.stock.symbol}
+          onMove={move}
+          scrollBox={box}
+          renderItem={(i, handle) => <WatchRow item={i} range={range} handle={handle} />}
+        />
+      </div>
+      <RangePager page={current} pageSize={pageSize} total={items.length} totalPages={totalPages} onPage={goTo}
+        onPageSize={(n) => { setPageSize(n); goTo(1) }} />
+      <p className="text-xs text-muted-foreground">
+        Drag a row by its handle to change the order (saved for your account); on a page you can also move a focused handle with the arrow keys. {note}
+      </p>
+    </div>
+  )
+}
+
+function WatchRow({ item, range, handle }: { item: WatchlistItem; range: HistoryRange; handle: ReactNode }) {
   const s = item.stock
   const remove = useRemoveFromWatchlist()
   const navigate = useNavigate()
@@ -93,7 +136,8 @@ function WatchRow({ item, range }: { item: WatchlistItem; range: HistoryRange })
   }
   return (
     <Card className="cursor-pointer py-3 transition-colors hover:bg-muted/40" onClick={openDetail} data-testid={`watch-row-${s.symbol}`} title={`Open ${s.symbol}`}>
-      <CardContent className="grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-2 px-4 md:grid-cols-[minmax(12rem,1.4fr)_minmax(7rem,auto)_minmax(8rem,auto)_auto_auto]">
+      <CardContent className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-2 px-3 md:grid-cols-[auto_minmax(12rem,1.4fr)_minmax(7rem,auto)_minmax(8rem,auto)_auto_auto] md:gap-x-4">
+        {handle}
         <div className="min-w-0">
           <Link to={`/stocks/${encodeURIComponent(s.symbol)}`} className="font-medium hover:underline">
             {s.symbol}
@@ -110,7 +154,7 @@ function WatchRow({ item, range }: { item: WatchlistItem; range: HistoryRange })
         <div className="text-right md:hidden"><QuoteCell quote={s.quote} /></div>
         <div className="hidden text-right md:block"><QuoteCell quote={s.quote} compact /></div>
 
-        <div className="col-span-2 flex items-center justify-between gap-3 md:col-span-1 md:flex-col md:items-end md:gap-0.5">
+        <div className="col-span-3 flex items-center justify-between gap-3 md:col-span-1 md:flex-col md:items-end md:gap-0.5">
           <div className="flex items-center gap-1 text-sm">
             <span className="text-xs text-muted-foreground">{range}</span>
             <ChangeText value={p.change} className="font-medium" />
@@ -125,7 +169,7 @@ function WatchRow({ item, range }: { item: WatchlistItem; range: HistoryRange })
 
         <div className="hidden md:block" />
 
-        <div className="col-span-2 flex items-center justify-end gap-1 md:col-span-1">
+        <div className="col-span-3 flex items-center justify-end gap-1 md:col-span-1">
           <RefreshQuoteButton symbol={s.symbol} />
           <Button size="icon-xs" variant="ghost" onClick={removeNow} disabled={remove.isPending} aria-label={`Remove ${s.symbol} from watchlist`} title="Remove">
             {remove.isPending ? <MatrixLoader /> : <Trash2 />}

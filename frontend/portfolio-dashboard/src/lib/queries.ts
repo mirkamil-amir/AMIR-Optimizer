@@ -816,6 +816,28 @@ export function useRemoveFromWatchlist() {
   })
 }
 
+/**
+ * Saves the caller's order of the watchlist (every watched symbol once). The new order shows at once in every cached
+ * range; if saving fails it is rolled back and the list reloaded (e.g. 409 when another tab changed the list).
+ */
+export function useReorderWatchlist() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (symbols: string[]) => api.put<void>(`${V1}/watchlist/order`, { symbols }),
+    onMutate: async (symbols) => {
+      await qc.cancelQueries({ queryKey: ['watchlist'] })
+      const previous = qc.getQueriesData<Watchlist>({ queryKey: ['watchlist'] })
+      const rank = new Map(symbols.map((s, i) => [s, i]))
+      qc.setQueriesData<Watchlist>({ queryKey: ['watchlist'] }, (old) => old && ({
+        ...old, items: [...old.items].sort((a, b) => (rank.get(a.stock.symbol) ?? 0) - (rank.get(b.stock.symbol) ?? 0)),
+      }))
+      return { previous }
+    },
+    onError: (_e, _symbols, context) => context?.previous.forEach(([key, data]) => qc.setQueryData(key, data)),
+    onSettled: () => qc.invalidateQueries({ queryKey: ['watchlist'] }),
+  })
+}
+
 /** Refreshes all watched stocks' quotes (the server reuses quotes inside its cache window). */
 export function useRefreshWatchlist() {
   const qc = useQueryClient()

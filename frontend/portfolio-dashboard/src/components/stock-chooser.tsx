@@ -220,8 +220,8 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
     ...(full ? [
       { priority: 4, minWidth: 120, column: { key: 'trend3m', header: '3 months', align: 'right' as const, className: CHART_COLUMN, cell: (s: StockListItem) => trendCell(s.symbol, trends3m, 'three months') } },
       { priority: 5, minWidth: 120, column: { key: 'trend1y', header: '1 year', align: 'right' as const, className: CHART_COLUMN, cell: (s: StockListItem) => trendCell(s.symbol, trends1y, 'one year') } },
-      { priority: 6, minWidth: 144, column: { key: 'history', header: 'Price history', className: 'min-w-[9rem]', cell: (s: StockListItem) => <HistoryCell stock={s} /> } },
       { priority: 7, minWidth: 120, column: { key: 'trend5y', header: '5 years', align: 'right' as const, className: CHART_COLUMN, cell: (s: StockListItem) => trendCell(s.symbol, trends5y, 'five years') } },
+      { priority: 6, minWidth: 144, column: { key: 'history', header: 'Price history', className: 'min-w-[9rem]', cell: (s: StockListItem) => <HistoryCell stock={s} /> } },
     ] : []),
     {
       priority: full ? 8 : 4, minWidth: 112,

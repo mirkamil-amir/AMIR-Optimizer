@@ -148,6 +148,34 @@ public sealed class WatchlistTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Reorder_PersistsTheOwnersOrder_AndRefusesAStaleOrForeignList()
+    {
+        (await Add(_user, "AAPL")).EnsureStatus(HttpStatusCode.Created);
+        (await Add(_user, "MSFT")).EnsureStatus(HttpStatusCode.Created);
+        async Task<List<string>> Order(HttpClient c) =>
+            (await (await c.GetAsync("/api/v1/watchlist")).ReadAsync<WatchlistDto>()).Items.Select(i => i.Stock.Symbol).ToList();
+        Assert.Equal(["AAPL", "MSFT"], await Order(_user)); // new entries go to the end
+
+        (await _user.PutJsonAsync("/api/v1/watchlist/order", new ReorderWatchlistRequest { Symbols = ["msft", "AAPL"] })).EnsureStatus(HttpStatusCode.NoContent);
+        Assert.Equal(["MSFT", "AAPL"], await Order(_user));
+
+        // A list that misses or invents a symbol is refused (409), duplicates are invalid (400); the stored order stays.
+        (await _user.PutJsonAsync("/api/v1/watchlist/order", new ReorderWatchlistRequest { Symbols = ["AAPL"] })).EnsureStatus(HttpStatusCode.Conflict);
+        (await _user.PutJsonAsync("/api/v1/watchlist/order", new ReorderWatchlistRequest { Symbols = ["AAPL", "NOPE123"] })).EnsureStatus(HttpStatusCode.Conflict);
+        (await _user.PutJsonAsync("/api/v1/watchlist/order", new ReorderWatchlistRequest { Symbols = ["AAPL", "AAPL"] })).EnsureStatus(HttpStatusCode.BadRequest);
+        Assert.Equal(["MSFT", "AAPL"], await Order(_user));
+
+        // Another user's order is their own: naming this user's symbols does not touch this user's list.
+        var (other, _) = await _factory.CreateApprovedUserAsync(_admin);
+        (await other.PutJsonAsync("/api/v1/watchlist/order", new ReorderWatchlistRequest { Symbols = ["AAPL", "MSFT"] })).EnsureStatus(HttpStatusCode.Conflict);
+        Assert.Equal(["MSFT", "AAPL"], await Order(_user));
+        other.Dispose();
+
+        using var anonymous = _factory.CreateSession();
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.PutJsonAsync("/api/v1/watchlist/order", new ReorderWatchlistRequest { Symbols = ["AAPL"] })).StatusCode);
+    }
+
+    [Fact]
     public async Task Watchlist_RequiresAnApprovedAccount()
     {
         using var anonymous = _factory.CreateSession();
