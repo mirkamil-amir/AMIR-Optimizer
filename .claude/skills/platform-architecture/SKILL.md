@@ -52,7 +52,9 @@ history) is never a plain `<ul>` or an unpaged table. Universes reach hundreds o
 * Use `SearchableTable` from `frontend/portfolio-dashboard/src/components/data-table.tsx`: search box with the row count
   (or a `breakdown` that counts kinds apart, see `/market-data-fx` and `lib/instrument-counts.ts`), sortable
   `DataTable`, paging with `RangePager` (rows per page 25/50/100/200, first/previous/next/last) and `maxRows`, so the
-  table scrolls under a fixed header. In-page lists: `pageSize={25}`, `maxRows` 8–12, `dense`; full-page lists keep the
+  table scrolls under a fixed header (`maxHeight`: a CSS height instead). `fullScreen="<title>"` adds a Full screen
+  button that opens the same list (search kept, header fixed) over the window – used for the allocation, ML
+  predictions and proposed trades. In-page lists: `pageSize={25}`, `maxRows` 8–12, `dense`; full-page lists keep the
   defaults (50/15). Give it a stable `caption` – e2e specs find tables by it ("Recommended allocation", "Stocks in the
   universe"). Its search box never submits a surrounding form (Enter is swallowed) – the optimization forms rely on it.
 * Inside a grid or flex column wrap it in `min-w-0` (a `<fieldset>` is as wide as its content by default: the universe

@@ -88,4 +88,18 @@ describe('SearchableTable', () => {
     await userEvent.type(screen.getByRole('textbox', { name: 'Search stocks' }), 'S1{Enter}')
     expect(submitted).toBe(0)
   })
+
+  it('opens the same list in full screen with the search kept and a fixed header, and closes it again', async () => {
+    render(<SearchableTable label="stocks" rows={rows} columns={columns} rowKey={(r) => r.symbol} maxRows={5} fullScreen="All stocks"
+      placeholder="Search" matches={(r, q) => r.symbol.toLowerCase().includes(q)} />)
+    await userEvent.type(screen.getByRole('textbox', { name: 'Search stocks' }), 'S2')
+    await userEvent.click(screen.getByRole('button', { name: 'Full screen' }))
+    const dialog = await screen.findByRole('dialog', { name: 'All stocks' })
+    expect(within(dialog).getByRole('textbox', { name: 'Search stocks' })).toHaveValue('S2')
+    expect(within(dialog).getAllByRole('rowgroup')[0]).toHaveClass('sticky')
+    expect(within(within(dialog).getAllByRole('rowgroup')[1]).getAllByRole('row').map((r) => r.firstChild?.textContent)).toEqual(['S20', 'S21', 'S22', 'S23'])
+    expect(within(dialog).queryByRole('button', { name: 'Full screen' })).toBeNull()
+    await userEvent.keyboard('{Escape}')
+    expect(await screen.findByRole('button', { name: 'Full screen' })).toBeInTheDocument()
+  })
 })

@@ -644,7 +644,7 @@ function AllocationTable({ rows, currency }: { rows: Allocation[]; currency: str
       rows={rows}
       rowKey={(r) => r.symbol}
       initialSort={{ key: 'w', dir: 'desc' }}
-      dense pageSize={25} maxRows={12}
+      dense pageSize={25} maxRows={12} fullScreen="Recommended allocation"
       placeholder="Search symbol, name, sector or currency"
       matches={(r, q) => r.symbol.toLowerCase().includes(q) || (r.name ?? '').toLowerCase().includes(q) || (r.sector ?? '').toLowerCase().includes(q) || (r.currency ?? '').toLowerCase() === q}
       breakdown={`${rows.length.toLocaleString()} stocks in the universe · ${invested.toLocaleString()} with a weight · ${(rows.length - invested).toLocaleString()} at 0 %`}

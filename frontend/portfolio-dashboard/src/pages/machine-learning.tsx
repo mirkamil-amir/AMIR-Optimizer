@@ -679,7 +679,7 @@ function AllocationSection({ e }: { e: MlExperiment }) {
   return (
     <>
       {/* Searchable and paged like every long list: an experiment can rank hundreds of stocks. */}
-      <SearchableTable label="stock predictions" rows={set.predictions} columns={columns} rowKey={(p) => p.symbol} dense pageSize={25} maxRows={12}
+      <SearchableTable label="stock predictions" rows={set.predictions} columns={columns} rowKey={(p) => p.symbol} dense pageSize={25} maxRows={12} fullScreen="Stock predictions and target weights"
         initialSort={{ key: 'rank', dir: 'asc' }} placeholder="Search symbol, name or sector"
         matches={(p, q) => p.symbol.toLowerCase().includes(q) || (p.name ?? '').toLowerCase().includes(q) || (p.sector ?? '').toLowerCase().includes(q)}
         breakdown={`${set.predictions.length.toLocaleString()} stocks ranked · ${set.predictions.filter((p) => p.selected).length.toLocaleString()} selected`} />

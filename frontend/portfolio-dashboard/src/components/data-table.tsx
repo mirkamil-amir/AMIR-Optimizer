@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -133,9 +134,11 @@ export function DataTable<T>({
  * Market Data): a search box with the row count, then the sortable `DataTable` in pages (rows per page,
  * first/previous/next/last) inside a box that scrolls under a fixed header. A new search starts at page 1.
  * `breakdown` replaces the plain count when the rows mix kinds that must be counted apart (see `lib/instrument-counts.ts`).
+ * `fullScreen` (the dialog title) adds a "Full screen" button: the same list, search and sort over the whole window, its
+ * rows scrolling under the fixed header.
  */
 export function SearchableTable<T>({
-  label, caption = label, hint, rows, columns, rowKey, initialSort, matches, placeholder, breakdown, empty, pageSize = 50, maxRows = 15, maxHeight, dense, onRowClick,
+  label, caption = label, hint, rows, columns, rowKey, initialSort, matches, placeholder, breakdown, empty, pageSize = 50, maxRows = 15, maxHeight, dense, onRowClick, fullScreen,
 }: {
   label: string
   /** Accessible name of the table (defaults to `label`). */
@@ -144,13 +147,15 @@ export function SearchableTable<T>({
   /** Replaces the plain row count when the list mixes types or tracked and not tracked instruments. */
   breakdown?: string
   pageSize?: number; maxRows?: number; maxHeight?: string; dense?: boolean; onRowClick?: (row: T) => void
+  fullScreen?: string
 }) {
   const [search, setSearch] = useState('')
+  const [open, setOpen] = useState(false)
   const q = search.trim().toLowerCase()
   const filtered = useMemo(() => (q ? rows.filter((r) => matches(r, q)) : rows), [rows, q, matches])
-  return (
-    <section aria-label={label} className="min-w-0 space-y-3">
-      {hint && <p className="text-sm text-muted-foreground">{hint}</p>}
+  // Rendered once at a time: inline, or in the full-screen dialog filling the space under its title.
+  const list = (inDialog: boolean) => (
+    <>
       <div className="flex flex-wrap items-center gap-3">
         <Input placeholder={placeholder} aria-label={`Search ${label}`} className="bg-card sm:w-80" value={search} onChange={(e) => setSearch(e.target.value)}
           // Inside a form (the optimization settings) Enter must not submit it: the search filters as you type.
@@ -158,11 +163,29 @@ export function SearchableTable<T>({
         <span className="text-xs text-muted-foreground tabular">
           {q ? `${filtered.length.toLocaleString()} of ${rows.length.toLocaleString()} ${label}` : breakdown ?? `${rows.length.toLocaleString()} ${label}`}
         </span>
+        {fullScreen && !inDialog && <Button type="button" size="xs" variant="outline" className="ml-auto" onClick={() => setOpen(true)}>Full screen</Button>}
       </div>
       {rows.length === 0 && empty ? <p className="rounded-lg border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">{empty}</p> : (
         <DataTable<T> caption={caption} rows={filtered} rowKey={rowKey} initialSort={initialSort} columns={columns} dense={dense} onRowClick={onRowClick}
-          pageSize={pageSize} pageResetKey={q} maxRows={maxRows} maxHeight={maxHeight}
+          pageSize={pageSize} pageResetKey={q} maxRows={maxRows} maxHeight={inDialog ? 'calc(100dvh - 15rem)' : maxHeight}
           empty={<p className="rounded-lg border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">No {label} match “{search}”.</p>} />
+      )}
+    </>
+  )
+  return (
+    <section aria-label={label} className="min-w-0 space-y-3">
+      {hint && <p className="text-sm text-muted-foreground">{hint}</p>}
+      {!open && list(false)}
+      {fullScreen && (
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogContent className="top-2 left-2 flex h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-none translate-x-0 translate-y-0 flex-col sm:max-w-none">
+            <DialogHeader>
+              <DialogTitle>{fullScreen}</DialogTitle>
+              <DialogDescription>{rows.length.toLocaleString()} {label} · Esc closes.</DialogDescription>
+            </DialogHeader>
+            {open && list(true)}
+          </DialogContent>
+        </Dialog>
       )}
     </section>
   )

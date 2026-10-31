@@ -11,7 +11,6 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { SearchableTable, type Column } from '@/components/data-table'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { MetricCard } from '@/components/common'
 import { fxPhrase } from '@/lib/currency'
 import { errorMessage } from '@/lib/api'
@@ -79,7 +78,6 @@ export function TradeProposalCard({ description, proposal, currency, pending, di
 
 export function TradeProposalView({ proposal, currency, allowExecute = true }: { proposal: TradeProposal; currency: string; allowExecute?: boolean }) {
   const [confirmOpen, setConfirmOpen] = useState(false)
-  const [fullScreen, setFullScreen] = useState(false)
   // One idempotency key per proposal view: a double click or network retry can never execute twice.
   const [idempotencyKey] = useState(() => crypto.randomUUID())
   const execute = useExecuteProposal(proposal.portfolioId)
@@ -171,22 +169,7 @@ export function TradeProposalView({ proposal, currency, allowExecute = true }: {
         </Alert>
       )}
 
-      <div className="space-y-2">
-        <div className="flex justify-end">
-          <Button type="button" size="xs" variant="outline" onClick={() => setFullScreen(true)}>Full screen</Button>
-        </div>
-        {!fullScreen && <ProposalLines lines={proposal.lines} columns={columns} maxRows={10} />}
-      </div>
-      <Dialog open={fullScreen} onOpenChange={setFullScreen}>
-        <DialogContent className="top-2 left-2 flex h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-none translate-x-0 translate-y-0 flex-col sm:max-w-none">
-          <DialogHeader>
-            <DialogTitle>Proposed trades</DialogTitle>
-            <DialogDescription>{proposal.lines.length} positions · values in {currency} · Esc closes.</DialogDescription>
-          </DialogHeader>
-          {/* The table itself scrolls (header fixed) in the space left under the title, search and pager. */}
-          <ProposalLines lines={proposal.lines} columns={columns} maxHeight="calc(100dvh - 15rem)" />
-        </DialogContent>
-      </Dialog>
+      <ProposalLines lines={proposal.lines} columns={columns} />
       {proposal.lines.some((l) => l.note) && (
         <ul className="space-y-0.5 text-xs text-muted-foreground">
           {proposal.lines.filter((l) => l.note).map((l) => <li key={l.symbol}><span className="font-medium text-foreground">{l.symbol}:</span> {l.note}</li>)}
@@ -251,10 +234,10 @@ function priceIn(l: ProposalLine, currency: string): number | null {
   return l.fxRate !== null ? l.price * l.fxRate : null
 }
 
-/** The proposal's positions as the app's standard long list: search, scroll under a fixed header (`maxRows` or `maxHeight`). */
-function ProposalLines({ lines, columns, maxRows, maxHeight }: { lines: ProposalLine[]; columns: Column<ProposalLine>[]; maxRows?: number; maxHeight?: string }) {
+/** The proposal's positions as the app's standard long list: search, about ten rows under a fixed header, full screen. */
+function ProposalLines({ lines, columns }: { lines: ProposalLine[]; columns: Column<ProposalLine>[] }) {
   return (
-    <SearchableTable label="positions" caption="Proposed trades" rows={lines} columns={columns} rowKey={(l) => l.symbol} dense maxRows={maxRows} maxHeight={maxHeight}
+    <SearchableTable label="positions" caption="Proposed trades" rows={lines} columns={columns} rowKey={(l) => l.symbol} dense maxRows={10} fullScreen="Proposed trades"
       placeholder="Search symbol or company" matches={(l, q) => l.symbol.toLowerCase().includes(q) || (l.companyName ?? '').toLowerCase().includes(q)} />
   )
 }
