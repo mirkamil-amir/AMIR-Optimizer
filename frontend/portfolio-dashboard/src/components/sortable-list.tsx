@@ -11,7 +11,7 @@ interface Drag { from: number; to: number; startY: number; dy: number; mids: num
  * `onMove(from, to)` gets indexes within `items`; the caller saves the new order. Inside `scrollBox` (the element that
  * scrolls) a drag near its top or bottom edge scrolls it.
  */
-export function SortableList<T>({ items, getKey, getLabel, onMove, renderItem, scrollBox, disabled = false }: {
+export function SortableList<T>({ items, getKey, getLabel, onMove, renderItem, scrollBox, disabled = false, listClassName, listStyle, itemClassName }: {
   items: T[]
   getKey: (item: T) => string
   /** Name read out for the handle and announcements, e.g. the symbol. */
@@ -20,6 +20,10 @@ export function SortableList<T>({ items, getKey, getLabel, onMove, renderItem, s
   renderItem: (item: T, handle: ReactNode) => ReactNode
   scrollBox?: HTMLElement | null
   disabled?: boolean
+  /** Layout of the list (default: rows 8 px apart); e.g. a grid whose rows share columns through `subgrid`. */
+  listClassName?: string
+  listStyle?: React.CSSProperties
+  itemClassName?: string
 }) {
   const [drag, setDrag] = useState<Drag | null>(null)
   const [announcement, setAnnouncement] = useState('')
@@ -84,7 +88,7 @@ export function SortableList<T>({ items, getKey, getLabel, onMove, renderItem, s
   return (
     <>
       <p id={helpId} className="sr-only">Drag the handle, or focus it and use the arrow keys (Home and End for top and bottom), to change the order.</p>
-      <ul className="space-y-2" aria-label="Watched stocks in your order">
+      <ul className={listClassName ?? 'space-y-2'} style={listStyle} aria-label="Watched stocks in your order">
         {items.map((item, index) => {
           const key = getKey(item)
           const dragging = drag?.from === index
@@ -111,7 +115,7 @@ export function SortableList<T>({ items, getKey, getLabel, onMove, renderItem, s
             <li
               key={key}
               ref={(el) => { if (el) rows.current.set(key, el); else rows.current.delete(key) }}
-              className={cn('relative', dragging ? 'z-10 rounded-xl bg-popover shadow-lg' : drag && 'transition-transform duration-150')}
+              className={cn('relative', itemClassName, dragging ? 'z-10 rounded-xl bg-popover shadow-lg' : drag && 'transition-transform duration-150')}
               style={offset ? { transform: `translateY(${offset}px)` } : undefined}
             >
               {renderItem(item, handle)}
@@ -124,7 +128,7 @@ export function SortableList<T>({ items, getKey, getLabel, onMove, renderItem, s
   )
 }
 
-/** Vertical gap between rows (`space-y-2`), so neighbours slide by exactly one row. */
+/** Vertical gap between rows (`space-y-2` / `gap-y-2`), so neighbours slide by exactly one row. */
 const ROW_GAP = 8
 const EDGE = 48
 const SCROLL_STEP = 12

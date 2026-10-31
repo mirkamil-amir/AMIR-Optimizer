@@ -11,6 +11,11 @@
 * Stock list full screen: "Price history" now follows "5 years".
 * Watchlist rows show sector and index membership ("Industrials · DAX 40, Euro Stoxx 50"; index names from the catalogue,
   `sectorAndIndices` in `lib/markets.ts`) in their own column, on phones under the exchange line.
+* Watchlist rows share one set of columns (CSS subgrid): prices, changes and sectors line up across rows and every
+  column is as wide as its longest content within its limits; the list measures its own width and shows the columns by
+  priority (period change, then sector/indices; their text moves under the exchange when hidden) and stacks the rows when
+  even the essentials do not fit. Long names are cut with "…" (full name on hover); the chart stretches to its column.
+  `useElementWidth` moved to `lib/use-element-width.ts`, shared with the stock chooser.
 * The stock chooser's pinned tick box and Ticker look like every other column at rest; they turn opaque (with a divider)
   only while the table is scrolled sideways (`data-scrolled-x` on the `DataTable` scroll box).
 

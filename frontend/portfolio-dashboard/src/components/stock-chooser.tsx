@@ -28,6 +28,7 @@ import type { Market, QuoteRefreshRun, StockListItem, StockTrend } from '@/lib/t
 import { date, num } from '@/lib/format'
 import { countryOfSymbol, indexName } from '@/lib/markets'
 import { fitColumns } from '@/lib/column-fit'
+import { useElementWidth } from '@/lib/use-element-width'
 import { useMapSignal } from '@/lib/world-map'
 import { MatrixLoader } from '@/components/matrix-loader'
 import { cn } from '@/lib/utils'
@@ -485,29 +486,8 @@ const STICKY_SELECT = `sticky left-0 z-[1] w-9 min-w-9 px-1.5 sm:w-10 sm:min-w-1
 const STICKY_TICKER = `sticky left-9 z-[1] w-20 min-w-20 px-1.5 [[data-scrolled-x=true]_&]:shadow-[1px_0_0_var(--border)] sm:left-10 sm:w-28 sm:min-w-28 sm:px-2 ${STICKY_BG}`
 // Phones: a little less padding in the price columns, so both prices fit next to the ticker.
 const PHONE_PAD = 'px-1.5 sm:px-2'
-const SETTLE_PX = 24
 // Chart columns: at least wide enough for the change and a readable line; the line stretches with the column.
 const CHART_COLUMN = 'min-w-[7.5rem]'
-
-/**
- * Width of an element in CSS pixels, kept in step with resizes (a generous default before the first measurement).
- * Changes under 24 px are ignored: a page scrollbar that appears because the column set changed (about 15 px) must not
- * change the column set back – that would flip forever.
- */
-function useElementWidth(): [(el: HTMLDivElement | null) => void, number, HTMLDivElement | null] {
-  const [el, setEl] = useState<HTMLDivElement | null>(null)
-  const [width, setWidth] = useState(1200)
-  useEffect(() => {
-    if (!el || typeof ResizeObserver === 'undefined') return
-    const observer = new ResizeObserver(([entry]) => {
-      const next = Math.round(entry.contentRect.width)
-      setWidth((prev) => (prev === 1200 || Math.abs(next - prev) >= SETTLE_PX ? next : prev))
-    })
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [el])
-  return [setEl, width, el]
-}
 
 /**
  * How many optional columns to drop because the table drawn inside `el` is still wider than its box. Checked after every

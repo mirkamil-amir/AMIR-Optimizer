@@ -18,6 +18,9 @@ import { RangePager } from '@/components/data-table'
 import { SortableList } from '@/components/sortable-list'
 import { moveItem } from '@/lib/reorder'
 import { indexName, sectorAndIndices } from '@/lib/markets'
+import { fitColumns } from '@/lib/column-fit'
+import { useElementWidth } from '@/lib/use-element-width'
+import { cn } from '@/lib/utils'
 
 const listRanges: HistoryRange[] = ['1M', '3M', '6M', '1Y', '5Y']
 
@@ -84,6 +87,15 @@ function WatchList({ items, range, note }: { items: WatchlistItem[]; range: Hist
   const offset = (current - 1) * pageSize
   const pageItems = items.slice(offset, offset + pageSize)
 
+  // The rows share one set of columns (CSS subgrid), so they line up and each column is as wide as its longest content
+  // between a minimum and a maximum; the list shows as many columns as fit its measured width, by priority, and stacks
+  // the rows (phone layout) when even the essentials do not fit.
+  const [measure, width] = useElementWidth()
+  const fit = fitColumns(WATCH_COLUMNS, width)
+  const stacked = width < CORE_WIDTH
+  const layout: WatchLayout = { stacked, change: stacked || fit.visible.has('change'), membership: !stacked && fit.visible.has('membership') }
+  const template = ['auto', 'minmax(13rem, 1fr)', 'max-content', ...(layout.change ? ['minmax(9rem, 16rem)'] : []), ...(layout.membership ? ['minmax(8rem, 14rem)'] : []), 'max-content'].join(' ')
+
   const goTo = (p: number) => { setPage(p); box?.scrollTo({ top: 0 }) }
   const move = async (from: number, to: number) => {
     const order = moveItem(items.map((i) => i.stock.symbol), offset + from, offset + to)
@@ -96,14 +108,17 @@ function WatchList({ items, range, note }: { items: WatchlistItem[]; range: Hist
 
   return (
     <div className="space-y-3">
-      <div ref={setBox} className="max-h-[calc(100dvh-15rem)] min-h-48 overflow-y-auto rounded-xl pr-1" tabIndex={-1}>
+      <div ref={(el) => { setBox(el); measure(el) }} className="max-h-[calc(100dvh-15rem)] min-h-48 overflow-y-auto rounded-xl pr-1" tabIndex={-1}>
         <SortableList
           items={pageItems}
           getKey={(i) => i.id}
           getLabel={(i) => i.stock.symbol}
           onMove={move}
           scrollBox={box}
-          renderItem={(i, handle) => <WatchRow item={i} range={range} handle={handle} />}
+          listClassName={layout.stacked ? undefined : 'grid gap-x-4 gap-y-2'}
+          listStyle={layout.stacked ? undefined : { gridTemplateColumns: template }}
+          itemClassName={layout.stacked ? undefined : 'col-span-full grid grid-cols-subgrid'}
+          renderItem={(i, handle) => <WatchRow item={i} range={range} handle={handle} layout={layout} />}
         />
       </div>
       <RangePager page={current} pageSize={pageSize} total={items.length} totalPages={totalPages} onPage={goTo}
@@ -115,7 +130,7 @@ function WatchList({ items, range, note }: { items: WatchlistItem[]; range: Hist
   )
 }
 
-function WatchRow({ item, range, handle }: { item: WatchlistItem; range: HistoryRange; handle: ReactNode }) {
+function WatchRow({ item, range, handle, layout }: { item: WatchlistItem; range: HistoryRange; handle: ReactNode; layout: WatchLayout }) {
   const s = item.stock
   const remove = useRemoveFromWatchlist()
   const navigate = useNavigate()
@@ -137,48 +152,63 @@ function WatchRow({ item, range, handle }: { item: WatchlistItem; range: History
     if (!e.currentTarget.contains(target) || target.closest('a, button, input, [role="button"]')) return
     navigate(`/stocks/${encodeURIComponent(s.symbol)}`)
   }
+  const { stacked } = layout
+
+  const change = (
+    <div className={stacked ? 'col-span-3 flex items-center justify-between gap-3' : 'flex min-w-0 flex-col items-end gap-0.5'}>
+      <div className="flex items-center gap-1 text-sm">
+        <span className="text-xs text-muted-foreground">{range}</span>
+        <ChangeText value={p.change} className="font-medium" />
+        <InfoTip label={`About the ${range} change`}>
+          {p.change !== null
+            ? `${p.basis}: ${date(p.baseDate)} → ${date(p.endDate)}. ${p.limitation ?? ''}`
+            : p.limitation ?? 'Not enough stored history for this period.'}
+        </InfoTip>
+      </div>
+      {stacked
+        ? <Sparkline points={p.sparkline} label={`${s.symbol} ${p.basis} over ${range}`} />
+        : <div className="w-full"><Sparkline points={p.sparkline} label={`${s.symbol} ${p.basis} over ${range}`} width={160} height={32} fluid /></div>}
+    </div>
+  )
+
   return (
-    <Card className="cursor-pointer py-3 transition-colors hover:bg-muted/40" onClick={openDetail} data-testid={`watch-row-${s.symbol}`} title={`Open ${s.symbol}`}>
-      <CardContent className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-2 px-3 md:grid-cols-[auto_minmax(12rem,1.4fr)_minmax(7rem,auto)_minmax(8rem,auto)_minmax(8rem,14rem)_auto] md:gap-x-4">
+    <Card className={cn('cursor-pointer py-3 transition-colors hover:bg-muted/40', !stacked && 'col-span-full grid grid-cols-subgrid gap-y-0')}
+      onClick={openDetail} data-testid={`watch-row-${s.symbol}`} title={`Open ${s.symbol}`}>
+      <CardContent className={stacked
+        ? 'grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-2 px-3'
+        : 'col-span-full grid grid-cols-subgrid items-center px-3'}>
         {handle}
         <div className="min-w-0">
-          <Link to={`/stocks/${encodeURIComponent(s.symbol)}`} className="font-medium hover:underline">
-            {s.symbol}
-          </Link>
-          <span className="ml-2 truncate text-sm text-muted-foreground">{s.name ?? ''}</span>
+          {/* Symbol and name on one line; a long name is cut with "…" instead of running into the price. */}
+          <div className="flex min-w-0 items-baseline gap-2">
+            <Link to={`/stocks/${encodeURIComponent(s.symbol)}`} className="shrink-0 font-medium hover:underline">
+              {s.symbol}
+            </Link>
+            <span className="min-w-0 truncate text-sm text-muted-foreground" title={s.name ?? undefined}>{s.name ?? ''}</span>
+          </div>
           <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
             <span>{[s.exchange, s.currency].filter(Boolean).join(' · ')}</span>
-            {/* Phones: sector and indices here; wider screens show them in their own column. */}
-            <span className="basis-full md:hidden">{membership}</span>
+            {/* Sector and indices sit here whenever their own column does not fit. */}
+            {!layout.membership && <span className="basis-full">{membership}</span>}
             {s.observations === 0 && <Badge variant="outline" className="border-warn/50 text-warn">History downloading or unavailable</Badge>}
           </div>
-          <div className="mt-1 hidden md:block"><QuoteProvenance quote={s.quote} /></div>
+          {!stacked && <div className="mt-1"><QuoteProvenance quote={s.quote} /></div>}
         </div>
 
-        {/* Phones show the price's kind, date and flags here because the provenance line above is hidden there. */}
-        <div className="text-right md:hidden"><QuoteCell quote={s.quote} /></div>
-        <div className="hidden text-right md:block"><QuoteCell quote={s.quote} compact /></div>
+        {/* Stacked rows show the price's kind, date and flags here because the provenance line is left out there. */}
+        <div className="text-right">{stacked ? <QuoteCell quote={s.quote} /> : <QuoteCell quote={s.quote} compact />}</div>
 
-        <div className="col-span-3 flex items-center justify-between gap-3 md:col-span-1 md:flex-col md:items-end md:gap-0.5">
-          <div className="flex items-center gap-1 text-sm">
-            <span className="text-xs text-muted-foreground">{range}</span>
-            <ChangeText value={p.change} className="font-medium" />
-            <InfoTip label={`About the ${range} change`}>
-              {p.change !== null
-                ? `${p.basis}: ${date(p.baseDate)} → ${date(p.endDate)}. ${p.limitation ?? ''}`
-                : p.limitation ?? 'Not enough stored history for this period.'}
-            </InfoTip>
+        {(stacked || layout.change) && change}
+
+        {/* Sector and index membership, e.g. "Industrials" over "DAX 40" (index names from the catalogue). */}
+        {!stacked && layout.membership && (
+          <div className="min-w-0 text-xs leading-snug">
+            <div className="text-foreground">{s.sector ?? 'Unclassified'}</div>
+            <div className="text-muted-foreground">{s.indices.length ? s.indices.map((i) => indexName(markets.data, i)).join(', ') : 'No tracked index'}</div>
           </div>
-          <Sparkline points={p.sparkline} label={`${s.symbol} ${p.basis} over ${range}`} />
-        </div>
+        )}
 
-        {/* Sector and index membership, e.g. "Industrials · DAX 40" (index names from the catalogue). */}
-        <div className="hidden max-w-56 text-xs leading-snug md:block">
-          <div className="text-foreground">{s.sector ?? 'Unclassified'}</div>
-          <div className="text-muted-foreground">{s.indices.length ? s.indices.map((i) => indexName(markets.data, i)).join(', ') : 'No tracked index'}</div>
-        </div>
-
-        <div className="col-span-3 flex items-center justify-end gap-1 md:col-span-1">
+        <div className={cn('flex items-center justify-end gap-1', stacked && 'col-span-3')}>
           <RefreshQuoteButton symbol={s.symbol} />
           <Button size="icon-xs" variant="ghost" onClick={removeNow} disabled={remove.isPending} aria-label={`Remove ${s.symbol} from watchlist`} title="Remove">
             {remove.isPending ? <MatrixLoader /> : <Trash2 />}
@@ -188,6 +218,25 @@ function WatchRow({ item, range, handle }: { item: WatchlistItem; range: History
     </Card>
   )
 }
+
+interface WatchLayout {
+  /** Rows stacked (phone layout) instead of sharing columns. */
+  stacked: boolean
+  change: boolean
+  membership: boolean
+}
+
+/** Columns of the watchlist by priority, with their smallest useful widths (gap included) – see lib/column-fit.ts. */
+const WATCH_COLUMNS = [
+  { key: 'handle', priority: 1, minWidth: 48 },
+  { key: 'info', priority: 1, minWidth: 224 },
+  { key: 'price', priority: 1, minWidth: 136 },
+  { key: 'actions', priority: 1, minWidth: 120 },
+  { key: 'change', priority: 2, minWidth: 176 },
+  { key: 'membership', priority: 3, minWidth: 160 },
+]
+/** Below this width even the essential columns do not fit side by side: the rows stack. */
+const CORE_WIDTH = WATCH_COLUMNS.filter((c) => c.priority === 1).reduce((sum, c) => sum + c.minWidth, 0)
 
 /** Search the catalogue by name or ticker and add a listing; duplicates are rejected by the server (409). */
 function AddStock() {

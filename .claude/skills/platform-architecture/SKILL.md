@@ -57,9 +57,20 @@ history) is never a plain `<ul>` or an unpaged table. Universes reach hundreds o
   predictions and proposed trades. In-page lists: `pageSize={25}`, `maxRows` 8–12, `dense`; full-page lists keep the
   defaults (50/15). Give it a stable `caption` – e2e specs find tables by it ("Recommended allocation", "Stocks in the
   universe"). Its search box never submits a surrounding form (Enter is swallowed) – the optimization forms rely on it.
-* A table with more columns than fit (the stock chooser): give each column a priority and a minimum width and let
-  `fitColumns` (`lib/column-fit.ts`) pick the columns from the list's measured width, not screen breakpoints; correct
-  after drawing if it still overflows, and ignore width changes under ~24 px (a scrollbar must not flip the set).
+* Column widths adapt automatically – to the list's real width and to the length of what is in the columns (owner,
+  2026-11-01: stock chooser and watchlist; apply it to every list or row layout with columns). Never fixed widths or
+  screen breakpoints for which columns appear:
+  * Width from content: each column sizes itself between a minimum and a maximum (`min-w-[…]`/`max-w-[…]`, or a grid
+    track `minmax(min, max)` / `max-content`); text may wrap or truncate with "…", numbers never wrap.
+  * Which columns: give each a priority and a minimum width and let `fitColumns` (`lib/column-fit.ts`) pick them from the
+    width measured with `useElementWidth` (`lib/use-element-width.ts`, ignores changes under 24 px so a scrollbar cannot
+    flip the set); a table also corrects after drawing if it still overflows (`useOverflowTrim` in the stock chooser).
+    Show what a hidden column holds somewhere else (e.g. the name under the ticker, sector under the exchange).
+  * Rows built from cards (the watchlist) share one set of columns: the list is a CSS grid with a template from the
+    visible columns and every row (and card, and card content) is `col-span-full grid grid-cols-subgrid`, so the columns
+    line up across rows and each is as wide as its longest content. Keep the column gap (`gap-y-0` on the card, not
+    `gap-0`). When even the essential columns do not fit, rows stack (phone layout).
+  * Charts in columns stretch to the column (`Sparkline fluid`).
 * Pinned (sticky) columns, e.g. tick box and Ticker in the stock chooser, must look exactly like the other columns – same
   transparency over the card and map, no own background or divider at rest (owner, 2026-11-01: columns must line up
   visually). Only while the table is scrolled sideways do they need an opaque surface (`bg-popover`, the header with its
