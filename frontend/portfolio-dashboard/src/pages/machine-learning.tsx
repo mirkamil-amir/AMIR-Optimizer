@@ -4,7 +4,7 @@ import { toast } from 'sonner'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -16,7 +16,7 @@ import { Pager, SearchableTable, type Column } from '@/components/data-table'
 import { Collapsible, DataBadge, EmptyState, ErrorState, InfoTip, LoadingBlock, MetricCard, PageHeader, ResultSection, SectionTitle, Warnings } from '@/components/common'
 import { featureMeanings } from '@/lib/ml-features'
 import { UniverseField } from '@/components/universe-field'
-import { TradeProposalView } from '@/components/proposal'
+import { TradeProposalCard } from '@/components/proposal'
 import { PerformanceTable } from '@/components/performance-table'
 import { DataNotesList, StrategyInsights } from '@/components/strategy-insights'
 import { interpretMlExperiment } from '@/lib/interpretation'
@@ -429,25 +429,16 @@ function MlTradeProposal({ e, portfolioId }: { e: MlExperiment; portfolioId: str
   const proposal = created?.id === e.summary.id ? created.proposal : null
   const weights = Object.fromEntries((e.latestPredictions?.predictions ?? []).filter((p) => p.targetWeight > 0).map((p) => [p.symbol, p.targetWeight]))
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between gap-2">
-        <div>
-          <CardTitle className="flex items-center gap-2 text-sm">Trade proposal</CardTitle>
-          <CardDescription className="text-xs">Translate the ML target weights into whole-share orders for “{portfolio?.name ?? 'this portfolio'}” at the latest stored prices, after costs. Nothing is executed until you confirm.</CardDescription>
-        </div>
-        <Button variant={proposal ? 'outline' : 'default'} disabled={preview.isPending || Object.keys(weights).length === 0} onClick={async () => {
-          try {
-            setCreated({ id: e.summary.id, proposal: await preview.mutateAsync({ targetWeights: weights }) })
-          } catch (err) {
-            toast.error('Could not create trade proposal', { description: errorMessage(err) })
-          }
-        }}>
-          {preview.isPending && <MatrixLoader />}
-          {proposal ? 'Recalculate' : 'Create trade proposal'}
-        </Button>
-      </CardHeader>
-      {proposal && <CardContent><TradeProposalView proposal={proposal} currency={portfolio?.baseCurrency ?? e.currency} /></CardContent>}
-    </Card>
+    <TradeProposalCard proposal={proposal} currency={portfolio?.baseCurrency ?? e.currency} pending={preview.isPending}
+      disabled={Object.keys(weights).length === 0}
+      description={`Translate the ML target weights into whole-share orders for “${portfolio?.name ?? 'this portfolio'}” at the latest stored prices, after costs. Nothing is executed until you confirm.`}
+      onCreate={async () => {
+        try {
+          setCreated({ id: e.summary.id, proposal: await preview.mutateAsync({ targetWeights: weights }) })
+        } catch (err) {
+          toast.error('Could not create trade proposal', { description: errorMessage(err) })
+        }
+      }} />
   )
 }
 

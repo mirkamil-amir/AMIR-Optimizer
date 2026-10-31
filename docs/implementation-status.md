@@ -185,7 +185,7 @@
   `/machine-learning[/:id]` URLs redirect. Both pages share one layout: Optimization history, then the form (equity universe
   list with Browse stocks → Choose stocks page, "Use stock selection", Clear; Run optimization / Run ML optimization) on
   the left; header with badges, currency and date on the right, five headline metrics starting with Investable value, every result section visible at once (`ResultSection`, no tabs), the trade proposal card
-  (Create trade proposal / Recalculate), and "What your result means" with "How this strategy works" last.
+  (Create trade proposal / Recalculate; `TradeProposalCard`, its title folds the proposal away to a one-line summary of orders, buys and sells), Math Optimization's comparison with reference portfolios as bar charts (expected return and volatility; Sharpe ratio; notes in the tip and the table view), and "What your result means" with "How this strategy works" last.
 * Experiments without a portfolio are no longer listed on the ML Optimization page (card removed 2026-10-25, owner's
   request); one opened by its link (`/machine-learning/:id` opens it in the current portfolio) can still be linked there
   (`ExperimentPortfolio`, same currency only), and `GET /ml/experiments?unlinked=true` remains. ML trade proposals always

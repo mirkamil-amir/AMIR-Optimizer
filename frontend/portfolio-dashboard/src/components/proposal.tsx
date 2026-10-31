@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useId, useState, type ReactNode } from 'react'
+import { ChevronDown } from 'lucide-react'
 import { useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import {
@@ -8,11 +9,13 @@ import {
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { DataTable, type Column } from '@/components/data-table'
 import { MetricCard } from '@/components/common'
 import { FxNote } from '@/components/currency'
 import { errorMessage } from '@/lib/api'
 import { useExecuteProposal } from '@/lib/queries'
+import { MatrixLoader } from '@/components/matrix-loader'
 import type { ProposalLine, TradeProposal } from '@/lib/types'
 import { date, dateTime, money, pct, qty } from '@/lib/format'
 import { cn } from '@/lib/utils'
@@ -27,6 +30,50 @@ const actionStyle: Record<string, string> = {
 export function ProposalStatusBadge({ status }: { status: TradeProposal['status'] }) {
   const cls = status === 'Pending' ? 'border-series-1/50 text-foreground' : status === 'Executed' ? 'border-gain/40 text-gain' : 'text-muted-foreground'
   return <Badge variant="outline" className={cls}>{status === 'Pending' ? 'Proposed (not executed)' : status}</Badge>
+}
+
+/**
+ * The trade-proposal card of Math and ML Optimization: a button creates (or recalculates) the proposal, which opens
+ * below; the title folds it away so it does not cover the results, leaving a one-line summary.
+ */
+export function TradeProposalCard({ description, proposal, currency, pending, disabled = false, onCreate }: {
+  description: ReactNode; proposal: TradeProposal | null; currency: string; pending: boolean; disabled?: boolean; onCreate: () => Promise<void>
+}) {
+  const [open, setOpen] = useState(true)
+  const id = useId()
+  const orders = proposal?.lines.filter((l) => l.action === 'Buy' || l.action === 'Sell').length ?? 0
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between gap-2">
+        <div className="min-w-0">
+          <CardTitle className="text-sm">
+            {proposal ? (
+              <button type="button" aria-expanded={open} aria-controls={id} onClick={() => setOpen((o) => !o)}
+                className="flex items-center gap-1.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
+                <ChevronDown className={cn('size-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')} aria-hidden />
+                Trade proposal
+                {!open && (
+                  <span className="text-xs font-normal text-muted-foreground">
+                    ({orders} {orders === 1 ? 'order' : 'orders'} · buys {money(proposal.totalBuys, currency)} · sells {money(proposal.totalSells, currency)})
+                  </span>
+                )}
+              </button>
+            ) : 'Trade proposal'}
+          </CardTitle>
+          <CardDescription className="text-xs">{description}</CardDescription>
+        </div>
+        <Button variant={proposal ? 'outline' : 'default'} disabled={pending || disabled} onClick={async () => { await onCreate(); setOpen(true) }}>
+          {pending && <MatrixLoader />}
+          {proposal ? 'Recalculate' : 'Create trade proposal'}
+        </Button>
+      </CardHeader>
+      {proposal && open && (
+        <CardContent id={id}>
+          <TradeProposalView proposal={proposal} currency={currency} />
+        </CardContent>
+      )}
+    </Card>
+  )
 }
 
 export function TradeProposalView({ proposal, currency, allowExecute = true }: { proposal: TradeProposal; currency: string; allowExecute?: boolean }) {

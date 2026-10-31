@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -16,12 +16,12 @@ import { Switch } from '@/components/ui/switch'
 import {
   AllocationDonut, ChartCard, CorrelationHeatmap, FrontierChart, RiskContributionChart, TimeSeriesChart, timeSeriesTable,
 } from '@/components/charts'
-import { DataTable, SearchableTable } from '@/components/data-table'
+import { SearchableTable } from '@/components/data-table'
 import { UniverseField } from '@/components/universe-field'
 import { GroupedBarChart, groupedBarTable } from '@/components/analysis-charts'
 import { drawdownFromCumulative, equalWeight, weightsBySector } from '@/lib/run-charts'
 import { DataBadge, EmptyState, ErrorState, InfoTip, LoadingBlock, MetricCard, PageHeader, ResultSection } from '@/components/common'
-import { TradeProposalView } from '@/components/proposal'
+import { TradeProposalCard } from '@/components/proposal'
 import { DataNotesList, StrategyInsights } from '@/components/strategy-insights'
 import { interpretOptimization } from '@/lib/interpretation'
 import { guideForObjective } from '@/lib/strategy-guide'
@@ -457,6 +457,16 @@ function RunResults({ run }: { run: OptimizationRun }) {
     { name: 'Expected return', color: 'var(--series-1)', values: a.assetStatistics.map((x) => x.expectedReturn) },
     { name: 'Volatility', color: 'var(--series-2)', values: a.assetStatistics.map((x) => x.volatility) },
   ]
+  // The optimized portfolio next to the reference portfolios (same window and estimates).
+  const refs = [
+    ...(ok ? [{ name: 'Optimized', expectedReturn: run.expectedReturn, volatility: run.volatility, sharpeRatio: run.sharpeRatio, note: objectiveLabels[run.objective] }] : []),
+    ...a.references,
+  ]
+  const refStats = [
+    { name: 'Expected return', color: 'var(--series-1)', values: refs.map((r) => r.expectedReturn) },
+    { name: 'Volatility', color: 'var(--series-2)', values: refs.map((r) => r.volatility) },
+  ]
+  const refSharpe = [{ name: 'Sharpe', color: 'var(--series-1)', values: refs.map((r) => r.sharpeRatio) }]
   const dataNotes = [...(a.excludedForData.length ? [`Excluded for missing or too short price history: ${a.excludedForData.join(', ')}.`] : []), ...run.diagnostics]
   const inSampleDrawdowns = Object.entries(a.inSample?.cumulativeReturns ?? {}).map(([name, values]) => ({ name, values: drawdownFromCumulative(values) }))
 
@@ -510,23 +520,8 @@ function RunResults({ run }: { run: OptimizationRun }) {
 
       {/* Next step right under the key figures: turn the weights into orders. */}
       {ok && (
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
-            <div>
-              <CardTitle className="flex items-center gap-2 text-sm">Trade proposal</CardTitle>
-              <CardDescription className="text-xs">Translate the target weights into whole-share orders at the latest stored prices, after costs.</CardDescription>
-            </div>
-            <Button variant={proposal ? 'outline' : 'default'} onClick={makeProposal} disabled={createProposal.isPending}>
-              {createProposal.isPending && <MatrixLoader />}
-              {proposal ? 'Recalculate' : 'Create trade proposal'}
-            </Button>
-          </CardHeader>
-          {proposal && (
-            <CardContent>
-              <TradeProposalView proposal={proposal} currency={ccy} />
-            </CardContent>
-          )}
-        </Card>
+        <TradeProposalCard proposal={proposal} currency={ccy} pending={createProposal.isPending} onCreate={makeProposal}
+          description="Translate the target weights into whole-share orders at the latest stored prices, after costs." />
       )}
 
       {/* Every result is visible at once (no tabs); the same section order as ML Optimization. */}
@@ -618,21 +613,18 @@ function RunResults({ run }: { run: OptimizationRun }) {
 
       {a.references.length > 0 && (
         <ResultSection title="Comparison with reference portfolios">
-          <DataTable
-            caption="Comparison with reference portfolios"
-            rows={[
-              ...(ok ? [{ name: 'Optimized', expectedReturn: run.expectedReturn, volatility: run.volatility, sharpeRatio: run.sharpeRatio, note: objectiveLabels[run.objective] }] : []),
-              ...a.references,
-            ]}
-            rowKey={(r) => r.name}
-            columns={[
-              { key: 'n', header: 'Portfolio', cell: (r) => <span className="font-medium">{r.name}</span> },
-              { key: 'r', header: 'Expected return', align: 'right', cell: (r) => pct(r.expectedReturn) },
-              { key: 'v', header: 'Volatility', align: 'right', cell: (r) => pct(r.volatility) },
-              { key: 's', header: 'Sharpe', align: 'right', cell: (r) => num(r.sharpeRatio) },
-              { key: 'note', header: 'Note', cell: (r) => <span className="text-xs text-muted-foreground">{r.note}</span> },
-            ]}
-          />
+          <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
+            <ChartCard title="Expected return and volatility" description={`Annualized, estimation window ${date(run.periodStart)} – ${date(run.periodEnd)} · in-sample estimates`}
+              hint={refs.filter((r) => r.note).map((r) => `${r.name}: ${r.note}`).join(' · ')}
+              legend={refStats.map((x) => ({ name: x.name, color: x.color }))}
+              table={{ columns: ['Portfolio', 'Expected return', 'Volatility', 'Sharpe', 'Note'], rows: refs.map((r) => [r.name, pct(r.expectedReturn), pct(r.volatility), num(r.sharpeRatio), r.note ?? '']) }}>
+              <GroupedBarChart categories={refs.map((r) => r.name)} series={refStats} format={(v) => pct(v, 0)} zeroLine legend={false} />
+            </ChartCard>
+            <ChartCard title="Sharpe ratio" description={`rf = ${pct(run.settings.riskFreeRate)}`}
+              table={groupedBarTable(refs.map((r) => r.name), refSharpe, (v) => num(v))}>
+              <GroupedBarChart categories={refs.map((r) => r.name)} series={refSharpe} format={(v) => num(v)} zeroLine legend={false} />
+            </ChartCard>
+          </div>
           {a.inSample && (
             <ChartCard
               title="In-sample cumulative return"
