@@ -784,11 +784,11 @@ export function useDeleteComparison() {
 // ---------------------------------------------------------------- watchlist & price history
 
 /** Change and sparkline per stock over a range for one page of the stock list (at most 200 symbols, one request). */
-export const useStockTrends = (symbols: string[], range: HistoryRange = '1M') =>
+export const useStockTrends = (symbols: string[], range: HistoryRange = '1M', enabled = true) =>
   useQuery({
     queryKey: ['stock-trends', range, symbols.join(',')] as const,
     queryFn: ({ signal }) => api.get<StockTrend[]>(`${V1}/stocks/trends?range=${range}&symbols=${encodeURIComponent(symbols.join(','))}`, signal),
-    enabled: symbols.length > 0,
+    enabled: enabled && symbols.length > 0,
     staleTime: 5 * 60_000,
     placeholderData: keepPreviousData,
   })

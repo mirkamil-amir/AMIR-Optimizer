@@ -24,8 +24,8 @@ import {
 } from '@/lib/queries'
 import { age, symbolsNeedingRefresh } from '@/lib/quote-status'
 import { useSelection } from '@/lib/selection'
-import type { Market, QuoteRefreshRun, StockListItem } from '@/lib/types'
-import { num } from '@/lib/format'
+import type { Market, QuoteRefreshRun, StockListItem, StockTrend } from '@/lib/types'
+import { date, num } from '@/lib/format'
 import { countryOfSymbol } from '@/lib/markets'
 import { useMapSignal } from '@/lib/world-map'
 import { MatrixLoader } from '@/components/matrix-loader'
@@ -85,7 +85,9 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
   const boardRate = (c: string) => board.data?.rows.find((r) => r.quote === c)
   // One-month change and sparkline of the page's stocks, as on the watchlist (one batched request per page).
   const trends = useStockTrends(items.map((s) => s.symbol))
-  const trendOf = (symbol: string) => trends.data?.find((t) => t.symbol === symbol)?.period
+  // The longer ranges are full-screen columns: loaded only while full screen is open.
+  const trends3m = useStockTrends(items.map((s) => s.symbol), '3M', fullScreen)
+  const trends1y = useStockTrends(items.map((s) => s.symbol), '1Y', fullScreen)
   const pageSymbols = items.map((s) => s.symbol)
   const allOnPageSelected = pageSymbols.length > 0 && pageSymbols.every(selection.has)
   const cycleRunning = cycle.data?.status === 'Queued' || cycle.data?.status === 'Running'
@@ -195,20 +197,16 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
     }] : []),
     { key: 'price', header: priceCurrency ? 'Original price' : 'Latest price', align: 'right', className: 'w-36', cell: (s) => <QuoteCell quote={s.quote} /> },
     {
-      key: 'trend', header: '1 month', align: 'right', className: full ? 'w-48' : 'hidden w-28 md:table-cell',
-      cell: (s) => {
-        const t = trendOf(s.symbol)
-        if (!t) return trends.isLoading ? null : <span className="text-xs text-muted-foreground">—</span>
-        if (t.change === null && t.sparkline.length < 2) return <span className="text-xs text-muted-foreground" title={t.limitation ?? 'Not enough stored history'}>—</span>
-        return (
-          <div className="flex flex-col items-end gap-0.5" title={t.change !== null ? `${t.basis}: ${t.baseDate} → ${t.endDate}` : t.limitation ?? undefined}>
-            <ChangeText value={t.change} className="text-xs" />
-            <Sparkline points={t.sparkline} label={`${s.symbol} ${t.basis.toLowerCase()} over one month`} width={full ? 168 : 88} height={full ? 32 : 24} />
-          </div>
-        )
-      },
+      key: 'trend', header: '1 month', align: 'right', className: full ? 'w-32' : 'hidden w-28 md:table-cell',
+      cell: (s) => trendCell(s.symbol, trends, 'one month', full),
     },
-    { key: 'sector', header: 'Sector', cell: (s) => <span className="text-xs">{s.sector ?? 'Unclassified'}</span>, className: full ? 'w-44' : 'hidden w-28 2xl:table-cell' },
+    // Full screen only: two longer ranges and the stored price history.
+    ...(full ? [
+      { key: 'trend3m', header: '3 months', align: 'right' as const, className: 'w-32', cell: (s: StockListItem) => trendCell(s.symbol, trends3m, 'three months', true) },
+      { key: 'trend1y', header: '1 year', align: 'right' as const, className: 'w-32', cell: (s: StockListItem) => trendCell(s.symbol, trends1y, 'one year', true) },
+      { key: 'history', header: 'Price history', className: 'w-36', cell: (s: StockListItem) => <HistoryCell stock={s} /> },
+    ] : []),
+    { key: 'sector', header: 'Sector', cell: (s) => <span className="text-xs whitespace-normal">{s.sector ?? 'Unclassified'}</span>, className: full ? 'w-32' : 'hidden w-28 2xl:table-cell' },
     {
       key: 'index',
       header: 'Index',
@@ -217,7 +215,7 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
           {s.indices.map((i) => <Badge key={i} variant="outline" className="h-5 px-1.5 text-[10px]">{indexLabel(markets.data, i)}</Badge>)}
         </div>
       ),
-      className: full ? 'w-36' : 'hidden w-24 2xl:table-cell',
+      className: full ? 'w-24' : 'hidden w-24 2xl:table-cell',
     },
   ]
 
@@ -393,3 +391,31 @@ function describeScope(markets: Market[] | undefined, scope: UniverseScope) {
   if (scope.sector) parts.push(scope.sector)
   return parts.join(' › ')
 }
+
+/** Change and sparkline of one stock over a range (as on the watchlist); "—" with the reason when history is missing. */
+function trendCell(symbol: string, query: { data?: StockTrend[]; isLoading: boolean }, rangeLabel: string, full: boolean) {
+  const t = query.data?.find((x) => x.symbol === symbol)?.period
+  if (!t) return query.isLoading ? null : <span className="text-xs text-muted-foreground">—</span>
+  if (t.change === null && t.sparkline.length < 2) return <span className="text-xs text-muted-foreground" title={t.limitation ?? 'Not enough stored history'}>—</span>
+  return (
+    <div className="flex flex-col items-end gap-0.5" title={t.change !== null ? `${t.basis}: ${t.baseDate} → ${t.endDate}` : t.limitation ?? undefined}>
+      <ChangeText value={t.change} className="text-xs" />
+      <Sparkline points={t.sparkline} label={`${symbol} ${t.basis.toLowerCase()} over ${rangeLabel}`} width={full ? 100 : 88} height={full ? 28 : 24} />
+    </div>
+  )
+}
+
+/** Stored daily prices of a stock and their span; fewer than 61 means analyses would exclude it until prices are fetched. */
+function HistoryCell({ stock }: { stock: StockListItem }) {
+  if (stock.observations === 0) return <span className="text-xs text-warn">None stored</span>
+  const short = stock.observations < MIN_ANALYSIS_PRICES
+  return (
+    <div className="text-xs" title={short ? `Fewer than ${MIN_ANALYSIS_PRICES} stored prices: excluded from analyses until prices are fetched.` : undefined}>
+      <div className={cn('tabular', short ? 'font-medium text-warn' : 'text-foreground')}>{num(stock.observations, 0)} days{short ? ' · too short' : ''}</div>
+      <div className="text-[11px] whitespace-nowrap text-muted-foreground">{date(stock.firstDate)} – {date(stock.lastDate)}</div>
+    </div>
+  )
+}
+
+/** Same threshold as the selection tray: stocks with fewer stored prices are left out of analyses. */
+const MIN_ANALYSIS_PRICES = 61
