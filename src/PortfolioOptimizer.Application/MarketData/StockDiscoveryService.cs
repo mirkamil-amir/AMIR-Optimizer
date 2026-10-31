@@ -142,6 +142,32 @@ public sealed class StockDiscoveryService(
             own?.IsSimulated ?? false, own?.LastRetrievedAtUtc, SupportedRanges);
     }
 
+    public const int MaxTrendSymbols = 200;
+
+    /// <summary>
+    /// Change and sparkline over <paramref name="range"/> (default 1M) for up to 200 stocks – one page of the stock list – from
+    /// stored daily prices of the active source, in two batched queries. Same slice and basis as the watchlist; stocks
+    /// without stored history get a null change with the reason. Unknown symbols are skipped.
+    /// </summary>
+    public async Task<IReadOnlyList<StockTrendDto>> GetTrendsAsync(IReadOnlyList<string> symbols, string? range, CancellationToken ct)
+    {
+        if (!PriceHistory.Codes.TryGetValue(range ?? "1M", out var r) || r == PriceRange.OneDay)
+            throw new ValidationException("range", $"Range must be one of {string.Join(", ", SupportedRanges)}.");
+        var list = symbols.Select(Asset.NormalizeSymbol).Distinct().ToList();
+        if (list.Count > MaxTrendSymbols) throw new ValidationException("symbols", $"At most {MaxTrendSymbols} symbols per request.");
+        if (list.Count == 0) return [];
+        var ids = await db.Assets.AsNoTracking().Where(a => list.Contains(a.Symbol)).ToDictionaryAsync(a => a.Symbol, a => a.Id, ct);
+        var source = (await prices.SettingsAsync(ct)).ActiveProvider;
+        var bars = await LoadBarsAsync(ids.Values.ToList(), source, r, ct);
+        return list.Where(ids.ContainsKey).Select(symbol =>
+        {
+            bars.TryGetValue(ids[symbol], out var own);
+            var slice = PriceHistory.Slice(own?.Bars ?? [], r);
+            return new StockTrendDto(symbol, new PeriodChangeDto(PriceHistory.Code(r), slice.Change, slice.BaseDate, slice.EndDate,
+                slice.UsesAdjustedClose ? "Adjusted close" : "Close", slice.Limitation, PriceHistory.Downsample(slice.Points)));
+        }).ToList();
+    }
+
     /// <summary>Ranges a client may request; 1D is accepted but always reported as unsupported (no intraday bars are stored).</summary>
     public static readonly IReadOnlyList<string> SupportedRanges = ["1M", "3M", "6M", "1Y", "5Y", "MAX"];
 

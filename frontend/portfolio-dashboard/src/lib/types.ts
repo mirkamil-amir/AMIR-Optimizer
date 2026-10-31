@@ -1192,6 +1192,12 @@ export interface PriceHistory {
   supportedRanges: HistoryRange[]
 }
 
+/** A stock's change and sparkline over a range for the stock list (`GET /stocks/trends`, same calculation as the watchlist). */
+export interface StockTrend {
+  symbol: string
+  period: PeriodChange
+}
+
 export interface PeriodChange {
   range: HistoryRange
   change: number | null

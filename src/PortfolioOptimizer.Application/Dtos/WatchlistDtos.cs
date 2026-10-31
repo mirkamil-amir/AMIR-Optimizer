@@ -52,3 +52,6 @@ public sealed record AddWatchlistEntryRequest
 
 /// <summary>The added entry; <see cref="HistoryQueued"/> tells the UI that a price-history download was started.</summary>
 public sealed record WatchlistAddResultDto(WatchlistItemDto Item, bool HistoryQueued);
+
+/// <summary>A stock's change and sparkline over a range for the stock list (same calculation as the watchlist).</summary>
+public sealed record StockTrendDto(string Symbol, PeriodChangeDto Period);

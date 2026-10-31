@@ -110,10 +110,6 @@ public sealed class WatchlistService(
             : throw new ValidationException("range", $"Range must be one of {string.Join(", ", StockDiscoveryService.SupportedRanges)}.");
 
     /// <summary>Evenly spaced observations for a sparkline; always keeps the first and last real observation.</summary>
-    public static IReadOnlyList<PricePointDto> Downsample(IReadOnlyList<(DateOnly Date, decimal Price)> points, int max = SparklinePoints)
-    {
-        if (points.Count <= max) return points.Select(p => new PricePointDto(p.Date, p.Price)).ToList();
-        var step = (points.Count - 1) / (double)(max - 1);
-        return Enumerable.Range(0, max).Select(i => points[(int)Math.Round(i * step)]).Select(p => new PricePointDto(p.Date, p.Price)).ToList();
-    }
+    public static IReadOnlyList<PricePointDto> Downsample(IReadOnlyList<(DateOnly Date, decimal Price)> points, int max = SparklinePoints) =>
+        PriceHistory.Downsample(points, max);
 }

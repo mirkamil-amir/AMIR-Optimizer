@@ -125,6 +125,29 @@ public sealed class WatchlistTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task StockTrends_MatchTheWatchlist_ForOnePageOfStocks()
+    {
+        (await Add(_user, "AAPL")).EnsureStatus(HttpStatusCode.Created);
+        var watched = Assert.Single((await (await _user.GetAsync("/api/v1/watchlist?range=1M")).ReadAsync<WatchlistDto>()).Items);
+
+        var trends = await (await _user.GetAsync("/api/v1/stocks/trends?symbols=aapl,MSFT,NOPE123")).ReadAsync<List<StockTrendDto>>();
+        Assert.Equal(["AAPL", "MSFT"], trends.Select(t => t.Symbol)); // unknown symbols are skipped, order kept
+        var aapl = trends[0].Period;
+        Assert.Equal("1M", aapl.Range);
+        Assert.Equal(watched.Period.Change, aapl.Change);
+        Assert.Equal(watched.Period.Sparkline, aapl.Sparkline);
+        Assert.InRange(aapl.Sparkline.Count, 2, 60);
+
+        Assert.Empty(await (await _user.GetAsync("/api/v1/stocks/trends")).ReadAsync<List<StockTrendDto>>());
+        (await _user.GetAsync("/api/v1/stocks/trends?symbols=AAPL&range=1D")).EnsureStatus(HttpStatusCode.BadRequest);
+        var tooMany = string.Join(',', Enumerable.Range(0, 201).Select(i => $"S{i}"));
+        (await _user.GetAsync($"/api/v1/stocks/trends?symbols={tooMany}")).EnsureStatus(HttpStatusCode.BadRequest);
+
+        using var anonymous = _factory.CreateSession();
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync("/api/v1/stocks/trends?symbols=AAPL")).StatusCode);
+    }
+
+    [Fact]
     public async Task Watchlist_RequiresAnApprovedAccount()
     {
         using var anonymous = _factory.CreateSession();

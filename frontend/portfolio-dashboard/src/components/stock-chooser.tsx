@@ -16,10 +16,11 @@ import { ConvertedPriceCell, CurrencySelect } from '@/components/currency'
 import { DataTable, RangePager, type Column } from '@/components/data-table'
 import { EmptyState, ErrorState, InfoTip, LoadingBlock } from '@/components/common'
 import { QuoteCell, SelectionTray } from '@/components/stock-selection'
+import { ChangeText, Sparkline } from '@/components/watchlist'
 import { UniverseNav, type UniverseScope } from '@/components/universe-nav'
 import { errorMessage } from '@/lib/api'
 import {
-  useFxBoard, useFxInfo, useMarkets, useQuoteRefreshCycle, useRefreshQuotes, useSectors, useStocks, type StockSort,
+  useFxBoard, useFxInfo, useMarkets, useStockTrends, useQuoteRefreshCycle, useRefreshQuotes, useSectors, useStocks, type StockSort,
 } from '@/lib/queries'
 import { age, symbolsNeedingRefresh } from '@/lib/quote-status'
 import { useSelection } from '@/lib/selection'
@@ -81,6 +82,9 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
   const foreign = [...new Set(items.map((s) => s.quote.currency || s.currency))].filter((c) => c && c !== priceCurrency).sort()
   const board = useFxBoard(priceCurrency, foreign)
   const boardRate = (c: string) => board.data?.rows.find((r) => r.quote === c)
+  // One-month change and sparkline of the page's stocks, as on the watchlist (one batched request per page).
+  const trends = useStockTrends(items.map((s) => s.symbol))
+  const trendOf = (symbol: string) => trends.data?.find((t) => t.symbol === symbol)?.period
   const pageSymbols = items.map((s) => s.symbol)
   const allOnPageSelected = pageSymbols.length > 0 && pageSymbols.every(selection.has)
   const cycleRunning = cycle.data?.status === 'Queued' || cycle.data?.status === 'Running'
@@ -139,6 +143,8 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
 
   const toSelected = (s: StockListItem) => ({ symbol: s.symbol, name: s.name, sector: s.sector, currency: s.currency })
 
+  // Widths fit the list next to two sidebars: tick box, ticker and both prices always; "1 month" from md; Company from xl
+  // (until then the name sits under the ticker); Sector and Index from 2xl (the industry also shows under the name).
   const columns: Column<StockListItem>[] = [
     {
       key: 'select',
@@ -156,10 +162,11 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
     {
       key: 'symbol',
       header: 'Ticker',
+      className: 'w-28',
       cell: (s) => (
         <div>
           <div className="font-semibold">{s.symbol}</div>
-          <div className="max-w-24 truncate text-[11px] text-foreground sm:hidden">{s.name}</div>
+          <div className="max-w-28 truncate text-[11px] text-foreground xl:hidden">{s.name}</div>
           <div className="text-[11px] text-muted-foreground">{s.exchange ?? '—'}</div>
         </div>
       ),
@@ -168,15 +175,15 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
       key: 'name',
       header: 'Company',
       cell: (s) => (
-        <div className="max-w-64">
+        <div className="max-w-56">
           <div className="truncate">{s.name ?? '—'}</div>
           <div className="truncate text-[11px] text-muted-foreground">{s.industry ?? s.sector ?? 'Unclassified'}</div>
         </div>
       ),
-      className: 'hidden sm:table-cell',
+      className: 'hidden xl:table-cell',
     },
     ...(priceCurrency ? [{
-      key: 'converted', header: `Price (${priceCurrency})`, align: 'right' as const,
+      key: 'converted', header: `Price (${priceCurrency})`, align: 'right' as const, className: 'w-32',
       cell: (s: StockListItem) => {
         const from = s.quote.currency || s.currency
         const row = boardRate(from)
@@ -184,8 +191,22 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
         return <ConvertedPriceCell price={s.quote.price} from={from} to={priceCurrency} rate={row?.rate ? 1 / row.rate : null} rateDate={row?.observationDate ?? null} />
       },
     }] : []),
-    { key: 'price', header: priceCurrency ? 'Original price' : 'Latest price', align: 'right', cell: (s) => <QuoteCell quote={s.quote} /> },
-    { key: 'sector', header: 'Sector', cell: (s) => <span className="text-xs">{s.sector ?? 'Unclassified'}</span>, className: 'hidden xl:table-cell' },
+    { key: 'price', header: priceCurrency ? 'Original price' : 'Latest price', align: 'right', className: 'w-36', cell: (s) => <QuoteCell quote={s.quote} /> },
+    {
+      key: 'trend', header: '1 month', align: 'right', className: 'hidden w-28 md:table-cell',
+      cell: (s) => {
+        const t = trendOf(s.symbol)
+        if (!t) return trends.isLoading ? null : <span className="text-xs text-muted-foreground">—</span>
+        if (t.change === null && t.sparkline.length < 2) return <span className="text-xs text-muted-foreground" title={t.limitation ?? 'Not enough stored history'}>—</span>
+        return (
+          <div className="flex flex-col items-end gap-0.5" title={t.change !== null ? `${t.basis}: ${t.baseDate} → ${t.endDate}` : t.limitation ?? undefined}>
+            <ChangeText value={t.change} className="text-xs" />
+            <Sparkline points={t.sparkline} label={`${s.symbol} ${t.basis.toLowerCase()} over one month`} width={88} height={24} />
+          </div>
+        )
+      },
+    },
+    { key: 'sector', header: 'Sector', cell: (s) => <span className="text-xs">{s.sector ?? 'Unclassified'}</span>, className: 'hidden w-28 2xl:table-cell' },
     {
       key: 'index',
       header: 'Index',
@@ -194,7 +215,7 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
           {s.indices.map((i) => <Badge key={i} variant="outline" className="h-5 px-1.5 text-[10px]">{indexLabel(markets.data, i)}</Badge>)}
         </div>
       ),
-      className: 'hidden lg:table-cell',
+      className: 'hidden w-24 2xl:table-cell',
     },
   ]
 

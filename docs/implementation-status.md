@@ -8,6 +8,10 @@
   rate) next to "Original price" (the quote with change, kind and time), scrolls under a fixed header and opens in
   Full screen with the same search, filters and pager. Choose stocks of Math/ML Optimization shows the same column in
   the portfolio's fixed currency (no picker).
+* The stock list adds a "1 month" column – change and sparkline as on the watchlist, from `GET /stocks/trends` (one
+  request per page, same calculation as the watchlist, integration-tested against it) – and fixed column widths that
+  fit next to the two sidebars: tick box, ticker and both prices always; "1 month" from md; Company from xl (name under
+  the ticker until then); Sector and Index from 2xl. Phones scroll the list sideways inside its box.
 
 ## 2026-10-31: holdings laid out like the trade proposal
 

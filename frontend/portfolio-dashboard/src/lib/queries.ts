@@ -3,7 +3,7 @@ import { api } from './api'
 import type {
   AppSettings, Asset, AuditEvent, Backtest, BacktestRequest, BacktestSummary, CashEntry, CatalogueImportResult, HoldingsResponse,
   FxSync, MarketDataStatus, OptimizationRun, OptimizationRunSummary, Order, PagedResult, PaperTradeResult, Performance, Portfolio,
-  PortfolioSettings, PortfolioSummary, PriceBar, Risk, RunStatus, Sector, StockDetail, StockListItem, SyncJob, TradeProposal,
+  PortfolioSettings, PortfolioSummary, PriceBar, Risk, RunStatus, Sector, StockDetail, StockListItem, StockTrend, SyncJob, TradeProposal,
   Transaction, UserAccountStatus, UserSummary, MlCatalog, MlExperiment, MlExperimentRequest, MlExperimentSummary, MlBacktest,
   MlPredictionSet, StrategyComparison, StrategyComparisonRequest, StrategyComparisonSummary, Market, QuoteRefreshRun, QuoteRefreshResult,
   AdminOverview, HistoryRange, PriceHistory, Watchlist, WatchlistAddResult, NewsFeed, NewsFilters, EventComparison, RealityCheck, CompanyProfile,
@@ -782,6 +782,16 @@ export function useDeleteComparison() {
 }
 
 // ---------------------------------------------------------------- watchlist & price history
+
+/** Change and sparkline per stock over a range for one page of the stock list (at most 200 symbols, one request). */
+export const useStockTrends = (symbols: string[], range: HistoryRange = '1M') =>
+  useQuery({
+    queryKey: ['stock-trends', range, symbols.join(',')] as const,
+    queryFn: ({ signal }) => api.get<StockTrend[]>(`${V1}/stocks/trends?range=${range}&symbols=${encodeURIComponent(symbols.join(','))}`, signal),
+    enabled: symbols.length > 0,
+    staleTime: 5 * 60_000,
+    placeholderData: keepPreviousData,
+  })
 
 export const useWatchlist = (range: HistoryRange = '1M') =>
   useQuery({

@@ -46,6 +46,13 @@ public sealed class StocksController(StockDiscoveryService stocks, MarketDataSer
         stocks.SearchAsync(new StockQuery(country, index, sector, search, tracked, withPrices, sort, page, pageSize,
             symbols?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)), ct);
 
+    /// <summary>Change and sparkline per stock over a range (default 1M) for one page of the stock list (up to 200 symbols).</summary>
+    /// <param name="symbols">Comma-separated symbols.</param>
+    /// <param name="range">1M, 3M, 6M, 1Y, 5Y or MAX.</param>
+    [HttpGet("stocks/trends")]
+    public Task<IReadOnlyList<StockTrendDto>> Trends([FromQuery] string? symbols, [FromQuery] string? range, CancellationToken ct) =>
+        stocks.GetTrendsAsync((symbols ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries), range, ct);
+
     /// <summary>
     /// Stored daily prices per symbol for a whole selection (up to 3,000 symbols, in the body so a long list fits); the
     /// selection uses it to offer the download of missing histories.
