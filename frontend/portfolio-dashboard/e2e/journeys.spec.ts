@@ -98,9 +98,12 @@ test('optimizing a selection explains the actual result', async ({ page }) => {
 test('strategy guide has the 12-part structure and a glossary', async ({ page }) => {
   await page.goto('/learn/maximum-sharpe')
   await expect(page.getByRole('heading', { name: 'Maximum-Sharpe (tangency) portfolio' })).toBeVisible()
+  // One article to read: twelve section headings, nothing folded away.
+  const article = page.getByRole('article')
   for (const title of ['What is this strategy?', 'The mathematics', 'Worked example', 'Important caveats'])
-    await expect(page.locator('summary', { hasText: title })).toBeVisible()
-  await expect(page.locator('details')).toHaveCount(12)
+    await expect(article.getByRole('heading', { level: 2, name: title })).toBeVisible()
+  await expect(article.locator('section')).toHaveCount(12)
+  await expect(page.locator('details')).toHaveCount(0)
   await page.goto('/learn/glossary')
   await page.getByLabel('Search glossary').fill('survivorship')
   await expect(page.getByText('Survivorship bias')).toBeVisible()

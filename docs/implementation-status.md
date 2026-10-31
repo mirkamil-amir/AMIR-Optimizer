@@ -1,5 +1,14 @@
 # Implementation status
 
+## 2026-10-31: Codex guides as reading pages
+
+* A strategy guide (`/learn/:id`) is one article instead of twelve folded boxes: the same 12 topics as headings in
+  reading order (what, objective, theory, steps, worked example, mathematics, inputs, when to use, reading the
+  portfolio, your own results, advantages and limitations, caveats), on a `.map-surface` panel at reading width, with
+  family and reading time, the objective, takeaway and caveats as callouts, "Read next" and previous/next within the
+  family. Wide screens: an "On this page" column follows the reader and marks the current section; phones: contents
+  above the text. Checked with screenshots at 1440 and 390 px (API mocked, no account).
+
 ## 2026-10-29: long lists and the correlation matrix (D-48)
 
 * Solver and Pattern: the equity universe, the allocation, the stock predictions and the stock eligibility are
