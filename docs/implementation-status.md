@@ -11,7 +11,8 @@
 * The stock list adds a "1 month" column – change and sparkline as on the watchlist, from `GET /stocks/trends` (one
   request per page, same calculation as the watchlist, integration-tested against it) – and fixed column widths that
   fit next to the two sidebars: tick box, ticker and both prices always; "1 month" from md; Company from xl (name under
-  the ticker until then); Sector and Index from 2xl. Phones scroll the list sideways inside its box.
+  the ticker until then); Sector and Index from 2xl. Phones scroll the list sideways inside its box. Full screen has no
+  sidebars: every column, the full company name (wrapping) and a wider sparkline fill the room.
 
 ## 2026-10-31: holdings laid out like the trade proposal
 

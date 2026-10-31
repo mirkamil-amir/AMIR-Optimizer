@@ -29,6 +29,7 @@ import { num } from '@/lib/format'
 import { countryOfSymbol } from '@/lib/markets'
 import { useMapSignal } from '@/lib/world-map'
 import { MatrixLoader } from '@/components/matrix-loader'
+import { cn } from '@/lib/utils'
 
 
 const sortOptions: { value: StockSort; label: string }[] = [
@@ -145,7 +146,8 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
 
   // Widths fit the list next to two sidebars: tick box, ticker and both prices always; "1 month" from md; Company from xl
   // (until then the name sits under the ticker); Sector and Index from 2xl (the industry also shows under the name).
-  const columns: Column<StockListItem>[] = [
+  // Full screen has no sidebars: every column, the full company name and a wider sparkline use the room.
+  const columnsFor = (full: boolean): Column<StockListItem>[] => [
     {
       key: 'select',
       header: <span className="sr-only">Select</span>,
@@ -166,7 +168,7 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
       cell: (s) => (
         <div>
           <div className="font-semibold">{s.symbol}</div>
-          <div className="max-w-28 truncate text-[11px] text-foreground xl:hidden">{s.name}</div>
+          <div className={cn('max-w-28 truncate text-[11px] text-foreground', full ? 'hidden' : 'xl:hidden')}>{s.name}</div>
           <div className="text-[11px] text-muted-foreground">{s.exchange ?? '—'}</div>
         </div>
       ),
@@ -175,12 +177,12 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
       key: 'name',
       header: 'Company',
       cell: (s) => (
-        <div className="max-w-56">
-          <div className="truncate">{s.name ?? '—'}</div>
-          <div className="truncate text-[11px] text-muted-foreground">{s.industry ?? s.sector ?? 'Unclassified'}</div>
+        <div className={full ? 'min-w-48' : 'max-w-56'}>
+          <div className={full ? 'whitespace-normal' : 'truncate'}>{s.name ?? '—'}</div>
+          <div className={cn('text-[11px] text-muted-foreground', full ? 'whitespace-normal' : 'truncate')}>{s.industry ?? s.sector ?? 'Unclassified'}</div>
         </div>
       ),
-      className: 'hidden xl:table-cell',
+      className: full ? undefined : 'hidden xl:table-cell',
     },
     ...(priceCurrency ? [{
       key: 'converted', header: `Price (${priceCurrency})`, align: 'right' as const, className: 'w-32',
@@ -193,7 +195,7 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
     }] : []),
     { key: 'price', header: priceCurrency ? 'Original price' : 'Latest price', align: 'right', className: 'w-36', cell: (s) => <QuoteCell quote={s.quote} /> },
     {
-      key: 'trend', header: '1 month', align: 'right', className: 'hidden w-28 md:table-cell',
+      key: 'trend', header: '1 month', align: 'right', className: full ? 'w-48' : 'hidden w-28 md:table-cell',
       cell: (s) => {
         const t = trendOf(s.symbol)
         if (!t) return trends.isLoading ? null : <span className="text-xs text-muted-foreground">—</span>
@@ -201,12 +203,12 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
         return (
           <div className="flex flex-col items-end gap-0.5" title={t.change !== null ? `${t.basis}: ${t.baseDate} → ${t.endDate}` : t.limitation ?? undefined}>
             <ChangeText value={t.change} className="text-xs" />
-            <Sparkline points={t.sparkline} label={`${s.symbol} ${t.basis.toLowerCase()} over one month`} width={88} height={24} />
+            <Sparkline points={t.sparkline} label={`${s.symbol} ${t.basis.toLowerCase()} over one month`} width={full ? 168 : 88} height={full ? 32 : 24} />
           </div>
         )
       },
     },
-    { key: 'sector', header: 'Sector', cell: (s) => <span className="text-xs">{s.sector ?? 'Unclassified'}</span>, className: 'hidden w-28 2xl:table-cell' },
+    { key: 'sector', header: 'Sector', cell: (s) => <span className="text-xs">{s.sector ?? 'Unclassified'}</span>, className: full ? 'w-44' : 'hidden w-28 2xl:table-cell' },
     {
       key: 'index',
       header: 'Index',
@@ -215,7 +217,7 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
           {s.indices.map((i) => <Badge key={i} variant="outline" className="h-5 px-1.5 text-[10px]">{indexLabel(markets.data, i)}</Badge>)}
         </div>
       ),
-      className: 'hidden w-24 2xl:table-cell',
+      className: full ? 'w-36' : 'hidden w-24 2xl:table-cell',
     },
   ]
 
@@ -297,7 +299,7 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
           {listControls('top')}
           <DataTable
             rows={items}
-            columns={columns}
+            columns={columnsFor(inDialog)}
             rowKey={(s) => s.symbol}
             onRowClick={(s) => setDetail(s.symbol)}
             dense
