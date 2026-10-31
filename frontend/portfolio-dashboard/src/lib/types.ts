@@ -205,7 +205,7 @@ export interface PortfolioSummary {
   stalePositions: number
   usesSimulatedData: boolean
   latestOptimizationAtUtc: string | null
-  lastActivityAtUtc: string | null
+  lastTradeAtUtc: string | null
   /** The same figures in the overview's chosen currency (overview only). */
   inCurrency?: PortfolioInCurrency | null
 }
@@ -1190,6 +1190,12 @@ export interface PriceHistory {
   isSimulated: boolean
   lastRetrievedAtUtc: string | null
   supportedRanges: HistoryRange[]
+}
+
+/** A stock's change and sparkline over a range for the stock list (`GET /stocks/trends`, same calculation as the watchlist). */
+export interface StockTrend {
+  symbol: string
+  period: PeriodChange
 }
 
 export interface PeriodChange {

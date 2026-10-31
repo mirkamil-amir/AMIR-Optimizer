@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -22,12 +23,13 @@ export interface Column<T> {
 
 /**
  * Accessible sortable table (sort buttons in headers, keyboard-activatable rows). `maxRows`: about that many rows are
- * visible; the rest scroll inside the table under a header that stays in place. `pageSize`: the sorted rows are shown in
+ * visible; the rest scroll inside the table under a header that stays in place (`maxHeight`: a CSS height instead, e.g. to
+ * fill a full-screen dialog). `pageSize`: the sorted rows are shown in
  * pages (initially of that size) with the shared `RangePager` below – first/previous/next/last and rows per page; a new
  * `pageResetKey` (e.g. the search text), another sort or another page size returns to page 1.
  */
 export function DataTable<T>({
-  rows, columns, rowKey, onRowClick, initialSort, empty, dense, caption, maxRows, pageSize, pageResetKey = '',
+  rows, columns, rowKey, onRowClick, initialSort, empty, dense, caption, maxRows, maxHeight, pageSize, pageResetKey = '',
 }: {
   rows: T[]
   columns: Column<T>[]
@@ -38,6 +40,7 @@ export function DataTable<T>({
   dense?: boolean
   caption?: string
   maxRows?: number
+  maxHeight?: string
   pageSize?: number
   pageResetKey?: string
 }) {
@@ -64,14 +67,17 @@ export function DataTable<T>({
   const totalPages = size ? Math.max(1, Math.ceil(sorted.length / size)) : 1
   const page = paging.key === pageResetKey && paging.sort === sort ? Math.min(paging.page, totalPages) : 1
   const visible = size ? sorted.slice((page - 1) * size, page * size) : sorted
+  const scrolls = Boolean(maxRows || maxHeight)
 
   return (
     <div>
-      <div className={cn('overflow-x-auto rounded-lg border', maxRows && 'overflow-y-auto')}
-        style={maxRows ? { maxHeight: `calc(2.25rem + ${maxRows} * ${dense ? 2.3 : 2.85}rem)` } : undefined}>
-        <Table containerClassName={maxRows ? 'overflow-visible' : undefined}>
+      {/* data-scrolled-x: set while scrolled sideways, so pinned columns can turn opaque only then (no re-render). */}
+      <div className={cn('overflow-x-auto rounded-lg border', scrolls && 'overflow-y-auto')} data-scrolled-x="false"
+        onScrollCapture={(e) => { e.currentTarget.dataset.scrolledX = String((e.target as HTMLElement).scrollLeft > 0) }}
+        style={scrolls ? { maxHeight: maxHeight ?? `calc(2.25rem + ${maxRows} * ${dense ? 2.3 : 2.85}rem)` } : undefined}>
+        <Table containerClassName={scrolls ? 'overflow-visible' : undefined}>
           {caption && <caption className="sr-only">{caption}</caption>}
-          <TableHeader className={maxRows ? 'sticky top-0 z-10 bg-popover' : undefined}>
+          <TableHeader className={scrolls ? 'sticky top-0 z-10 bg-popover' : undefined}>
             <TableRow className="bg-muted/40 hover:bg-muted/40">
               {columns.map((c) => {
                 const active = sort?.key === c.key
@@ -130,9 +136,11 @@ export function DataTable<T>({
  * Market Data): a search box with the row count, then the sortable `DataTable` in pages (rows per page,
  * first/previous/next/last) inside a box that scrolls under a fixed header. A new search starts at page 1.
  * `breakdown` replaces the plain count when the rows mix kinds that must be counted apart (see `lib/instrument-counts.ts`).
+ * `fullScreen` (the dialog title) adds a "Full screen" button: the same list, search and sort over the whole window, its
+ * rows scrolling under the fixed header. `toolbar`: more filters next to the search box (shown in full screen too).
  */
 export function SearchableTable<T>({
-  label, caption = label, hint, rows, columns, rowKey, initialSort, matches, placeholder, breakdown, empty, pageSize = 50, maxRows = 15, dense, onRowClick,
+  label, caption = label, hint, rows, columns, rowKey, initialSort, matches, placeholder, breakdown, empty, pageSize = 50, maxRows = 15, maxHeight, dense, onRowClick, fullScreen, toolbar,
 }: {
   label: string
   /** Accessible name of the table (defaults to `label`). */
@@ -140,26 +148,47 @@ export function SearchableTable<T>({
   matches: (row: T, query: string) => boolean; placeholder: string; empty?: string
   /** Replaces the plain row count when the list mixes types or tracked and not tracked instruments. */
   breakdown?: string
-  pageSize?: number; maxRows?: number; dense?: boolean; onRowClick?: (row: T) => void
+  pageSize?: number; maxRows?: number; maxHeight?: string; dense?: boolean; onRowClick?: (row: T) => void
+  fullScreen?: string; toolbar?: ReactNode
 }) {
   const [search, setSearch] = useState('')
+  const [open, setOpen] = useState(false)
   const q = search.trim().toLowerCase()
   const filtered = useMemo(() => (q ? rows.filter((r) => matches(r, q)) : rows), [rows, q, matches])
-  return (
-    <section aria-label={label} className="min-w-0 space-y-3">
-      {hint && <p className="text-sm text-muted-foreground">{hint}</p>}
+  // Rendered once at a time: inline, or in the full-screen dialog filling the space under its title.
+  const list = (inDialog: boolean) => (
+    <>
       <div className="flex flex-wrap items-center gap-3">
         <Input placeholder={placeholder} aria-label={`Search ${label}`} className="bg-card sm:w-80" value={search} onChange={(e) => setSearch(e.target.value)}
           // Inside a form (the optimization settings) Enter must not submit it: the search filters as you type.
           onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault() }} />
+        {toolbar}
         <span className="text-xs text-muted-foreground tabular">
           {q ? `${filtered.length.toLocaleString()} of ${rows.length.toLocaleString()} ${label}` : breakdown ?? `${rows.length.toLocaleString()} ${label}`}
         </span>
+        {fullScreen && !inDialog && <Button type="button" size="xs" variant="outline" className="ml-auto" onClick={() => setOpen(true)}>Full screen</Button>}
       </div>
       {rows.length === 0 && empty ? <p className="rounded-lg border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">{empty}</p> : (
         <DataTable<T> caption={caption} rows={filtered} rowKey={rowKey} initialSort={initialSort} columns={columns} dense={dense} onRowClick={onRowClick}
-          pageSize={pageSize} pageResetKey={q} maxRows={maxRows}
+          pageSize={pageSize} pageResetKey={q} maxRows={maxRows} maxHeight={inDialog ? 'calc(100dvh - 15rem)' : maxHeight}
           empty={<p className="rounded-lg border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">No {label} match “{search}”.</p>} />
+      )}
+    </>
+  )
+  return (
+    <section aria-label={label} className="min-w-0 space-y-3">
+      {hint && <p className="text-sm text-muted-foreground">{hint}</p>}
+      {!open && list(false)}
+      {fullScreen && (
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogContent className="top-2 left-2 flex h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-none translate-x-0 translate-y-0 flex-col sm:max-w-none">
+            <DialogHeader>
+              <DialogTitle>{fullScreen}</DialogTitle>
+              <DialogDescription>{rows.length.toLocaleString()} {label} · Esc closes.</DialogDescription>
+            </DialogHeader>
+            {open && list(true)}
+          </DialogContent>
+        </Dialog>
       )}
     </section>
   )

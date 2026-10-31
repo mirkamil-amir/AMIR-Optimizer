@@ -127,7 +127,9 @@ limits, least-privilege database role, audit trail.
   (primary areas, Matrix sections, administration; branded labels with plain-name hints, D-47; route-to-area matching) – see D-31.
 * `lib/` – pure, unit-tested logic: `api.ts` (fetch + antiforgery), `auth.tsx`, `selection.tsx` (memory only),
   `queries.ts` (TanStack Query hooks), `identity.ts` (header labels), `quote-status.ts`, `interpretation.ts`
-  (result explanations), `strategy-guide.ts` + `worked-examples.ts` (12-part strategy explanations), `glossary.ts`,
+  (result explanations), `strategy-guide.ts` + `worked-examples.ts` (12-part strategy explanations, rendered by
+  `pages/learn.tsx` as one article in reading order with a contents column that follows the reader; interactive figures in
+  `components/guide-figures.tsx` on sample data from `guide-demos.ts`, never stored prices), `glossary.ts`,
   `news.ts` (news labels and link safety), `markets.ts`, `map-camera.ts`, `strategies.ts`.
 * Business logic stays out of React components; components render what `lib/` computes.
 

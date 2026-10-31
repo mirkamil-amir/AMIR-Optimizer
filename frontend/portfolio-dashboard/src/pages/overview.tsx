@@ -83,7 +83,6 @@ export function OverviewPage() {
               <Button key={r.key} size="sm" variant={range === r.key ? 'secondary' : 'ghost'} aria-pressed={range === r.key} onClick={() => setRange(r.key)}>{r.key}</Button>
             ))}
           </div>
-          <Button render={<Link to={portfolioPath(id, 'optimize')} />}>Open Solver</Button>
         </div>
       </div>
       {created && <NextSteps id={id} />}

@@ -40,6 +40,17 @@ public sealed class WatchlistController(WatchlistService watchlist) : Controller
         return NoContent();
     }
 
+    /// <summary>Saves the caller's order of the watchlist (every watched symbol once). 409 if the list changed meanwhile.</summary>
+    [HttpPut("order")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Reorder(ReorderWatchlistRequest request, CancellationToken ct)
+    {
+        await watchlist.ReorderAsync(request, ct);
+        return NoContent();
+    }
+
     /// <summary>Refreshes the quotes of every watched stock; quotes inside the cache window are reused, not re-requested.</summary>
     [HttpPost("quotes/refresh")]
     [EnableRateLimiting(RateLimitPolicies.Quotes)]

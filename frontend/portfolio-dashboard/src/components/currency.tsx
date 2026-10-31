@@ -1,9 +1,37 @@
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { currencyGroups, currencyName, exposureRows, fxPhrase } from '@/lib/currency'
-import { date, pct } from '@/lib/format'
+import { convertedPrice, currencyGroups, currencyName, exposureRows, fxPhrase } from '@/lib/currency'
+import { date, money, pct } from '@/lib/format'
+import { cn } from '@/lib/utils'
 import { useFxInfo } from '@/lib/queries'
 import type { CurrencyExposure } from '@/lib/types'
+
+/**
+ * Price column of position lists (trade proposal, holdings): the share price in `to`, with only the rate underneath as
+ * "1 <to> = x <from>" (its date on hover; may wrap on phones). Same currency: the price alone.
+ */
+export function ConvertedPriceCell({ price, from, to, rate, rateDate }: { price: number | null; from: string; to: string; rate: number | null; rateDate: string | null }) {
+  return (
+    <div>
+      <div>{money(convertedPrice(price, from, to, rate), to)}</div>
+      {from && from !== to && rate !== null && rate > 0 && (
+        <div className="text-xs whitespace-normal text-muted-foreground sm:whitespace-nowrap" title={`Reference rate${rateDate ? ` of ${date(rateDate)}` : ''} used for the conversion. Not an exchange of money.`}>
+          {fxPhrase(1 / rate, to, from)}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** "Original price" column: the price in the stock's own currency with its close date (and "stale" when old). */
+export function OriginalPriceCell({ price, currency, priceDate, stale }: { price: number | null; currency: string; priceDate: string | null; stale: boolean }) {
+  return (
+    <div>
+      <div>{money(price, currency)}</div>
+      <div className={cn('text-xs whitespace-nowrap', stale ? 'text-warn' : 'text-muted-foreground')}>{priceDate ? date(priceDate) : ''}{stale ? ' · stale' : ''}</div>
+    </div>
+  )
+}
 
 /** Rate used for a value, with its date: "1 USD = 0.9132 EUR · 15 Oct 2026". */
 export function FxNote({ rate, from, to, on }: { rate: number | null | undefined; from: string; to: string; on?: string | null }) {

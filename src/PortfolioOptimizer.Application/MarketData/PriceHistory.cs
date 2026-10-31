@@ -1,3 +1,5 @@
+using PortfolioOptimizer.Application.Dtos;
+
 namespace PortfolioOptimizer.Application.MarketData;
 
 /// <summary>Chart ranges. <see cref="OneDay"/> needs intraday bars, which no configured source stores; <see cref="Max"/> is all stored history.</summary>
@@ -28,6 +30,14 @@ public sealed record PriceHistorySlice(
 /// </summary>
 public static class PriceHistory
 {
+    /// <summary>Evenly spaced observations for a sparkline (watchlist, stock list); always keeps the first and last real observation.</summary>
+    public static IReadOnlyList<PricePointDto> Downsample(IReadOnlyList<(DateOnly Date, decimal Price)> points, int max = 60)
+    {
+        if (points.Count <= max) return points.Select(p => new PricePointDto(p.Date, p.Price)).ToList();
+        var step = (points.Count - 1) / (double)(max - 1);
+        return Enumerable.Range(0, max).Select(i => points[(int)Math.Round(i * step)]).Select(p => new PricePointDto(p.Date, p.Price)).ToList();
+    }
+
     public static readonly IReadOnlyDictionary<string, PriceRange> Codes = new Dictionary<string, PriceRange>(StringComparer.OrdinalIgnoreCase)
     {
         ["1D"] = PriceRange.OneDay, ["1M"] = PriceRange.OneMonth, ["3M"] = PriceRange.ThreeMonths,

@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -16,12 +16,12 @@ import { Switch } from '@/components/ui/switch'
 import {
   AllocationDonut, ChartCard, CorrelationHeatmap, FrontierChart, RiskContributionChart, TimeSeriesChart, timeSeriesTable,
 } from '@/components/charts'
-import { DataTable, SearchableTable } from '@/components/data-table'
+import { SearchableTable } from '@/components/data-table'
 import { UniverseField } from '@/components/universe-field'
-import { GroupedBarChart, groupedBarTable } from '@/components/analysis-charts'
-import { drawdownFromCumulative, equalWeight, weightsBySector } from '@/lib/run-charts'
+import { GroupedBarChart } from '@/components/analysis-charts'
+import { drawdownFromCumulative, weightsBySector } from '@/lib/run-charts'
 import { DataBadge, EmptyState, ErrorState, InfoTip, LoadingBlock, MetricCard, PageHeader, ResultSection } from '@/components/common'
-import { TradeProposalView } from '@/components/proposal'
+import { TradeProposalCard } from '@/components/proposal'
 import { DataNotesList, StrategyInsights } from '@/components/strategy-insights'
 import { interpretOptimization } from '@/lib/interpretation'
 import { guideForObjective } from '@/lib/strategy-guide'
@@ -448,15 +448,6 @@ function RunResults({ run }: { run: OptimizationRun }) {
   const cashWeight = 1 - run.allocation.reduce((s, x) => s + x.weight, 0)
   // More views of the same stored run (reshaped, no new estimates).
   const sectors = weightsBySector(run.allocation)
-  const ew = equalWeight(run.allocation.length, 1 - cashWeight)
-  const vsEqual = [
-    { name: 'Optimized', color: 'var(--series-1)', values: run.allocation.map((x) => x.weight) },
-    { name: 'Equal weight', color: 'var(--series-3)', values: run.allocation.map(() => ew) },
-  ]
-  const stockStats = [
-    { name: 'Expected return', color: 'var(--series-1)', values: a.assetStatistics.map((x) => x.expectedReturn) },
-    { name: 'Volatility', color: 'var(--series-2)', values: a.assetStatistics.map((x) => x.volatility) },
-  ]
   const dataNotes = [...(a.excludedForData.length ? [`Excluded for missing or too short price history: ${a.excludedForData.join(', ')}.`] : []), ...run.diagnostics]
   const inSampleDrawdowns = Object.entries(a.inSample?.cumulativeReturns ?? {}).map(([name, values]) => ({ name, values: drawdownFromCumulative(values) }))
 
@@ -510,23 +501,8 @@ function RunResults({ run }: { run: OptimizationRun }) {
 
       {/* Next step right under the key figures: turn the weights into orders. */}
       {ok && (
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
-            <div>
-              <CardTitle className="flex items-center gap-2 text-sm">Trade proposal</CardTitle>
-              <CardDescription className="text-xs">Translate the target weights into whole-share orders at the latest stored prices, after costs.</CardDescription>
-            </div>
-            <Button variant={proposal ? 'outline' : 'default'} onClick={makeProposal} disabled={createProposal.isPending}>
-              {createProposal.isPending && <MatrixLoader />}
-              {proposal ? 'Recalculate' : 'Create trade proposal'}
-            </Button>
-          </CardHeader>
-          {proposal && (
-            <CardContent>
-              <TradeProposalView proposal={proposal} currency={ccy} />
-            </CardContent>
-          )}
-        </Card>
+        <TradeProposalCard proposal={proposal} currency={ccy} pending={createProposal.isPending} onCreate={makeProposal}
+          description="Translate the target weights into whole-share orders at the latest stored prices, after costs." />
       )}
 
       {/* Every result is visible at once (no tabs); the same section order as ML Optimization. */}
@@ -538,17 +514,10 @@ function RunResults({ run }: { run: OptimizationRun }) {
             </CardContent>
           </Card>
           <AllocationTable rows={run.allocation} currency={run.currency} />
-          <div className="grid gap-4 lg:grid-cols-2">
-            <ChartCard title="Weight vs equal weight" description={`Each stock's optimized weight next to 1/${run.allocation.length} of the invested share`}
-              legend={[{ name: 'Optimized', color: 'var(--series-1)' }, { name: 'Equal weight', color: 'var(--series-3)' }]}
-              table={groupedBarTable(run.allocation.map((x) => x.symbol), vsEqual, (v) => pct(v, 1))}>
-              <GroupedBarChart categories={run.allocation.map((x) => x.symbol)} series={vsEqual} format={(v) => pct(v, 0)} legend={false} />
-            </ChartCard>
-            <ChartCard title="Weight by sector" description="Sum of the optimized weights per sector (cash excluded)"
-              table={{ columns: ['Sector', 'Weight'], rows: sectors.map((x) => [x.sector, pct(x.weight, 1)]) }}>
-              <GroupedBarChart categories={sectors.map((x) => x.sector)} series={[{ name: 'Weight', color: 'var(--series-1)', values: sectors.map((x) => x.weight) }]} format={(v) => pct(v, 0)} legend={false} />
-            </ChartCard>
-          </div>
+          <ChartCard title="Weight by sector" description="Sum of the optimized weights per sector (cash excluded)"
+            table={{ columns: ['Sector', 'Weight'], rows: sectors.map((x) => [x.sector, pct(x.weight, 1)]) }}>
+            <GroupedBarChart categories={sectors.map((x) => x.sector)} series={[{ name: 'Weight', color: 'var(--series-1)', values: sectors.map((x) => x.weight) }]} format={(v) => pct(v, 0)} legend={false} />
+          </ChartCard>
           {run.currencyExposure && run.currencyExposure.length > 1 && (
             <Card>
               <CardContent className="space-y-2 pt-2">
@@ -582,18 +551,6 @@ function RunResults({ run }: { run: OptimizationRun }) {
         </ResultSection>
       )}
 
-      {a.assetStatistics.length > 0 && (
-        <ResultSection title="Return and risk of each stock">
-          <ChartCard title="Expected return and volatility per stock"
-            description={`Annualized, estimation window ${date(run.periodStart)} – ${date(run.periodEnd)} · in-sample estimates, not forecasts`}
-            hint="The inputs the optimizer worked with: each stock's historical mean return and volatility over the estimation window."
-            legend={[{ name: 'Expected return', color: 'var(--series-1)' }, { name: 'Volatility', color: 'var(--series-2)' }]}
-            table={groupedBarTable(a.assetStatistics.map((x) => x.symbol), stockStats, (v) => pct(v, 1))}>
-            <GroupedBarChart categories={a.assetStatistics.map((x) => x.symbol)} series={stockStats} format={(v) => pct(v, 0)} zeroLine legend={false} />
-          </ChartCard>
-        </ResultSection>
-      )}
-
       {a.correlationSymbols.length > 0 && (
         <ResultSection title="Correlation">
           <ChartCard title="Correlation of daily returns" description={`Estimation window ${date(run.periodStart)} – ${date(run.periodEnd)}`}
@@ -611,28 +568,16 @@ function RunResults({ run }: { run: OptimizationRun }) {
             legend={[{ name: 'Weight', color: 'var(--series-1)' }, { name: 'Risk contribution', color: 'var(--series-2)' }]}
             table={{ columns: ['Symbol', 'Weight', 'Risk contribution'], rows: allocation.map((x) => [x.symbol, pct(x.weight), pct(x.riskContribution)]) }}
           >
-            <RiskContributionChart items={allocation.map((x) => ({ symbol: x.symbol, weight: x.weight, risk: x.riskContribution }))} />
+            {/* Fixed height, scrolls with many holdings so the chart never pushes the page down. */}
+            <div className="max-h-[22rem] overflow-y-auto" tabIndex={0} role="region" aria-label="Weight vs. contribution to volatility, scrollable">
+              <RiskContributionChart items={allocation.map((x) => ({ symbol: x.symbol, weight: x.weight, risk: x.riskContribution }))} />
+            </div>
           </ChartCard>
         </ResultSection>
       )}
 
       {a.references.length > 0 && (
         <ResultSection title="Comparison with reference portfolios">
-          <DataTable
-            caption="Comparison with reference portfolios"
-            rows={[
-              ...(ok ? [{ name: 'Optimized', expectedReturn: run.expectedReturn, volatility: run.volatility, sharpeRatio: run.sharpeRatio, note: objectiveLabels[run.objective] }] : []),
-              ...a.references,
-            ]}
-            rowKey={(r) => r.name}
-            columns={[
-              { key: 'n', header: 'Portfolio', cell: (r) => <span className="font-medium">{r.name}</span> },
-              { key: 'r', header: 'Expected return', align: 'right', cell: (r) => pct(r.expectedReturn) },
-              { key: 'v', header: 'Volatility', align: 'right', cell: (r) => pct(r.volatility) },
-              { key: 's', header: 'Sharpe', align: 'right', cell: (r) => num(r.sharpeRatio) },
-              { key: 'note', header: 'Note', cell: (r) => <span className="text-xs text-muted-foreground">{r.note}</span> },
-            ]}
-          />
           {a.inSample && (
             <ChartCard
               title="In-sample cumulative return"
@@ -699,7 +644,7 @@ function AllocationTable({ rows, currency }: { rows: Allocation[]; currency: str
       rows={rows}
       rowKey={(r) => r.symbol}
       initialSort={{ key: 'w', dir: 'desc' }}
-      dense pageSize={25} maxRows={12}
+      dense pageSize={25} maxRows={12} fullScreen="Recommended allocation"
       placeholder="Search symbol, name, sector or currency"
       matches={(r, q) => r.symbol.toLowerCase().includes(q) || (r.name ?? '').toLowerCase().includes(q) || (r.sector ?? '').toLowerCase().includes(q) || (r.currency ?? '').toLowerCase() === q}
       breakdown={`${rows.length.toLocaleString()} stocks in the universe · ${invested.toLocaleString()} with a weight · ${(rows.length - invested).toLocaleString()} at 0 %`}

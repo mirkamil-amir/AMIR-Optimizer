@@ -321,7 +321,7 @@ export const strategyGuides: StrategyGuide[] = [
     objective: 'Hold the stocks the model ranks highest, within diversification and turnover limits.',
     math: [
       { formula: 'S = top K stocks by score (score ≥ minimum, if set)', caption: 'selection' },
-      { formula: 'wᵢ = 1/K  |  ∝ (K − rankᵢ + 1)  |  ∝ 1/σᵢ  |  ∝ scoreᵢ − min score', caption: 'equal, rank-linear, inverse-volatility or score-proportional weights' },
+      { formula: 'wᵢ = 1/K  |  ∝ (K − rankᵢ + 1)  |  ∝ 1/σᵢ  |  ∝ scoreᵢ − min_S score + 0.1·spread_S', caption: 'equal, rank-linear, inverse-volatility or score-proportional weights (S = the selected stocks; the 10% spread keeps the weakest selected stock in)' },
       { formula: 'wᵢ ≤ cap,  Σ_sector wᵢ ≤ sector cap,  Σwᵢ ≤ 1 − c', caption: 'iterative capping; what cannot be placed stays in cash' },
       { formula: 'w = w₀ + λ(w* − w₀),  λ chosen so that ½Σ|w − w₀| ≤ T', caption: 'optional turnover limit by partial rebalancing' },
     ],

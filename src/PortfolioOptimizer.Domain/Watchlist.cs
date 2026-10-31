@@ -12,4 +12,6 @@ public class WatchlistEntry
     public int AssetId { get; set; }
     public Asset? Asset { get; set; }
     public DateTime AddedAtUtc { get; set; }
+    /// <summary>Place in the owner's list (0 = top); the owner orders the list by drag and drop.</summary>
+    public int Position { get; set; }
 }

@@ -60,8 +60,8 @@ test('optimizations of one portfolio: Math and ML pages alike, backtest any opti
   const portfolioId = page.url().match(/portfolios\/([0-9a-f-]{36})/)![1]
   await runOptimization(page, portfolioId, 'Minimum variance')
   await runOptimization(page, portfolioId, 'Equal weight')
-  await expectAllSectionsVisible(page, ['Allocation', 'Efficient frontier', 'Return and risk of each stock', 'Correlation', 'Risk contribution'], 'math-optimization.png')
-  for (const chart of ['Weight vs equal weight', 'Weight by sector', 'Expected return and volatility per stock']) await expect(page.getByText(chart, { exact: true })).toBeVisible()
+  await expectAllSectionsVisible(page, ['Allocation', 'Efficient frontier', 'Correlation', 'Risk contribution'], 'math-optimization.png')
+  await expect(page.getByText('Weight by sector', { exact: true })).toBeVisible()
   // Optimization history sits above the stocks; picking the earlier run switches the results to it.
   const history = page.getByRole('main').getByText('Optimization history', { exact: true })
   expect((await history.boundingBox())!.y).toBeLessThan((await page.getByText('Equity universe').boundingBox())!.y)

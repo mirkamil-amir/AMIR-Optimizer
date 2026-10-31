@@ -1,4 +1,4 @@
-import { useDeferredValue, useMemo, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input'
 import { EmptyState, PageHeader } from '@/components/common'
 import { glossary, glossaryCategories } from '@/lib/glossary'
 import { guideById, strategyGuides, type StrategyGuide } from '@/lib/strategy-guide'
+import { cn } from '@/lib/utils'
+import { GuideFigure } from '@/components/guide-figures'
 
 const families: { id: StrategyGuide['family']; title: string; description: string }[] = [
   { id: 'optimization', title: 'Mathematical optimization', description: 'Weights from estimated returns, volatilities and correlations (mean-variance theory).' },
@@ -49,34 +51,140 @@ export function LearnIndexPage() {
   )
 }
 
-/** One strategy, always in the same 12-part structure; sections are collapsible to keep the page scannable. */
+/**
+ * One strategy as a page to read from top to bottom: the same 12 topics for every strategy, in reading order (the idea
+ * first, the formulas after the example), as headings of one article on a calm surface – nothing to unfold. A table of
+ * contents follows the reader on wide screens; previous/next lead through the guides of the same family.
+ */
 export function StrategyGuidePage() {
   const { strategyId } = useParams()
   const g = strategyId ? guideById(strategyId) : undefined
+  const sections = g ? guideSections(g) : []
+  const active = useActiveSection(sections.map((s) => s.id))
   if (!g) return <EmptyState title="Strategy not found" action={<Button render={<Link to="/learn" />}>All strategies</Button>} />
 
-  const sections: { title: string; body: React.ReactNode; open?: boolean }[] = [
-    { title: 'What is this strategy?', body: <p>{g.what}</p>, open: true },
-    { title: 'The theory', body: <List items={g.theory} /> },
-    { title: 'The objective', body: <p>{g.objective}</p>, open: true },
+  const family = families.find((f) => f.id === g.family)
+  const siblings = strategyGuides.filter((x) => x.family === g.family)
+  const at = siblings.findIndex((x) => x.id === g.id)
+  const prev = siblings[at - 1]
+  const next = siblings[at + 1]
+  const related = g.related.map((id) => guideById(id)).filter((r): r is StrategyGuide => Boolean(r))
+
+  return (
+    <>
+      <Button size="sm" variant="ghost" className="mb-2 -ml-2" render={<Link to="/learn" />}>Back to Codex</Button>
+      <div className="grid justify-center gap-8 lg:grid-cols-[minmax(0,50rem)_14rem]">
+        <article className="map-surface min-w-0 rounded-2xl px-5 py-6 sm:px-10 sm:py-8" aria-labelledby="guide-title">
+          <header className="mb-8 max-w-[68ch] space-y-3 border-b pb-6">
+            <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{family?.title} · about {readingMinutes(g)} min read</p>
+            <h1 id="guide-title" className="heading-display text-2xl sm:text-3xl">{g.name}</h1>
+            <p className="text-lg leading-relaxed text-muted-foreground">{g.tagline}</p>
+            <TryIt g={g} />
+          </header>
+
+          {/* On phones the contents sit above the text (no side column). */}
+          <nav aria-label="Contents" className="mb-8 max-w-[68ch] lg:hidden">
+            <h2 className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">Contents</h2>
+            <ol className="grid gap-1 text-sm sm:grid-cols-2">
+              {sections.map((s) => <li key={s.id}><a href={`#${s.id}`} className="text-muted-foreground hover:text-foreground">{s.title}</a></li>)}
+            </ol>
+          </nav>
+
+          <div className="max-w-[68ch] space-y-10 text-[0.95rem] leading-7">
+            {sections.map((s) => (
+              <section key={s.id} id={s.id} aria-labelledby={`${s.id}-title`}>
+                <h2 id={`${s.id}-title`} className="heading-display mb-3 text-xl">{s.title}</h2>
+                {s.body}
+              </section>
+            ))}
+          </div>
+
+          <footer className="mt-12 max-w-[68ch] space-y-6 border-t pt-6">
+            {related.length > 0 && (
+              <div>
+                <h2 className="mb-2 text-sm font-semibold">Read next</h2>
+                <ul className="flex flex-wrap gap-2">
+                  {related.map((r) => <li key={r.id}><Button size="sm" variant="outline" render={<Link to={`/learn/${r.id}`} />}>{r.name}</Button></li>)}
+                </ul>
+              </div>
+            )}
+            <nav aria-label="More guides" className="grid gap-3 sm:grid-cols-2">
+              {prev ? <PagerLink to={prev} label="Previous" /> : <span />}
+              {next ? <PagerLink to={next} label="Next" align="right" /> : <span />}
+            </nav>
+          </footer>
+        </article>
+
+        <aside className="hidden lg:sticky lg:top-32 lg:block lg:self-start">
+          <nav aria-label="On this page" className="map-surface space-y-2 rounded-xl px-4 py-4 text-sm">
+            <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">On this page</h2>
+            <ol className="space-y-1 border-l">
+              {sections.map((s) => (
+                <li key={s.id}>
+                  <a href={`#${s.id}`} aria-current={active === s.id ? 'location' : undefined}
+                    className={cn('-ml-px block border-l-2 py-0.5 pl-3', active === s.id ? 'border-foreground font-medium text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground')}>
+                    {s.title}
+                  </a>
+                </li>
+              ))}
+            </ol>
+            <Button size="sm" variant="outline" className="mt-2 w-full" title={g.appLink.label} render={<Link to={g.appLink.to} />}>Try it</Button>
+          </nav>
+        </aside>
+      </div>
+    </>
+  )
+}
+
+/** The 12 topics in reading order: what and why → how → example → formulas → using it → limits. */
+function guideSections(g: StrategyGuide): { id: string; title: string; body: React.ReactNode }[] {
+  return [
+    { id: 'what', title: 'What is this strategy?', body: <p>{g.what}</p> },
     {
-      title: 'The mathematics',
+      id: 'objective', title: 'The objective',
+      body: <p className="rounded-lg border-l-2 border-series-1 bg-muted/40 px-4 py-3">{g.objective}</p>,
+    },
+    { id: 'theory', title: 'The theory', body: <><List items={g.theory} /><GuideFigure guide={g.id} section="theory" /></> },
+    { id: 'how', title: 'How it works, step by step', body: <List items={g.how} ordered /> },
+    {
+      id: 'example', title: 'Worked example',
       body: (
-        <div className="space-y-3">
-          <ul className="space-y-2">
+        <div className="space-y-4">
+          <p>{g.example.intro}</p>
+          {g.example.table && (
+            <div className="overflow-x-auto rounded-lg border bg-background">
+              <table className="w-full text-sm">
+                <caption className="sr-only">Worked example for {g.name}</caption>
+                <thead className="bg-muted/40"><tr>{g.example.table.columns.map((c) => <th key={c} scope="col" className="px-3 py-2 text-left text-xs font-medium whitespace-nowrap">{c}</th>)}</tr></thead>
+                <tbody>{g.example.table.rows.map((r) => <tr key={r.join('|')} className="border-t">{r.map((c, i) => <td key={i} className="px-3 py-2 tabular whitespace-nowrap">{c}</td>)}</tr>)}</tbody>
+              </table>
+            </div>
+          )}
+          <List items={g.example.steps} ordered />
+          <GuideFigure guide={g.id} section="example" />
+          <p className="rounded-lg border-l-2 border-series-1 bg-muted/40 px-4 py-3"><strong>Takeaway:</strong> {g.example.takeaway}</p>
+        </div>
+      ),
+    },
+    {
+      id: 'math', title: 'The mathematics',
+      body: (
+        <div className="space-y-5">
+          <p className="text-muted-foreground">For readers who want the formulas; everything above can be understood without them.</p>
+          <ul className="space-y-4">
             {g.math.map((m) => (
               <li key={m.formula}>
-                <code className="block overflow-x-auto rounded-md bg-muted px-3 py-2 font-mono text-sm whitespace-pre">{m.formula}</code>
-                <span className="text-xs text-muted-foreground">{m.caption}</span>
+                <code className="block overflow-x-auto rounded-md bg-muted px-4 py-3 font-mono text-sm whitespace-pre">{m.formula}</code>
+                <span className="mt-1 block text-sm text-muted-foreground">{m.caption}</span>
               </li>
             ))}
           </ul>
           <div>
-            <h4 className="mb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">Variables</h4>
-            <dl className="grid gap-x-4 gap-y-1 text-sm sm:grid-cols-[minmax(4rem,auto)_1fr]">
+            <h3 className="mb-2 text-sm font-semibold">What the symbols mean</h3>
+            <dl className="grid gap-x-6 gap-y-1.5 text-sm sm:grid-cols-[minmax(3rem,auto)_1fr]">
               {g.variables.map(([v, d]) => (
                 <div key={v} className="contents">
-                  <dt className="font-mono">{v}</dt>
+                  <dt className="font-mono font-medium">{v}</dt>
                   <dd className="text-muted-foreground">{d}</dd>
                 </div>
               ))}
@@ -85,91 +193,83 @@ export function StrategyGuidePage() {
         </div>
       ),
     },
-    { title: 'How it works, step by step', body: <List items={g.how} ordered /> },
-    { title: 'Required inputs', body: <List items={g.inputs} /> },
-    { title: 'How to read the portfolio', body: <List items={g.interpretation} />, open: true },
-    { title: 'When to use it', body: <List items={g.whenToUse} /> },
+    { id: 'inputs', title: 'Required inputs', body: <List items={g.inputs} /> },
+    { id: 'when', title: 'When to use it', body: <List items={g.whenToUse} /> },
+    { id: 'reading', title: 'How to read the portfolio', body: <List items={g.interpretation} /> },
     {
-      title: 'Advantages and limitations',
+      id: 'results', title: 'Interpreting your own results',
       body: (
-        <div className="grid gap-4 md:grid-cols-2">
-          <div><h4 className="mb-1 text-sm font-medium">Advantages</h4><List items={g.advantages} /></div>
-          <div><h4 className="mb-1 text-sm font-medium">Limitations</h4><List items={g.limitations} /></div>
-        </div>
-      ),
-    },
-    {
-      title: 'Worked example',
-      body: (
-        <div className="space-y-3">
-          <p className="text-sm">{g.example.intro}</p>
-          {g.example.table && (
-            <div className="overflow-x-auto rounded-lg border">
-              <table className="w-full text-sm">
-                <caption className="sr-only">Worked example for {g.name}</caption>
-                <thead className="bg-muted/40"><tr>{g.example.table.columns.map((c) => <th key={c} scope="col" className="px-3 py-1.5 text-left text-xs font-medium">{c}</th>)}</tr></thead>
-                <tbody>{g.example.table.rows.map((r) => <tr key={r.join('|')} className="border-t">{r.map((c, i) => <td key={i} className="px-3 py-1.5 tabular">{c}</td>)}</tr>)}</tbody>
-              </table>
-            </div>
-          )}
-          <List items={g.example.steps} ordered />
-          <p className="rounded-md border-l-2 border-series-1 bg-muted/40 px-3 py-2 text-sm"><strong>Takeaway:</strong> {g.example.takeaway}</p>
-        </div>
-      ),
-      open: true,
-    },
-    {
-      title: 'Interpreting your own results',
-      body: (
-        <div className="space-y-3">
+        <div className="space-y-4">
           <List items={g.results} />
-          <Button size="sm" render={<Link to={g.appLink.to} />}>{g.appLink.label} </Button>
+          <TryIt g={g} />
         </div>
       ),
     },
-    { title: 'Important caveats', body: <List items={g.caveats} />, open: true },
-  ]
-
-  return (
-    <>
-      <Button size="sm" variant="ghost" className="mb-2 -ml-2" render={<Link to="/learn" />}>Back to Codex</Button>
-      <PageHeader title={g.name} description={g.tagline} actions={<Button size="sm" render={<Link to={g.appLink.to} />}>Try it </Button>} />
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_220px]">
-        <div className="space-y-2">
-          {sections.map((s, i) => (
-            <details key={s.title} id={`section-${i + 1}`} open={s.open} className="group rounded-xl border bg-background px-4 py-3 [&_summary::-webkit-details-marker]:hidden">
-              <summary className="flex cursor-pointer list-none items-center gap-3 font-medium focus-visible:outline-none">
-                <span className="grid size-6 shrink-0 place-items-center rounded-full bg-muted text-xs tabular">{i + 1}</span>
-                <span className="flex-1">{s.title}</span>
-                <span className="text-xs text-muted-foreground group-open:hidden">Show</span>
-                <span className="hidden text-xs text-muted-foreground group-open:inline">Hide</span>
-              </summary>
-              <div className="mt-3 text-sm leading-relaxed">{s.body}</div>
-            </details>
-          ))}
+    {
+      id: 'pros-cons', title: 'Advantages and limitations',
+      body: (
+        <div className="grid gap-6 sm:grid-cols-2">
+          <div><h3 className="mb-1 text-sm font-semibold">Advantages</h3><List items={g.advantages} /></div>
+          <div><h3 className="mb-1 text-sm font-semibold">Limitations</h3><List items={g.limitations} /></div>
         </div>
-        <aside className="space-y-3 lg:sticky lg:top-20 lg:self-start">
-          <Card className="py-4">
-            <CardContent className="space-y-2 px-4 text-sm">
-              <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">On this page</h2>
-              <ol className="space-y-1">
-                {sections.map((s, i) => <li key={s.title}><a href={`#section-${i + 1}`} className="text-muted-foreground hover:text-foreground">{i + 1}. {s.title}</a></li>)}
-              </ol>
-            </CardContent>
-          </Card>
-          {g.related.length > 0 && (
-            <Card className="py-4">
-              <CardContent className="space-y-2 px-4 text-sm">
-                <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Related</h2>
-                {g.related.map((id) => guideById(id)).filter(Boolean).map((r) => (
-                  <Link key={r!.id} to={`/learn/${r!.id}`} className="block text-muted-foreground hover:text-foreground">{r!.name}</Link>
-                ))}
-              </CardContent>
-            </Card>
-          )}
-        </aside>
-      </div>
-    </>
+      ),
+    },
+    {
+      id: 'caveats', title: 'Important caveats',
+      body: <div className="rounded-lg border border-warn/40 bg-warn/5 px-4 py-3"><List items={g.caveats} /></div>,
+    },
+  ]
+}
+
+/** About 200 words a minute over every text of the guide (rounded up, at least one minute). */
+function readingMinutes(g: StrategyGuide): number {
+  const texts = [g.what, g.objective, ...g.theory, ...g.how, ...g.inputs, ...g.interpretation, ...g.whenToUse, ...g.advantages, ...g.limitations,
+    g.example.intro, ...g.example.steps, g.example.takeaway, ...g.results, ...g.caveats, ...g.math.map((m) => m.caption), ...g.variables.map(([, d]) => d)]
+  const words = texts.join(' ').split(/\s+/).filter(Boolean).length
+  return Math.max(1, Math.ceil(words / 200))
+}
+
+/**
+ * The section being read: the last one whose top has passed a line a third down the window, or the last section once
+ * the page is scrolled to the bottom (a short final section never reaches that line).
+ */
+function useActiveSection(ids: string[]): string | undefined {
+  const [active, setActive] = useState<string | undefined>(undefined)
+  const key = ids.join(',')
+  useEffect(() => {
+    if (!key) return
+    const elements = key.split(',').map((id) => document.getElementById(id)).filter((e): e is HTMLElement => Boolean(e))
+    let frame = 0
+    const update = () => {
+      frame = 0
+      const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4
+      const passed = elements.filter((e) => e.getBoundingClientRect().top <= window.innerHeight / 3)
+      setActive((atBottom ? elements.at(-1) : passed.at(-1) ?? elements[0])?.id)
+    }
+    const onScroll = () => { if (!frame) frame = requestAnimationFrame(update) }
+    update()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onScroll)
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onScroll)
+      if (frame) cancelAnimationFrame(frame)
+    }
+  }, [key])
+  return active ?? ids[0]
+}
+
+/** The guide's link into the app; its label is a sentence, so the button wraps instead of running off narrow screens. */
+function TryIt({ g }: { g: StrategyGuide }) {
+  return <Button size="sm" className="h-auto max-w-full py-1.5 text-left whitespace-normal" render={<Link to={g.appLink.to} />}>{g.appLink.label}</Button>
+}
+
+function PagerLink({ to, label, align = 'left' }: { to: StrategyGuide; label: string; align?: 'left' | 'right' }) {
+  return (
+    <Link to={`/learn/${to.id}`} className={cn('rounded-xl border bg-background px-4 py-3 transition-colors hover:border-foreground/30 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none', align === 'right' && 'text-right')}>
+      <span className="block text-xs text-muted-foreground">{label}</span>
+      <span className="block font-medium">{to.name}</span>
+    </Link>
   )
 }
 
@@ -212,7 +312,7 @@ export function GlossaryPage() {
 function List({ items, ordered = false }: { items: string[]; ordered?: boolean }) {
   const Tag = ordered ? 'ol' : 'ul'
   return (
-    <Tag className={ordered ? 'list-decimal space-y-1 pl-5' : 'list-disc space-y-1 pl-5'}>
+    <Tag className={cn(ordered ? 'list-decimal' : 'list-disc', 'space-y-2 pl-5 marker:text-muted-foreground')}>
       {items.map((i) => <li key={i}>{i}</li>)}
     </Tag>
   )

@@ -38,8 +38,11 @@ export function RangePicker({ value, onChange, ranges = historyRanges, label = '
   )
 }
 
-/** Minimal line of real observations (no interpolation beyond straight segments between stored closes). */
-export function Sparkline({ points, label, width = 112, height = 32 }: { points: PricePoint[]; label: string; width?: number; height?: number }) {
+/**
+ * Minimal line of real observations (no interpolation beyond straight segments between stored closes). `fluid` stretches
+ * it to the width of its container (the line keeps its thickness), e.g. in a table column that sizes itself.
+ */
+export function Sparkline({ points, label, width = 112, height = 32, fluid = false }: { points: PricePoint[]; label: string; width?: number; height?: number; fluid?: boolean }) {
   if (points.length < 2) return <span className="text-xs text-muted-foreground">—</span>
   const prices = points.map((p) => p.price)
   const min = Math.min(...prices)
@@ -50,8 +53,9 @@ export function Sparkline({ points, label, width = 112, height = 32 }: { points:
     .join(' ')
   const up = prices[prices.length - 1] >= prices[0]
   return (
-    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="img" aria-label={label} className="overflow-visible">
-      <polyline points={path} fill="none" strokeWidth={1.5} className={up ? 'stroke-gain' : 'stroke-loss'} />
+    <svg width={fluid ? '100%' : width} height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio={fluid ? 'none' : undefined}
+      role="img" aria-label={label} className={fluid ? 'block w-full overflow-visible' : 'overflow-visible'}>
+      <polyline points={path} fill="none" strokeWidth={1.5} vectorEffect="non-scaling-stroke" className={up ? 'stroke-gain' : 'stroke-loss'} />
     </svg>
   )
 }

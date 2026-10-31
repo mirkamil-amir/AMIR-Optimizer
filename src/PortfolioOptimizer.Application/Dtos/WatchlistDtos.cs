@@ -44,6 +44,12 @@ public sealed record WatchlistItemDto(Guid Id, DateTime AddedAtUtc, StockListIte
 
 public sealed record WatchlistDto(IReadOnlyList<WatchlistItemDto> Items, string Range, int MaxEntries, string Note);
 
+/// <summary>The caller's complete watchlist in the new order (every watched symbol exactly once).</summary>
+public sealed record ReorderWatchlistRequest
+{
+    [Required, MinLength(1), MaxLength(100)] public List<string> Symbols { get; init; } = [];
+}
+
 public sealed record AddWatchlistEntryRequest
 {
     /// <summary>Canonical catalogue symbol including the venue suffix (e.g. SAP.DE, 7203.T, AAPL).</summary>
@@ -52,3 +58,6 @@ public sealed record AddWatchlistEntryRequest
 
 /// <summary>The added entry; <see cref="HistoryQueued"/> tells the UI that a price-history download was started.</summary>
 public sealed record WatchlistAddResultDto(WatchlistItemDto Item, bool HistoryQueued);
+
+/// <summary>A stock's change and sparkline over a range for the stock list (same calculation as the watchlist).</summary>
+public sealed record StockTrendDto(string Symbol, PeriodChangeDto Period);

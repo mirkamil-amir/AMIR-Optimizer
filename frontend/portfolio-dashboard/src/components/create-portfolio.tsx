@@ -44,8 +44,9 @@ export function validateDraft(d: PortfolioDraft): Partial<Record<keyof Portfolio
  * Step 1 and 3 of New portfolio: details of the new portfolio and the final "Forge portfolio". Step 2 – choosing the
  * stocks it may invest in – is the stock browser on the same page (the temporary selection). Nothing is stored until the
  * user clicks Create; the chosen stocks become the portfolio's working universe for the optimizer, not holdings.
+ * `currency` belongs to the page: the stock list below shows its prices in the same currency and can change it too.
  */
-export function CreatePortfolioPanel() {
+export function CreatePortfolioPanel({ currency, onCurrencyChange }: { currency: string; onCurrencyChange: (currency: string) => void }) {
   const settings = useSettings()
   const fx = useFxInfo()
   const selection = useSelection()
@@ -53,7 +54,6 @@ export function CreatePortfolioPanel() {
   const navigate = useNavigate()
   const [draft, setDraft] = useState<PortfolioDraft>({ name: '', description: '', currency: '', capital: '100000', maxWeight: '' })
   const [touched, setTouched] = useState(false)
-  const currency = draft.currency || settings.data?.defaultCurrency || 'USD'
   const errors = validateDraft(draft)
   const show = (k: keyof PortfolioDraft) => (touched ? errors[k] : undefined)
   const set = (k: keyof PortfolioDraft) => (e: React.ChangeEvent<HTMLInputElement>) => setDraft({ ...draft, [k]: e.target.value })
@@ -99,7 +99,7 @@ export function CreatePortfolioPanel() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="np-ccy">Currency</Label>
-              <CurrencySelect id="np-ccy" value={currency} onChange={(c) => setDraft({ ...draft, currency: c })} supported={fx.data?.currencies}
+              <CurrencySelect id="np-ccy" value={currency} onChange={onCurrencyChange} supported={fx.data?.currencies}
                 first={settings.data?.defaultCurrency} label="Portfolio currency" className="w-full" />
               <p className="text-[11px] text-muted-foreground">Holds the cash; fixed after creation.</p>
             </div>

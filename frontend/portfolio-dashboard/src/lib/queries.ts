@@ -3,7 +3,7 @@ import { api } from './api'
 import type {
   AppSettings, Asset, AuditEvent, Backtest, BacktestRequest, BacktestSummary, CashEntry, CatalogueImportResult, HoldingsResponse,
   FxSync, MarketDataStatus, OptimizationRun, OptimizationRunSummary, Order, PagedResult, PaperTradeResult, Performance, Portfolio,
-  PortfolioSettings, PortfolioSummary, PriceBar, Risk, RunStatus, Sector, StockDetail, StockListItem, SyncJob, TradeProposal,
+  PortfolioSettings, PortfolioSummary, PriceBar, Risk, RunStatus, Sector, StockDetail, StockListItem, StockTrend, SyncJob, TradeProposal,
   Transaction, UserAccountStatus, UserSummary, MlCatalog, MlExperiment, MlExperimentRequest, MlExperimentSummary, MlBacktest,
   MlPredictionSet, StrategyComparison, StrategyComparisonRequest, StrategyComparisonSummary, Market, QuoteRefreshRun, QuoteRefreshResult,
   AdminOverview, HistoryRange, PriceHistory, Watchlist, WatchlistAddResult, NewsFeed, NewsFilters, EventComparison, RealityCheck, CompanyProfile,
@@ -783,6 +783,16 @@ export function useDeleteComparison() {
 
 // ---------------------------------------------------------------- watchlist & price history
 
+/** Change and sparkline per stock over a range for one page of the stock list (at most 200 symbols, one request). */
+export const useStockTrends = (symbols: string[], range: HistoryRange = '1M', enabled = true) =>
+  useQuery({
+    queryKey: ['stock-trends', range, symbols.join(',')] as const,
+    queryFn: ({ signal }) => api.get<StockTrend[]>(`${V1}/stocks/trends?range=${range}&symbols=${encodeURIComponent(symbols.join(','))}`, signal),
+    enabled: enabled && symbols.length > 0,
+    staleTime: 5 * 60_000,
+    placeholderData: keepPreviousData,
+  })
+
 export const useWatchlist = (range: HistoryRange = '1M') =>
   useQuery({
     queryKey: ['watchlist', range] as const,
@@ -803,6 +813,28 @@ export function useRemoveFromWatchlist() {
   return useMutation({
     mutationFn: (symbol: string) => api.delete<void>(`${V1}/watchlist/${encodeURIComponent(symbol)}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['watchlist'] }),
+  })
+}
+
+/**
+ * Saves the caller's order of the watchlist (every watched symbol once). The new order shows at once in every cached
+ * range; if saving fails it is rolled back and the list reloaded (e.g. 409 when another tab changed the list).
+ */
+export function useReorderWatchlist() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (symbols: string[]) => api.put<void>(`${V1}/watchlist/order`, { symbols }),
+    onMutate: async (symbols) => {
+      await qc.cancelQueries({ queryKey: ['watchlist'] })
+      const previous = qc.getQueriesData<Watchlist>({ queryKey: ['watchlist'] })
+      const rank = new Map(symbols.map((s, i) => [s, i]))
+      qc.setQueriesData<Watchlist>({ queryKey: ['watchlist'] }, (old) => old && ({
+        ...old, items: [...old.items].sort((a, b) => (rank.get(a.stock.symbol) ?? 0) - (rank.get(b.stock.symbol) ?? 0)),
+      }))
+      return { previous }
+    },
+    onError: (_e, _symbols, context) => context?.previous.forEach(([key, data]) => qc.setQueryData(key, data)),
+    onSettled: () => qc.invalidateQueries({ queryKey: ['watchlist'] }),
   })
 }
 

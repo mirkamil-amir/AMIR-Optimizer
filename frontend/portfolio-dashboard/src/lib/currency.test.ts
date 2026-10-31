@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { converterCurrencies, convertAmount, crossFromBoard, currencyGroups, currencyName, exposureRows, foreignCurrencies, fxPhrase } from './currency'
+import { convertedPrice, converterCurrencies, convertAmount, crossFromBoard, currencyGroups, currencyName, exposureRows, foreignCurrencies, fxPhrase } from './currency'
 
 describe('currency helpers', () => {
   it('states rates in the app convention, readable for small rates', () => {
@@ -58,5 +58,14 @@ describe('currency helpers', () => {
   it('names currencies in English', () => {
     expect(currencyName('TRY')).toBe('Turkish Lira')
     expect(currencyName('ZZZ')).toBe('ZZZ')
+  })
+})
+
+describe('convertedPrice', () => {
+  it('converts with the dated rate, keeps same-currency prices and refuses to guess without a rate', () => {
+    expect(convertedPrice(2000, 'JPY', 'EUR', 0.0062)).toBeCloseTo(12.4, 12)
+    expect(convertedPrice(50, 'EUR', 'EUR', null)).toBe(50)
+    expect(convertedPrice(50, 'USD', 'EUR', null)).toBeNull()
+    expect(convertedPrice(null, 'USD', 'EUR', 0.9)).toBeNull()
   })
 })

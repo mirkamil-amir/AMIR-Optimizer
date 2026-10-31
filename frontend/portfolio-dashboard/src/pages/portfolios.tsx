@@ -154,7 +154,7 @@ function PortfolioCard({ p }: { p: PortfolioSummary }) {
             </dd>
           </div>
           <Row label="Last optimization" value={p.latestOptimizationAtUtc ? relativeTime(p.latestOptimizationAtUtc) : 'none yet'} />
-          <Row label="Last activity" value={relativeTime(p.lastActivityAtUtc)} />
+          <Row label="Last trade" value={p.lastTradeAtUtc ? relativeTime(p.lastTradeAtUtc) : 'none yet'} />
         </dl>
         <p className="text-[11px] text-muted-foreground">
           {p.valuationDate ? `Valued at stored prices of ${date(p.valuationDate)}` : 'Cash only – no positions to value'}

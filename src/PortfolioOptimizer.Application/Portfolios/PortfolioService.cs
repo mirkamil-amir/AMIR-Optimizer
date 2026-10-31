@@ -109,7 +109,7 @@ public sealed class PortfolioService(IApplicationDbContext db, PriceQueryService
             cash is { } c ? Math.Round(c, 2) : null, net, total is { } tv && net is { } nv ? tv - nv : null, problems);
     }
 
-    /// <summary>One valuation per portfolio (no history replay), plus one grouped query each for contributions, runs and activity.</summary>
+    /// <summary>One valuation per portfolio (no history replay), plus one grouped query each for contributions, runs and trades.</summary>
     private async Task<List<(PortfolioSummaryDto Summary, Portfolio Portfolio)>> SummariesAsync(Guid owner, CancellationToken ct)
     {
         var portfolios = await db.Portfolios.AsNoTracking().Include(p => p.Holdings).Where(p => p.OwnerId == owner)
@@ -118,7 +118,8 @@ public sealed class PortfolioService(IApplicationDbContext db, PriceQueryService
         var contributions = await db.CashLedger.AsNoTracking()
             .Where(c => ids.Contains(c.PortfolioId) && (c.Type == CashEntryType.Deposit || c.Type == CashEntryType.Withdrawal))
             .GroupBy(c => c.PortfolioId).Select(g => new { g.Key, Sum = g.Sum(c => c.Amount) }).ToDictionaryAsync(x => x.Key, x => x.Sum, ct);
-        var activity = await db.CashLedger.AsNoTracking().Where(c => ids.Contains(c.PortfolioId))
+        var trades = await db.CashLedger.AsNoTracking()
+            .Where(c => ids.Contains(c.PortfolioId) && (c.Type == CashEntryType.BuySettlement || c.Type == CashEntryType.SellSettlement))
             .GroupBy(c => c.PortfolioId).Select(g => new { g.Key, Last = g.Max(c => c.TimestampUtc) }).ToDictionaryAsync(x => x.Key, x => x.Last, ct);
         var runs = await db.OptimizationRuns.AsNoTracking().Where(r => ids.Contains(r.PortfolioId))
             .GroupBy(r => r.PortfolioId).Select(g => new { g.Key, Last = g.Max(r => r.CreatedAtUtc) }).ToDictionaryAsync(x => x.Key, x => x.Last, ct);
@@ -132,7 +133,7 @@ public sealed class PortfolioService(IApplicationDbContext db, PriceQueryService
                 p.Holdings.Count(h => h.Quantity > 0), p.CreatedAtUtc, p.UpdatedAtUtc, v.Problems, p.Description,
                 p.IsArchived ? "Archived" : "Active", p.ArchivedAtUtc, net, v.TotalValue is { } t ? t - net : null,
                 held.Select(x => x.Price?.PriceDate).Max(), held.Count(x => x.Price is { IsStale: true }), v.UsesSimulatedData,
-                runs.TryGetValue(p.Id, out var r) ? r : null, activity.TryGetValue(p.Id, out var a) ? a : null), p));
+                runs.TryGetValue(p.Id, out var r) ? r : null, trades.TryGetValue(p.Id, out var a) ? a : null), p));
         }
         return result;
     }

@@ -1,5 +1,73 @@
 # Implementation status
 
+## 2026-10-31: watchlist in your own order
+
+* Radar's watchlist can be reordered by drag and drop (handle per row; pointer events, so mouse, pen and touch) or with
+  the arrow keys / Home / End on the focused handle (announced to screen readers). The order is stored per owner
+  (`WatchlistEntries.Position`, migration `WatchlistOrder` keeps every existing list in its old oldest-first order) via
+  `PUT /api/v1/watchlist/order` – the full list once, 409 if it changed meanwhile, 400 for duplicates; integration-tested
+  incl. another user and anonymous. The list scrolls in its own box and is paged (25 by default); dragging near the
+  box's edge scrolls it. Reorder math in `lib/reorder.ts`, the component in `components/sortable-list.tsx`.
+* Stock list full screen: "Price history" now follows "5 years".
+* Formula reference: F-MD-002 covers the sparkline downsampling and the stock list's trends (same slice as the
+  watchlist, tested); new F-EDU-002 for the Codex figures. Reviewing it found the "scores to weights" figure and the ML
+  guide's formula used score − min of all stocks; both now follow the app (score − lowest selected + 10 % spread).
+* Watchlist rows show sector and index membership ("Industrials · DAX 40, Euro Stoxx 50"; index names from the catalogue,
+  `sectorAndIndices` in `lib/markets.ts`) in their own column, on phones under the exchange line.
+* Watchlist rows share one set of columns (CSS subgrid): prices, changes and sectors line up across rows and every
+  column is as wide as its longest content within its limits; the list measures its own width and shows the columns by
+  priority (period change, then sector/indices; their text moves under the exchange when hidden) and stacks the rows when
+  even the essentials do not fit. Long names are cut with "…" (full name on hover); the chart stretches to its column.
+  `useElementWidth` moved to `lib/use-element-width.ts`, shared with the stock chooser.
+* The stock chooser's pinned tick box and Ticker look like every other column at rest; they turn opaque (with a divider)
+  only while the table is scrolled sideways (`data-scrolled-x` on the `DataTable` scroll box).
+
+## 2026-10-31: Forge stock list in the portfolio currency
+
+* New portfolio (Forge): the portfolio currency is page state shared by the form and the stock list – a "Prices in"
+  picker in the list changes the form's currency and vice versa. The list adds "Price (<currency>)" (shared
+  `ConvertedPriceCell`, latest reference rates from `GET /fx/board` for the page's trading currencies, "—" without a
+  rate) next to "Original price" (the quote with change, kind and time), scrolls under a fixed header and opens in
+  Full screen with the same search, filters and pager. Choose stocks of Math/ML Optimization shows the same column in
+  the portfolio's fixed currency (no picker).
+* The stock list adds a "1 month" column – change and sparkline as on the watchlist, from `GET /stocks/trends` (one
+  request per page, same calculation as the watchlist, integration-tested against it). Full screen adds "3 months",
+  "1 year", "5 years" (loaded only while it is open) and "Price history" (stored days and span, "too short" below the 61
+  prices analyses need).
+* Columns adapt to the list's real width and content: each sizes itself from its content between a minimum and a
+  maximum (text wraps, numbers never), and the list shows as many columns as fit its measured width in priority order
+  (`lib/column-fit.ts`: tick box, Ticker and both prices always; then 1 month, Company, Sector, Index – in full screen
+  the longer trends and Price history before Sector and Index). If the drawn table still overflows, the lowest-priority
+  column is dropped until it fits; width changes under 24 px are ignored so an appearing scrollbar cannot flip the
+  column set. The name moves under the Ticker when Company is hidden; a note says how many columns are hidden (inline:
+  "… in Full screen"). Sparklines stretch to their column (`Sparkline fluid`). The tick box and Ticker stay pinned while
+  the table scrolls sideways; phones fold the full-screen filters behind "Filters", hide the upper pager and fit the
+  normal view at 390 px (tighter padding, the rate line may wrap). Checked with sample data at 390, 1100, 1440, 1680,
+  1920 and 2560 px, inline and in full screen: no sideways scrolling, stable column sets.
+
+## 2026-10-31: holdings laid out like the trade proposal
+
+* The positions list on the Overview (Core) uses the proposal's layout: `SearchableTable` with search, sector filter and
+  "Show closed & target-only" (`toolbar`), about ten rows under a fixed header, Full screen; "Price (<currency>)" with
+  only the rate underneath and "Original price" with its close date and stale flag – the same cells as Proposed trades.
+
+## 2026-10-31: Codex guides as reading pages
+
+* A strategy guide (`/learn/:id`) is one article instead of twelve folded boxes: the same 12 topics as headings in
+  reading order (what, objective, theory, steps, worked example, mathematics, inputs, when to use, reading the
+  portfolio, your own results, advantages and limitations, caveats), on a `.map-surface` panel at reading width, with
+  family and reading time, the objective, takeaway and caveats as callouts, "Read next" and previous/next within the
+  family. Wide screens: an "On this page" column follows the reader and marks the current section; phones: contents
+  above the text. Checked with screenshots at 1440 and 390 px (API mocked, no account).
+* Every guide has one or two interactive figures (`components/guide-figures.tsx`) under "The theory" and/or "Worked
+  example": the two-stock curve with correlation, tangency line, target return or volatility limit; volatility by weight;
+  1/N diversification; scores → weights with top K, rule and cap; walk-forward timeline; trading-cost drag; ridge
+  shrinkage; the logistic curve; forest averaging; boosting with training vs. test error. Sliders change the example,
+  "Play" animates it (not offered with reduced motion), charts are drawn at their real width so text stays readable on
+  phones. All figures use sample data from `lib/guide-demos.ts` (fixed values or generated from a fixed seed, unit-tested,
+  reproducing the worked examples) and say "Sample data – not market data"; they never read stored prices, the API or
+  user data.
+
 ## 2026-10-29: long lists and the correlation matrix (D-48)
 
 * Solver and Pattern: the equity universe, the allocation, the stock predictions and the stock eligibility are
@@ -185,7 +253,7 @@
   `/machine-learning[/:id]` URLs redirect. Both pages share one layout: Optimization history, then the form (equity universe
   list with Browse stocks → Choose stocks page, "Use stock selection", Clear; Run optimization / Run ML optimization) on
   the left; header with badges, currency and date on the right, five headline metrics starting with Investable value, every result section visible at once (`ResultSection`, no tabs), the trade proposal card
-  (Create trade proposal / Recalculate), and "What your result means" with "How this strategy works" last.
+  (Create trade proposal / Recalculate; `TradeProposalCard`, its title folds the proposal away to a one-line summary of orders, buys and sells); Math Optimization's allocation shows the donut, table and weight by sector (full width), the risk-contribution chart scrolls inside a fixed height, and the reference portfolios appear as squares in the efficient frontier and as curves in the in-sample charts, and "What your result means" with "How this strategy works" last.
 * Experiments without a portfolio are no longer listed on the ML Optimization page (card removed 2026-10-25, owner's
   request); one opened by its link (`/machine-learning/:id` opens it in the current portfolio) can still be linked there
   (`ExperimentPortfolio`, same currency only), and `GET /ml/experiments?unlinked=true` remains. ML trade proposals always

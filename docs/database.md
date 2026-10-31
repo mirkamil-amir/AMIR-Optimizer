@@ -17,7 +17,7 @@ PostgreSQL 17 via EF Core 10 + Npgsql. Context: `src/PortfolioOptimizer.Infrastr
 | Settings | `Settings` | single row: active provider, defaults, staleness threshold |
 | Paper trading | `Portfolios`, `Holdings`, `CashLedger`, `Executions`, `TradeProposals` (+ lines), `PaperTradeBatches`, `Orders` | `Portfolio.Version` is the concurrency token; cash, cost basis and P&L in the portfolio currency; executions/orders/lines keep the native price with currency, FX rate (`numeric(20,10)`, > 0), rate date and source |
 | Analyses | `OptimizationRuns` (+ weights), `Backtests`, `MlExperiments`, `MlModelVersions`, `MlPredictionSets`, `StrategyComparisons` | inputs and results stored as `jsonb`; immutable after completion; `Currency` and `FxSource` columns record the analysis currency |
-| Watchlist | `WatchlistEntries` | (owner, asset) unique; cascade-deleted with the user; asset FK restrict. See [watchlist.md](watchlist.md) |
+| Watchlist | `WatchlistEntries` | (owner, asset) unique; `Position` = the owner's order (0 = top; migration `WatchlistOrder` filled it oldest-first); cascade-deleted with the user; asset FK restrict. See [watchlist.md](watchlist.md) |
 | News | `NewsArticles`, `NewsArticleAssets`, `NewsFetchStates` | shared; `Fingerprint` (canonical-URL SHA-256) unique, `HeadlineKey` indexed for syndication; links (article, asset) with match method; fetch state per source/query. Retention `News:RetentionDays` (120). See [financial-news.md](financial-news.md) |
 
 Money and quantities are `numeric` (`decimal`); keys of user-facing records are application-generated GUIDs.

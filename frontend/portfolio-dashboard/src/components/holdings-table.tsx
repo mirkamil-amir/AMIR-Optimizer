@@ -1,58 +1,57 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useId, useMemo, useState, type ReactNode } from 'react'
 import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
-import { DataTable, type Column } from '@/components/data-table'
+import { SearchableTable, type Column } from '@/components/data-table'
 import { TimeSeriesChart } from '@/components/charts'
-import { DataBadge, EmptyState, LoadingBlock, Signed } from '@/components/common'
-import { FxNote } from '@/components/currency'
+import { DataBadge, LoadingBlock, Signed } from '@/components/common'
+import { ConvertedPriceCell, FxNote, OriginalPriceCell } from '@/components/currency'
+import { convertedPrice } from '@/lib/currency'
 import { usePrices, useRisk, useTransactions } from '@/lib/queries'
 import type { Holding, HoldingsResponse } from '@/lib/types'
 import { date, dateTime, money, pct, qty } from '@/lib/format'
 
 /**
- * The positions of one portfolio (Overview, since 2026-10-26 – the Holdings tab was merged into it): search, sector filter,
- * closed and target-only positions, and a side panel per stock with its price, risk contribution and transactions.
+ * The positions of one portfolio (Overview, since 2026-10-26 – the Holdings tab was merged into it), laid out like the
+ * trade proposal's list: search, sector filter, closed and target-only positions, full screen, and a side panel per stock with its price, risk contribution and transactions.
  * Valued at the latest stored price in `currency`; prices stay in each stock's own currency.
  */
 export function HoldingsTable({ data, loading, currency: ccy, account, portfolioId }: {
   data: HoldingsResponse | undefined; loading: boolean; currency: string; account: string; portfolioId: string
 }) {
-  const [search, setSearch] = useState('')
   const [sector, setSector] = useState<string>('all')
+  const closedId = useId()
   const [showClosed, setShowClosed] = useState(false)
   const [selected, setSelected] = useState<Holding | null>(null)
 
   const sectors = useMemo(() => [...new Set((data?.holdings ?? []).map((h) => h.sector ?? 'Unclassified'))].sort(), [data])
   const rows = useMemo(() => (data?.holdings ?? []).filter((h) =>
-    (showClosed || h.quantity > 0) &&
-    (sector === 'all' || (h.sector ?? 'Unclassified') === sector) &&
-    (search === '' || h.symbol.toLowerCase().includes(search.toLowerCase()) || (h.name ?? '').toLowerCase().includes(search.toLowerCase())),
-  ), [data, search, sector, showClosed])
+    (showClosed || h.quantity > 0) && (sector === 'all' || (h.sector ?? 'Unclassified') === sector),
+  ), [data, sector, showClosed])
+  const open = rows.filter((h) => h.quantity > 0).length
 
+  // Same layout as the trade proposal: price in the valuation currency with the rate, then the original price with its date.
   const columns: Column<Holding>[] = [
     {
       key: 'symbol', header: 'Symbol', sortValue: (h) => h.symbol,
       cell: (h) => (
         <div>
-          <div className="flex items-center gap-1.5 font-medium">{h.symbol}{h.priceIsStale && <DataBadge kind="stale" />}</div>
+          <div className="font-medium">{h.symbol}</div>
           <div className="max-w-48 truncate text-xs text-muted-foreground">{h.name}</div>
         </div>
       ),
     },
-    { key: 'qty', header: 'Quantity', align: 'right', sortValue: (h) => h.quantity, cell: (h) => qty(h.quantity) },
     {
-      key: 'price', header: 'Price (own currency)', align: 'right', sortValue: (h) => h.latestPrice,
-      cell: (h) => (
-        <div>
-          <span title={h.priceDate ? `Close of ${date(h.priceDate)}` : undefined}>{money(h.latestPrice, h.currency)}</span>
-          {h.fxRate !== null && <div><FxNote rate={h.fxRate} from={h.currency} to={ccy} on={h.fxRateDate} /></div>}
-        </div>
-      ),
+      key: 'price', header: `Price (${ccy})`, align: 'right', sortValue: (h) => convertedPrice(h.latestPrice, h.currency, ccy, h.fxRate),
+      cell: (h) => <ConvertedPriceCell price={h.latestPrice} from={h.currency} to={ccy} rate={h.fxRate} rateDate={h.fxRateDate} />,
     },
+    {
+      key: 'orig', header: 'Original price', align: 'right', sortValue: (h) => h.latestPrice,
+      cell: (h) => <OriginalPriceCell price={h.latestPrice} currency={h.currency} priceDate={h.priceDate} stale={h.priceIsStale} />,
+    },
+    { key: 'qty', header: 'Quantity', align: 'right', sortValue: (h) => h.quantity, cell: (h) => qty(h.quantity) },
     {
       key: 'mv', header: `Market value (${ccy})`, align: 'right', sortValue: (h) => h.marketValue,
       cell: (h) => h.valuationProblem && h.quantity > 0
@@ -80,36 +79,41 @@ export function HoldingsTable({ data, loading, currency: ccy, account, portfolio
     },
   ]
 
+  const toolbar = (
+    <>
+      <Select value={sector} onValueChange={(v) => setSector(String(v))} items={[{ value: 'all', label: 'All sectors' }, ...sectors.map((x) => ({ value: x, label: x }))]}>
+        <SelectTrigger className="bg-card sm:w-56" aria-label="Filter by sector"><SelectValue /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All sectors</SelectItem>
+          {sectors.map((x) => <SelectItem key={x} value={x}>{x}</SelectItem>)}
+        </SelectContent>
+      </Select>
+      <div className="flex items-center gap-2">
+        <Switch id={closedId} checked={showClosed} onCheckedChange={setShowClosed} />
+        <Label htmlFor={closedId} className="text-sm font-normal">Show closed & target-only</Label>
+      </div>
+    </>
+  )
+
   return (
     <>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative sm:w-72">
-          <Input placeholder="Search symbol or name" aria-label="Search holdings" className="bg-card" value={search} onChange={(e) => setSearch(e.target.value)} />
-        </div>
-        <Select value={sector} onValueChange={(v) => setSector(String(v))} items={[{ value: 'all', label: 'All sectors' }, ...sectors.map((x) => ({ value: x, label: x }))]}>
-          <SelectTrigger className="bg-card sm:w-56" aria-label="Filter by sector"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All sectors</SelectItem>
-            {sectors.map((x) => <SelectItem key={x} value={x}>{x}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <div className="flex items-center gap-2">
-          <Switch id="closed" checked={showClosed} onCheckedChange={setShowClosed} />
-          <Label htmlFor="closed" className="text-sm font-normal">Show closed & target-only</Label>
-        </div>
-      </div>
-
-      {/* Same translucent surface as the cards above. */}
-      <div className="mt-4 rounded-lg bg-card">
+      {/* The app's standard long list (as Proposed trades): search, about ten rows under a fixed header, full screen. */}
+      <div className="map-surface rounded-xl p-3">
         {loading ? <LoadingBlock /> : (
-          <DataTable
+          <SearchableTable
+            label="holdings"
             caption="Holdings"
             rows={rows}
             columns={columns}
             rowKey={(h) => String(h.assetId)}
             initialSort={{ key: 'mv', dir: 'desc' }}
             onRowClick={setSelected}
-            empty={<EmptyState title={search || sector !== 'all' ? 'No matching holdings' : 'No holdings yet'} description="Positions appear here after you confirm a simulated trade proposal." />}
+            dense maxRows={10} pageSize={50} fullScreen="Holdings"
+            toolbar={toolbar}
+            placeholder="Search symbol or name"
+            matches={(h, q) => h.symbol.toLowerCase().includes(q) || (h.name ?? '').toLowerCase().includes(q)}
+            breakdown={`${open.toLocaleString()} open position${open === 1 ? '' : 's'}${rows.length > open ? ` · ${(rows.length - open).toLocaleString()} closed or target-only` : ''}`}
+            empty={sector !== 'all' ? 'No holdings in this sector.' : 'No holdings yet. Positions appear here after you confirm a simulated trade proposal.'}
           />
         )}
       </div>

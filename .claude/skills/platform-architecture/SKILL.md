@@ -52,9 +52,31 @@ history) is never a plain `<ul>` or an unpaged table. Universes reach hundreds o
 * Use `SearchableTable` from `frontend/portfolio-dashboard/src/components/data-table.tsx`: search box with the row count
   (or a `breakdown` that counts kinds apart, see `/market-data-fx` and `lib/instrument-counts.ts`), sortable
   `DataTable`, paging with `RangePager` (rows per page 25/50/100/200, first/previous/next/last) and `maxRows`, so the
-  table scrolls under a fixed header. In-page lists: `pageSize={25}`, `maxRows` 8–12, `dense`; full-page lists keep the
+  table scrolls under a fixed header (`maxHeight`: a CSS height instead). `fullScreen="<title>"` adds a Full screen
+  button that opens the same list (search kept, header fixed) over the window – used for the allocation, ML
+  predictions and proposed trades. In-page lists: `pageSize={25}`, `maxRows` 8–12, `dense`; full-page lists keep the
   defaults (50/15). Give it a stable `caption` – e2e specs find tables by it ("Recommended allocation", "Stocks in the
   universe"). Its search box never submits a surrounding form (Enter is swallowed) – the optimization forms rely on it.
+* Column widths adapt automatically – to the list's real width and to the length of what is in the columns (owner,
+  2026-11-01: stock chooser and watchlist; apply it to every list or row layout with columns). Never fixed widths or
+  screen breakpoints for which columns appear:
+  * Width from content: each column sizes itself between a minimum and a maximum (`min-w-[…]`/`max-w-[…]`, or a grid
+    track `minmax(min, max)` / `max-content`); text may wrap or truncate with "…", numbers never wrap.
+  * Which columns: give each a priority and a minimum width and let `fitColumns` (`lib/column-fit.ts`) pick them from the
+    width measured with `useElementWidth` (`lib/use-element-width.ts`, ignores changes under 24 px so a scrollbar cannot
+    flip the set); a table also corrects after drawing if it still overflows (`useOverflowTrim` in the stock chooser).
+    Show what a hidden column holds somewhere else (e.g. the name under the ticker, sector under the exchange).
+  * Rows built from cards (the watchlist) share one set of columns: the list is a CSS grid with a template from the
+    visible columns and every row (and card, and card content) is `col-span-full grid grid-cols-subgrid`, so the columns
+    line up across rows and each is as wide as its longest content. Keep the column gap (`gap-y-0` on the card, not
+    `gap-0`). When even the essential columns do not fit, rows stack (phone layout).
+  * Charts in columns stretch to the column (`Sparkline fluid`).
+* Pinned (sticky) columns, e.g. tick box and Ticker in the stock chooser, must look exactly like the other columns – same
+  transparency over the card and map, no own background or divider at rest (owner, 2026-11-01: columns must line up
+  visually). Only while the table is scrolled sideways do they need an opaque surface (`bg-popover`, the header with its
+  row tint) and a divider, so cells sliding underneath stay hidden. `DataTable` marks its scroll box with
+  `data-scrolled-x="true"` while scrolled sideways; style pinned cells with `[[data-scrolled-x=true]_&]:…` variants
+  (see `STICKY_BG` in `components/stock-chooser.tsx`), never with an unconditional background.
 * Inside a grid or flex column wrap it in `min-w-0` (a `<fieldset>` is as wide as its content by default: the universe
   table once widened the phone page by 9 px). Check 390 px for horizontal scroll.
 * Data for many named stocks: `useStocksBySymbols` (one request per 200 symbols, the API's page limit). A single
