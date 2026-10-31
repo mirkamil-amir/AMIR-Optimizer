@@ -8,14 +8,14 @@ import type { CurrencyExposure } from '@/lib/types'
 
 /**
  * Price column of position lists (trade proposal, holdings): the share price in `to`, with only the rate underneath as
- * "1 <to> = x <from>" (its date on hover). Same currency: the price alone.
+ * "1 <to> = x <from>" (its date on hover; may wrap on phones). Same currency: the price alone.
  */
 export function ConvertedPriceCell({ price, from, to, rate, rateDate }: { price: number | null; from: string; to: string; rate: number | null; rateDate: string | null }) {
   return (
     <div>
       <div>{money(convertedPrice(price, from, to, rate), to)}</div>
       {from && from !== to && rate !== null && rate > 0 && (
-        <div className="text-xs whitespace-nowrap text-muted-foreground" title={`Reference rate${rateDate ? ` of ${date(rateDate)}` : ''} used for the conversion. Not an exchange of money.`}>
+        <div className="text-xs whitespace-normal text-muted-foreground sm:whitespace-nowrap" title={`Reference rate${rateDate ? ` of ${date(rateDate)}` : ''} used for the conversion. Not an exchange of money.`}>
           {fxPhrase(1 / rate, to, from)}
         </div>
       )}

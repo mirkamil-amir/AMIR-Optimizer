@@ -12,9 +12,12 @@
   request per page, same calculation as the watchlist, integration-tested against it) – and fixed column widths that
   fit next to the two sidebars: tick box, ticker and both prices always; "1 month" from md; Company from xl (name under
   the ticker until then); Sector and Index from 2xl. Phones scroll the list sideways inside its box. Full screen has no
-  sidebars: every column and the full company name (wrapping), plus three full-screen-only columns – "3 months" and
-  "1 year" (same trend endpoint, loaded only while full screen is open) and "Price history" (stored days and span, marked
-  "too short" below the 61 prices analyses need). Fits without sideways scrolling from 1280 px.
+  sidebars: every column and the full company name (wrapping), plus four full-screen-only columns – "3 months", "1 year"
+  and "5 years" (same trend endpoint, loaded only while full screen is open; charts twice as wide as in the page) and
+  "Price history" (stored days and span, marked "too short" below the 61 prices analyses need). Charts are twice as wide
+  from 1280 px (normal width below). The tick box and Ticker stay pinned while the table scrolls sideways (both views);
+  phones fold the full-screen filters behind "Filters" and hide the upper pager, and the normal view fits a 390 px phone
+  (tighter padding, the rate line may wrap). Checked at 390 px and 1440 px with sample data.
 
 ## 2026-10-31: holdings laid out like the trade proposal
 

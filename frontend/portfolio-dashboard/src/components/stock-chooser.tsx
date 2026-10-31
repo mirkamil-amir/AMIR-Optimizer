@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useDeferredValue, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { X } from 'lucide-react'
 import { toast } from 'sonner'
@@ -61,6 +61,11 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
   const [pageSize, setPageSize] = useState<number>(50)
   const [detail, setDetail] = useState<string | null>(null)
   const [fullScreen, setFullScreen] = useState(false)
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  // Full screen draws its charts twice as wide only where the screen has room for them.
+  const wide = useMediaQuery('(min-width: 1280px)')
+  const chartWidth = wide ? 200 : 100
+  const chartColumn = wide ? 'w-56' : 'w-32'
   const signal = useMapSignal()
   // Opening a stock makes its exchange city blink on the background map.
   useEffect(() => { if (detail) signal(countryOfSymbol(detail), 'blink') }, [detail, signal])
@@ -88,6 +93,7 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
   // The longer ranges are full-screen columns: loaded only while full screen is open.
   const trends3m = useStockTrends(items.map((s) => s.symbol), '3M', fullScreen)
   const trends1y = useStockTrends(items.map((s) => s.symbol), '1Y', fullScreen)
+  const trends5y = useStockTrends(items.map((s) => s.symbol), '5Y', fullScreen)
   const pageSymbols = items.map((s) => s.symbol)
   const allOnPageSelected = pageSymbols.length > 0 && pageSymbols.every(selection.has)
   const cycleRunning = cycle.data?.status === 'Queued' || cycle.data?.status === 'Running'
@@ -161,16 +167,17 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
           aria-label={`Select ${s.symbol}`}
         />
       ),
-      className: 'w-10',
+      // Pinned with the ticker while the list scrolls sideways (opaque surface, so scrolled cells never show through).
+      className: STICKY_SELECT,
     },
     {
       key: 'symbol',
       header: 'Ticker',
-      className: 'w-28',
+      className: STICKY_TICKER,
       cell: (s) => (
         <div>
           <div className="font-semibold">{s.symbol}</div>
-          <div className={cn('max-w-28 truncate text-[11px] text-foreground', full ? 'hidden' : 'xl:hidden')}>{s.name}</div>
+          <div className={cn('max-w-[4.5rem] truncate text-[11px] text-foreground sm:max-w-28', full ? 'hidden' : 'xl:hidden')}>{s.name}</div>
           <div className="text-[11px] text-muted-foreground">{s.exchange ?? '—'}</div>
         </div>
       ),
@@ -187,7 +194,7 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
       className: full ? undefined : 'hidden xl:table-cell',
     },
     ...(priceCurrency ? [{
-      key: 'converted', header: `Price (${priceCurrency})`, align: 'right' as const, className: 'w-32',
+      key: 'converted', header: `Price (${priceCurrency})`, align: 'right' as const, className: `w-32 ${PHONE_PAD}`,
       cell: (s: StockListItem) => {
         const from = s.quote.currency || s.currency
         const row = boardRate(from)
@@ -195,15 +202,16 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
         return <ConvertedPriceCell price={s.quote.price} from={from} to={priceCurrency} rate={row?.rate ? 1 / row.rate : null} rateDate={row?.observationDate ?? null} />
       },
     }] : []),
-    { key: 'price', header: priceCurrency ? 'Original price' : 'Latest price', align: 'right', className: 'w-36', cell: (s) => <QuoteCell quote={s.quote} /> },
+    { key: 'price', header: priceCurrency ? 'Original price' : 'Latest price', align: 'right', className: `w-36 ${PHONE_PAD}`, cell: (s) => <QuoteCell quote={s.quote} /> },
     {
-      key: 'trend', header: '1 month', align: 'right', className: full ? 'w-32' : 'hidden w-28 md:table-cell',
-      cell: (s) => trendCell(s.symbol, trends, 'one month', full),
+      key: 'trend', header: '1 month', align: 'right', className: full ? chartColumn : 'hidden w-28 md:table-cell',
+      cell: (s) => trendCell(s.symbol, trends, 'one month', full ? chartWidth : 88),
     },
-    // Full screen only: two longer ranges and the stored price history.
+    // Full screen only: three longer ranges and the stored price history; charts twice as wide on screens of 1280 px and more.
     ...(full ? [
-      { key: 'trend3m', header: '3 months', align: 'right' as const, className: 'w-32', cell: (s: StockListItem) => trendCell(s.symbol, trends3m, 'three months', true) },
-      { key: 'trend1y', header: '1 year', align: 'right' as const, className: 'w-32', cell: (s: StockListItem) => trendCell(s.symbol, trends1y, 'one year', true) },
+      { key: 'trend3m', header: '3 months', align: 'right' as const, className: chartColumn, cell: (s: StockListItem) => trendCell(s.symbol, trends3m, 'three months', chartWidth) },
+      { key: 'trend1y', header: '1 year', align: 'right' as const, className: chartColumn, cell: (s: StockListItem) => trendCell(s.symbol, trends1y, 'one year', chartWidth) },
+      { key: 'trend5y', header: '5 years', align: 'right' as const, className: chartColumn, cell: (s: StockListItem) => trendCell(s.symbol, trends5y, 'five years', chartWidth) },
       { key: 'history', header: 'Price history', className: 'w-36', cell: (s: StockListItem) => <HistoryCell stock={s} /> },
     ] : []),
     { key: 'sector', header: 'Sector', cell: (s) => <span className="text-xs whitespace-normal">{s.sector ?? 'Unclassified'}</span>, className: full ? 'w-32' : 'hidden w-28 2xl:table-cell' },
@@ -252,7 +260,13 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
             aria-label="Search company name or ticker"
           />
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Phones in full screen: the filters fold behind one button so the list keeps the height. */}
+        {inDialog && (
+          <Button variant="outline" size="sm" className="sm:hidden" aria-expanded={filtersOpen} onClick={() => setFiltersOpen(!filtersOpen)}>
+            {filtersOpen ? 'Hide filters' : 'Filters'}
+          </Button>
+        )}
+        <div className={cn('flex flex-wrap items-center gap-2', inDialog && !filtersOpen && 'hidden sm:flex')}>
           <Select value={sort} onValueChange={(v) => { setSort(v as StockSort); setPage(1) }} items={sortOptions}>
             <SelectTrigger className="w-48" aria-label="Sort stocks"><SelectValue /></SelectTrigger>
             <SelectContent>{sortOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
@@ -294,7 +308,7 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
       </div>
       {stocks.error ? <ErrorState error={stocks.error} onRetry={() => stocks.refetch()} /> : stocks.isLoading ? <LoadingBlock height="h-96" /> : (
         <>
-          {listControls('top')}
+          {inDialog ? <div className="hidden sm:block">{listControls('top')}</div> : listControls('top')}
           <DataTable
             rows={items}
             columns={columnsFor(inDialog)}
@@ -393,14 +407,14 @@ function describeScope(markets: Market[] | undefined, scope: UniverseScope) {
 }
 
 /** Change and sparkline of one stock over a range (as on the watchlist); "—" with the reason when history is missing. */
-function trendCell(symbol: string, query: { data?: StockTrend[]; isLoading: boolean }, rangeLabel: string, full: boolean) {
+function trendCell(symbol: string, query: { data?: StockTrend[]; isLoading: boolean }, rangeLabel: string, width: number) {
   const t = query.data?.find((x) => x.symbol === symbol)?.period
   if (!t) return query.isLoading ? null : <span className="text-xs text-muted-foreground">—</span>
   if (t.change === null && t.sparkline.length < 2) return <span className="text-xs text-muted-foreground" title={t.limitation ?? 'Not enough stored history'}>—</span>
   return (
     <div className="flex flex-col items-end gap-0.5" title={t.change !== null ? `${t.basis}: ${t.baseDate} → ${t.endDate}` : t.limitation ?? undefined}>
       <ChangeText value={t.change} className="text-xs" />
-      <Sparkline points={t.sparkline} label={`${symbol} ${t.basis.toLowerCase()} over ${rangeLabel}`} width={full ? 100 : 88} height={full ? 28 : 24} />
+      <Sparkline points={t.sparkline} label={`${symbol} ${t.basis.toLowerCase()} over ${rangeLabel}`} width={width} height={width > 120 ? 32 : width > 88 ? 28 : 24} />
     </div>
   )
 }
@@ -419,3 +433,24 @@ function HistoryCell({ stock }: { stock: StockListItem }) {
 
 /** Same threshold as the selection tray: stocks with fewer stored prices are left out of analyses. */
 const MIN_ANALYSIS_PRICES = 61
+
+// Pinned cells need an opaque background; in the header it repeats the header row's tint.
+const STICKY_BG = 'bg-popover [&:is(th)]:bg-[color-mix(in_oklch,var(--muted)_40%,var(--popover))]'
+const STICKY_SELECT = `sticky left-0 z-[1] w-9 min-w-9 px-1.5 sm:w-10 sm:min-w-10 sm:px-2 ${STICKY_BG}`
+const STICKY_TICKER = `sticky left-9 z-[1] w-20 min-w-20 px-1.5 shadow-[1px_0_0_var(--border)] sm:left-10 sm:w-28 sm:min-w-28 sm:px-2 ${STICKY_BG}`
+// Phones: a little less padding in the price columns, so both prices fit next to the ticker.
+const PHONE_PAD = 'px-1.5 sm:px-2'
+
+/** Whether a media query matches, kept in step with resizes (false where matchMedia is missing, e.g. in tests). */
+function useMediaQuery(query: string): boolean {
+  return useSyncExternalStore(
+    (onChange) => {
+      if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return () => {}
+      const list = window.matchMedia(query)
+      list.addEventListener('change', onChange)
+      return () => list.removeEventListener('change', onChange)
+    },
+    () => typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia(query).matches,
+    () => false,
+  )
+}
