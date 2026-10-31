@@ -59,10 +59,10 @@ test('mixed-currency portfolio: EUR base with US, German, Japanese and UK stocks
   await expect(allocation.getByRole('row', { name: /AZN\.L/ })).toContainText('GBP')
   await expect(page.getByRole('list', { name: 'Currency exposure' })).toBeVisible()
 
-  // 4. Proposal: native prices with the rate used; execution is a simulated exchange of the EUR cash.
+  // 4. Proposal: EUR prices with the rate used (1 EUR = x JPY) and the native price in its own column; execution is a simulated exchange of the EUR cash.
   await page.getByRole('button', { name: 'Create trade proposal' }).click()
   await expect(page.getByText(/converted to EUR .*SIMULATED currency exchange/)).toBeVisible({ timeout: 30_000 })
-  await expect(page.getByText(/1 JPY = 0\.\d+ EUR/).first()).toBeVisible()
+  await expect(page.getByText(/1 EUR = [\d,.]+ JPY/).first()).toBeVisible()
   await page.getByRole('button', { name: /Review & execute/ }).click()
   await page.getByRole('alertdialog').getByRole('button', { name: 'Confirm simulated execution' }).click()
   await expect(page.getByRole('alertdialog')).toBeHidden({ timeout: 30_000 })

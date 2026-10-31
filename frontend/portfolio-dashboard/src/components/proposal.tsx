@@ -10,9 +10,10 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { DataTable, type Column } from '@/components/data-table'
+import { SearchableTable, type Column } from '@/components/data-table'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { MetricCard } from '@/components/common'
-import { FxNote } from '@/components/currency'
+import { fxPhrase } from '@/lib/currency'
 import { errorMessage } from '@/lib/api'
 import { useExecuteProposal } from '@/lib/queries'
 import { MatrixLoader } from '@/components/matrix-loader'
@@ -78,6 +79,7 @@ export function TradeProposalCard({ description, proposal, currency, pending, di
 
 export function TradeProposalView({ proposal, currency, allowExecute = true }: { proposal: TradeProposal; currency: string; allowExecute?: boolean }) {
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [fullScreen, setFullScreen] = useState(false)
   // One idempotency key per proposal view: a double click or network retry can never execute twice.
   const [idempotencyKey] = useState(() => crypto.randomUUID())
   const execute = useExecuteProposal(proposal.portfolioId)
@@ -96,12 +98,25 @@ export function TradeProposalView({ proposal, currency, allowExecute = true }: {
     },
     { key: 'action', header: 'Action', sortValue: (l) => l.action, cell: (l) => <Badge variant="outline" className={actionStyle[l.action]}>{l.action === 'NoPrice' ? 'No price' : l.action}</Badge> },
     {
-      key: 'price', header: 'Price', align: 'right', sortValue: (l) => l.price,
+      // In the portfolio currency, with only the rate used (1 portfolio unit = x trading units) underneath.
+      key: 'price', header: `Price (${currency})`, align: 'right', sortValue: (l) => priceIn(l, currency),
+      cell: (l) => (
+        <div>
+          <div>{money(priceIn(l, currency), currency)}</div>
+          {l.currency !== currency && l.fxRate !== null && l.fxRate > 0 && (
+            <div className="text-xs whitespace-nowrap text-muted-foreground" title={`Reference rate${l.fxRateDate ? ` of ${date(l.fxRateDate)}` : ''} used for the conversion. Not an exchange of money.`}>
+              {fxPhrase(1 / l.fxRate, currency, l.currency)}
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'orig', header: 'Original price', align: 'right', sortValue: (l) => l.price,
       cell: (l) => (
         <div>
           <div>{money(l.price, l.currency || currency)}</div>
-          <div className={cn('text-xs', l.priceIsStale ? 'text-warn' : 'text-muted-foreground')}>{l.priceDate ? date(l.priceDate) : ''}{l.priceIsStale ? ' · stale' : ''}</div>
-          {l.fxRate !== null && l.fxRate !== 1 && <div><FxNote rate={l.fxRate} from={l.currency} to={currency} on={l.fxRateDate} /></div>}
+          <div className={cn('text-xs whitespace-nowrap', l.priceIsStale ? 'text-warn' : 'text-muted-foreground')}>{l.priceDate ? date(l.priceDate) : ''}{l.priceIsStale ? ' · stale' : ''}</div>
         </div>
       ),
     },
@@ -156,7 +171,23 @@ export function TradeProposalView({ proposal, currency, allowExecute = true }: {
         </Alert>
       )}
 
-      <DataTable caption="Proposed trades" rows={proposal.lines} columns={columns} rowKey={(l) => l.symbol} dense />
+      <div className="space-y-2">
+        <div className="flex justify-end">
+          <Button type="button" size="xs" variant="outline" onClick={() => setFullScreen(true)}>Full screen</Button>
+        </div>
+        {!fullScreen && <ProposalLines lines={proposal.lines} columns={columns} maxRows={10} />}
+      </div>
+      <Dialog open={fullScreen} onOpenChange={setFullScreen}>
+        <DialogContent className="top-2 left-2 flex h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-none translate-x-0 translate-y-0 flex-col sm:max-w-none">
+          <DialogHeader>
+            <DialogTitle>Proposed trades</DialogTitle>
+            <DialogDescription>{proposal.lines.length} positions · values in {currency} · Esc closes.</DialogDescription>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <ProposalLines lines={proposal.lines} columns={columns} maxRows={0} />
+          </div>
+        </DialogContent>
+      </Dialog>
       {proposal.lines.some((l) => l.note) && (
         <ul className="space-y-0.5 text-xs text-muted-foreground">
           {proposal.lines.filter((l) => l.note).map((l) => <li key={l.symbol}><span className="font-medium text-foreground">{l.symbol}:</span> {l.note}</li>)}
@@ -211,5 +242,20 @@ export function TradeProposalView({ proposal, currency, allowExecute = true }: {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  )
+}
+
+/** The share price in the portfolio currency (trading-currency price × the line's dated rate); null without a rate. */
+function priceIn(l: ProposalLine, currency: string): number | null {
+  if (l.price === null) return null
+  if (l.currency === currency || !l.currency) return l.price
+  return l.fxRate !== null ? l.price * l.fxRate : null
+}
+
+/** The proposal's positions as the app's standard long list: search, scroll under a fixed header (`maxRows` 0: no limit). */
+function ProposalLines({ lines, columns, maxRows }: { lines: ProposalLine[]; columns: Column<ProposalLine>[]; maxRows: number }) {
+  return (
+    <SearchableTable label="positions" caption="Proposed trades" rows={lines} columns={columns} rowKey={(l) => l.symbol} dense maxRows={maxRows}
+      placeholder="Search symbol or company" matches={(l, q) => l.symbol.toLowerCase().includes(q) || (l.companyName ?? '').toLowerCase().includes(q)} />
   )
 }
