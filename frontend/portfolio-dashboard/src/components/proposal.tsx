@@ -12,12 +12,13 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { SearchableTable, type Column } from '@/components/data-table'
 import { MetricCard } from '@/components/common'
-import { fxPhrase } from '@/lib/currency'
+import { convertedPrice } from '@/lib/currency'
+import { ConvertedPriceCell, OriginalPriceCell } from '@/components/currency'
 import { errorMessage } from '@/lib/api'
 import { useExecuteProposal } from '@/lib/queries'
 import { MatrixLoader } from '@/components/matrix-loader'
 import type { ProposalLine, TradeProposal } from '@/lib/types'
-import { date, dateTime, money, pct, qty } from '@/lib/format'
+import { dateTime, money, pct, qty } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 const actionStyle: Record<string, string> = {
@@ -96,27 +97,12 @@ export function TradeProposalView({ proposal, currency, allowExecute = true }: {
     },
     { key: 'action', header: 'Action', sortValue: (l) => l.action, cell: (l) => <Badge variant="outline" className={actionStyle[l.action]}>{l.action === 'NoPrice' ? 'No price' : l.action}</Badge> },
     {
-      // In the portfolio currency, with only the rate used (1 portfolio unit = x trading units) underneath.
-      key: 'price', header: `Price (${currency})`, align: 'right', sortValue: (l) => priceIn(l, currency),
-      cell: (l) => (
-        <div>
-          <div>{money(priceIn(l, currency), currency)}</div>
-          {l.currency !== currency && l.fxRate !== null && l.fxRate > 0 && (
-            <div className="text-xs whitespace-nowrap text-muted-foreground" title={`Reference rate${l.fxRateDate ? ` of ${date(l.fxRateDate)}` : ''} used for the conversion. Not an exchange of money.`}>
-              {fxPhrase(1 / l.fxRate, currency, l.currency)}
-            </div>
-          )}
-        </div>
-      ),
+      key: 'price', header: `Price (${currency})`, align: 'right', sortValue: (l) => convertedPrice(l.price, l.currency, currency, l.fxRate),
+      cell: (l) => <ConvertedPriceCell price={l.price} from={l.currency} to={currency} rate={l.fxRate} rateDate={l.fxRateDate} />,
     },
     {
       key: 'orig', header: 'Original price', align: 'right', sortValue: (l) => l.price,
-      cell: (l) => (
-        <div>
-          <div>{money(l.price, l.currency || currency)}</div>
-          <div className={cn('text-xs whitespace-nowrap', l.priceIsStale ? 'text-warn' : 'text-muted-foreground')}>{l.priceDate ? date(l.priceDate) : ''}{l.priceIsStale ? ' · stale' : ''}</div>
-        </div>
-      ),
+      cell: (l) => <OriginalPriceCell price={l.price} currency={l.currency || currency} priceDate={l.priceDate} stale={l.priceIsStale} />,
     },
     { key: 'tw', header: 'Target wt', align: 'right', sortValue: (l) => l.targetWeight, cell: (l) => pct(l.targetWeight) },
     { key: 'cw', header: 'Current wt', align: 'right', sortValue: (l) => l.currentWeight, cell: (l) => pct(l.currentWeight) },
@@ -225,13 +211,6 @@ export function TradeProposalView({ proposal, currency, allowExecute = true }: {
       </AlertDialog>
     </div>
   )
-}
-
-/** The share price in the portfolio currency (trading-currency price × the line's dated rate); null without a rate. */
-function priceIn(l: ProposalLine, currency: string): number | null {
-  if (l.price === null) return null
-  if (l.currency === currency || !l.currency) return l.price
-  return l.fxRate !== null ? l.price * l.fxRate : null
 }
 
 /** The proposal's positions as the app's standard long list: search, about ten rows under a fixed header, full screen. */

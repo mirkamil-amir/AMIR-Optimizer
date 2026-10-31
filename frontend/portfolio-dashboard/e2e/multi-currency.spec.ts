@@ -67,14 +67,14 @@ test('mixed-currency portfolio: EUR base with US, German, Japanese and UK stocks
   await page.getByRole('alertdialog').getByRole('button', { name: 'Confirm simulated execution' }).click()
   await expect(page.getByRole('alertdialog')).toBeHidden({ timeout: 30_000 })
 
-  // 5. Holdings in EUR on the Overview: native price, rate and EUR value per position; then a USD reporting view that changes nothing.
+  // 5. Holdings in EUR on the Overview (laid out like the proposal): EUR price with the rate, original price, EUR value; then a USD reporting view that changes nothing.
   await expect(page).toHaveURL(/\/portfolios\/[0-9a-f-]{36}$/)
   await expect(page.getByRole('heading', { level: 1, name })).toBeVisible()
   await expect(page.getByRole('columnheader', { name: /Market value \(EUR\)/ })).toBeVisible()
   // The Overview also has a correlation heatmap with a row per stock: look inside the Holdings section only.
   const toyota = page.getByRole('region', { name: 'Holdings', exact: true }).getByRole('row', { name: /7203\.T/ })
   await expect(toyota).toContainText('¥')
-  await expect(toyota).toContainText(/1 JPY = 0\.\d+ EUR/)
+  await expect(toyota).toContainText(/1 EUR = [\d,.]+ JPY/)
   await expect(page.getByRole('list', { name: 'Currency exposure' })).toBeVisible()
   const totalEur = await page.getByText('Total value', { exact: true }).first().locator('xpath=..').innerText()
 
@@ -83,7 +83,7 @@ test('mixed-currency portfolio: EUR base with US, German, Japanese and UK stocks
   await expect(page.getByRole('columnheader', { name: /Market value \(USD\)/ })).toBeVisible()
   await expect(page.getByText('Shown in USD – a reporting conversion')).toBeVisible()
   await expect(page.getByText(/Nothing is exchanged and the holdings do not change/)).toBeVisible()
-  await expect(toyota).toContainText(/1 JPY = 0\.\d+ USD/)
+  await expect(toyota).toContainText(/1 USD = [\d,.]+ JPY/)
 
   await page.getByRole('combobox', { name: 'Show values in currency' }).click()
   await page.getByRole('option', { name: /^EUR.*\(portfolio\)/ }).click()

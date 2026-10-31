@@ -135,10 +135,10 @@ export function DataTable<T>({
  * first/previous/next/last) inside a box that scrolls under a fixed header. A new search starts at page 1.
  * `breakdown` replaces the plain count when the rows mix kinds that must be counted apart (see `lib/instrument-counts.ts`).
  * `fullScreen` (the dialog title) adds a "Full screen" button: the same list, search and sort over the whole window, its
- * rows scrolling under the fixed header.
+ * rows scrolling under the fixed header. `toolbar`: more filters next to the search box (shown in full screen too).
  */
 export function SearchableTable<T>({
-  label, caption = label, hint, rows, columns, rowKey, initialSort, matches, placeholder, breakdown, empty, pageSize = 50, maxRows = 15, maxHeight, dense, onRowClick, fullScreen,
+  label, caption = label, hint, rows, columns, rowKey, initialSort, matches, placeholder, breakdown, empty, pageSize = 50, maxRows = 15, maxHeight, dense, onRowClick, fullScreen, toolbar,
 }: {
   label: string
   /** Accessible name of the table (defaults to `label`). */
@@ -147,7 +147,7 @@ export function SearchableTable<T>({
   /** Replaces the plain row count when the list mixes types or tracked and not tracked instruments. */
   breakdown?: string
   pageSize?: number; maxRows?: number; maxHeight?: string; dense?: boolean; onRowClick?: (row: T) => void
-  fullScreen?: string
+  fullScreen?: string; toolbar?: ReactNode
 }) {
   const [search, setSearch] = useState('')
   const [open, setOpen] = useState(false)
@@ -160,6 +160,7 @@ export function SearchableTable<T>({
         <Input placeholder={placeholder} aria-label={`Search ${label}`} className="bg-card sm:w-80" value={search} onChange={(e) => setSearch(e.target.value)}
           // Inside a form (the optimization settings) Enter must not submit it: the search filters as you type.
           onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault() }} />
+        {toolbar}
         <span className="text-xs text-muted-foreground tabular">
           {q ? `${filtered.length.toLocaleString()} of ${rows.length.toLocaleString()} ${label}` : breakdown ?? `${rows.length.toLocaleString()} ${label}`}
         </span>

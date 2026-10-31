@@ -69,3 +69,10 @@ export function currencyName(code: string): string {
   }
   try { return names?.of(code) ?? code } catch { return code }
 }
+
+/** A share price in another currency: price × the dated rate (target units per source unit); null without a rate. */
+export function convertedPrice(price: number | null, from: string, to: string, rate: number | null): number | null {
+  if (price === null) return null
+  if (!from || from === to) return price
+  return rate !== null && rate > 0 ? price * rate : null
+}

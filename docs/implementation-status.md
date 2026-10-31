@@ -1,5 +1,11 @@
 # Implementation status
 
+## 2026-10-31: holdings laid out like the trade proposal
+
+* The positions list on the Overview (Core) uses the proposal's layout: `SearchableTable` with search, sector filter and
+  "Show closed & target-only" (`toolbar`), about ten rows under a fixed header, Full screen; "Price (<currency>)" with
+  only the rate underneath and "Original price" with its close date and stale flag – the same cells as Proposed trades.
+
 ## 2026-10-31: Codex guides as reading pages
 
 * A strategy guide (`/learn/:id`) is one article instead of twelve folded boxes: the same 12 topics as headings in
