@@ -22,12 +22,13 @@ export interface Column<T> {
 
 /**
  * Accessible sortable table (sort buttons in headers, keyboard-activatable rows). `maxRows`: about that many rows are
- * visible; the rest scroll inside the table under a header that stays in place. `pageSize`: the sorted rows are shown in
+ * visible; the rest scroll inside the table under a header that stays in place (`maxHeight`: a CSS height instead, e.g. to
+ * fill a full-screen dialog). `pageSize`: the sorted rows are shown in
  * pages (initially of that size) with the shared `RangePager` below – first/previous/next/last and rows per page; a new
  * `pageResetKey` (e.g. the search text), another sort or another page size returns to page 1.
  */
 export function DataTable<T>({
-  rows, columns, rowKey, onRowClick, initialSort, empty, dense, caption, maxRows, pageSize, pageResetKey = '',
+  rows, columns, rowKey, onRowClick, initialSort, empty, dense, caption, maxRows, maxHeight, pageSize, pageResetKey = '',
 }: {
   rows: T[]
   columns: Column<T>[]
@@ -38,6 +39,7 @@ export function DataTable<T>({
   dense?: boolean
   caption?: string
   maxRows?: number
+  maxHeight?: string
   pageSize?: number
   pageResetKey?: string
 }) {
@@ -64,14 +66,15 @@ export function DataTable<T>({
   const totalPages = size ? Math.max(1, Math.ceil(sorted.length / size)) : 1
   const page = paging.key === pageResetKey && paging.sort === sort ? Math.min(paging.page, totalPages) : 1
   const visible = size ? sorted.slice((page - 1) * size, page * size) : sorted
+  const scrolls = Boolean(maxRows || maxHeight)
 
   return (
     <div>
-      <div className={cn('overflow-x-auto rounded-lg border', maxRows && 'overflow-y-auto')}
-        style={maxRows ? { maxHeight: `calc(2.25rem + ${maxRows} * ${dense ? 2.3 : 2.85}rem)` } : undefined}>
-        <Table containerClassName={maxRows ? 'overflow-visible' : undefined}>
+      <div className={cn('overflow-x-auto rounded-lg border', scrolls && 'overflow-y-auto')}
+        style={scrolls ? { maxHeight: maxHeight ?? `calc(2.25rem + ${maxRows} * ${dense ? 2.3 : 2.85}rem)` } : undefined}>
+        <Table containerClassName={scrolls ? 'overflow-visible' : undefined}>
           {caption && <caption className="sr-only">{caption}</caption>}
-          <TableHeader className={maxRows ? 'sticky top-0 z-10 bg-popover' : undefined}>
+          <TableHeader className={scrolls ? 'sticky top-0 z-10 bg-popover' : undefined}>
             <TableRow className="bg-muted/40 hover:bg-muted/40">
               {columns.map((c) => {
                 const active = sort?.key === c.key
@@ -132,7 +135,7 @@ export function DataTable<T>({
  * `breakdown` replaces the plain count when the rows mix kinds that must be counted apart (see `lib/instrument-counts.ts`).
  */
 export function SearchableTable<T>({
-  label, caption = label, hint, rows, columns, rowKey, initialSort, matches, placeholder, breakdown, empty, pageSize = 50, maxRows = 15, dense, onRowClick,
+  label, caption = label, hint, rows, columns, rowKey, initialSort, matches, placeholder, breakdown, empty, pageSize = 50, maxRows = 15, maxHeight, dense, onRowClick,
 }: {
   label: string
   /** Accessible name of the table (defaults to `label`). */
@@ -140,7 +143,7 @@ export function SearchableTable<T>({
   matches: (row: T, query: string) => boolean; placeholder: string; empty?: string
   /** Replaces the plain row count when the list mixes types or tracked and not tracked instruments. */
   breakdown?: string
-  pageSize?: number; maxRows?: number; dense?: boolean; onRowClick?: (row: T) => void
+  pageSize?: number; maxRows?: number; maxHeight?: string; dense?: boolean; onRowClick?: (row: T) => void
 }) {
   const [search, setSearch] = useState('')
   const q = search.trim().toLowerCase()
@@ -158,7 +161,7 @@ export function SearchableTable<T>({
       </div>
       {rows.length === 0 && empty ? <p className="rounded-lg border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">{empty}</p> : (
         <DataTable<T> caption={caption} rows={filtered} rowKey={rowKey} initialSort={initialSort} columns={columns} dense={dense} onRowClick={onRowClick}
-          pageSize={pageSize} pageResetKey={q} maxRows={maxRows}
+          pageSize={pageSize} pageResetKey={q} maxRows={maxRows} maxHeight={maxHeight}
           empty={<p className="rounded-lg border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">No {label} match “{search}”.</p>} />
       )}
     </section>

@@ -183,9 +183,8 @@ export function TradeProposalView({ proposal, currency, allowExecute = true }: {
             <DialogTitle>Proposed trades</DialogTitle>
             <DialogDescription>{proposal.lines.length} positions · values in {currency} · Esc closes.</DialogDescription>
           </DialogHeader>
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            <ProposalLines lines={proposal.lines} columns={columns} maxRows={0} />
-          </div>
+          {/* The table itself scrolls (header fixed) in the space left under the title, search and pager. */}
+          <ProposalLines lines={proposal.lines} columns={columns} maxHeight="calc(100dvh - 15rem)" />
         </DialogContent>
       </Dialog>
       {proposal.lines.some((l) => l.note) && (
@@ -252,10 +251,10 @@ function priceIn(l: ProposalLine, currency: string): number | null {
   return l.fxRate !== null ? l.price * l.fxRate : null
 }
 
-/** The proposal's positions as the app's standard long list: search, scroll under a fixed header (`maxRows` 0: no limit). */
-function ProposalLines({ lines, columns, maxRows }: { lines: ProposalLine[]; columns: Column<ProposalLine>[]; maxRows: number }) {
+/** The proposal's positions as the app's standard long list: search, scroll under a fixed header (`maxRows` or `maxHeight`). */
+function ProposalLines({ lines, columns, maxRows, maxHeight }: { lines: ProposalLine[]; columns: Column<ProposalLine>[]; maxRows?: number; maxHeight?: string }) {
   return (
-    <SearchableTable label="positions" caption="Proposed trades" rows={lines} columns={columns} rowKey={(l) => l.symbol} dense maxRows={maxRows}
+    <SearchableTable label="positions" caption="Proposed trades" rows={lines} columns={columns} rowKey={(l) => l.symbol} dense maxRows={maxRows} maxHeight={maxHeight}
       placeholder="Search symbol or company" matches={(l, q) => l.symbol.toLowerCase().includes(q) || (l.companyName ?? '').toLowerCase().includes(q)} />
   )
 }
