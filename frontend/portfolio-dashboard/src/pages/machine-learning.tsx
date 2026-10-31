@@ -678,12 +678,7 @@ function AllocationSection({ e }: { e: MlExperiment }) {
 
   return (
     <>
-      {/* Searchable and paged like every long list: an experiment can rank hundreds of stocks. */}
-      <SearchableTable label="stock predictions" rows={set.predictions} columns={columns} rowKey={(p) => p.symbol} dense pageSize={25} maxRows={12} fullScreen="Stock predictions and target weights"
-        initialSort={{ key: 'rank', dir: 'asc' }} placeholder="Search symbol, name or sector"
-        matches={(p, q) => p.symbol.toLowerCase().includes(q) || (p.name ?? '').toLowerCase().includes(q) || (p.sector ?? '').toLowerCase().includes(q)}
-        breakdown={`${set.predictions.length.toLocaleString()} stocks ranked · ${set.predictions.filter((p) => p.selected).length.toLocaleString()} selected`} />
-
+      {/* The resulting portfolio and its rules first, like Math Optimization's donut above its allocation list. */}
       <div className="grid gap-4 lg:grid-cols-2">
         <ChartCard title="ML portfolio" hint="Built from the ranking with the experiment's construction rules – not by the mean-variance optimizer."
           table={{ columns: ['Stock', 'Weight'], rows: [...Object.entries(weights).map(([k, v]) => [k, pct(v, 2)]), ['Cash', pct(set.cashWeight, 2)]] }}>
@@ -699,6 +694,12 @@ function AllocationSection({ e }: { e: MlExperiment }) {
           <Warnings items={set.notes} title="Construction notes" />
         </CardContent></Card>
       </div>
+
+      {/* Searchable and paged like every long list: an experiment can rank hundreds of stocks. */}
+      <SearchableTable label="stock predictions" rows={set.predictions} columns={columns} rowKey={(p) => p.symbol} dense pageSize={25} maxRows={12} fullScreen="Stock predictions and target weights"
+        initialSort={{ key: 'rank', dir: 'asc' }} placeholder="Search symbol, name or sector"
+        matches={(p, q) => p.symbol.toLowerCase().includes(q) || (p.name ?? '').toLowerCase().includes(q) || (p.sector ?? '').toLowerCase().includes(q)}
+        breakdown={`${set.predictions.length.toLocaleString()} stocks ranked · ${set.predictions.filter((p) => p.selected).length.toLocaleString()} selected`} />
     </>
   )
 }
