@@ -8,6 +8,14 @@
   family and reading time, the objective, takeaway and caveats as callouts, "Read next" and previous/next within the
   family. Wide screens: an "On this page" column follows the reader and marks the current section; phones: contents
   above the text. Checked with screenshots at 1440 and 390 px (API mocked, no account).
+* Every guide has one or two interactive figures (`components/guide-figures.tsx`) under "The theory" and/or "Worked
+  example": the two-stock curve with correlation, tangency line, target return or volatility limit; volatility by weight;
+  1/N diversification; scores → weights with top K, rule and cap; walk-forward timeline; trading-cost drag; ridge
+  shrinkage; the logistic curve; forest averaging; boosting with training vs. test error. Sliders change the example,
+  "Play" animates it (not offered with reduced motion), charts are drawn at their real width so text stays readable on
+  phones. All figures use sample data from `lib/guide-demos.ts` (fixed values or generated from a fixed seed, unit-tested,
+  reproducing the worked examples) and say "Sample data – not market data"; they never read stored prices, the API or
+  user data.
 
 ## 2026-10-29: long lists and the correlation matrix (D-48)
 

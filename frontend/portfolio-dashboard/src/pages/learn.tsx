@@ -8,6 +8,7 @@ import { EmptyState, PageHeader } from '@/components/common'
 import { glossary, glossaryCategories } from '@/lib/glossary'
 import { guideById, strategyGuides, type StrategyGuide } from '@/lib/strategy-guide'
 import { cn } from '@/lib/utils'
+import { GuideFigure } from '@/components/guide-figures'
 
 const families: { id: StrategyGuide['family']; title: string; description: string }[] = [
   { id: 'optimization', title: 'Mathematical optimization', description: 'Weights from estimated returns, volatilities and correlations (mean-variance theory).' },
@@ -143,7 +144,7 @@ function guideSections(g: StrategyGuide): { id: string; title: string; body: Rea
       id: 'objective', title: 'The objective',
       body: <p className="rounded-lg border-l-2 border-series-1 bg-muted/40 px-4 py-3">{g.objective}</p>,
     },
-    { id: 'theory', title: 'The theory', body: <List items={g.theory} /> },
+    { id: 'theory', title: 'The theory', body: <><List items={g.theory} /><GuideFigure guide={g.id} section="theory" /></> },
     { id: 'how', title: 'How it works, step by step', body: <List items={g.how} ordered /> },
     {
       id: 'example', title: 'Worked example',
@@ -160,6 +161,7 @@ function guideSections(g: StrategyGuide): { id: string; title: string; body: Rea
             </div>
           )}
           <List items={g.example.steps} ordered />
+          <GuideFigure guide={g.id} section="example" />
           <p className="rounded-lg border-l-2 border-series-1 bg-muted/40 px-4 py-3"><strong>Takeaway:</strong> {g.example.takeaway}</p>
         </div>
       ),
