@@ -137,3 +137,13 @@ export function countriesOf(symbols: Iterable<string>): string[] {
 }
 
 export const countryNames: Record<string, string> = Object.fromEntries(venues.map((v) => [v.country, v.countryName]))
+
+/** Display name of an index code (SP500 → "S&P 500") from the catalogue's markets; the code itself when unknown. */
+export function indexName(markets: { indices: { code: string; name: string }[] }[] | undefined, code: string): string {
+  return markets?.flatMap((m) => m.indices).find((i) => i.code === code)?.name ?? code
+}
+
+/** "Industrials · DAX 40, Euro Stoxx 50": a stock's sector and the indices it belongs to (as listed in the catalogue). */
+export function sectorAndIndices(sector: string | null, indices: string[], markets: Parameters<typeof indexName>[0]): string {
+  return [sector ?? 'Unclassified', indices.map((i) => indexName(markets, i)).join(', ')].filter(Boolean).join(' · ')
+}

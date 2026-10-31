@@ -11,12 +11,13 @@ import { QuoteCell, QuoteProvenance, RefreshQuoteButton } from '@/components/sto
 import { ChangeText, RangePicker, Sparkline } from '@/components/watchlist'
 import { errorMessage } from '@/lib/api'
 import { date } from '@/lib/format'
-import { useAddToWatchlist, useRefreshWatchlist, useRemoveFromWatchlist, useReorderWatchlist, useStocks, useWatchlist } from '@/lib/queries'
+import { useAddToWatchlist, useMarkets, useRefreshWatchlist, useRemoveFromWatchlist, useReorderWatchlist, useStocks, useWatchlist } from '@/lib/queries'
 import type { HistoryRange, WatchlistItem } from '@/lib/types'
 import { MatrixLoader } from '@/components/matrix-loader'
 import { RangePager } from '@/components/data-table'
 import { SortableList } from '@/components/sortable-list'
 import { moveItem } from '@/lib/reorder'
+import { indexName, sectorAndIndices } from '@/lib/markets'
 
 const listRanges: HistoryRange[] = ['1M', '3M', '6M', '1Y', '5Y']
 
@@ -119,6 +120,8 @@ function WatchRow({ item, range, handle }: { item: WatchlistItem; range: History
   const remove = useRemoveFromWatchlist()
   const navigate = useNavigate()
   const p = item.period
+  const markets = useMarkets()
+  const membership = sectorAndIndices(s.sector, s.indices, markets.data)
   const removeNow = async () => {
     try {
       await remove.mutateAsync(s.symbol)
@@ -136,7 +139,7 @@ function WatchRow({ item, range, handle }: { item: WatchlistItem; range: History
   }
   return (
     <Card className="cursor-pointer py-3 transition-colors hover:bg-muted/40" onClick={openDetail} data-testid={`watch-row-${s.symbol}`} title={`Open ${s.symbol}`}>
-      <CardContent className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-2 px-3 md:grid-cols-[auto_minmax(12rem,1.4fr)_minmax(7rem,auto)_minmax(8rem,auto)_auto_auto] md:gap-x-4">
+      <CardContent className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-2 px-3 md:grid-cols-[auto_minmax(12rem,1.4fr)_minmax(7rem,auto)_minmax(8rem,auto)_minmax(8rem,14rem)_auto] md:gap-x-4">
         {handle}
         <div className="min-w-0">
           <Link to={`/stocks/${encodeURIComponent(s.symbol)}`} className="font-medium hover:underline">
@@ -145,6 +148,8 @@ function WatchRow({ item, range, handle }: { item: WatchlistItem; range: History
           <span className="ml-2 truncate text-sm text-muted-foreground">{s.name ?? ''}</span>
           <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
             <span>{[s.exchange, s.currency].filter(Boolean).join(' · ')}</span>
+            {/* Phones: sector and indices here; wider screens show them in their own column. */}
+            <span className="basis-full md:hidden">{membership}</span>
             {s.observations === 0 && <Badge variant="outline" className="border-warn/50 text-warn">History downloading or unavailable</Badge>}
           </div>
           <div className="mt-1 hidden md:block"><QuoteProvenance quote={s.quote} /></div>
@@ -167,7 +172,11 @@ function WatchRow({ item, range, handle }: { item: WatchlistItem; range: History
           <Sparkline points={p.sparkline} label={`${s.symbol} ${p.basis} over ${range}`} />
         </div>
 
-        <div className="hidden md:block" />
+        {/* Sector and index membership, e.g. "Industrials · DAX 40" (index names from the catalogue). */}
+        <div className="hidden max-w-56 text-xs leading-snug md:block">
+          <div className="text-foreground">{s.sector ?? 'Unclassified'}</div>
+          <div className="text-muted-foreground">{s.indices.length ? s.indices.map((i) => indexName(markets.data, i)).join(', ') : 'No tracked index'}</div>
+        </div>
 
         <div className="col-span-3 flex items-center justify-end gap-1 md:col-span-1">
           <RefreshQuoteButton symbol={s.symbol} />

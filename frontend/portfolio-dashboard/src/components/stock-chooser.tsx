@@ -26,7 +26,7 @@ import { age, symbolsNeedingRefresh } from '@/lib/quote-status'
 import { useSelection } from '@/lib/selection'
 import type { Market, QuoteRefreshRun, StockListItem, StockTrend } from '@/lib/types'
 import { date, num } from '@/lib/format'
-import { countryOfSymbol } from '@/lib/markets'
+import { countryOfSymbol, indexName } from '@/lib/markets'
 import { fitColumns } from '@/lib/column-fit'
 import { useMapSignal } from '@/lib/world-map'
 import { MatrixLoader } from '@/components/matrix-loader'
@@ -432,9 +432,7 @@ function PriceStatus({ run, pageRefreshing }: { run: QuoteRefreshRun | undefined
   )
 }
 
-function indexLabel(markets: Market[] | undefined, code: string) {
-  return markets?.flatMap((m) => m.indices).find((i) => i.code === code)?.name ?? code
-}
+const indexLabel = (markets: Market[] | undefined, code: string) => indexName(markets, code)
 
 function describeScope(markets: Market[] | undefined, scope: UniverseScope) {
   const market = markets?.find((m) => m.country === scope.country)
@@ -480,10 +478,11 @@ function HistoryCell({ stock }: { stock: StockListItem }) {
 /** Same threshold as the selection tray: stocks with fewer stored prices are left out of analyses. */
 const MIN_ANALYSIS_PRICES = 61
 
-// Pinned cells need an opaque background; in the header it repeats the header row's tint.
-const STICKY_BG = 'bg-popover [&:is(th)]:bg-[color-mix(in_oklch,var(--muted)_40%,var(--popover))]'
+// Pinned cells look like every other cell (transparent) until the table is scrolled sideways – only then do they need an
+// opaque background (the header's with its row tint) and a divider, so the columns sliding underneath stay hidden.
+const STICKY_BG = '[[data-scrolled-x=true]_&]:bg-popover [[data-scrolled-x=true]_&]:[&:is(th)]:bg-[color-mix(in_oklch,var(--muted)_40%,var(--popover))]'
 const STICKY_SELECT = `sticky left-0 z-[1] w-9 min-w-9 px-1.5 sm:w-10 sm:min-w-10 sm:px-2 ${STICKY_BG}`
-const STICKY_TICKER = `sticky left-9 z-[1] w-20 min-w-20 px-1.5 shadow-[1px_0_0_var(--border)] sm:left-10 sm:w-28 sm:min-w-28 sm:px-2 ${STICKY_BG}`
+const STICKY_TICKER = `sticky left-9 z-[1] w-20 min-w-20 px-1.5 [[data-scrolled-x=true]_&]:shadow-[1px_0_0_var(--border)] sm:left-10 sm:w-28 sm:min-w-28 sm:px-2 ${STICKY_BG}`
 // Phones: a little less padding in the price columns, so both prices fit next to the ticker.
 const PHONE_PAD = 'px-1.5 sm:px-2'
 const SETTLE_PX = 24

@@ -71,7 +71,9 @@ export function DataTable<T>({
 
   return (
     <div>
-      <div className={cn('overflow-x-auto rounded-lg border', scrolls && 'overflow-y-auto')}
+      {/* data-scrolled-x: set while scrolled sideways, so pinned columns can turn opaque only then (no re-render). */}
+      <div className={cn('overflow-x-auto rounded-lg border', scrolls && 'overflow-y-auto')} data-scrolled-x="false"
+        onScrollCapture={(e) => { e.currentTarget.dataset.scrolledX = String((e.target as HTMLElement).scrollLeft > 0) }}
         style={scrolls ? { maxHeight: maxHeight ?? `calc(2.25rem + ${maxRows} * ${dense ? 2.3 : 2.85}rem)` } : undefined}>
         <Table containerClassName={scrolls ? 'overflow-visible' : undefined}>
           {caption && <caption className="sr-only">{caption}</caption>}

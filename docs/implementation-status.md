@@ -9,6 +9,10 @@
   incl. another user and anonymous. The list scrolls in its own box and is paged (25 by default); dragging near the
   box's edge scrolls it. Reorder math in `lib/reorder.ts`, the component in `components/sortable-list.tsx`.
 * Stock list full screen: "Price history" now follows "5 years".
+* Watchlist rows show sector and index membership ("Industrials · DAX 40, Euro Stoxx 50"; index names from the catalogue,
+  `sectorAndIndices` in `lib/markets.ts`) in their own column, on phones under the exchange line.
+* The stock chooser's pinned tick box and Ticker look like every other column at rest; they turn opaque (with a divider)
+  only while the table is scrolled sideways (`data-scrolled-x` on the `DataTable` scroll box).
 
 ## 2026-10-31: Forge stock list in the portfolio currency
 

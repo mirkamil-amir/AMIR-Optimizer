@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { countriesOf, countryOfSymbol, unresolvedSymbols, venues } from './markets'
+import { countriesOf, countryOfSymbol, sectorAndIndices, unresolvedSymbols, venues } from './markets'
 
 describe('markets', () => {
   it('finds the market of a symbol from its venue suffix or index symbol', () => {
@@ -45,5 +45,14 @@ describe('markets', () => {
       expect(v.lat).toBeLessThan(84)
       expect(Math.abs(v.lon)).toBeLessThanOrEqual(180)
     }
+  })
+})
+
+describe('sectorAndIndices', () => {
+  const markets = [{ indices: [{ code: 'DAX40', name: 'DAX 40' }, { code: 'SX5E', name: 'Euro Stoxx 50' }] }]
+  it('names the sector and every index, falls back to the code and to "Unclassified"', () => {
+    expect(sectorAndIndices('Industrials', ['DAX40', 'SX5E'], markets)).toBe('Industrials · DAX 40, Euro Stoxx 50')
+    expect(sectorAndIndices('Industrials', [], markets)).toBe('Industrials')
+    expect(sectorAndIndices(null, ['NEW1'], markets)).toBe('Unclassified · NEW1')
   })
 })

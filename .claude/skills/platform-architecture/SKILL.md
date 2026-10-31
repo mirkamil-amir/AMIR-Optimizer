@@ -60,6 +60,12 @@ history) is never a plain `<ul>` or an unpaged table. Universes reach hundreds o
 * A table with more columns than fit (the stock chooser): give each column a priority and a minimum width and let
   `fitColumns` (`lib/column-fit.ts`) pick the columns from the list's measured width, not screen breakpoints; correct
   after drawing if it still overflows, and ignore width changes under ~24 px (a scrollbar must not flip the set).
+* Pinned (sticky) columns, e.g. tick box and Ticker in the stock chooser, must look exactly like the other columns – same
+  transparency over the card and map, no own background or divider at rest (owner, 2026-11-01: columns must line up
+  visually). Only while the table is scrolled sideways do they need an opaque surface (`bg-popover`, the header with its
+  row tint) and a divider, so cells sliding underneath stay hidden. `DataTable` marks its scroll box with
+  `data-scrolled-x="true"` while scrolled sideways; style pinned cells with `[[data-scrolled-x=true]_&]:…` variants
+  (see `STICKY_BG` in `components/stock-chooser.tsx`), never with an unconditional background.
 * Inside a grid or flex column wrap it in `min-w-0` (a `<fieldset>` is as wide as its content by default: the universe
   table once widened the phone page by 9 px). Check 390 px for horizontal scroll.
 * Data for many named stocks: `useStocksBySymbols` (one request per 200 symbols, the API's page limit). A single
