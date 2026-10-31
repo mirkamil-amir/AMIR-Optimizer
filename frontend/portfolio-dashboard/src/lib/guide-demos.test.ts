@@ -49,6 +49,17 @@ describe('ML portfolio construction', () => {
     expect(cash).toBeCloseTo(0, 12)
   })
 
+  it('weights score-proportionally like the app: score − lowest selected + 10% of the spread', () => {
+    // Top 3 of the sample: 0.71, 0.64, 0.58 → spread 0.13 → raw 0.143, 0.073, 0.013.
+    const { weights } = constructWeights(sampleScores, 3, 'score', 1)
+    const raw = [0.71 - 0.58 + 0.013, 0.64 - 0.58 + 0.013, 0.013]
+    const sum = raw.reduce((a, b) => a + b, 0)
+    expect(weights.A).toBeCloseTo(raw[0] / sum, 12)
+    expect(weights.C).toBeCloseTo(raw[2] / sum, 12)
+    expect(weights.C).toBeGreaterThan(0)
+    expect(constructWeights([{ symbol: 'X', score: 0.5 }, { symbol: 'Y', score: 0.5 }], 2, 'score', 1).weights.X).toBeCloseTo(0.5, 12)
+  })
+
   it('keeps what nobody can take in cash and never exceeds the cap', () => {
     const { weights, cash } = constructWeights(sampleScores, 2, 'equal', 0.3)
     expect(Object.values(weights)).toEqual([0.3, 0.3])

@@ -9,6 +9,9 @@
   incl. another user and anonymous. The list scrolls in its own box and is paged (25 by default); dragging near the
   box's edge scrolls it. Reorder math in `lib/reorder.ts`, the component in `components/sortable-list.tsx`.
 * Stock list full screen: "Price history" now follows "5 years".
+* Formula reference: F-MD-002 covers the sparkline downsampling and the stock list's trends (same slice as the
+  watchlist, tested); new F-EDU-002 for the Codex figures. Reviewing it found the "scores to weights" figure and the ML
+  guide's formula used score − min of all stocks; both now follow the app (score − lowest selected + 10 % spread).
 * Watchlist rows show sector and index membership ("Industrials · DAX 40, Euro Stoxx 50"; index names from the catalogue,
   `sectorAndIndices` in `lib/markets.ts`) in their own column, on phones under the exchange line.
 * Watchlist rows share one set of columns (CSS subgrid): prices, changes and sectors line up across rows and every

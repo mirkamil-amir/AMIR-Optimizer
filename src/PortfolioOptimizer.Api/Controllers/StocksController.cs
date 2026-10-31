@@ -49,6 +49,7 @@ public sealed class StocksController(StockDiscoveryService stocks, MarketDataSer
     /// <summary>Change and sparkline per stock over a range (default 1M) for one page of the stock list (up to 200 symbols).</summary>
     /// <param name="symbols">Comma-separated symbols.</param>
     /// <param name="range">1M, 3M, 6M, 1Y, 5Y or MAX.</param>
+    /// <param name="ct">Cancels the request.</param>
     [HttpGet("stocks/trends")]
     public Task<IReadOnlyList<StockTrendDto>> Trends([FromQuery] string? symbols, [FromQuery] string? range, CancellationToken ct) =>
         stocks.GetTrendsAsync((symbols ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries), range, ct);

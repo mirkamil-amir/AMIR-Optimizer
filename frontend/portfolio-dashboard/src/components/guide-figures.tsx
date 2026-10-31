@@ -307,7 +307,7 @@ export function ConstructionPlayground() {
         <PlayButton from={1} to={8} step={1} ms={4000} set={setK} />
       </>}
       readout={<>Weights: {Object.entries(weights).map(([s, w]) => `${s} ${p1(w)}`).join(' · ')}{cash > 1e-9 ? ` · cash ${p1(cash)}` : ''}</>}
-      caption="Grey bars are the model's scores for eight sample stocks; blue bars are the resulting weights. Rank-linear gives the best stock K shares, the next K − 1 … ; score-proportional follows the score gaps. Anything above the cap is passed on to the other holdings – and stays in cash once every holding is at the cap."
+      caption="Grey bars are the model's scores for eight sample stocks; blue bars are the resulting weights. Rank-linear gives the best stock K shares, the next K − 1 … ; score-proportional follows the score gaps above the lowest selected score, plus 10% of their range so the weakest selected stock keeps a weight. Anything above the cap is passed on to the other holdings – and stays in cash once every holding is at the cap."
     >
       {(W) => {
         const bw = (W - PAD.l - PAD.r) / rows.length

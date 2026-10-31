@@ -726,12 +726,15 @@ return). Adjustments themselves come from the provider; the app does not compute
 | Field | Value |
 |---|---|
 | Status | Verified correct |
-| Code | `src/PortfolioOptimizer.Application/MarketData/PriceHistory.cs#PriceHistory` |
-| Tests | `PriceHistoryTests.OneMonth_UsesLastObservationOnOrBeforeTheStart_AsBase`; `PriceHistoryTests.AdjustedCloses_AreUsed_SoASplitIsNotALoss`; `PriceHistoryTests.MissingAdjustedClose_FallsBackToRawCloses_ForTheWholeSlice_AndSaysSo` |
+| Code | `src/PortfolioOptimizer.Application/MarketData/PriceHistory.cs#PriceHistory`; `src/PortfolioOptimizer.Application/MarketData/PriceHistory.cs#Downsample`; `src/PortfolioOptimizer.Application/MarketData/StockDiscoveryService.cs#GetTrendsAsync` |
+| Tests | `PriceHistoryTests.OneMonth_UsesLastObservationOnOrBeforeTheStart_AsBase`; `PriceHistoryTests.AdjustedCloses_AreUsed_SoASplitIsNotALoss`; `PriceHistoryTests.MissingAdjustedClose_FallsBackToRawCloses_ForTheWholeSlice_AndSaysSo`; `PriceHistoryTests.Sparkline_KeepsFirstAndLastObservation`; `WatchlistTests.StockTrends_MatchTheWatchlist_ForOnePageOfStocks` |
 | Skills | market-data-fx |
-| Verified | 2026-10-28 |
+| Verified | 2026-11-01 |
 
-$P_{end}/P_{base} - 1$ with base = last bar on or before end − range, one price kind for the whole slice.
+$P_{end}/P_{base} - 1$ with base = last bar on or before end − range, one price kind for the whole slice. The same slice
+serves the stock chart, the watchlist and the stock list's trend columns (`GET /stocks/trends`); their sparklines are the
+slice's points downsampled evenly to at most 60, always keeping the first and last observation (display only – the
+change uses the full slice). The stock list's change equals the watchlist's for the same stock and range (tested).
 
 ### F-MD-003 · Event price comparison (news)
 
@@ -957,6 +960,24 @@ importance (documented).
 
 Two-asset GMV $w_A = (\sigma_B^2-\rho\sigma_A\sigma_B)/(\sigma_A^2+\sigma_B^2-2\rho\sigma_A\sigma_B)$; tangency
 $w \propto \Sigma^{-1}(\mu - r_f)$ normalized; both clipped to [0, 1]. Illustrative constants, not market data.
+
+### F-EDU-002 · Interactive guide figures (sample data)
+
+| Field | Value |
+|---|---|
+| Status | Correct under documented assumptions |
+| Code | `frontend/portfolio-dashboard/src/lib/guide-demos.ts#gmvMix`; `frontend/portfolio-dashboard/src/lib/guide-demos.ts#tangencyMix`; `frontend/portfolio-dashboard/src/lib/guide-demos.ts#targetReturnMix`; `frontend/portfolio-dashboard/src/lib/guide-demos.ts#maxReturnForRiskMix`; `frontend/portfolio-dashboard/src/lib/guide-demos.ts#equalWeightVolatility`; `frontend/portfolio-dashboard/src/lib/guide-demos.ts#constructWeights`; `frontend/portfolio-dashboard/src/lib/guide-demos.ts#ridgeShrink` |
+| Tests | `frontend/portfolio-dashboard/src/lib/guide-demos.test.ts` |
+| Skills | quant-formulas |
+| Verified | 2026-11-01 |
+
+The Codex figures recompute F-EDU-001 for slider values (correlation, $\mu_B$, target return, volatility limit; the
+starting values reproduce the worked examples exactly – tested). Equal weight: $\sigma_p = \sigma\sqrt{\rho + (1-\rho)/N}$
+for $N$ stocks with equal $\sigma$ and pairwise $\rho$. Scores → weights follows F-ML-007 (equal, rank $K-i$, score −
+lowest selected + 10 % spread, iterative capping, rest in cash) without sector caps, cash reserve or turnover limit.
+Ridge: $\beta/(1+\lambda)$, exact only for uncorrelated standardized features with the app's $\lambda n$ penalty (the
+figure says so). Tree, boosting and cost figures use seeded sample data. Sample data only – never stored prices or user
+data; every figure is labelled "Sample data – not market data".
 
 ---
 

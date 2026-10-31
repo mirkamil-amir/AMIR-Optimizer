@@ -883,17 +883,21 @@
       "status": "Verified correct",
       "severity": null,
       "code": [
-        "src/PortfolioOptimizer.Application/MarketData/PriceHistory.cs#PriceHistory"
+        "src/PortfolioOptimizer.Application/MarketData/PriceHistory.cs#PriceHistory",
+        "src/PortfolioOptimizer.Application/MarketData/PriceHistory.cs#Downsample",
+        "src/PortfolioOptimizer.Application/MarketData/StockDiscoveryService.cs#GetTrendsAsync"
       ],
       "tests": [
         "PriceHistoryTests.OneMonth_UsesLastObservationOnOrBeforeTheStart_AsBase",
         "PriceHistoryTests.AdjustedCloses_AreUsed_SoASplitIsNotALoss",
-        "PriceHistoryTests.MissingAdjustedClose_FallsBackToRawCloses_ForTheWholeSlice_AndSaysSo"
+        "PriceHistoryTests.MissingAdjustedClose_FallsBackToRawCloses_ForTheWholeSlice_AndSaysSo",
+        "PriceHistoryTests.Sparkline_KeepsFirstAndLastObservation",
+        "WatchlistTests.StockTrends_MatchTheWatchlist_ForOnePageOfStocks"
       ],
       "skills": [
         "market-data-fx"
       ],
-      "verified": "2026-10-28"
+      "verified": "2026-11-01"
     },
     {
       "id": "F-MD-003",
@@ -1184,6 +1188,28 @@
         "quant-formulas"
       ],
       "verified": "2026-10-28"
+    },
+    {
+      "id": "F-EDU-002",
+      "name": "Interactive guide figures (sample data)",
+      "status": "Correct under documented assumptions",
+      "severity": null,
+      "code": [
+        "frontend/portfolio-dashboard/src/lib/guide-demos.ts#gmvMix",
+        "frontend/portfolio-dashboard/src/lib/guide-demos.ts#tangencyMix",
+        "frontend/portfolio-dashboard/src/lib/guide-demos.ts#targetReturnMix",
+        "frontend/portfolio-dashboard/src/lib/guide-demos.ts#maxReturnForRiskMix",
+        "frontend/portfolio-dashboard/src/lib/guide-demos.ts#equalWeightVolatility",
+        "frontend/portfolio-dashboard/src/lib/guide-demos.ts#constructWeights",
+        "frontend/portfolio-dashboard/src/lib/guide-demos.ts#ridgeShrink"
+      ],
+      "tests": [
+        "frontend/portfolio-dashboard/src/lib/guide-demos.test.ts"
+      ],
+      "skills": [
+        "quant-formulas"
+      ],
+      "verified": "2026-11-01"
     }
   ]
 }

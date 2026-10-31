@@ -94,15 +94,19 @@ export const sampleScores: ScoredStock[] = [
 export type WeightingRule = 'equal' | 'rank' | 'score'
 
 /**
- * The guide's construction rule: top K by score, weights by rule, then iterative capping – the excess above the cap goes
- * to the uncapped stocks in proportion to their weights; what nobody can take stays in cash.
+ * The app's construction rule (PortfolioConstruction in MachineLearning/Strategy, without sector caps, cash reserve and
+ * turnover limit): top K by score, weights by rule, then iterative capping – the excess above the cap goes to the uncapped
+ * stocks in proportion to their weights; what nobody can take stays in cash.
  */
 export function constructWeights(stocks: ScoredStock[], topK: number, rule: WeightingRule, cap: number): { weights: Record<string, number>; cash: number } {
   const ranked = [...stocks].sort((a, b) => b.score - a.score)
   const k = Math.max(1, Math.min(topK, ranked.length))
   const chosen = ranked.slice(0, k)
-  const minScore = Math.min(...ranked.map((s) => s.score))
-  const raw = chosen.map((s, i) => (rule === 'equal' ? 1 : rule === 'rank' ? k - i : Math.max(s.score - minScore, 1e-9)))
+  // Score-proportional as in PortfolioConstruction.ScoreProportional: score − lowest selected score + 10% of the selected
+  // spread, so the weakest selected stock keeps a weight; identical scores fall back to equal weights.
+  const floor = Math.min(...chosen.map((s) => s.score))
+  const spread = Math.max(...chosen.map((s) => s.score)) - floor
+  const raw = chosen.map((s, i) => (rule === 'equal' || (rule === 'score' && spread <= 1e-12) ? 1 : rule === 'rank' ? k - i : s.score - floor + 0.1 * spread))
   const total = raw.reduce((a, b) => a + b, 0)
   const w = raw.map((x) => x / total)
   const capped = new Set<number>()
