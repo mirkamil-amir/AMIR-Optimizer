@@ -12,7 +12,7 @@ const summary = (id: string, name: string, extra: Partial<PortfolioSummary> = {}
   id, name, baseCurrency: 'USD', initialInvestment: 1000, cashBalance: 1000, marketValue: 0, totalValue: 1000, holdings: 0,
   createdAtUtc: '2026-10-01T00:00:00Z', updatedAtUtc: '2026-10-01T00:00:00Z', valuationProblems: [], description: null, status: 'Active',
   archivedAtUtc: null, netContributions: 1000, profitLoss: 0, valuationDate: null, stalePositions: 0, usesSimulatedData: true,
-  latestOptimizationAtUtc: null, lastActivityAtUtc: null, ...extra,
+  latestOptimizationAtUtc: null, lastTradeAtUtc: null, ...extra,
 })
 
 const data = vi.hoisted(() => ({ portfolios: [] as PortfolioSummary[] }))

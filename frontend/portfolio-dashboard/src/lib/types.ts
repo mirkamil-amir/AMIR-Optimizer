@@ -205,7 +205,7 @@ export interface PortfolioSummary {
   stalePositions: number
   usesSimulatedData: boolean
   latestOptimizationAtUtc: string | null
-  lastActivityAtUtc: string | null
+  lastTradeAtUtc: string | null
   /** The same figures in the overview's chosen currency (overview only). */
   inCurrency?: PortfolioInCurrency | null
 }

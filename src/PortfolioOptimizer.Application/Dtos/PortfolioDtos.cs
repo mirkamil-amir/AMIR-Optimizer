@@ -111,8 +111,8 @@ public sealed record PortfolioSummaryDto(
     int StalePositions = 0,
     bool UsesSimulatedData = false,
     DateTime? LatestOptimizationAtUtc = null,
-    /// <summary>Latest ledger booking (trade, deposit, dividend …).</summary>
-    DateTime? LastActivityAtUtc = null,
+    /// <summary>Latest buy or sell settlement in the ledger (deposits, fees and dividends do not count).</summary>
+    DateTime? LastTradeAtUtc = null,
     /// <summary>The same figures in the overview's chosen currency (overview only; null in plain lists).</summary>
     PortfolioInCurrencyDto? InCurrency = null);
 
