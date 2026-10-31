@@ -51,7 +51,7 @@ export function ChooseStocksPage({ section }: { section: keyof typeof labels }) 
         info={`Pick the stocks the ${labels[section]} of “${portfolio?.name ?? 'this portfolio'}” may invest in, then use them – they replace its equity universe. Nothing is saved until you run the optimization.`}
         actions={<Button variant="outline" size="sm" render={<Link to={back} />}>Back to {labels[section]}</Button>}
       />
-      <StockChooser trayActions={use} />
+      <StockChooser trayActions={use} priceCurrency={portfolio?.baseCurrency} />
     </>
   )
 }

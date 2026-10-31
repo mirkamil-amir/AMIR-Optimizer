@@ -1,5 +1,14 @@
 # Implementation status
 
+## 2026-10-31: Forge stock list in the portfolio currency
+
+* New portfolio (Forge): the portfolio currency is page state shared by the form and the stock list – a "Prices in"
+  picker in the list changes the form's currency and vice versa. The list adds "Price (<currency>)" (shared
+  `ConvertedPriceCell`, latest reference rates from `GET /fx/board` for the page's trading currencies, "—" without a
+  rate) next to "Original price" (the quote with change, kind and time), scrolls under a fixed header and opens in
+  Full screen with the same search, filters and pager. Choose stocks of Math/ML Optimization shows the same column in
+  the portfolio's fixed currency (no picker).
+
 ## 2026-10-31: holdings laid out like the trade proposal
 
 * The positions list on the Overview (Core) uses the proposal's layout: `SearchableTable` with search, sector filter and

@@ -11,13 +11,15 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { StockDetailDialog } from '@/components/stock-detail-dialog'
 import { Switch } from '@/components/ui/switch'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { ConvertedPriceCell, CurrencySelect } from '@/components/currency'
 import { DataTable, RangePager, type Column } from '@/components/data-table'
 import { EmptyState, ErrorState, InfoTip, LoadingBlock } from '@/components/common'
 import { QuoteCell, SelectionTray } from '@/components/stock-selection'
 import { UniverseNav, type UniverseScope } from '@/components/universe-nav'
 import { errorMessage } from '@/lib/api'
 import {
-  useMarkets, useQuoteRefreshCycle, useRefreshQuotes, useSectors, useStocks, type StockSort,
+  useFxBoard, useFxInfo, useMarkets, useQuoteRefreshCycle, useRefreshQuotes, useSectors, useStocks, type StockSort,
 } from '@/lib/queries'
 import { age, symbolsNeedingRefresh } from '@/lib/quote-status'
 import { useSelection } from '@/lib/selection'
@@ -39,9 +41,14 @@ const sortOptions: { value: StockSort; label: string }[] = [
 /**
  * "Choose stocks": markets, indices and sectors on the left, a searchable list with prices on the right and the temporary
  * selection on top. Used by New portfolio and by the stock choice of Math and ML Optimization; `trayActions` replaces
- * the selection tray's default buttons (the optimization pages bring their own "use these stocks").
+ * the selection tray's default buttons (the optimization pages bring their own "use these stocks"). `priceCurrency` adds
+ * a "Price (<currency>)" column converted with the server's latest reference rates (as in the trade proposal and the
+ * holdings); `onPriceCurrencyChange` adds a "Prices in" picker (New portfolio: the same currency as the form above).
+ * "Full screen" opens the same list, filters and pager over the window.
  */
-export function StockChooser({ trayActions }: { trayActions?: ReactNode }) {
+export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange }: {
+  trayActions?: ReactNode; priceCurrency?: string; onPriceCurrencyChange?: (currency: string) => void
+}) {
   const [scope, setScope] = useState<UniverseScope>({})
   const [searchText, setSearchText] = useState('')
   const search = useDeferredValue(searchText.trim())
@@ -51,6 +58,7 @@ export function StockChooser({ trayActions }: { trayActions?: ReactNode }) {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState<number>(50)
   const [detail, setDetail] = useState<string | null>(null)
+  const [fullScreen, setFullScreen] = useState(false)
   const signal = useMapSignal()
   // Opening a stock makes its exchange city blink on the background map.
   useEffect(() => { if (detail) signal(countryOfSymbol(detail), 'blink') }, [detail, signal])
@@ -68,6 +76,11 @@ export function StockChooser({ trayActions }: { trayActions?: ReactNode }) {
   const qc = useQueryClient()
 
   const items = stocks.data?.items ?? []
+  // Latest reference rates for the page's trading currencies against the chosen currency (one request per page).
+  const fxInfo = useFxInfo()
+  const foreign = [...new Set(items.map((s) => s.quote.currency || s.currency))].filter((c) => c && c !== priceCurrency).sort()
+  const board = useFxBoard(priceCurrency, foreign)
+  const boardRate = (c: string) => board.data?.rows.find((r) => r.quote === c)
   const pageSymbols = items.map((s) => s.symbol)
   const allOnPageSelected = pageSymbols.length > 0 && pageSymbols.every(selection.has)
   const cycleRunning = cycle.data?.status === 'Queued' || cycle.data?.status === 'Running'
@@ -162,7 +175,16 @@ export function StockChooser({ trayActions }: { trayActions?: ReactNode }) {
       ),
       className: 'hidden sm:table-cell',
     },
-    { key: 'price', header: 'Latest price', align: 'right', cell: (s) => <QuoteCell quote={s.quote} /> },
+    ...(priceCurrency ? [{
+      key: 'converted', header: `Price (${priceCurrency})`, align: 'right' as const,
+      cell: (s: StockListItem) => {
+        const from = s.quote.currency || s.currency
+        const row = boardRate(from)
+        // Board rates are units of the stock's currency per one unit of the chosen currency; the cell wants the inverse.
+        return <ConvertedPriceCell price={s.quote.price} from={from} to={priceCurrency} rate={row?.rate ? 1 / row.rate : null} rateDate={row?.observationDate ?? null} />
+      },
+    }] : []),
+    { key: 'price', header: priceCurrency ? 'Original price' : 'Latest price', align: 'right', cell: (s) => <QuoteCell quote={s.quote} /> },
     { key: 'sector', header: 'Sector', cell: (s) => <span className="text-xs">{s.sector ?? 'Unclassified'}</span>, className: 'hidden xl:table-cell' },
     {
       key: 'index',
@@ -196,6 +218,79 @@ export function StockChooser({ trayActions }: { trayActions?: ReactNode }) {
     </div>
   )
 
+  // The list with its search, filters, chips and pager – inline, or over the whole window ("Full screen").
+  const listBody = (inDialog: boolean) => (
+    <>
+      {/* Wraps instead of squeezing: the search keeps a usable width in the narrower portfolio layout too. */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative min-w-64 flex-[1_1_18rem]">
+          <Input
+            value={searchText}
+            onChange={(e) => { setSearchText(e.target.value); setPage(1) }}
+            placeholder="Search company name or ticker (e.g. Siemens, 7203)"
+            aria-label="Search company name or ticker"
+          />
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={sort} onValueChange={(v) => { setSort(v as StockSort); setPage(1) }} items={sortOptions}>
+            <SelectTrigger className="w-48" aria-label="Sort stocks"><SelectValue /></SelectTrigger>
+            <SelectContent>{sortOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+          </Select>
+          <div className="flex items-center gap-2">
+            <Switch id={inDialog ? 'with-prices-full' : 'with-prices'} checked={withPricesOnly} onCheckedChange={(v) => { setWithPricesOnly(v); setPage(1) }} />
+            <Label htmlFor={inDialog ? 'with-prices-full' : 'with-prices'} className="font-normal">With price history</Label>
+            <InfoTip label="Price history">Stocks with stored daily prices can be used in analyses right away. Others need their history fetched first (selection tray → Fetch prices).</InfoTip>
+          </div>
+          {priceCurrency && onPriceCurrencyChange && (
+            <div className="flex items-center gap-2">
+              <Label htmlFor={inDialog ? 'prices-in-full' : 'prices-in'} className="font-normal">Prices in</Label>
+              <CurrencySelect id={inDialog ? 'prices-in-full' : 'prices-in'} value={priceCurrency} onChange={onPriceCurrencyChange} supported={fxInfo.data?.currencies}
+                label="Prices in" size="sm" className="w-28" />
+            </div>
+          )}
+          <Button variant="outline" size="sm" onClick={refreshPage} disabled={items.length === 0 || refreshQuotes.isPending}>
+            Refresh prices
+          </Button>
+          {!inDialog && <Button variant="outline" size="sm" onClick={() => setFullScreen(true)}>Full screen</Button>}
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-1.5" aria-live="polite">
+        <span className="text-xs text-muted-foreground tabular">
+          {stocks.data ? `${num(stocks.data.totalCount, 0)} ${stocks.data.totalCount === 1 ? 'stock' : 'stocks'}` : ' '}
+        </span>
+        {chips.length === 0
+          ? <span className="text-xs text-muted-foreground">· all markets</span>
+          : chips.map((c) => (
+            <Badge key={c.key} variant="secondary" className="h-6 gap-1 pr-1 pl-2 font-normal">
+              {c.label}
+              <button type="button" onClick={c.remove} aria-label={`Remove filter ${c.label}`} className="rounded-sm p-0.5 hover:bg-background/60">
+                <X className="size-3" aria-hidden />
+              </button>
+            </Badge>
+          ))}
+        {chips.length > 1 && <Button variant="ghost" size="xs" onClick={clearAll}>Clear all</Button>}
+        {stocks.isFetching && <MatrixLoader className="ml-1 inline size-3" aria-label="Loading" />}
+      </div>
+      {stocks.error ? <ErrorState error={stocks.error} onRetry={() => stocks.refetch()} /> : stocks.isLoading ? <LoadingBlock height="h-96" /> : (
+        <>
+          {listControls('top')}
+          <DataTable
+            rows={items}
+            columns={columns}
+            rowKey={(s) => s.symbol}
+            onRowClick={(s) => setDetail(s.symbol)}
+            dense
+            maxRows={inDialog ? undefined : 15}
+            maxHeight={inDialog ? 'calc(100dvh - 19rem)' : undefined}
+            caption={`Stocks – ${scopeLabel}`}
+            empty={<EmptyState title="No stocks found" description="Try another market, sector or search term." />}
+          />
+          {listControls('bottom')}
+        </>
+      )}
+    </>
+  )
+
   return (
     <>
       <div className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
@@ -214,73 +309,28 @@ export function StockChooser({ trayActions }: { trayActions?: ReactNode }) {
           <PriceStatus run={cycle.data} pageRefreshing={refreshQuotes.isPending} />
           <Card className="py-4">
             <CardContent className="space-y-3 px-2 sm:px-4">
-              {/* Wraps instead of squeezing: the search keeps a usable width in the narrower portfolio layout too. */}
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="relative min-w-64 flex-[1_1_18rem]">
-                  <Input
-                    value={searchText}
-                    onChange={(e) => { setSearchText(e.target.value); setPage(1) }}
-                    placeholder="Search company name or ticker (e.g. Siemens, 7203)"
-                    aria-label="Search company name or ticker"
-                  />
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Select value={sort} onValueChange={(v) => { setSort(v as StockSort); setPage(1) }} items={sortOptions}>
-                    <SelectTrigger className="w-48" aria-label="Sort stocks"><SelectValue /></SelectTrigger>
-                    <SelectContent>{sortOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
-                  </Select>
-                  <div className="flex items-center gap-2">
-                    <Switch id="with-prices" checked={withPricesOnly} onCheckedChange={(v) => { setWithPricesOnly(v); setPage(1) }} />
-                    <Label htmlFor="with-prices" className="font-normal">With price history</Label>
-                    <InfoTip label="Price history">Stocks with stored daily prices can be used in analyses right away. Others need their history fetched first (selection tray → Fetch prices).</InfoTip>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={refreshPage} disabled={items.length === 0 || refreshQuotes.isPending}>
-                    Refresh prices
-                  </Button>
-                </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-1.5" aria-live="polite">
-                <span className="text-xs text-muted-foreground tabular">
-                  {stocks.data ? `${num(stocks.data.totalCount, 0)} ${stocks.data.totalCount === 1 ? 'stock' : 'stocks'}` : ' '}
-                </span>
-                {chips.length === 0
-                  ? <span className="text-xs text-muted-foreground">· all markets</span>
-                  : chips.map((c) => (
-                    <Badge key={c.key} variant="secondary" className="h-6 gap-1 pr-1 pl-2 font-normal">
-                      {c.label}
-                      <button type="button" onClick={c.remove} aria-label={`Remove filter ${c.label}`} className="rounded-sm p-0.5 hover:bg-background/60">
-                        <X className="size-3" aria-hidden />
-                      </button>
-                    </Badge>
-                  ))}
-                {chips.length > 1 && <Button variant="ghost" size="xs" onClick={clearAll}>Clear all</Button>}
-                {stocks.isFetching && <MatrixLoader className="ml-1 inline size-3" aria-label="Loading" />}
-              </div>
-              {stocks.error ? <ErrorState error={stocks.error} onRetry={() => stocks.refetch()} /> : stocks.isLoading ? <LoadingBlock height="h-96" /> : (
-                <>
-                  {listControls('top')}
-                  <DataTable
-                    rows={items}
-                    columns={columns}
-                    rowKey={(s) => s.symbol}
-                    onRowClick={(s) => setDetail(s.symbol)}
-                    dense
-                    caption={`Stocks – ${scopeLabel}`}
-                    empty={<EmptyState title="No stocks found" description="Try another market, sector or search term." />}
-                  />
-                  {listControls('bottom')}
-                </>
-              )}
+              {!fullScreen && listBody(false)}
             </CardContent>
           </Card>
           <p className="text-xs text-muted-foreground">
             Prices come from the server&apos;s data provider and are delayed quotes or last closes – never real-time. Each price shows when it
-            applies and when it was retrieved; prices are converted to the trading currency (London quotes from pence to pounds). Index
+            applies and when it was retrieved; prices are converted to the trading currency (London quotes from pence to pounds).
+            {priceCurrency && ` The “Price (${priceCurrency})” column converts them with the latest reference rate (its date on hover) – for comparing only, nothing is exchanged.`} Index
             memberships come from versioned Wikipedia constituent lists (CC BY-SA 4.0); the DAX 30 list is a historical composition. The index
             ETFs of the newer markets are a curated list, not index constituents.
           </p>
         </div>
       </div>
+
+      <Dialog open={fullScreen} onOpenChange={setFullScreen}>
+        <DialogContent className="top-2 left-2 flex h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-none translate-x-0 translate-y-0 flex-col gap-3 sm:max-w-none">
+          <DialogHeader>
+            <DialogTitle>Choose stocks – {scopeLabel}</DialogTitle>
+            <DialogDescription>Select with the boxes; the selection is kept when you close. Esc closes.</DialogDescription>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">{fullScreen && listBody(true)}</div>
+        </DialogContent>
+      </Dialog>
 
       <StockDetailDialog symbol={detail} items={items} markets={markets.data} onNavigate={setDetail} onClose={() => setDetail(null)} />
     </>
