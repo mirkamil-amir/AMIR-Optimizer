@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { useDeferredValue, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { X } from 'lucide-react'
 import { toast } from 'sonner'
@@ -27,6 +27,7 @@ import { useSelection } from '@/lib/selection'
 import type { Market, QuoteRefreshRun, StockListItem, StockTrend } from '@/lib/types'
 import { date, num } from '@/lib/format'
 import { countryOfSymbol } from '@/lib/markets'
+import { fitColumns } from '@/lib/column-fit'
 import { useMapSignal } from '@/lib/world-map'
 import { MatrixLoader } from '@/components/matrix-loader'
 import { cn } from '@/lib/utils'
@@ -62,10 +63,9 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
   const [detail, setDetail] = useState<string | null>(null)
   const [fullScreen, setFullScreen] = useState(false)
   const [filtersOpen, setFiltersOpen] = useState(false)
-  // Full screen draws its charts twice as wide only where the screen has room for them.
-  const wide = useMediaQuery('(min-width: 1280px)')
-  const chartWidth = wide ? 200 : 100
-  const chartColumn = wide ? 'w-56' : 'w-32'
+  // The list's own width (inline and in full screen) decides which columns fit.
+  const [inlineRef, inlineWidth, inlineEl] = useElementWidth()
+  const [dialogRef, dialogWidth, dialogEl] = useElementWidth()
   const signal = useMapSignal()
   // Opening a stock makes its exchange city blink on the background map.
   useEffect(() => { if (detail) signal(countryOfSymbol(detail), 'blink') }, [detail, signal])
@@ -152,80 +152,116 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
 
   const toSelected = (s: StockListItem) => ({ symbol: s.symbol, name: s.name, sector: s.sector, currency: s.currency })
 
-  // Widths fit the list next to two sidebars: tick box, ticker and both prices always; "1 month" from md; Company from xl
-  // (until then the name sits under the ticker); Sector and Index from 2xl (the industry also shows under the name).
-  // Full screen has no sidebars: every column, the full company name and a wider sparkline use the room.
-  const columnsFor = (full: boolean): Column<StockListItem>[] => [
+  // Columns size themselves from their content between a minimum and a maximum width, and the list shows as many as fit
+  // the width it really has (Forge next to two sidebars, full screen, a phone), in priority order (lib/column-fit.ts).
+  // The full-screen-only columns (longer trends, price history) join in the dialog. Charts stretch to their column.
+  const columnDefs = (full: boolean): { column: Column<StockListItem>; priority: number; minWidth: number }[] => [
     {
-      key: 'select',
-      header: <span className="sr-only">Select</span>,
-      cell: (s) => (
-        <Checkbox
-          checked={selection.has(s.symbol)}
-          onCheckedChange={() => selection.toggle(toSelected(s))}
-          onClick={(e) => e.stopPropagation()}
-          aria-label={`Select ${s.symbol}`}
-        />
-      ),
-      // Pinned with the ticker while the list scrolls sideways (opaque surface, so scrolled cells never show through).
-      className: STICKY_SELECT,
+      priority: 1, minWidth: 36,
+      column: {
+        key: 'select',
+        header: <span className="sr-only">Select</span>,
+        cell: (s) => (
+          <Checkbox
+            checked={selection.has(s.symbol)}
+            onCheckedChange={() => selection.toggle(toSelected(s))}
+            onClick={(e) => e.stopPropagation()}
+            aria-label={`Select ${s.symbol}`}
+          />
+        ),
+        // Pinned with the ticker while the list scrolls sideways (opaque surface, so scrolled cells never show through).
+        className: STICKY_SELECT,
+      },
     },
     {
-      key: 'symbol',
-      header: 'Ticker',
-      className: STICKY_TICKER,
-      cell: (s) => (
-        <div>
-          <div className="font-semibold">{s.symbol}</div>
-          <div className={cn('max-w-[4.5rem] truncate text-[11px] text-foreground sm:max-w-28', full ? 'hidden' : 'xl:hidden')}>{s.name}</div>
-          <div className="text-[11px] text-muted-foreground">{s.exchange ?? '—'}</div>
-        </div>
-      ),
+      priority: 1, minWidth: 96,
+      column: {
+        key: 'symbol',
+        header: 'Ticker',
+        className: STICKY_TICKER,
+        cell: (s) => (
+          <div>
+            <div className="font-semibold">{s.symbol}</div>
+            {/* The name sits here whenever the Company column does not fit. */}
+            {!shown(full).has('name') && <div className="max-w-[4.5rem] truncate text-[11px] text-foreground sm:max-w-28">{s.name}</div>}
+            <div className="text-[11px] text-muted-foreground">{s.exchange ?? '—'}</div>
+          </div>
+        ),
+      },
     },
     {
-      key: 'name',
-      header: 'Company',
-      cell: (s) => (
-        <div className={full ? 'min-w-48' : 'max-w-56'}>
-          <div className={full ? 'whitespace-normal' : 'truncate'}>{s.name ?? '—'}</div>
-          <div className={cn('text-[11px] text-muted-foreground', full ? 'whitespace-normal' : 'truncate')}>{s.industry ?? s.sector ?? 'Unclassified'}</div>
-        </div>
-      ),
-      className: full ? undefined : 'hidden xl:table-cell',
+      priority: 3, minWidth: 168,
+      column: {
+        key: 'name',
+        header: 'Company',
+        className: 'min-w-[10rem]',
+        cell: (s) => (
+          <div className="max-w-[22rem] whitespace-normal">
+            <div>{s.name ?? '—'}</div>
+            <div className="text-[11px] text-muted-foreground">{s.industry ?? s.sector ?? 'Unclassified'}</div>
+          </div>
+        ),
+      },
     },
     ...(priceCurrency ? [{
-      key: 'converted', header: `Price (${priceCurrency})`, align: 'right' as const, className: `w-32 ${PHONE_PAD}`,
-      cell: (s: StockListItem) => {
-        const from = s.quote.currency || s.currency
-        const row = boardRate(from)
-        // Board rates are units of the stock's currency per one unit of the chosen currency; the cell wants the inverse.
-        return <ConvertedPriceCell price={s.quote.price} from={from} to={priceCurrency} rate={row?.rate ? 1 / row.rate : null} rateDate={row?.observationDate ?? null} />
+      priority: 1, minWidth: 120,
+      column: {
+        key: 'converted', header: `Price (${priceCurrency})`, align: 'right' as const, className: `min-w-[6.5rem] ${PHONE_PAD}`,
+        cell: (s: StockListItem) => {
+          const from = s.quote.currency || s.currency
+          const row = boardRate(from)
+          // Board rates are units of the stock's currency per one unit of the chosen currency; the cell wants the inverse.
+          return <ConvertedPriceCell price={s.quote.price} from={from} to={priceCurrency} rate={row?.rate ? 1 / row.rate : null} rateDate={row?.observationDate ?? null} />
+        },
       },
     }] : []),
-    { key: 'price', header: priceCurrency ? 'Original price' : 'Latest price', align: 'right', className: `w-36 ${PHONE_PAD}`, cell: (s) => <QuoteCell quote={s.quote} /> },
-    {
-      key: 'trend', header: '1 month', align: 'right', className: full ? chartColumn : 'hidden w-28 md:table-cell',
-      cell: (s) => trendCell(s.symbol, trends, 'one month', full ? chartWidth : 88),
-    },
-    // Full screen only: three longer ranges and the stored price history; charts twice as wide on screens of 1280 px and more.
+    { priority: 1, minWidth: 120, column: { key: 'price', header: priceCurrency ? 'Original price' : 'Latest price', align: 'right', className: `min-w-[7rem] ${PHONE_PAD}`, cell: (s) => <QuoteCell quote={s.quote} /> } },
+    { priority: 2, minWidth: 120, column: { key: 'trend', header: '1 month', align: 'right', className: CHART_COLUMN, cell: (s) => trendCell(s.symbol, trends, 'one month') } },
     ...(full ? [
-      { key: 'trend3m', header: '3 months', align: 'right' as const, className: chartColumn, cell: (s: StockListItem) => trendCell(s.symbol, trends3m, 'three months', chartWidth) },
-      { key: 'trend1y', header: '1 year', align: 'right' as const, className: chartColumn, cell: (s: StockListItem) => trendCell(s.symbol, trends1y, 'one year', chartWidth) },
-      { key: 'trend5y', header: '5 years', align: 'right' as const, className: chartColumn, cell: (s: StockListItem) => trendCell(s.symbol, trends5y, 'five years', chartWidth) },
-      { key: 'history', header: 'Price history', className: 'w-36', cell: (s: StockListItem) => <HistoryCell stock={s} /> },
+      { priority: 4, minWidth: 120, column: { key: 'trend3m', header: '3 months', align: 'right' as const, className: CHART_COLUMN, cell: (s: StockListItem) => trendCell(s.symbol, trends3m, 'three months') } },
+      { priority: 5, minWidth: 120, column: { key: 'trend1y', header: '1 year', align: 'right' as const, className: CHART_COLUMN, cell: (s: StockListItem) => trendCell(s.symbol, trends1y, 'one year') } },
+      { priority: 6, minWidth: 144, column: { key: 'history', header: 'Price history', className: 'min-w-[9rem]', cell: (s: StockListItem) => <HistoryCell stock={s} /> } },
+      { priority: 7, minWidth: 120, column: { key: 'trend5y', header: '5 years', align: 'right' as const, className: CHART_COLUMN, cell: (s: StockListItem) => trendCell(s.symbol, trends5y, 'five years') } },
     ] : []),
-    { key: 'sector', header: 'Sector', cell: (s) => <span className="text-xs whitespace-normal">{s.sector ?? 'Unclassified'}</span>, className: full ? 'w-32' : 'hidden w-28 2xl:table-cell' },
     {
-      key: 'index',
-      header: 'Index',
-      cell: (s) => (
-        <div className="flex flex-wrap gap-1">
-          {s.indices.map((i) => <Badge key={i} variant="outline" className="h-5 px-1.5 text-[10px]">{indexLabel(markets.data, i)}</Badge>)}
-        </div>
-      ),
-      className: full ? 'w-24' : 'hidden w-24 2xl:table-cell',
+      priority: full ? 8 : 4, minWidth: 112,
+      column: { key: 'sector', header: 'Sector', className: 'min-w-[7rem]', cell: (s) => <span className="block max-w-[11rem] text-xs whitespace-normal">{s.sector ?? 'Unclassified'}</span> },
+    },
+    {
+      priority: full ? 9 : 5, minWidth: 96,
+      column: {
+        key: 'index',
+        header: 'Index',
+        className: 'min-w-[6rem]',
+        cell: (s) => (
+          <div className="flex max-w-[12rem] flex-wrap gap-1">
+            {s.indices.map((i) => <Badge key={i} variant="outline" className="h-5 px-1.5 text-[10px]">{indexLabel(markets.data, i)}</Badge>)}
+          </div>
+        ),
+      },
     },
   ]
+  // The visible columns for the inline list and for full screen, each from its own measured width; estimates are only a
+  // first guess – if the drawn table still overflows, the lowest-priority columns are dropped one by one until it fits.
+  const contentKey = `${items.map((s) => s.symbol).join(',')}|${trends.isSuccess}|${priceCurrency}`
+  const inlineTrim = useOverflowTrim(inlineEl, `${inlineWidth}|${contentKey}`)
+  const dialogTrim = useOverflowTrim(dialogEl, `${dialogWidth}|${contentKey}|${fullScreen}`)
+  const fitFor = (full: boolean) => {
+    const defs = columnDefs(full)
+    const fit = fitColumns(defs.map((d) => ({ key: d.column.key, priority: d.priority, minWidth: d.minWidth })), full ? dialogWidth : inlineWidth)
+    const optional = defs.filter((d) => d.priority > 1 && fit.visible.has(d.column.key)).sort((a, b) => b.priority - a.priority)
+    const drop = new Set(optional.slice(0, (full ? dialogTrim : inlineTrim).trimmed).map((d) => d.column.key))
+    const visible = new Set([...fit.visible].filter((k) => !drop.has(k)))
+    return { visible, hidden: defs.map((d) => d.column.key).filter((k) => !visible.has(k)), canTrim: optional.length > drop.size }
+  }
+  // Once per render; the Ticker cell reads it to show the name when the Company column is hidden.
+  const fits = { inline: fitFor(false), dialog: fitFor(true) }
+  const shown = (full: boolean) => (full ? fits.dialog : fits.inline).visible
+  const columnsFor = (full: boolean) => {
+    const fit = full ? fits.dialog : fits.inline
+    ;(full ? dialogTrim : inlineTrim).check(fit.canTrim)
+    return columnDefs(full).filter((d) => fit.visible.has(d.column.key)).map((d) => d.column)
+  }
 
   const scopeLabel = describeScope(markets.data, scope)
 
@@ -249,7 +285,7 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
 
   // The list with its search, filters, chips and pager – inline, or over the whole window ("Full screen").
   const listBody = (inDialog: boolean) => (
-    <>
+    <div ref={inDialog ? dialogRef : inlineRef} className="min-w-0 space-y-3">
       {/* Wraps instead of squeezing: the search keeps a usable width in the narrower portfolio layout too. */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative min-w-64 flex-[1_1_18rem]">
@@ -309,6 +345,7 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
       {stocks.error ? <ErrorState error={stocks.error} onRetry={() => stocks.refetch()} /> : stocks.isLoading ? <LoadingBlock height="h-96" /> : (
         <>
           {inDialog ? <div className="hidden sm:block">{listControls('top')}</div> : listControls('top')}
+          <HiddenColumnsNote count={(inDialog ? fits.dialog : fits.inline).hidden.length} inDialog={inDialog} onFullScreen={() => setFullScreen(true)} />
           <DataTable
             rows={items}
             columns={columnsFor(inDialog)}
@@ -323,7 +360,7 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
           {listControls('bottom')}
         </>
       )}
-    </>
+    </div>
   )
 
   return (
@@ -406,17 +443,26 @@ function describeScope(markets: Market[] | undefined, scope: UniverseScope) {
   return parts.join(' › ')
 }
 
-/** Change and sparkline of one stock over a range (as on the watchlist); "—" with the reason when history is missing. */
-function trendCell(symbol: string, query: { data?: StockTrend[]; isLoading: boolean }, rangeLabel: string, width: number) {
+/** Change and sparkline of one stock over a range (as on the watchlist), stretched to its column; "—" with the reason when history is missing. */
+function trendCell(symbol: string, query: { data?: StockTrend[]; isLoading: boolean }, rangeLabel: string) {
   const t = query.data?.find((x) => x.symbol === symbol)?.period
   if (!t) return query.isLoading ? null : <span className="text-xs text-muted-foreground">—</span>
   if (t.change === null && t.sparkline.length < 2) return <span className="text-xs text-muted-foreground" title={t.limitation ?? 'Not enough stored history'}>—</span>
   return (
-    <div className="flex flex-col items-end gap-0.5" title={t.change !== null ? `${t.basis}: ${t.baseDate} → ${t.endDate}` : t.limitation ?? undefined}>
+    <div className="flex w-full flex-col items-end gap-0.5" title={t.change !== null ? `${t.basis}: ${t.baseDate} → ${t.endDate}` : t.limitation ?? undefined}>
       <ChangeText value={t.change} className="text-xs" />
-      <Sparkline points={t.sparkline} label={`${symbol} ${t.basis.toLowerCase()} over ${rangeLabel}`} width={width} height={width > 120 ? 32 : width > 88 ? 28 : 24} />
+      <Sparkline points={t.sparkline} label={`${symbol} ${t.basis.toLowerCase()} over ${rangeLabel}`} width={160} height={28} fluid />
     </div>
   )
+}
+
+/** Says how many columns did not fit; inline it offers full screen, which has room for more. */
+function HiddenColumnsNote({ count, inDialog, onFullScreen }: { count: number; inDialog: boolean; onFullScreen: () => void }) {
+  if (count === 0) return null
+  const columns = `${count} more column${count === 1 ? '' : 's'}`
+  return inDialog
+    ? <p className="text-xs text-muted-foreground">{columns} {count === 1 ? 'does' : 'do'} not fit this window – widen it to see {count === 1 ? 'it' : 'them'}.</p>
+    : <p className="text-xs text-muted-foreground">{columns} in <button type="button" className="font-medium text-foreground underline-offset-2 hover:underline" onClick={onFullScreen}>Full screen</button>.</p>
 }
 
 /** Stored daily prices of a stock and their span; fewer than 61 means analyses would exclude it until prices are fetched. */
@@ -440,17 +486,46 @@ const STICKY_SELECT = `sticky left-0 z-[1] w-9 min-w-9 px-1.5 sm:w-10 sm:min-w-1
 const STICKY_TICKER = `sticky left-9 z-[1] w-20 min-w-20 px-1.5 shadow-[1px_0_0_var(--border)] sm:left-10 sm:w-28 sm:min-w-28 sm:px-2 ${STICKY_BG}`
 // Phones: a little less padding in the price columns, so both prices fit next to the ticker.
 const PHONE_PAD = 'px-1.5 sm:px-2'
+const SETTLE_PX = 24
+// Chart columns: at least wide enough for the change and a readable line; the line stretches with the column.
+const CHART_COLUMN = 'min-w-[7.5rem]'
 
-/** Whether a media query matches, kept in step with resizes (false where matchMedia is missing, e.g. in tests). */
-function useMediaQuery(query: string): boolean {
-  return useSyncExternalStore(
-    (onChange) => {
-      if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return () => {}
-      const list = window.matchMedia(query)
-      list.addEventListener('change', onChange)
-      return () => list.removeEventListener('change', onChange)
-    },
-    () => typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia(query).matches,
-    () => false,
-  )
+/**
+ * Width of an element in CSS pixels, kept in step with resizes (a generous default before the first measurement).
+ * Changes under 24 px are ignored: a page scrollbar that appears because the column set changed (about 15 px) must not
+ * change the column set back – that would flip forever.
+ */
+function useElementWidth(): [(el: HTMLDivElement | null) => void, number, HTMLDivElement | null] {
+  const [el, setEl] = useState<HTMLDivElement | null>(null)
+  const [width, setWidth] = useState(1200)
+  useEffect(() => {
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(([entry]) => {
+      const next = Math.round(entry.contentRect.width)
+      setWidth((prev) => (prev === 1200 || Math.abs(next - prev) >= SETTLE_PX ? next : prev))
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [el])
+  return [setEl, width, el]
+}
+
+/**
+ * How many optional columns to drop because the table drawn inside `el` is still wider than its box. Checked after every
+ * render; starts again from 0 whenever `resetKey` (width, rows, loaded data) changes.
+ */
+function useOverflowTrim(el: HTMLDivElement | null, resetKey: string): { trimmed: number; check: (canTrim: boolean) => void } {
+  const [state, setState] = useState({ key: resetKey, trimmed: 0 })
+  const trimmed = state.key === resetKey ? state.trimmed : 0
+  const canTrimRef = useRef(false)
+  // Reads the drawn layout after every render (no dependency list on purpose); bounded: it stops once the table fits or
+  // no optional column is left.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useLayoutEffect(() => {
+    const box = el?.querySelector('table')?.closest('.overflow-x-auto')
+    if (!box || !canTrimRef.current) return
+    // eslint-disable-next-line react/set-state-in-effect
+    if (box.scrollWidth > box.clientWidth + 1) setState({ key: resetKey, trimmed: trimmed + 1 })
+  })
+  return { trimmed, check: (canTrim) => { canTrimRef.current = canTrim } }
 }

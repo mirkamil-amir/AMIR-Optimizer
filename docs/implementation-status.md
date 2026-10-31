@@ -9,15 +9,19 @@
   Full screen with the same search, filters and pager. Choose stocks of Math/ML Optimization shows the same column in
   the portfolio's fixed currency (no picker).
 * The stock list adds a "1 month" column – change and sparkline as on the watchlist, from `GET /stocks/trends` (one
-  request per page, same calculation as the watchlist, integration-tested against it) – and fixed column widths that
-  fit next to the two sidebars: tick box, ticker and both prices always; "1 month" from md; Company from xl (name under
-  the ticker until then); Sector and Index from 2xl. Phones scroll the list sideways inside its box. Full screen has no
-  sidebars: every column and the full company name (wrapping), plus four full-screen-only columns – "3 months", "1 year"
-  and "5 years" (same trend endpoint, loaded only while full screen is open; charts twice as wide as in the page) and
-  "Price history" (stored days and span, marked "too short" below the 61 prices analyses need). Charts are twice as wide
-  from 1280 px (normal width below). The tick box and Ticker stay pinned while the table scrolls sideways (both views);
-  phones fold the full-screen filters behind "Filters" and hide the upper pager, and the normal view fits a 390 px phone
-  (tighter padding, the rate line may wrap). Checked at 390 px and 1440 px with sample data.
+  request per page, same calculation as the watchlist, integration-tested against it). Full screen adds "3 months",
+  "1 year", "5 years" (loaded only while it is open) and "Price history" (stored days and span, "too short" below the 61
+  prices analyses need).
+* Columns adapt to the list's real width and content: each sizes itself from its content between a minimum and a
+  maximum (text wraps, numbers never), and the list shows as many columns as fit its measured width in priority order
+  (`lib/column-fit.ts`: tick box, Ticker and both prices always; then 1 month, Company, Sector, Index – in full screen
+  the longer trends and Price history before Sector and Index). If the drawn table still overflows, the lowest-priority
+  column is dropped until it fits; width changes under 24 px are ignored so an appearing scrollbar cannot flip the
+  column set. The name moves under the Ticker when Company is hidden; a note says how many columns are hidden (inline:
+  "… in Full screen"). Sparklines stretch to their column (`Sparkline fluid`). The tick box and Ticker stay pinned while
+  the table scrolls sideways; phones fold the full-screen filters behind "Filters", hide the upper pager and fit the
+  normal view at 390 px (tighter padding, the rate line may wrap). Checked with sample data at 390, 1100, 1440, 1680,
+  1920 and 2560 px, inline and in full screen: no sideways scrolling, stable column sets.
 
 ## 2026-10-31: holdings laid out like the trade proposal
 

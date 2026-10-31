@@ -57,6 +57,9 @@ history) is never a plain `<ul>` or an unpaged table. Universes reach hundreds o
   predictions and proposed trades. In-page lists: `pageSize={25}`, `maxRows` 8–12, `dense`; full-page lists keep the
   defaults (50/15). Give it a stable `caption` – e2e specs find tables by it ("Recommended allocation", "Stocks in the
   universe"). Its search box never submits a surrounding form (Enter is swallowed) – the optimization forms rely on it.
+* A table with more columns than fit (the stock chooser): give each column a priority and a minimum width and let
+  `fitColumns` (`lib/column-fit.ts`) pick the columns from the list's measured width, not screen breakpoints; correct
+  after drawing if it still overflows, and ignore width changes under ~24 px (a scrollbar must not flip the set).
 * Inside a grid or flex column wrap it in `min-w-0` (a `<fieldset>` is as wide as its content by default: the universe
   table once widened the phone page by 9 px). Check 390 px for horizontal scroll.
 * Data for many named stocks: `useStocksBySymbols` (one request per 200 symbols, the API's page limit). A single
