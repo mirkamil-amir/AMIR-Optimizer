@@ -2,6 +2,11 @@
 
 ## 2026-11-01: the app is called Matrix; new logo that moves while calculating (D-49)
 
+* Top bar: the portfolio workspace entry is **View** (was Matrix); the sidebar's sections are "View sections".
+* Atlas: the Stocks & ETFs and Indexes tabs show tracked and not tracked ("1,899 tracked · … not tracked"), and a note
+  above the list says why they are not tracked – never downloaded (listed from an index's members), a download brought
+  no prices, or switched off by an administrator (`describeNotTracked` in `lib/instrument-counts.ts`, tested).
+
 * Name: **Matrix** (was MatrixView) – wordmark, tab title, favicon title, the home link's label ("Matrix – home").
 * Logo: an M glowing through an 11 × 11 dot matrix with gold diagonals (`components/brand.tsx`, geometry in
   `lib/logo-dots.ts`, favicon generated from it). Still by default; while any `MatrixLoader` or `WorkingPanel` is shown the

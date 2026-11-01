@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils'
 import { useCreateAsset, useFxSync, useMarketStatus, useSync, useUpdateAsset } from '@/lib/queries'
 import type { AssetCoverage, DataFreshness, FxCoverage } from '@/lib/types'
 import { date, dateTime, money, num, relativeTime } from '@/lib/format'
-import { describeCatalogue, describeSymbols, trackedTotal } from '@/lib/instrument-counts'
+import { describeCatalogue, describeNotTracked, describeSymbols, notTrackedTotal, trackedTotal } from '@/lib/instrument-counts'
 
 const historyOptions = [
   { value: '1', label: '1 year' },
@@ -173,12 +173,14 @@ export function MarketDataPage() {
                   'inline-flex border-b-2 px-3 py-2 text-sm whitespace-nowrap transition-colors focus-visible:rounded-t-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset',
                   x.path === current.path ? 'border-primary font-semibold text-foreground' : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground',
                 )}>
-                {x.label}<span className="ml-1.5 text-xs text-muted-foreground tabular">{x.path === 'currencies' ? currencies.length.toLocaleString() : `${trackedTotal(x.path === 'indexes' ? indexes : stocks).toLocaleString()} tracked`}</span>
+                {x.label}<span className="ml-1.5 text-xs text-muted-foreground tabular">{x.path === 'currencies' ? currencies.length.toLocaleString() : trackingLabel(x.path === 'indexes' ? indexes : stocks)}</span>
               </Link>
             </li>
           ))}
         </ul>
       </nav>
+
+      {current.path !== 'currencies' && <NotTrackedNote rows={current.path === 'indexes' ? indexes : stocks} />}
 
       {current.path === '' && (
         <SearchableTable key="stocks" label="stocks & ETFs" hint={current.hint} rows={stocks} columns={columns} rowKey={(c) => c.symbol} initialSort={{ key: 'symbol', dir: 'asc' }}
@@ -263,6 +265,18 @@ const SECTIONS = [
   { path: 'indexes', syncLabel: 'indexes', label: 'Indexes', hint: 'Stock indices used as benchmarks (e.g. ^GSPC, ^GDAXI). They are not investable; their prices are index points in the currency of their market.' },
   { path: 'currencies', syncLabel: 'currencies', label: 'Currencies', hint: 'Daily reference exchange rates, stored as units per 1 EUR – the pivot of every conversion: any other pair is calculated from two of these rates of the same day. Missing history is downloaded when an analysis needs it.' },
 ] as const
+
+/** The section tab's count: "1,899 tracked · 226 not tracked" (a zero "not tracked" is left out). */
+function trackingLabel(rows: AssetCoverage[]) {
+  const notTracked = notTrackedTotal(rows)
+  return `${trackedTotal(rows).toLocaleString()} tracked${notTracked ? ` · ${notTracked.toLocaleString()} not tracked` : ''}`
+}
+
+/** Why instruments of the open page are not tracked (lib/instrument-counts.ts › describeNotTracked); nothing when all are. */
+function NotTrackedNote({ rows }: { rows: AssetCoverage[] }) {
+  const text = describeNotTracked(rows)
+  return text ? <p className="map-surface mb-3 rounded-lg px-3 py-2 text-sm text-muted-foreground">{text}</p> : null
+}
 
 /**
  * The count line of an instrument list: per type, tracked and not tracked (src/lib/instrument-counts.ts), then the

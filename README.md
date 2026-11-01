@@ -98,7 +98,7 @@ Offline demo: start with `MarketData__DefaultProvider=Mock` on a new database, o
 
 ## Using the platform
 
-Navigation: the top bar holds **Matrix · AI Probe · Wire · Radar · Atlas · Codex · Lexicon · Settings** (portfolio
+Navigation: the top bar holds **View · AI Probe · Wire · Radar · Atlas · Codex · Lexicon · Settings** (portfolio
 workspace, AI research, financial news, watchlist, market data, strategy guide, glossary, settings); the left sidebar
 lists the Matrix's sections (**Lens** – your portfolios, **Forge** – new portfolio, **Solver** and **Pattern** – the Math
 and ML Optimization, **Trace** – history, **Rewind** – backtesting, **Arena** – comparison) and, for administrators,

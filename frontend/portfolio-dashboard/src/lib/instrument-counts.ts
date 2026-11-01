@@ -38,6 +38,47 @@ export function trackedTotal(rows: readonly Pick<AssetCoverage, 'isEnabled'>[]) 
   return rows.filter((r) => r.isEnabled).length
 }
 
+export function notTrackedTotal(rows: readonly Pick<AssetCoverage, 'isEnabled'>[]) {
+  return rows.filter((r) => !r.isEnabled).length
+}
+
+type ReasonRow = Pick<AssetCoverage, 'isEnabled' | 'observations' | 'lastSyncSuccess'>
+
+/**
+ * Why an instrument is not tracked, from what the catalogue knows about it. Index member lists add instruments untracked
+ * (`UniverseService`); the first download that brings prices starts tracking (`MarketDataService.SyncAsync`), and only an
+ * administrator can switch tracking off again (`UpdateAssetAsync`, stored prices are kept).
+ */
+export type NotTrackedReason = 'never-downloaded' | 'no-prices' | 'switched-off'
+
+export function notTrackedReason(r: ReasonRow): NotTrackedReason | null {
+  if (r.isEnabled) return null
+  if (r.observations > 0) return 'switched-off'
+  return r.lastSyncSuccess == null ? 'never-downloaded' : 'no-prices'
+}
+
+const REASONS: Record<NotTrackedReason, string> = {
+  'never-downloaded': 'never downloaded – listed from an index\'s members, no prices fetched yet (Download fetches them and starts tracking)',
+  'no-prices': 'a download was tried but brought no prices (the provider failed or has no history for the symbol)',
+  'switched-off': 'switched off by an administrator (stored prices are kept but no longer refreshed)',
+}
+
+/**
+ * "226 not tracked: 220 never downloaded – …; 5 a download was tried but …" – the reasons in a fixed order, zero
+ * counts left out; null when everything is tracked.
+ */
+export function describeNotTracked(rows: readonly ReasonRow[]) {
+  const counts = new Map<NotTrackedReason, number>()
+  for (const r of rows) {
+    const reason = notTrackedReason(r)
+    if (reason) counts.set(reason, (counts.get(reason) ?? 0) + 1)
+  }
+  const total = [...counts.values()].reduce((a, b) => a + b, 0)
+  if (!total) return null
+  const parts = (Object.keys(REASONS) as NotTrackedReason[]).filter((k) => counts.has(k)).map((k) => `${counts.get(k)!.toLocaleString()} ${REASONS[k]}`)
+  return `${total.toLocaleString()} not tracked: ${parts.join('; ')}.`
+}
+
 /** "Stocks: 1,863 tracked · 262 not tracked · ETFs: 25 tracked · 8 not tracked" (a zero "not tracked" is left out). */
 export function describeCatalogue(rows: readonly Pick<AssetCoverage, 'assetType' | 'isEnabled'>[]) {
   return countByType(rows).map(({ type, tracked, notTracked }) => {

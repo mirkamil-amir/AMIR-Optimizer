@@ -17,7 +17,8 @@ register themselves (`useWorkInProgress`), and the shell's logo moves while any 
 moves, the tab is hidden or a mark is scrolled away; with reduced motion it never runs and the mark pulses gently.
 **Consequences:** the motion is computed in about 0.3 ms per frame (≈ 0.5 % of one core at 20 fps, measured in Node on
 the owner's Mac; drawing comes on top and was not measured); nothing runs while idle. At 12–16 px the M is a soft shape.
-The top bar's "Matrix" entry (the portfolio workspace, D-47) now shares the app's name.
+The top bar's portfolio-workspace entry (D-47) was renamed from "Matrix" to **View** the same day, so it no longer
+shares the app's name (sidebar: "View sections").
 
 ## D-48 Long lists are searchable and paged; big matrices pan, open in full screen and render a window (2026-10-29)
 **Context:** on Solver and Pattern the equity universe, the allocation and the predictions were plain lists; universes

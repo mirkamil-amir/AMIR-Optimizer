@@ -39,8 +39,8 @@ F-MD-001..003, F-RET-004 in `docs/quant/formula-reference.md`.
   stocks, ETFs and indexes, each tracked (`Asset.IsEnabled` – what a sync downloads) or not tracked (never downloaded).
   A total that mixes them cannot be compared with a download job: the Atlas tab once showed "2,158 Stocks & ETFs" (incl.
   270 not tracked) next to a "1,918 stocks" job (1,863 stocks + 25 ETFs + 30 indexes, all tracked). So every count shown
-  to users says per type how many are tracked and how many are not (`describeCatalogue`), tab badges show the tracked
-  count ("1,888 tracked"), and a job's size names its types (`describeSymbols`: "1,863 stocks, 25 ETFs, 30 indexes") –
+  to users says per type how many are tracked and how many are not (`describeCatalogue`), tab badges show tracked and not tracked
+  ("1,888 tracked · 270 not tracked"), a note gives the reasons for not tracked (`describeNotTracked`, `notTrackedReason`), and a job's size names its types (`describeSymbols`: "1,863 stocks, 25 ETFs, 30 indexes") –
   never call a mixed job "stocks". Use the helpers in `frontend/portfolio-dashboard/src/lib/instrument-counts.ts`
   (tested in `instrument-counts.test.ts`) instead of `rows.length`. The scheduled refresh
   (`ScheduledMarketDataRefresh`) and the seed sync take **every tracked instrument of every type**; the per-page syncs
