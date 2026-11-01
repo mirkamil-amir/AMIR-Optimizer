@@ -1,6 +1,6 @@
 ---
 name: maintain-knowledge
-description: Keep MatrixView's formula reference, skills and quantitative docs in step with the code using scripts/quant/maintain.py (validate, index, check-skills, review-changes, audit, test-quant, full-check) and the quant-maintenance CI workflow. Use after changing quantitative code, a skill, the manifest or docs; before opening a pull request; when CI's knowledge or quant-tests job fails; or when asked to audit documentation drift.
+description: Keep Matrix's formula reference, skills and quantitative docs in step with the code using scripts/quant/maintain.py (validate, index, check-skills, review-changes, audit, test-quant, full-check) and the quant-maintenance CI workflow. Use after changing quantitative code, a skill, the manifest or docs; before opening a pull request; when CI's knowledge or quant-tests job fails; or when asked to audit documentation drift.
 ---
 
 # Maintain the knowledge system

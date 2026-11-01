@@ -1,9 +1,9 @@
-# MatrixView
+# Matrix
 
-**MatrixView** (formerly AMIR Optimizer) is named after the covariance matrix at the heart of the optimizer. The logo
-is a 4×4 correlation matrix – the risk model at the core
-of the optimizer – with its diagonal in gold on a graded navy tile; the name is set in Sora
-(`frontend/…/src/components/brand.tsx`, `public/favicon.svg`).
+**Matrix** (formerly MatrixView and AMIR Optimizer) is named after the covariance matrix at the heart of the optimizer.
+The logo is an M glowing through an 11 × 11 dot matrix – its diagonals in gold – on a graded navy tile; it stays still
+and moves (surf, stones, tornadoes, a slow twinkle) only while the app calculates. The name is set in Sora
+(`frontend/…/src/components/brand.tsx`, `src/lib/logo-dots.ts`, `src/lib/logo-motion.ts`, `public/favicon.svg`).
 
 An educational portfolio-research platform. An **AI research assistant** turns an investment objective into an
 editable research brief, researches a universe with evidence, runs the real optimizer and risk review, explains the

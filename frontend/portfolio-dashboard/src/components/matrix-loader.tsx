@@ -1,33 +1,41 @@
+import { useRef } from 'react'
+import { MatrixMark } from '@/components/brand'
+import { useLogoAnimation, useWorkInProgress } from '@/lib/logo-animator'
+import { logoDots } from '@/lib/logo-dots'
 import { cn } from '@/lib/utils'
 
-/** Dot order of the sweep: row by row, like reading the matrix (the diagonal of the logo lights up on the way). */
-const DOTS = [0, 1, 2, 3].flatMap((row) => [0, 1, 2, 3].map((col) => ({ row, col })))
+const DOTS = logoDots()
 
 /**
- * "Working" indicator in the shape of the MatrixView logo: the 16 dots of the correlation matrix light up one after another,
- * so a download, optimization or training visibly runs. Inherits the text colour and the size of an icon (1em, or the
- * `size-*` of the surrounding button). With reduced motion the dots pulse together slowly instead of sweeping.
+ * "Working" indicator in the shape of the Matrix logo: the glowing M of the 11 × 11 matrix with the logo's working
+ * animation (surf, stones, tornadoes, twinkle – `lib/logo-motion.ts`), so a download, optimization or training visibly
+ * runs. While it is shown the shell's logo moves too (`useWorkInProgress`). Inherits the text colour and the size of an
+ * icon (1em, or the `size-*` of the surrounding button); dots are drawn a little larger than in the mark so the M stays
+ * readable at 12–16 px. With reduced motion it pulses gently instead.
  */
 export function MatrixLoader({ className, label }: { className?: string; label?: string }) {
+  const ref = useRef<SVGSVGElement>(null)
+  useWorkInProgress()
+  useLogoAnimation(ref, true, 'mono')
   return (
-    <svg viewBox="0 0 40 40" className={cn('matrix-loader size-4 shrink-0', className)} role={label ? 'img' : undefined}
+    <svg ref={ref} viewBox="0 0 100 100" className={cn('matrix-working size-4 shrink-0', className)} role={label ? 'img' : undefined}
       aria-label={label} aria-hidden={label ? undefined : true}>
-      {DOTS.map(({ row, col }, i) => (
-        <circle key={i} cx={8 + col * 8} cy={8 + row * 8} r={row === col ? 3.6 : 3}
-          fill="currentColor" style={{ animationDelay: `${i * 0.08}s` }} />
+      {DOTS.map((d, i) => (
+        <circle key={i} cx={d.x} cy={d.y} r="3.4" fill="currentColor" fillOpacity={d.opacity} data-opacity={d.opacity} />
       ))}
     </svg>
   )
 }
 
 /**
- * A running background job (download, ML training, backtest, comparison): the large matrix loader in the brand colour,
- * what is happening, and – when known – the progress. `percent` null shows an indeterminate state.
+ * A running background job (download, ML training, backtest, comparison): the moving logo, what is happening, and – when
+ * known – the progress. `percent` null shows an indeterminate state.
  */
 export function WorkingPanel({ title, detail, percent, className }: { title: string; detail?: string | null; percent?: number | null; className?: string }) {
+  useWorkInProgress()
   return (
     <div className={cn('flex items-center gap-4 rounded-xl border bg-card px-4 py-3', className)} role="status" aria-live="polite">
-      <MatrixLoader className="size-9 text-[var(--brand)] dark:text-[var(--brand-accent)]" label={title} />
+      <MatrixMark motion="always" className="size-9" title={title} />
       <div className="min-w-0 flex-1 space-y-1.5">
         <div className="flex items-baseline justify-between gap-3 text-sm">
           <span className="font-medium">{title}</span>

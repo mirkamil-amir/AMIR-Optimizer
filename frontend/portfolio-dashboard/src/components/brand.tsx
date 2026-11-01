@@ -1,35 +1,41 @@
-import { useId } from 'react'
+import { useId, useRef } from 'react'
+import { useAppWorking, useLogoAnimation } from '@/lib/logo-animator'
+import { logoDots } from '@/lib/logo-dots'
 import { cn } from '@/lib/utils'
 
-/** MatrixView (named by the owner): named after the covariance/correlation matrix at the core of the optimizer and the logo. */
+/** Matrix (named by the owner; "MatrixView" until 2026-11-01): after the covariance/correlation matrix at the core of the optimizer and the logo. */
 export const BRAND = {
-  name: 'MatrixView',
+  name: 'Matrix',
 } as const
 
-/** Opacity of an off-diagonal dot: correlation fades with the distance from the diagonal. */
-const DOT_OPACITY = [1, 0.85, 0.55, 0.3]
+const DOTS = logoDots()
 
 /**
- * The Matrix mark (chosen by the owner from nine concepts): a 4×4 correlation matrix – the risk model at the core of the
- * optimizer – whose diagonal of ones is set in the accent colour, on a softly graded tile. Colours follow the active skin:
- * --brand (tile), --brand-foreground (dots), --brand-accent (diagonal). `public/favicon.svg` is the same drawing.
+ * The Matrix mark (variation 3c, chosen by the owner on 2026-11-01): an M glowing through an 11 × 11 dot matrix, its two
+ * diagonals in the accent colour, on a softly graded tile (`lib/logo-dots.ts`). Colours follow the active skin: --brand
+ * (tile), --brand-foreground (dots), --brand-accent (diagonals). `motion`: 'work' moves only while the app is calculating
+ * (the shell's logo), 'always' moves for as long as it is shown (`WorkingPanel`), 'still' never moves. The movement is
+ * `lib/logo-motion.ts`, driven by `lib/logo-animator.ts`. `public/favicon.svg` is the still drawing.
  */
-export function MatrixMark({ className, title = BRAND.name }: { className?: string; title?: string }) {
+export function MatrixMark({ className, title = BRAND.name, motion = 'work' }: { className?: string; title?: string; motion?: 'work' | 'always' | 'still' }) {
   const id = useId().replace(/:/g, '')
-  const dots = [0, 1, 2, 3].flatMap((row) => [0, 1, 2, 3].map((col) => ({ row, col, diagonal: row === col })))
+  const ref = useRef<SVGSVGElement>(null)
+  const working = useAppWorking()
+  const active = motion === 'always' || (motion === 'work' && working)
+  useLogoAnimation(ref, active, 'color')
   return (
-    <svg viewBox="0 0 40 40" className={cn('size-8 shrink-0', className)} role="img" aria-label={title}>
+    <svg ref={ref} viewBox="0 0 100 100" className={cn('size-8 shrink-0', active && 'matrix-working', className)} role="img" aria-label={title}>
       <defs>
         <linearGradient id={`matrix-tile-${id}`} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" style={{ stopColor: 'color-mix(in oklch, var(--brand) 88%, white)' }} />
           <stop offset="1" style={{ stopColor: 'color-mix(in oklch, var(--brand) 82%, black)' }} />
         </linearGradient>
       </defs>
-      <rect x="1" y="1" width="38" height="38" rx="10" fill={`url(#matrix-tile-${id})`} />
-      {dots.map(({ row, col, diagonal }) => (
-        <circle key={`${row}-${col}`} cx={11 + col * 6} cy={11 + row * 6} r={diagonal ? 2.4 : 1.9}
-          fill={diagonal ? 'var(--brand-accent)' : 'var(--brand-foreground)'} fillOpacity={DOT_OPACITY[Math.abs(row - col)]} />
-      ))}
+      <rect width="100" height="100" rx="22" fill={`url(#matrix-tile-${id})`} />
+      {DOTS.map((d, i) => {
+        const fill = d.gold ? 'var(--brand-accent)' : 'var(--brand-foreground)'
+        return <circle key={i} cx={d.x} cy={d.y} r="2.5" fill={fill} fillOpacity={d.opacity} data-fill={fill} data-opacity={d.opacity} />
+      })}
     </svg>
   )
 }

@@ -1,5 +1,15 @@
 # Implementation status
 
+## 2026-11-01: the app is called Matrix; new logo that moves while calculating (D-49)
+
+* Name: **Matrix** (was MatrixView) – wordmark, tab title, favicon title, the home link's label ("Matrix – home").
+* Logo: an M glowing through an 11 × 11 dot matrix with gold diagonals (`components/brand.tsx`, geometry in
+  `lib/logo-dots.ts`, favicon generated from it). Still by default; while any `MatrixLoader` or `WorkingPanel` is shown the
+  shell's logo and the indicators move (surf, stones, four tornadoes, slow twinkle – `lib/logo-motion.ts`) at 20 frames
+  per second via one shared ticker (`lib/logo-animator.ts`), paused for hidden tabs and marks out of view; reduced motion
+  gets a gentle pulse. The skin preview in Settings stays still. Tests: `logo-dots.test.ts`, `logo-motion.test.ts`,
+  `brand.test.tsx`.
+
 ## 2026-10-31: watchlist in your own order
 
 * Radar's watchlist can be reordered by drag and drop (handle per row; pointer events, so mouse, pen and touch) or with
@@ -381,7 +391,7 @@
 
 * Converter card (rates board, pair chart, calculator) on the overview and stock-selection pages, backed by
   `/fx/history` and `/fx/board`; labelled reference rates with dates, never "live".
-* Brand: MatrixView (formerly AMIR Optimizer); SVG mark (a correlation matrix with a gold diagonal) in the sidebar, sign-in pages, favicon, tab title.
+* Brand: Matrix (formerly MatrixView, AMIR Optimizer); SVG mark (an M glowing through an 11 × 11 dot matrix, gold diagonals; moves while the app calculates) in the sidebar, sign-in pages, favicon, tab title.
 * Light / dark / system mode and five colour skins; header toggle and Settings → Appearance; persisted per browser.
 * Verified by unit, integration, Vitest and e2e tests and by screenshots (light, dark Ocean, Violet).
 

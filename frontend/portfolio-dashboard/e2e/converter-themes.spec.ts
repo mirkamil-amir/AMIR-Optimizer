@@ -8,7 +8,7 @@ async function pick(page: Page, name: RegExp) {
   await option.click()
 }
 
-// Currency converter on the overview and stock-selection pages, the MatrixView brand, and switchable themes.
+// Currency converter on the overview and stock-selection pages, the Matrix brand, and switchable themes.
 test.use({ storageState: ADMIN_STATE })
 
 test('currency converter (overview only) shows dated reference rates, a chart and a calculator', async ({ page }) => {
@@ -68,11 +68,11 @@ test('currency converter (overview only) shows dated reference rates, a chart an
   await page.mouse.move(0, 0)
 })
 
-test('MatrixView brand and themes: logo in the shell, dark mode and skins persist', async ({ page }) => {
+test('Matrix brand and themes: logo in the shell, dark mode and skins persist', async ({ page }) => {
   await page.goto('/')
-  await expect(page).toHaveTitle('MatrixView')
-  await expect(page.getByRole('link', { name: 'MatrixView – home' })).toBeVisible()
-  await expect(page.locator('[title="MatrixView"]').first()).toBeAttached()
+  await expect(page).toHaveTitle('Matrix')
+  await expect(page.getByRole('link', { name: 'Matrix – home' })).toBeVisible()
+  await expect(page.locator('[title="Matrix"]').first()).toBeAttached()
 
   await page.goto('/settings#appearance')
   await page.getByRole('radio', { name: /Dark/ }).click()

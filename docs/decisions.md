@@ -2,6 +2,23 @@
 
 Short records of decisions that are not obvious from the code. Newest first. Format: context → decision → consequences.
 
+## D-49 Name "Matrix"; a glowing M that moves only while the app calculates (2026-11-01)
+**Context:** the 4×4 correlation-matrix mark read as a generic grid; the owner wanted a new logo, a "thinking" state, and
+the shorter name. Candidates were rendered on a design canvas (nine marks, six variations, densities 11/15/22, eight
+animations) before anything was built.
+**Decision:** the app is called **Matrix** (was MatrixView). The mark is variation 3c on an 11 × 11 grid: an M through the
+dot matrix, each dot glowing by its distance to the strokes, the diagonals in the accent colour (gold), on the graded brand
+tile (`lib/logo-dots.ts`; the favicon is generated from it and checked by a test). While the app calculates, the dots move:
+rolling surf with peeling crests and foam, stones dropped into the water, up to four tornadoes and a 20-second twinkle,
+all random so it never repeats (`lib/logo-motion.ts`), at 20 frames per second. Otherwise every mark is still.
+"Calculating" means a work indicator is on screen: `MatrixLoader` (buttons, inline) and `WorkingPanel` (background jobs)
+register themselves (`useWorkInProgress`), and the shell's logo moves while any is registered. One shared ticker
+(`lib/logo-animator.ts`) updates all moving marks by setting attributes – never React state – and stops when nothing
+moves, the tab is hidden or a mark is scrolled away; with reduced motion it never runs and the mark pulses gently.
+**Consequences:** the motion is computed in about 0.3 ms per frame (≈ 0.5 % of one core at 20 fps, measured in Node on
+the owner's Mac; drawing comes on top and was not measured); nothing runs while idle. At 12–16 px the M is a soft shape.
+The top bar's "Matrix" entry (the portfolio workspace, D-47) now shares the app's name.
+
 ## D-48 Long lists are searchable and paged; big matrices pan, open in full screen and render a window (2026-10-29)
 **Context:** on Solver and Pattern the equity universe, the allocation and the predictions were plain lists; universes
 reach 228 stocks, the universe list loaded at most 200 names, and the 228 × 228 correlation matrix grew the page and took

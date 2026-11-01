@@ -1,6 +1,6 @@
 ---
 name: market-data-fx
-description: How MatrixView ingests, normalizes and stores prices (Yahoo, Alpha Vantage, Mock providers; quotes vs. daily bars; adjusted vs. raw closes) and converts them between currencies with dated ECB rates (FxTable, CurrencyConverter, FxService, FxDownloader, missing-rate handling). Use when changing providers, sync jobs, price normalization, markets/currencies, FX conversion or anything that decides which prices an analysis may use; or when stocks are excluded for missing history or rates.
+description: How Matrix ingests, normalizes and stores prices (Yahoo, Alpha Vantage, Mock providers; quotes vs. daily bars; adjusted vs. raw closes) and converts them between currencies with dated ECB rates (FxTable, CurrencyConverter, FxService, FxDownloader, missing-rate handling). Use when changing providers, sync jobs, price normalization, markets/currencies, FX conversion or anything that decides which prices an analysis may use; or when stocks are excluded for missing history or rates.
 ---
 
 # Market data and currencies

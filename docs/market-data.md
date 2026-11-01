@@ -239,7 +239,7 @@ or tracked indexes (`SyncRequest.AssetTypes`), or every exchange rate of the FX 
 Counts are split by type and tracking (`lib/instrument-counts.ts`): a tab badge shows the tracked instruments ("1,888
 tracked"), the line above the list each type's tracked and not tracked instruments, the catalogue total and how many have
 prices ("Stocks: 1,863 tracked · 262 not tracked · ETFs: 25 tracked · 8 not tracked · 2,158 in the catalogue, 1,888 with
-prices"). Downloads show the MatrixView loader with progress and the job's types ("… of 1,918 tracked instruments (1,863
+prices"). Downloads show the Matrix loader with progress and the job's types ("… of 1,918 tracked instruments (1,863
 stocks, 25 ETFs, 30 indexes)" – the scheduled refresh takes every tracked instrument, indexes included, so its total is
 not the Stocks & ETFs count), the last symbol and how many downloads wait (jobs run one at a time,
 so a manual download can wait behind the scheduled refresh); exchange-rate downloads use the same panel
