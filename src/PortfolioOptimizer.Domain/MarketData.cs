@@ -43,6 +43,23 @@ public class Asset
 }
 
 /// <summary>
+/// What is stored of one asset from one source – derived from <see cref="HistoricalPrice"/>, never edited by hand: rewritten
+/// for the asset after every price upsert and rebuilt for all assets when the application starts (so changes made outside
+/// the application cannot leave stale numbers). Lets the market-data status answer without reading every price.
+/// </summary>
+public class PriceCoverage
+{
+    public int AssetId { get; set; }
+    public required string Source { get; set; }
+    public int Observations { get; set; }
+    public DateOnly FirstDate { get; set; }
+    public DateOnly LastDate { get; set; }
+    public DateTime LastRetrievedAtUtc { get; set; }
+    /// <summary>Bars with an adjusted close (equal to <see cref="Observations"/> when the whole history is adjusted).</summary>
+    public int AdjustedObservations { get; set; }
+}
+
+/// <summary>
 /// One daily bar from one source. <see cref="Close"/> is the raw (unadjusted) close used for trading;
 /// <see cref="AdjustedClose"/> is split- and dividend-adjusted (total return) when the source provides it.
 /// Unique per (asset, date, source).

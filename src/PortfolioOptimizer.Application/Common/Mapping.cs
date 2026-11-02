@@ -110,4 +110,12 @@ public static class Mapping
         j.StartDate, j.EndDate, j.RequestedAtUtc, j.StartedAtUtc, j.CompletedAtUtc,
         j.AssetsTotal, j.AssetsCompleted, j.AssetsFailed, j.Message,
         j.Logs.OrderBy(l => l.Symbol).Select(l => new SyncLogDto(l.Symbol, l.Success, l.RowsReceived, l.RowsInserted, l.RowsUpdated, l.RowsRejected, l.DuplicatesSkipped, l.Message, l.CompletedAtUtc)).ToList());
+
+    /// <summary>A job without its per-instrument logs (status overview); a running job names what is still waiting and the last done.</summary>
+    public static SyncJobDto ToSummaryDto(this MarketDataSyncJob j, IReadOnlyList<string>? pendingSymbols, string? lastSymbol) => new(
+        j.Id, j.Status, j.Source,
+        j.Symbols.Split(',', StringSplitOptions.RemoveEmptyEntries),
+        j.StartDate, j.EndDate, j.RequestedAtUtc, j.StartedAtUtc, j.CompletedAtUtc,
+        j.AssetsTotal, j.AssetsCompleted, j.AssetsFailed, j.Message,
+        [], LogsIncluded: false, PendingSymbols: pendingSymbols, LastSymbol: lastSymbol);
 }

@@ -44,6 +44,68 @@ public sealed class DataAccessEfficiencyTests : IAsyncLifetime
         return await f(scope.ServiceProvider);
     }
 
+    /// <summary>Coverage straight from the prices (the reference the stored coverage must equal).</summary>
+    private static async Task<List<PriceCoverage>> CoverageFromPricesAsync(AppDbContext db) =>
+        (await db.HistoricalPrices.AsNoTracking()
+            .GroupBy(p => new { p.AssetId, p.Source })
+            .Select(g => new { g.Key.AssetId, g.Key.Source, Count = g.Count(), First = g.Min(p => p.Date), Last = g.Max(p => p.Date),
+                Retrieved = g.Max(p => p.RetrievedAtUtc), Adjusted = g.Count(p => p.AdjustedClose != null) })
+            .ToListAsync())
+        .Select(x => new PriceCoverage { AssetId = x.AssetId, Source = x.Source, Observations = x.Count, FirstDate = x.First, LastDate = x.Last,
+            LastRetrievedAtUtc = x.Retrieved, AdjustedObservations = x.Adjusted })
+        .OrderBy(c => c.AssetId).ThenBy(c => c.Source).ToList();
+
+    private static List<(int, string, int, DateOnly, DateOnly, DateTime, int)> Rows(IEnumerable<PriceCoverage> rows) =>
+        rows.OrderBy(c => c.AssetId).ThenBy(c => c.Source)
+            .Select(c => (c.AssetId, c.Source, c.Observations, c.FirstDate, c.LastDate, c.LastRetrievedAtUtc, c.AdjustedObservations)).ToList();
+
+    [Fact]
+    public async Task StoredCoverage_EqualsThePrices_AfterDownloads_AndIsRebuiltWhenPricesChangeOutsideTheApp()
+    {
+        await WithScope(async sp =>
+        {
+            var db = sp.GetRequiredService<AppDbContext>();
+            // Kept by every upsert: the downloads of InitializeAsync.
+            var reference = await CoverageFromPricesAsync(db);
+            Assert.NotEmpty(reference);
+            Assert.Equal(Rows(reference), Rows(await db.PriceCoverage.AsNoTracking().ToListAsync()));
+
+            // Prices removed outside the application (SQL, like a manual TRUNCATE) – rolled back afterwards.
+            await using var tx = await db.Database.BeginTransactionAsync();
+            var victim = reference[0].AssetId;
+            await db.Database.ExecuteSqlInterpolatedAsync($"""DELETE FROM "HistoricalPrices" WHERE "AssetId" = {victim}""");
+            Assert.True(await db.PriceCoverage.AnyAsync(c => c.AssetId == victim)); // stale until rebuilt
+            await sp.GetRequiredService<DatabaseInitializer>().RebuildPriceCoverageAsync(CancellationToken.None);
+            Assert.False(await db.PriceCoverage.AnyAsync(c => c.AssetId == victim));
+            Assert.Equal(Rows(await CoverageFromPricesAsync(db)), Rows(await db.PriceCoverage.AsNoTracking().ToListAsync()));
+            await tx.RollbackAsync();
+            return 0;
+        });
+    }
+
+    [Fact]
+    public async Task Status_ListsJobsWithoutLogs_AndTheJobEndpointHasThem()
+    {
+        var status = await (await _user.GetAsync("/api/v1/market-data/status")).ReadAsync<MarketDataStatusDto>();
+        var job = Assert.Single(status.RecentJobs, j => j.AssetsTotal == Symbols.Length);
+        Assert.False(job.LogsIncluded);
+        Assert.Empty(job.Logs);
+        Assert.Null(job.PendingSymbols); // finished jobs name nothing as waiting
+
+        var detail = await (await _user.GetAsync($"/api/v1/market-data/jobs/{job.Id}")).ReadAsync<SyncJobDto>();
+        Assert.True(detail.LogsIncluded);
+        Assert.Equal(Symbols.Order(), detail.Logs.Select(l => l.Symbol).Order());
+
+        // The status coverage comes from the stored coverage and agrees with the prices.
+        var reference = await WithScope(async sp => await CoverageFromPricesAsync(sp.GetRequiredService<AppDbContext>()));
+        foreach (var c in status.Coverage.Where(c => c.Observations > 0))
+        {
+            var r = Assert.Single(reference, x => x.AssetId == c.AssetId && x.Source == status.ActiveProvider);
+            Assert.Equal((r.Observations, r.FirstDate, r.LastDate, r.LastRetrievedAtUtc, r.AdjustedObservations == r.Observations),
+                (c.Observations, c.FirstDate, c.LastDate, c.LastRetrievedAtUtc, c.HasAdjustedClose));
+        }
+    }
+
     [Fact]
     public async Task BatchedPriceQueries_EqualThePerAssetReference()
     {

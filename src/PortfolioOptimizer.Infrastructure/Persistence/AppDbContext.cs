@@ -20,6 +20,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<Asset> Assets => Set<Asset>();
     public DbSet<HistoricalPrice> HistoricalPrices => Set<HistoricalPrice>();
     public DbSet<LatestQuote> LatestQuotes => Set<LatestQuote>();
+    public DbSet<PriceCoverage> PriceCoverage => Set<PriceCoverage>();
     public DbSet<FxRate> FxRates => Set<FxRate>();
     public DbSet<MarketIndex> MarketIndices => Set<MarketIndex>();
     public DbSet<IndexMembership> IndexMemberships => Set<IndexMembership>();
@@ -302,6 +303,13 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             e.HasOne(x => x.Asset).WithMany().HasForeignKey(x => x.AssetId).OnDelete(DeleteBehavior.Cascade);
         });
 
+        b.Entity<PriceCoverage>(e =>
+        {
+            e.HasKey(x => new { x.AssetId, x.Source });
+            e.Property(x => x.Source).HasMaxLength(40);
+            e.HasOne<Asset>().WithMany().HasForeignKey(x => x.AssetId).OnDelete(DeleteBehavior.Cascade);
+        });
+
         b.Entity<FxRate>(e =>
         {
             e.HasKey(x => new { x.Source, x.Currency, x.Date });
@@ -519,6 +527,41 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
                 WHERE p."AssetId" = a.id AND p."Source" = {source} AND p."Date" >= {from} AND p."Date" <= {to}
                 ORDER BY p."Date" DESC LIMIT {count}) h
             """).AsNoTracking();
+
+    public async Task<int> RebuildPriceCoverageAsync(IReadOnlyCollection<int>? assetIds, CancellationToken ct)
+    {
+        // Parameterized; one aggregate per asset over its own index range (all assets: one pass over the price table).
+        var own = Database.CurrentTransaction is null ? await Database.BeginTransactionAsync(ct) : null;
+        try
+        {
+            int written;
+            if (assetIds is null)
+            {
+                await Database.ExecuteSqlRawAsync("""DELETE FROM "PriceCoverage" """, ct);
+                written = await Database.ExecuteSqlRawAsync("""
+                    INSERT INTO "PriceCoverage" ("AssetId", "Source", "Observations", "FirstDate", "LastDate", "LastRetrievedAtUtc", "AdjustedObservations")
+                    SELECT "AssetId", "Source", count(*), min("Date"), max("Date"), max("RetrievedAtUtc"), count("AdjustedClose")
+                    FROM "HistoricalPrices" GROUP BY "AssetId", "Source"
+                    """, ct);
+            }
+            else
+            {
+                var ids = assetIds.Distinct().ToArray();
+                await Database.ExecuteSqlInterpolatedAsync($"""DELETE FROM "PriceCoverage" WHERE "AssetId" = ANY({ids})""", ct);
+                written = await Database.ExecuteSqlInterpolatedAsync($"""
+                    INSERT INTO "PriceCoverage" ("AssetId", "Source", "Observations", "FirstDate", "LastDate", "LastRetrievedAtUtc", "AdjustedObservations")
+                    SELECT "AssetId", "Source", count(*), min("Date"), max("Date"), max("RetrievedAtUtc"), count("AdjustedClose")
+                    FROM "HistoricalPrices" WHERE "AssetId" = ANY({ids}) GROUP BY "AssetId", "Source"
+                    """, ct);
+            }
+            if (own is not null) await own.CommitAsync(ct);
+            return written;
+        }
+        finally
+        {
+            if (own is not null) await own.DisposeAsync();
+        }
+    }
 
     public bool IsUniqueConstraintViolation(DbUpdateException exception) =>
         exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
