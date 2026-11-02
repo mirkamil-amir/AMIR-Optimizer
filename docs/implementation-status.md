@@ -6,6 +6,12 @@
 * Atlas: the Stocks & ETFs and Indexes tabs show tracked and not tracked ("1,899 tracked · … not tracked"), and a note
   above the list says why they are not tracked – never downloaded (listed from an index's members), a download brought
   no prices, or switched off by an administrator (`describeNotTracked` in `lib/instrument-counts.ts`, tested).
+  Administrators download all of them (without prices) in one job from that note.
+* Atlas list: new "Original price currency" column (trading currency code and name); "Retrieved" and "Last sync" merged
+  into "Last download" (time of the newest prices, or the failure reason). "Last sync" was nearly always "—": the status
+  read only the newest 500 sync-log rows of ~50,000, so most instruments had no result – now the latest attempt per
+  instrument (integration test with 600 newer logs). History length gains **All available** (from 1900, the provider's
+  first day decides; Yahoo has e.g. Altria from 1962).
 
 * Name: **Matrix** (was MatrixView) – wordmark, tab title, favicon title, the home link's label ("Matrix – home").
 * Logo: an M glowing through an 11 × 11 dot matrix with gold diagonals (`components/brand.tsx`, geometry in

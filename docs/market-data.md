@@ -235,7 +235,14 @@ only tracked instruments: an instrument nobody has downloaded yet is "Not tracke
 it tracked). Each page has the same list – search, rows per page, first/previous/next/last (`RangePager`, shared with the
 stock chooser) inside a box that scrolls under a fixed header – and its own sync for administrators: tracked stocks & ETFs
 or tracked indexes (`SyncRequest.AssetTypes`), or every exchange rate of the FX source paired with the active price source
-(`POST /api/v1/fx/sync`, gaps only). Latest prices show each instrument's own trading currency, never converted.
+(`POST /api/v1/fx/sync`, gaps only). Latest prices show each instrument's own trading currency, never converted; the
+"Original price currency" column names it (code and name; Yahoo's pence/cent/agorot quotes for London, Johannesburg and
+Tel Aviv are stored in pounds, rand and shekels – `CurrencyUnits`). "Last download" is when the newest stored prices
+arrived, or the reason when the latest download attempt failed (the latest attempt per instrument, `GetStatusAsync`;
+it once read only the newest 500 log rows overall, so most rows showed "—"). History length: 1, 3, 5, 10 years or
+**All available** (start 1900-01-01, so the provider's first trading day decides – Yahoo returns e.g. Altria from 1962; for stored instruments only the older
+part is added). Administrators can download every not-tracked instrument without prices in one job from the note above
+the list.
 Counts are split by type and tracking (`lib/instrument-counts.ts`): a tab badge shows the tracked and not tracked instruments ("1,888
 tracked · 270 not tracked"), a note above the list says why instruments are not tracked (`describeNotTracked`: never
 downloaded – listed from an index's members; a download was tried but brought no prices; or switched off by an
