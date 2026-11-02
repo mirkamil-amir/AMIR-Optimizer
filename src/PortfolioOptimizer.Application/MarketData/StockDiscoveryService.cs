@@ -301,15 +301,17 @@ public sealed class StockDiscoveryService(
         var today = DateOnly.FromDateTime(now);
         var freshFor = TimeSpan.FromMinutes(quoteOptions.Value.FreshForMinutes);
 
-        // The last two bars of each asset lie within a few weeks of that asset's own last date (holidays included).
-        var lastDates = db.HistoricalPrices.Where(p => ids.Contains(p.AssetId) && p.Source == source)
-            .GroupBy(p => p.AssetId).Select(g => new { AssetId = g.Key, Last = g.Max(p => p.Date) });
-        var recent = await (from p in db.HistoricalPrices.AsNoTracking()
-                            join l in lastDates on p.AssetId equals l.AssetId
-                            where p.Source == source && p.Date >= l.Last.AddDays(-20)
-                            select new { p.AssetId, p.Date, p.Close, p.RetrievedAtUtc, p.IsSimulated })
+        // The last two bars of each asset (one backward index lookup per asset); the previous bar counts only within 20 days
+        // of the last (holidays included). A join on per-asset last dates became a scan of every price for a page of 50
+        // stocks (3.0 s on 13.8M prices, 2026-11-02; docs/performance.md #12).
+        var recent = await db.LatestPricesPerAsset(ids, source, 2, DateOnly.MinValue, DateOnly.MaxValue)
+            .Select(p => new { p.AssetId, p.Date, p.Close, p.RetrievedAtUtc, p.IsSimulated })
             .ToListAsync(ct);
-        var bars = recent.GroupBy(r => r.AssetId).ToDictionary(g => g.Key, g => g.OrderByDescending(r => r.Date).Take(2).ToList());
+        var bars = recent.GroupBy(r => r.AssetId).ToDictionary(g => g.Key, g =>
+        {
+            var latestTwo = g.OrderByDescending(r => r.Date).ToList();
+            return latestTwo.Where(r => r.Date >= latestTwo[0].Date.AddDays(-20)).ToList();
+        });
         var stored = await db.LatestQuotes.AsNoTracking().Where(q => ids.Contains(q.AssetId) && q.Source == source).ToDictionaryAsync(q => q.AssetId, ct);
 
         var result = new Dictionary<int, StockQuoteDto>();

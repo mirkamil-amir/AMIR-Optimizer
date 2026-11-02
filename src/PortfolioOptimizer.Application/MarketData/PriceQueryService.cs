@@ -24,12 +24,17 @@ public sealed class PriceQueryService(IApplicationDbContext db, TimeProvider clo
         await db.Settings.AsNoTracking().SingleAsync(s => s.Id == 1, ct);
 
     /// <summary>
-    /// Ids of the instruments that have stored daily prices from <paramref name="source"/> – one grouped query. Use it instead of
-    /// a per-instrument <c>EXISTS</c> subquery: PostgreSQL may plan that as one full table scan per instrument (observed: 2.4 s
-    /// for 912 instruments on 55k prices, versus 9 ms for this query).
+    /// Ids of the instruments that have stored daily prices from <paramref name="source"/>: the newest price of every instrument
+    /// through <see cref="IApplicationDbContext.LatestPricesPerAsset"/> (one index lookup per instrument), so the cost follows the
+    /// number of instruments, not of prices. Never use a per-instrument <c>EXISTS</c> subquery (planned as one full table scan per
+    /// instrument: 2.4 s for 912 instruments on 55k prices) nor a <c>GROUP BY</c> over the price table (reads every price:
+    /// 1.0 s on 13.8M prices, 2026-11-02; 46 ms with the lookups) – see docs/performance.md.
     /// </summary>
-    public async Task<HashSet<int>> AssetIdsWithPricesAsync(string source, CancellationToken ct) =>
-        (await db.HistoricalPrices.AsNoTracking().Where(p => p.Source == source).GroupBy(p => p.AssetId).Select(g => g.Key).ToListAsync(ct)).ToHashSet();
+    public async Task<HashSet<int>> AssetIdsWithPricesAsync(string source, CancellationToken ct)
+    {
+        var ids = await db.Assets.AsNoTracking().Select(a => a.Id).ToListAsync(ct);
+        return (await db.LatestPricesPerAsset(ids, source, 1, DateOnly.MinValue, DateOnly.MaxValue).Select(p => p.AssetId).ToListAsync(ct)).ToHashSet();
+    }
 
     /// <summary>Adjusted-close series (falls back to raw close only if the source never provides adjusted data).</summary>
     /// <remarks>One query for all symbols; with <paramref name="lastN"/> the last N observations per symbol (window function).</remarks>

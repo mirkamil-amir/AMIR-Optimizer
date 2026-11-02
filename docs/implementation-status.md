@@ -1,5 +1,13 @@
 # Implementation status
 
+## 2026-11-02: navigation and stock lists fast again on a large price table
+
+* With 13.8M stored prices the sidebar summary (every page, every minute) took 2.4 s and "instruments with prices" (stock
+  list, markets, sectors, universes, admin overview) 1.0 s: both read every price. Now index lookups per instrument
+  (46 ms) and a new index `(Source, RetrievedAtUtc)` for the latest retrieval (1 ms; migration `PriceRetrievalIndex`,
+  94 MB). Measured as SQL on the development data; see [performance.md](performance.md) #11.
+* Still reading every price: the full `/market-data/status` (Atlas, Math Optimization; 1.3 s) – performance.md › Remaining work.
+
 ## 2026-11-01: the app is called Matrix; new logo that moves while calculating (D-49)
 
 * Top bar: the portfolio workspace entry is **View** (was Matrix); the sidebar's sections are "View sections".
