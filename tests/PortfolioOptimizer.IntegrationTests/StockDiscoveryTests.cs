@@ -78,6 +78,22 @@ public sealed class StockDiscoveryTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ListQuotes_MatchEachStocksOwnQuote()
+    {
+        // A page loads the last two bars of all its stocks in one query; each must get exactly its own price and change.
+        var list = await (await _user.GetAsync("/api/v1/stocks?symbols=AAPL,MSFT,SPY&pageSize=10")).ReadAsync<PagedResult<StockListItemDto>>();
+        Assert.Equal(3, list.Items.Count);
+        foreach (var item in list.Items)
+        {
+            var own = await (await _user.GetAsync($"/api/v1/stocks/{item.Symbol}/quote")).ReadAsync<StockQuoteDto>();
+            Assert.NotEqual(QuoteKind.None, item.Quote.Kind);
+            Assert.Equal((own.Price, own.PriceDate, own.PreviousClose, own.PreviousCloseDate, own.Change),
+                (item.Quote.Price, item.Quote.PriceDate, item.Quote.PreviousClose, item.Quote.PreviousCloseDate, item.Quote.Change));
+            Assert.NotNull(item.Quote.PreviousClose);
+        }
+    }
+
+    [Fact]
     public async Task UnknownStock_Is404()
     {
         Assert.Equal(HttpStatusCode.NotFound, (await _user.GetAsync("/api/v1/stocks/NOPE123")).StatusCode);
