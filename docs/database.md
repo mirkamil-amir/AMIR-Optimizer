@@ -11,7 +11,7 @@ PostgreSQL 17 via EF Core 10 + Npgsql. Context: `src/PortfolioOptimizer.Infrastr
 | Security | `AuditEvents`, `DataProtectionKeys` | audit is append-only (except the test-data purge, which is itself audited) |
 | Catalogue | `Assets` | symbol (unique, canonical), name, sector, industry, country, MIC, ISIN, currency, type (Equity/Etf/Index), tracked flag, metadata source |
 | Universes | `MarketIndices`, `IndexMemberships` | index metadata with source/revision/licence/verified date/content hash; membership = (index, asset) |
-| Prices | `HistoricalPrices`, `LatestQuotes` | daily bars unique per (asset, date, source) in the asset's own currency, indexed by (asset, source, date) and (source, retrieval time); latest quote per (asset, source) incl. previous close |
+| Prices | `HistoricalPrices`, `LatestQuotes`, `PriceCoverage` | daily bars unique per (asset, date, source) in the asset's own currency, indexed by (asset, source, date) and (source, retrieval time); latest quote per (asset, source) incl. previous close; coverage per (asset, source) – bars, first/last date, latest retrieval, adjusted bars – derived from the bars only (rewritten per asset by every upsert, rebuilt on start; never edit it by hand) |
 | Exchange rates | `FxRates` | units of a currency per 1 EUR per (source, currency, date); checks rate > 0 and currency ≠ EUR; shared, fetched on demand. See [currency.md](currency.md) |
 | Data jobs | `SyncJobs` + `SyncLogs`, `QuoteRefreshRuns` | history downloads with per-asset logs; quote refresh cycles (trigger, counts, message) |
 | Settings | `Settings` | single row: active provider, defaults, staleness threshold |

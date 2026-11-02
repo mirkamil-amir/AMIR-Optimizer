@@ -1598,6 +1598,35 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("PortfolioOptimizer.Domain.PriceCoverage", b =>
+                {
+                    b.Property<int>("AssetId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Source")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<int>("AdjustedObservations")
+                        .HasColumnType("integer");
+
+                    b.Property<DateOnly>("FirstDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly>("LastDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime>("LastRetrievedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Observations")
+                        .HasColumnType("integer");
+
+                    b.HasKey("AssetId", "Source");
+
+                    b.ToTable("PriceCoverage");
+                });
+
             modelBuilder.Entity("PortfolioOptimizer.Domain.QuoteRefreshRun", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2553,6 +2582,15 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                     b.HasOne("PortfolioOptimizer.Domain.Portfolio", null)
                         .WithMany()
                         .HasForeignKey("PortfolioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("PortfolioOptimizer.Domain.PriceCoverage", b =>
+                {
+                    b.HasOne("PortfolioOptimizer.Domain.Asset", null)
+                        .WithMany()
+                        .HasForeignKey("AssetId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

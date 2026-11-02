@@ -18,8 +18,8 @@ import { DataBadge, ErrorState, LoadingBlock, PageHeader } from '@/components/co
 import { errorMessage } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { cn } from '@/lib/utils'
-import { useCreateAsset, useFxSync, useMarketStatus, useSync, useUpdateAsset } from '@/lib/queries'
-import type { AssetCoverage, DataFreshness, FxCoverage } from '@/lib/types'
+import { useCreateAsset, useFxSync, useMarketStatus, useSync, useSyncJob, useUpdateAsset } from '@/lib/queries'
+import type { AssetCoverage, DataFreshness, FxCoverage, SyncJob, SyncLog } from '@/lib/types'
 import { date, dateTime, money, num, relativeTime } from '@/lib/format'
 import { currencyName } from '@/lib/currency'
 import { describeCatalogue, describeNotTracked, describeSymbols, notTrackedReason, notTrackedTotal, trackedTotal } from '@/lib/instrument-counts'
@@ -53,8 +53,8 @@ export function MarketDataPage() {
   const active = data?.recentJobs.filter((j) => j.status === 'Queued' || j.status === 'Running') ?? []
   const running = active.find((j) => j.status === 'Running') ?? active[0]
   const queued = active.filter((j) => j !== running).length
-  // Symbols still waiting for their download (not yet logged by their job): their row shows the loader.
-  const downloading = new Set(active.flatMap((j) => j.symbols.filter((s) => !j.logs.some((l) => l.symbol === s))))
+  // Symbols still waiting for their download (not yet logged by their job, listed by the server): their row shows the loader.
+  const downloading = new Set(active.flatMap((j) => j.pendingSymbols ?? []))
   const stocks = useMemo(() => (data?.coverage ?? []).filter((c) => c.assetType !== 'Index'), [data])
   const indexes = useMemo(() => (data?.coverage ?? []).filter((c) => c.assetType === 'Index'), [data])
   const currencies = data?.currencies ?? []
@@ -173,7 +173,7 @@ export function MarketDataPage() {
             // Every type the job contains (the scheduled refresh takes all tracked stocks, ETFs and indexes), never just "stocks".
             `${(running.assetsCompleted + running.assetsFailed).toLocaleString()} of ${running.assetsTotal.toLocaleString()} tracked instruments (${describeSymbols(running.symbols, data.coverage)})`,
             isAdministrator ? `from ${running.source}` : null,
-            running.logs.length ? `last: ${running.logs[running.logs.length - 1].symbol}` : null,
+            running.lastSymbol ? `last: ${running.lastSymbol}` : null,
             running.assetsFailed ? `${running.assetsFailed} failed` : null,
             queued ? `${queued} more download${queued === 1 ? '' : 's'} waiting (downloads run one after another)` : null,
           ].filter(Boolean).join(' · ')} />
@@ -250,23 +250,7 @@ export function MarketDataPage() {
           <CardContent className="space-y-2 text-sm">
             {data.recentJobs.length === 0 && <p className="text-muted-foreground">No downloads yet.</p>}
             {data.recentJobs.map((j) => (
-              <details key={j.id} className="rounded-md border px-3 py-2">
-                <summary className="flex cursor-pointer items-center justify-between gap-2">
-                  <span>{isAdministrator && `${j.source} · `}{describeSymbols(j.symbols, data.coverage)}</span>
-                  <span className="flex items-center gap-2 text-xs text-muted-foreground">{dateTime(j.requestedAtUtc)}<Badge variant={j.status === 'Failed' ? 'destructive' : j.status === 'Succeeded' ? 'secondary' : 'outline'}>{j.status}</Badge></span>
-                </summary>
-                <p className="mt-1 text-xs text-muted-foreground">{j.message}</p>
-                <table className="mt-2 w-full text-xs tabular">
-                  <thead className="text-muted-foreground"><tr><th className="text-left">Symbol</th><th className="text-right">Rcvd</th><th className="text-right">New</th><th className="text-right">Upd</th><th className="text-right">Rejected</th><th className="text-right">Dupl.</th></tr></thead>
-                  <tbody>
-                    {j.logs.map((l) => (
-                      <tr key={l.symbol} className={l.success ? '' : 'text-loss'} title={l.message ?? ''}>
-                        <td>{l.symbol}</td><td className="text-right">{l.rowsReceived}</td><td className="text-right">{l.rowsInserted}</td><td className="text-right">{l.rowsUpdated}</td><td className="text-right">{l.rowsRejected}</td><td className="text-right">{l.duplicatesSkipped}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </details>
+              <JobDetails key={j.id} job={j} label={`${isAdministrator ? `${j.source} · ` : ''}${describeSymbols(j.symbols, data.coverage)}`} />
             ))}
           </CardContent>
         </Card>
@@ -375,5 +359,42 @@ function AddAssetDialog({ open, onOpenChange, onAdded }: { open: boolean; onOpen
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  )
+}
+
+const LOG_COLUMNS: Column<SyncLog>[] = [
+  { key: 'symbol', header: 'Symbol', sortValue: (l) => l.symbol, cell: (l) => <span className={l.success ? 'font-medium' : 'font-medium text-loss'} title={l.message ?? ''}>{l.symbol}</span> },
+  { key: 'rcvd', header: 'Rcvd', align: 'right', sortValue: (l) => l.rowsReceived, cell: (l) => num(l.rowsReceived, 0) },
+  { key: 'new', header: 'New', align: 'right', sortValue: (l) => l.rowsInserted, cell: (l) => num(l.rowsInserted, 0) },
+  { key: 'upd', header: 'Upd', align: 'right', sortValue: (l) => l.rowsUpdated, cell: (l) => num(l.rowsUpdated, 0) },
+  { key: 'rej', header: 'Rejected', align: 'right', sortValue: (l) => l.rowsRejected, cell: (l) => num(l.rowsRejected, 0) },
+  { key: 'dup', header: 'Dupl.', align: 'right', sortValue: (l) => l.duplicatesSkipped, cell: (l) => num(l.duplicatesSkipped, 0) },
+  { key: 'msg', header: 'Message', cell: (l) => <span className={cn('block max-w-72 truncate text-xs', l.success ? 'text-muted-foreground' : 'text-loss')} title={l.message ?? ''}>{l.message}</span> },
+]
+
+/**
+ * One recent download job. The status lists jobs without their per-instrument logs (a job of ~2,150 instruments has as many);
+ * the log is loaded only when the job is opened, and shown paged.
+ */
+function JobDetails({ job, label }: { job: SyncJob; label: string }) {
+  const [open, setOpen] = useState(false)
+  const detail = useSyncJob(open ? job.id : undefined)
+  return (
+    <details className="rounded-md border px-3 py-2" onToggle={(e) => setOpen(e.currentTarget.open)}>
+      <summary className="flex cursor-pointer items-center justify-between gap-2">
+        <span>{label}</span>
+        <span className="flex items-center gap-2 text-xs text-muted-foreground">{dateTime(job.requestedAtUtc)}<Badge variant={job.status === 'Failed' ? 'destructive' : job.status === 'Succeeded' ? 'secondary' : 'outline'}>{job.status}</Badge></span>
+      </summary>
+      <p className="mt-1 text-xs text-muted-foreground">{job.message}</p>
+      {open && (detail.isLoading ? <MatrixLoader label="Loading the download log" />
+        : detail.error ? <ErrorState error={detail.error} onRetry={() => detail.refetch()} />
+        : detail.data && (
+          <div className="mt-2 min-w-0">
+            <SearchableTable caption="Download log" label="instruments" rows={detail.data.logs} columns={LOG_COLUMNS} rowKey={(l) => l.symbol}
+              initialSort={{ key: 'symbol', dir: 'asc' }} matches={(l, q) => l.symbol.toLowerCase().includes(q) || (l.message ?? '').toLowerCase().includes(q)}
+              placeholder="Search symbol or message" pageSize={25} maxRows={10} dense empty="No instrument finished yet." />
+          </div>
+        ))}
+    </details>
   )
 }

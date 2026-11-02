@@ -267,6 +267,12 @@ closes; the refresh keeps the series consistent). This is routine: the Market da
 the note "History refreshed … after a dividend or split adjustment" in its tooltip. Users fetch history for up to 50 selected stocks at once; ML experiments and comparisons queue
 missing history (e.g. an index benchmark) automatically before they run.
 
+What is stored per instrument (bars, first/last date, latest retrieval, adjusted or not) is kept in `PriceCoverage`: each
+upsert rewrites the instrument's row from its bars, and the API rebuilds all rows on start, so prices changed outside the
+application (SQL, restore, import) are reflected after the next start. The market-data status reads it instead of every
+price; its recent jobs leave out the per-instrument logs (`GET /market-data/jobs/{id}` has them; Atlas loads them when a job
+is opened).
+
 **Asking before an analysis (missing-data dialog).** The ML experiment, backtest and optimization forms first call
 `POST /market-data/check` with the stocks, benchmark, period (ML: the history years; backtest/optimization: the start minus
 the lookback, as the backtest loads it) and analysis currency (`DataReadinessService`). It lists, per stock, prices that start

@@ -97,7 +97,13 @@ public sealed record SyncJobDto(
     int AssetsCompleted,
     int AssetsFailed,
     string? Message,
-    IReadOnlyList<SyncLogDto> Logs);
+    IReadOnlyList<SyncLogDto> Logs,
+    /// <summary>False in the market-data status, which leaves the logs out (GET /market-data/jobs/{id} has them).</summary>
+    bool LogsIncluded = true,
+    /// <summary>Running or queued jobs in the status: symbols without a log yet.</summary>
+    IReadOnlyList<string>? PendingSymbols = null,
+    /// <summary>Running jobs in the status: the symbol logged last.</summary>
+    string? LastSymbol = null);
 
 public sealed record SyncLogDto(
     string Symbol,
