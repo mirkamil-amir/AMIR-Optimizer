@@ -23,8 +23,20 @@ public sealed class MarketDataService(
 
     /// <summary>Days re-downloaded before the last stored date to pick up late corrections.</summary>
     private const int OverlapDays = 7;
-    /// <summary>Relative change in overlapping adjusted closes that indicates new split/dividend adjustments.</summary>
-    private const decimal AdjustmentTolerance = 0.0005m;
+    /// <summary>Relative change of the adjustment factor on an overlapping date that indicates a new split/dividend adjustment.</summary>
+    public const decimal AdjustmentTolerance = 0.0005m;
+
+    /// <summary>
+    /// Whether a re-downloaded bar shows a new dividend or split adjustment: its adjustment factor (adjusted close ÷ close)
+    /// differs from the stored bar's by more than <see cref="AdjustmentTolerance"/>. Comparing adjusted closes directly also
+    /// fired when only the price moved – a bar stored while the session was open and re-downloaded after the close –
+    /// and re-downloaded the full history of 354 US and Toronto stocks in one job (2026-11-02).
+    /// </summary>
+    public static bool AdjustmentChanged(decimal oldClose, decimal? oldAdjusted, decimal newClose, decimal? newAdjusted)
+    {
+        if (oldAdjusted is not { } oldAdj || newAdjusted is not { } newAdj || oldClose <= 0 || newClose <= 0 || oldAdj <= 0) return false;
+        return Math.Abs(newAdj / newClose / (oldAdj / oldClose) - 1) > AdjustmentTolerance;
+    }
 
     // ------------------------------------------------------------------ assets
 
@@ -440,8 +452,7 @@ public sealed class MarketDataService(
         {
             if (existing.TryGetValue(bar.Date, out var row))
             {
-                if (row.AdjustedClose is { } oldAdj && bar.AdjustedClose is { } newAdj && oldAdj > 0 &&
-                    Math.Abs(newAdj / oldAdj - 1) > AdjustmentTolerance)
+                if (AdjustmentChanged(row.Close, row.AdjustedClose, bar.Close, bar.AdjustedClose))
                     adjustmentsChanged = true;
 
                 if (row.Close != bar.Close || row.AdjustedClose != bar.AdjustedClose || row.Volume != bar.Volume)
@@ -580,18 +591,22 @@ public sealed class MarketDataService(
         var settings = await prices.SettingsAsync(ct);
         var source = settings.ActiveProvider;
         var enabled = await db.Assets.AsNoTracking().Where(a => a.IsEnabled).Select(a => a.Id).ToListAsync(ct);
-        var stats = await db.HistoricalPrices.AsNoTracking()
+        // Index lookups only (every page polls the summary): the newest bar per instrument through (AssetId, Source, Date) and
+        // the latest retrieval through (Source, RetrievedAtUtc). A GROUP BY over the prices read the whole table (2.4 s on 13.8M
+        // prices, 2026-11-02; docs/performance.md).
+        var lastDates = await db.LatestPricesPerAsset(enabled, source, 1, DateOnly.MinValue, DateOnly.MaxValue)
+            .Select(p => new { p.AssetId, p.Date })
+            .ToDictionaryAsync(x => x.AssetId, x => x.Date, ct);
+        var lastRetrieved = await db.HistoricalPrices.AsNoTracking()
             .Where(p => p.Source == source && enabled.Contains(p.AssetId))
-            .GroupBy(p => p.AssetId)
-            .Select(g => new { g.Key, Last = g.Max(p => p.Date), Retrieved = g.Max(p => p.RetrievedAtUtc) })
-            .ToDictionaryAsync(x => x.Key, ct);
+            .MaxAsync(p => (DateTime?)p.RetrievedAtUtc, ct);
         var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
-        var counts = enabled.Select(id => Freshness(stats.TryGetValue(id, out var s) ? s.Last : null, today, settings.StalePriceDays))
+        var counts = enabled.Select(id => Freshness(lastDates.TryGetValue(id, out var last) ? last : null, today, settings.StalePriceDays))
             .GroupBy(f => f).ToDictionary(g => g.Key, g => g.Count());
         var running = await db.SyncJobs.AsNoTracking().AnyAsync(j => j.Status == JobStatus.Queued || j.Status == JobStatus.Running, ct);
         return new MarketDataSummaryDto(source, providers.Providers.FirstOrDefault(p => p.Name == source)?.IsSimulated ?? false,
             counts.GetValueOrDefault(DataFreshness.Fresh), counts.GetValueOrDefault(DataFreshness.Stale), counts.GetValueOrDefault(DataFreshness.Missing),
-            stats.Count == 0 ? null : stats.Values.Max(s => s.Retrieved), running, settings.StalePriceDays, clock.GetUtcNow().UtcDateTime);
+            lastRetrieved, running, settings.StalePriceDays, clock.GetUtcNow().UtcDateTime);
     }
 
     public static ProviderStatusDto ToDto(ProviderDescriptor p) =>

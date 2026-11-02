@@ -260,7 +260,9 @@ instruments only.
 
 Unchanged from earlier versions: incremental downloads with a 7-day overlap, normalization (`PriceNormalizer`),
 adjusted closes when the provider supplies them (Yahoo yes, Alpha Vantage free tier no), full re-download when
-adjustments change (more than 0.05 % on overlapping dates – a new dividend or split back-adjusts all earlier adjusted
+adjustments change (the adjustment factor, adjusted close ÷ close, of an overlapping date moves by more than 0.05 %,
+`MarketDataService.AdjustmentChanged`; a moved close alone – a bar stored during the session and re-downloaded after the
+close – is not an adjustment and once re-downloaded the full history of 354 stocks in one job, 2026-11-02 – a new dividend or split back-adjusts all earlier adjusted
 closes; the refresh keeps the series consistent). This is routine: the Market data table shows such a sync as "OK" with
 the note "History refreshed … after a dividend or split adjustment" in its tooltip. Users fetch history for up to 50 selected stocks at once; ML experiments and comparisons queue
 missing history (e.g. an index benchmark) automatically before they run.

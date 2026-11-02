@@ -635,6 +635,8 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Source", "RetrievedAtUtc");
+
                     b.HasIndex("AssetId", "Source", "Date")
                         .IsUnique();
 

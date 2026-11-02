@@ -296,6 +296,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         b.Entity<HistoricalPrice>(e =>
         {
             e.HasIndex(x => new { x.AssetId, x.Source, x.Date }).IsUnique();
+            // Latest retrieval of a source in one backward index step (navigation summary; docs/performance.md).
+            e.HasIndex(x => new { x.Source, x.RetrievedAtUtc });
             e.Property(x => x.Source).HasMaxLength(40);
             e.HasOne(x => x.Asset).WithMany().HasForeignKey(x => x.AssetId).OnDelete(DeleteBehavior.Cascade);
         });
