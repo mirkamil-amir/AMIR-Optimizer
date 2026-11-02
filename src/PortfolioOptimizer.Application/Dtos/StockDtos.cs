@@ -47,8 +47,8 @@ public sealed record QuoteRefreshRunDto(
 
 public sealed record RefreshQuotesRequest
 {
-    /// <summary>Canonical symbols to refresh (the stocks visible on a page). At most 100.</summary>
-    [Required, MinLength(1), MaxLength(100)] public List<string> Symbols { get; init; } = [];
+    /// <summary>Canonical symbols to refresh (the stocks visible on a page). At most 200, a full page of the stock list.</summary>
+    [Required, MinLength(1), MaxLength(200)] public List<string> Symbols { get; init; } = [];
     /// <summary>Ignore the cache window (a short cooldown still applies).</summary>
     public bool Force { get; init; }
 }

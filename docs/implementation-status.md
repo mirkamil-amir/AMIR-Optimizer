@@ -1,5 +1,11 @@
 # Implementation status
 
+## 2026-11-03: a 200-row page of the stock list refreshes its prices
+
+* The quote refresh accepted at most 100 symbols (request validation and `QuoteRefresh:PageRefreshMaxSymbols`), so on a
+  200-row page (the list's maximum) both the Refresh button and the automatic refresh of old quotes failed with 400. Both
+  limits are 200 now; `MarketDataRefreshTests` refreshes 200 symbols and rejects 201.
+
 ## 2026-11-02: navigation and stock lists fast again on a large price table
 
 * With 13.8M stored prices the sidebar summary (every page, every minute) took 2.4 s and "instruments with prices" (stock

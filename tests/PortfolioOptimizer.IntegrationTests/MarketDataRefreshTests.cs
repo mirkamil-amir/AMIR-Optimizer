@@ -234,7 +234,10 @@ public sealed class MarketDataRefreshTests : IAsyncLifetime
         Assert.NotNull(Assert.Single(single.Stocks).Quote.Price);
 
         Assert.Equal(HttpStatusCode.NotFound, (await _admin.PostAsync("/api/v1/stocks/NOPE.DE/quote/refresh", null)).StatusCode);
-        var tooMany = new RefreshQuotesRequest { Symbols = Enumerable.Range(0, 101).Select(i => $"X{i}").ToList() };
+        // A full page of the stock list (200 rows) can be refreshed at once; one more is rejected.
+        var fullPage = new RefreshQuotesRequest { Symbols = Enumerable.Range(0, 200).Select(i => $"X{i}").ToList() };
+        (await _admin.PostJsonAsync("/api/v1/stocks/quotes/refresh", fullPage)).EnsureStatus(HttpStatusCode.OK);
+        var tooMany = new RefreshQuotesRequest { Symbols = Enumerable.Range(0, 201).Select(i => $"X{i}").ToList() };
         Assert.Equal(HttpStatusCode.BadRequest, (await _admin.PostJsonAsync("/api/v1/stocks/quotes/refresh", tooMany)).StatusCode);
     }
 
