@@ -66,7 +66,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   }, [])
   return (
     <div ref={ref} className="flex flex-col gap-4">
-      <nav className="flex flex-col gap-4" aria-label="Matrix sections">
+      <nav className="flex flex-col gap-4" aria-label="View sections">
         <SidebarGroups sections={optimizerSections} activeTo={activeTo} onNavigate={onNavigate} />
       </nav>
       {isAdministrator && (

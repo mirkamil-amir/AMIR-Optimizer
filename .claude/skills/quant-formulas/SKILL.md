@@ -1,6 +1,6 @@
 ---
 name: quant-formulas
-description: Financial formulas and conventions of MatrixView – returns, annualization, Sharpe/Sortino, volatility, drawdown, VaR/ES, beta, tracking error, covariance (sample, Ledoit–Wolf), risk contributions – and how to verify, change or add one with its formula-reference entry and tests. Use before touching any metric or statistic, when a number looks wrong, or when asked to audit or explain a calculation.
+description: Financial formulas and conventions of Matrix – returns, annualization, Sharpe/Sortino, volatility, drawdown, VaR/ES, beta, tracking error, covariance (sample, Ledoit–Wolf), risk contributions – and how to verify, change or add one with its formula-reference entry and tests. Use before touching any metric or statistic, when a number looks wrong, or when asked to audit or explain a calculation.
 ---
 
 # Quantitative formulas and conventions

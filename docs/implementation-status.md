@@ -389,7 +389,7 @@
 
 * Converter card (rates board, pair chart, calculator) on the overview and stock-selection pages, backed by
   `/fx/history` and `/fx/board`; labelled reference rates with dates, never "live".
-* Brand: MatrixView (formerly AMIR Optimizer); SVG mark (a correlation matrix with a gold diagonal) in the sidebar, sign-in pages, favicon, tab title.
+* Brand: Matrix (formerly MatrixView, AMIR Optimizer); SVG mark (an M glowing through an 11 × 11 dot matrix, gold diagonals; moves while the app calculates) in the sidebar, sign-in pages, favicon, tab title.
 * Light / dark / system mode and five colour skins; header toggle and Settings → Appearance; persisted per browser.
 * Verified by unit, integration, Vitest and e2e tests and by screenshots (light, dark Ocean, Violet).
 

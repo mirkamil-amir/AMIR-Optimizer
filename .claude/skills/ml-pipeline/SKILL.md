@@ -1,6 +1,6 @@
 ---
 name: ml-pipeline
-description: Internals of MatrixView's ML Optimization code – market panel, point-in-time features and labels, chronological purged splits, training-only preprocessing, model trainers (ridge, logistic, random forest, gradient boosting), evaluation metrics (OOS R², AUC, Brier, IC t-stat), ML portfolio construction and the walk-forward backtest. Use when changing anything under src/PortfolioOptimizer.MachineLearning or the ML application services, adding a feature/target/model, or investigating leakage or suspicious ML results. To run experiments through the API use /ml-experiment instead.
+description: Internals of Matrix's ML Optimization code – market panel, point-in-time features and labels, chronological purged splits, training-only preprocessing, model trainers (ridge, logistic, random forest, gradient boosting), evaluation metrics (OOS R², AUC, Brier, IC t-stat), ML portfolio construction and the walk-forward backtest. Use when changing anything under src/PortfolioOptimizer.MachineLearning or the ML application services, adding a feature/target/model, or investigating leakage or suspicious ML results. To run experiments through the API use /ml-experiment instead.
 ---
 
 # ML pipeline (code)

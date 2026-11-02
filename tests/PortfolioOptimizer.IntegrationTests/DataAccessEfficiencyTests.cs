@@ -129,6 +129,35 @@ public sealed class DataAccessEfficiencyTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Status_ShowsEveryInstrumentsLatestDownload_EvenBehindManyNewerLogs()
+    {
+        // After the setup's downloads, MSFT's next download failed, then 600 newer downloads of AAPL were logged (the page once read only the newest 500
+        // log rows overall, so MSFT showed no result).
+        await WithScope(async sp =>
+        {
+            var db = sp.GetRequiredService<AppDbContext>();
+            var source = (await db.Settings.SingleAsync()).ActiveProvider;
+            var aapl = await db.Assets.SingleAsync(a => a.Symbol == "AAPL");
+            var msft = await db.Assets.SingleAsync(a => a.Symbol == "MSFT");
+            var now = DateTime.UtcNow;
+            db.SyncLogs.Add(new DataSyncLog { AssetId = msft.Id, Symbol = msft.Symbol, Source = source, Success = false, Message = "Provider error: test", CompletedAtUtc = now.AddMinutes(1) });
+            db.SyncLogs.AddRange(Enumerable.Range(0, 600).Select(i => new DataSyncLog
+            {
+                AssetId = aapl.Id, Symbol = aapl.Symbol, Source = source, Success = true, Message = "Already up to date.", CompletedAtUtc = now.AddMinutes(2).AddSeconds(i),
+            }));
+            await db.SaveChangesAsync();
+            return 0;
+        });
+
+        var status = await (await _admin.GetAsync("/api/v1/market-data/status")).ReadAsync<MarketDataStatusDto>();
+        var msftRow = status.Coverage.Single(c => c.Symbol == "MSFT");
+        Assert.False(msftRow.LastSyncSuccess);
+        Assert.Equal("Provider error: test", msftRow.LastSyncMessage);
+        Assert.True(status.Coverage.Single(c => c.Symbol == "AAPL").LastSyncSuccess);
+        Assert.True(status.Coverage.Single(c => c.Symbol == "SPY").LastSyncSuccess);
+    }
+
+    [Fact]
     public async Task News_DueSourcesRefreshInTheBackground_OnceForConcurrentViewers()
     {
         // First visit: never fetched – fetched in the request (there is nothing stored to show yet).

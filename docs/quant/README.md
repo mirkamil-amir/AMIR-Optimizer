@@ -1,6 +1,6 @@
 # Quantitative knowledge system
 
-How MatrixView keeps its formulas, their documentation and the agent skills in step with the code.
+How Matrix keeps its formulas, their documentation and the agent skills in step with the code.
 
 | File | Role | Edited by |
 |---|---|---|

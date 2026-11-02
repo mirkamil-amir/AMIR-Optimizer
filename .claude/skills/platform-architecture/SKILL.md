@@ -1,6 +1,6 @@
 ---
 name: platform-architecture
-description: MatrixView's backend and frontend plumbing – layer boundaries, API contracts (controllers, DTOs, Problem Details, frontend types and query hooks), authentication/authorization/antiforgery/rate limits, PostgreSQL persistence and EF migrations, the in-process background job worker, health checks and logging, deployment configuration, the absence of a cache layer – and the frontend's standard for long lists and large matrices (SearchableTable, PannableArea, windowed rendering). Use when adding or changing an endpoint, entity, migration, job, auth rule, frontend data hook or any list/table/matrix that can grow, or when diagnosing request failures, job failures or slow pages.
+description: Matrix's backend and frontend plumbing – layer boundaries, API contracts (controllers, DTOs, Problem Details, frontend types and query hooks), authentication/authorization/antiforgery/rate limits, PostgreSQL persistence and EF migrations, the in-process background job worker, health checks and logging, deployment configuration, the absence of a cache layer – and the frontend's standard for long lists and large matrices (SearchableTable, PannableArea, windowed rendering). Use when adding or changing an endpoint, entity, migration, job, auth rule, frontend data hook or any list/table/matrix that can grow, or when diagnosing request failures, job failures or slow pages.
 ---
 
 # Platform architecture

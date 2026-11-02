@@ -1,6 +1,6 @@
 ---
 name: portfolio-accounting
-description: MatrixView's paper portfolios – ledger of holdings, cash and transactions (atomic, idempotent bookings, reversals, weighted-average cost, realized P&L), trade proposals from an optimization, simulated execution, current valuation in the base or a reporting currency, recorded performance (time-weighted return) and current-holdings risk. Use when changing bookings, proposals, executions, valuation, the Overview/Ledger numbers or anything that reads or changes holdings.
+description: Matrix's paper portfolios – ledger of holdings, cash and transactions (atomic, idempotent bookings, reversals, weighted-average cost, realized P&L), trade proposals from an optimization, simulated execution, current valuation in the base or a reporting currency, recorded performance (time-weighted return) and current-holdings risk. Use when changing bookings, proposals, executions, valuation, the Overview/Ledger numbers or anything that reads or changes holdings.
 ---
 
 # Portfolio accounting, trading and recorded performance

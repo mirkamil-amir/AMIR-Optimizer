@@ -1,6 +1,6 @@
 ---
 name: optimization-backtesting
-description: MatrixView's Math Optimization (long-only mean-variance QP, ADMM/OSQP solver, constraints, efficient frontier, independent allocation validation), the event-driven backtest simulator shared by backtests, ML walk-forward and strategy comparisons, and the Portfolio Reality Check. Use when changing objectives, constraints, solver settings, backtest timing/costs/execution rules or comparison logic, or when an optimization is infeasible, fails validation or a backtest result looks wrong.
+description: Matrix's Math Optimization (long-only mean-variance QP, ADMM/OSQP solver, constraints, efficient frontier, independent allocation validation), the event-driven backtest simulator shared by backtests, ML walk-forward and strategy comparisons, and the Portfolio Reality Check. Use when changing objectives, constraints, solver settings, backtest timing/costs/execution rules or comparison logic, or when an optimization is infeasible, fails validation or a backtest result looks wrong.
 ---
 
 # Optimization, backtesting and comparisons
