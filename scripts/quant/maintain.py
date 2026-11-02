@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Maintenance checks for MatrixView's formula reference, skills and quantitative code.
+"""Maintenance checks for Matrix's formula reference, skills and quantitative code.
 
 Deterministic, offline, standard library only. Commands (exit code 0 = pass, 1 = findings that must be fixed):
 

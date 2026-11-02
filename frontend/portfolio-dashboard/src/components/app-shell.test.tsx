@@ -30,7 +30,7 @@ function renderAt(path: string) {
 }
 
 const primary = () => screen.getByRole('navigation', { name: 'Primary' })
-const optimizerNav = () => screen.getAllByRole('navigation', { name: 'Matrix sections' })[0]
+const optimizerNav = () => screen.getAllByRole('navigation', { name: 'View sections' })[0]
 const link = (nav: HTMLElement, name: string) => within(nav).getByRole('link', { name })
 
 describe('application shell navigation', () => {
@@ -41,15 +41,15 @@ describe('application shell navigation', () => {
   it('shows the eight primary destinations in order and marks the current one', () => {
     renderAt('/')
     expect(within(primary()).getAllByRole('link').map((a) => a.textContent)).toEqual(
-      ['Matrix', 'AI Probe', 'Wire', 'Radar', 'Atlas', 'Codex', 'Lexicon', 'Settings'],
+      ['View', 'AI Probe', 'Wire', 'Radar', 'Atlas', 'Codex', 'Lexicon', 'Settings'],
     )
-    expect(link(primary(), 'Matrix')).toHaveAttribute('aria-current', 'page')
+    expect(link(primary(), 'View')).toHaveAttribute('aria-current', 'page')
     expect(link(optimizerNav(), 'Lens')).toHaveAttribute('aria-current', 'page')
   })
 
   it('marks Optimizer as the area of a child section and highlights that section', () => {
     renderAt('/stocks/AAPL')
-    expect(link(primary(), 'Matrix')).toHaveAttribute('aria-current', 'true')
+    expect(link(primary(), 'View')).toHaveAttribute('aria-current', 'true')
     expect(link(optimizerNav(), 'Forge')).toHaveAttribute('aria-current', 'page')
     expect(link(primary(), 'Radar')).not.toHaveAttribute('aria-current')
   })
@@ -60,21 +60,21 @@ describe('application shell navigation', () => {
       await userEvent.click(link(primary(), name))
       expect(screen.getByText(`page ${path}`)).toBeInTheDocument()
       expect(link(primary(), name)).toHaveAttribute('aria-current', 'page')
-      expect(link(primary(), 'Matrix')).not.toHaveAttribute('aria-current')
+      expect(link(primary(), 'View')).not.toHaveAttribute('aria-current')
       expect(within(optimizerNav()).queryByRole('link', { current: 'page' })).toBeNull()
     }
-    await userEvent.click(link(primary(), 'Matrix'))
+    await userEvent.click(link(primary(), 'View'))
     expect(screen.getByText('page /')).toBeInTheDocument()
 
     await act(() => router.navigate(-1))
     expect(link(primary(), 'Settings')).toHaveAttribute('aria-current', 'page')
     await act(() => router.navigate(1))
-    expect(link(primary(), 'Matrix')).toHaveAttribute('aria-current', 'page')
+    expect(link(primary(), 'View')).toHaveAttribute('aria-current', 'page')
   })
 
   it('keeps the open Optimizer section when Optimizer is selected again', async () => {
     const router = renderAt('/backtest')
-    await userEvent.click(link(primary(), 'Matrix'))
+    await userEvent.click(link(primary(), 'View'))
     expect(router.state.location.pathname).toBe('/backtest')
     expect(screen.getByText('page /backtest')).toBeInTheDocument()
   })

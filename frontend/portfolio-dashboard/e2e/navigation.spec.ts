@@ -1,11 +1,11 @@
 import { expect, test, type Page } from '@playwright/test'
 import { ADMIN_STATE, admin, approve, register, requireAdminCredentials, signIn, signOut, strongPassword, uniqueEmail } from './helpers'
 
-// Application navigation: eight primary areas in the top bar, Matrix sections and administration in the sidebar.
-const PRIMARY = ['Matrix', 'AI Probe', 'Wire', 'Radar', 'Atlas', 'Codex', 'Lexicon', 'Settings']
+// Application navigation: eight primary areas in the top bar, View sections and administration in the sidebar.
+const PRIMARY = ['View', 'AI Probe', 'Wire', 'Radar', 'Atlas', 'Codex', 'Lexicon', 'Settings']
 
 const primary = (page: Page) => page.getByRole('navigation', { name: 'Primary' })
-const optimizer = (page: Page) => page.getByRole('navigation', { name: 'Matrix sections' }).first()
+const optimizer = (page: Page) => page.getByRole('navigation', { name: 'View sections' }).first()
 
 function collectErrors(page: Page) {
   const errors: string[] = []
@@ -17,11 +17,11 @@ function collectErrors(page: Page) {
 test.describe('as administrator', () => {
   test.use({ storageState: ADMIN_STATE })
 
-  test('primary areas, Matrix sections, admin settings, deep links and history', async ({ page }) => {
+  test('primary areas, View sections, admin settings, deep links and history', async ({ page }) => {
     const errors = collectErrors(page)
     await page.goto('/')
     await expect(primary(page).getByRole('link')).toHaveText(PRIMARY)
-    await expect(primary(page).getByRole('link', { name: 'Matrix' })).toHaveAttribute('aria-current', 'page')
+    await expect(primary(page).getByRole('link', { name: 'View' })).toHaveAttribute('aria-current', 'page')
 
     for (const [name, heading, url] of [
       ['AI Probe', 'AI research assistant', /\/research$/],
@@ -60,7 +60,7 @@ test.describe('as administrator', () => {
     await expect(page.getByRole('combobox', { name: 'Rows per page' })).toBeVisible()
 
     // Optimizer opens its overview; its sections live in the sidebar and keep Optimizer active.
-    await primary(page).getByRole('link', { name: 'Matrix' }).click()
+    await primary(page).getByRole('link', { name: 'View' }).click()
     await expect(page).toHaveURL(/\/$/)
     for (const [name, heading, url] of [
       ['Forge', 'New portfolio', /\/stocks$/],
@@ -73,11 +73,11 @@ test.describe('as administrator', () => {
       await expect(page).toHaveURL(url)
       await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible()
       await expect(optimizer(page).getByRole('link', { name, exact: true })).toHaveAttribute('aria-current', 'page')
-      await expect(primary(page).getByRole('link', { name: 'Matrix' })).toHaveAttribute('aria-current', 'true')
+      await expect(primary(page).getByRole('link', { name: 'View' })).toHaveAttribute('aria-current', 'true')
     }
 
     // Selecting Optimizer inside the workspace keeps the open section.
-    await primary(page).getByRole('link', { name: 'Matrix' }).click()
+    await primary(page).getByRole('link', { name: 'View' }).click()
     await expect(page).toHaveURL(/\/strategy-comparison$/)
 
     // Back and forward follow the history; the active items follow the URL.
@@ -97,7 +97,7 @@ test.describe('as administrator', () => {
     await expect(primary(page).locator('[aria-current]')).toHaveCount(0)
 
     // Deep links survive a reload.
-    for (const [path, name] of [['/news', 'Wire'], ['/backtest', 'Matrix']] as const) {
+    for (const [path, name] of [['/news', 'Wire'], ['/backtest', 'View']] as const) {
       await page.goto(path)
       await page.reload()
       await expect(primary(page).getByRole('link', { name })).toHaveAttribute('aria-current', /page|true/)
@@ -133,7 +133,7 @@ test.describe('as administrator', () => {
         await expect(optimizer(page)).toBeVisible()
       }
       // Keyboard: the primary links are focusable in order.
-      await primary(page).getByRole('link', { name: 'Matrix' }).focus()
+      await primary(page).getByRole('link', { name: 'View' }).focus()
       await page.keyboard.press('Tab')
       await expect(primary(page).getByRole('link', { name: 'AI Probe' })).toBeFocused()
     })

@@ -1,6 +1,6 @@
 # Quantitative formula reference
 
-The canonical list of every significant formula MatrixView computes, with where it lives, how it is tested and what was
+The canonical list of every significant formula Matrix computes, with where it lives, how it is tested and what was
 verified. `python3 scripts/quant/maintain.py validate` parses this file: each entry's metadata table must name existing
 code symbols, tests and skills, and every file in the quantitative code paths
 (`scripts/quant/manifest.json`) must be referenced by an entry or listed as formula-free. The generated index
