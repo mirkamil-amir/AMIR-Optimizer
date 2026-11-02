@@ -23,8 +23,20 @@ public sealed class MarketDataService(
 
     /// <summary>Days re-downloaded before the last stored date to pick up late corrections.</summary>
     private const int OverlapDays = 7;
-    /// <summary>Relative change in overlapping adjusted closes that indicates new split/dividend adjustments.</summary>
-    private const decimal AdjustmentTolerance = 0.0005m;
+    /// <summary>Relative change of the adjustment factor on an overlapping date that indicates a new split/dividend adjustment.</summary>
+    public const decimal AdjustmentTolerance = 0.0005m;
+
+    /// <summary>
+    /// Whether a re-downloaded bar shows a new dividend or split adjustment: its adjustment factor (adjusted close ÷ close)
+    /// differs from the stored bar's by more than <see cref="AdjustmentTolerance"/>. Comparing adjusted closes directly also
+    /// fired when only the price moved – a bar stored while the session was open and re-downloaded after the close –
+    /// and re-downloaded the full history of 354 US and Toronto stocks in one job (2026-11-02).
+    /// </summary>
+    public static bool AdjustmentChanged(decimal oldClose, decimal? oldAdjusted, decimal newClose, decimal? newAdjusted)
+    {
+        if (oldAdjusted is not { } oldAdj || newAdjusted is not { } newAdj || oldClose <= 0 || newClose <= 0 || oldAdj <= 0) return false;
+        return Math.Abs(newAdj / newClose / (oldAdj / oldClose) - 1) > AdjustmentTolerance;
+    }
 
     // ------------------------------------------------------------------ assets
 
@@ -440,8 +452,7 @@ public sealed class MarketDataService(
         {
             if (existing.TryGetValue(bar.Date, out var row))
             {
-                if (row.AdjustedClose is { } oldAdj && bar.AdjustedClose is { } newAdj && oldAdj > 0 &&
-                    Math.Abs(newAdj / oldAdj - 1) > AdjustmentTolerance)
+                if (AdjustmentChanged(row.Close, row.AdjustedClose, bar.Close, bar.AdjustedClose))
                     adjustmentsChanged = true;
 
                 if (row.Close != bar.Close || row.AdjustedClose != bar.AdjustedClose || row.Volume != bar.Volume)
