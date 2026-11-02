@@ -67,7 +67,7 @@ export const optimizerSections: NavSection[] = [
   },
 ]
 
-/** Administration stays in the sidebar, below the Matrix sections, for administrators only. */
+/** Administration stays in the sidebar, below the View sections, for administrators only. */
 export const adminSection: NavSection = {
   title: 'Administration',
   items: [
@@ -82,7 +82,7 @@ const optimizerEntries = optimizerSections.flatMap((s) => s.items)
 /** Top navigation, in this order (branded like the sidebar, D-47; Settings stays plain). Optimizer owns every route of its sidebar sections. */
 export const primaryNav: PrimaryEntry[] = [
   {
-    id: 'optimizer', to: '/', label: 'Matrix', hint: 'Portfolio workspace: build, optimize, backtest and compare your portfolios', end: true,
+    id: 'optimizer', to: '/', label: 'View', hint: 'Portfolio workspace: build, optimize, backtest and compare your portfolios', end: true,
     // Earlier portfolio-less URLs (/holdings, /trades, /analytics) redirect into a portfolio workspace.
     match: [...optimizerEntries.flatMap((e) => [...(e.end ? [] : [e.to]), ...(e.match ?? [])]), '/holdings', '/trades', '/analytics'],
   },
@@ -96,7 +96,7 @@ export const primaryNav: PrimaryEntry[] = [
   { id: 'settings', to: '/settings', label: 'Settings' },
 ]
 
-/** Sidebar sections for the current user: Matrix sections, plus Administration for administrators. */
+/** Sidebar sections for the current user: View sections, plus Administration for administrators. */
 export function sidebarSections(isAdministrator: boolean): NavSection[] {
   return isAdministrator ? [...optimizerSections, adminSection] : optimizerSections
 }

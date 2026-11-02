@@ -516,9 +516,12 @@ public sealed class MarketDataService(
             })
             .ToDictionaryAsync(x => x.AssetId, ct);
 
-        var lastLogs = (await db.SyncLogs.AsNoTracking().Where(l => l.Source == source)
-                .OrderByDescending(l => l.CompletedAtUtc).Take(500).ToListAsync(ct))
-            .GroupBy(l => l.AssetId).ToDictionary(g => g.Key, g => g.First());
+        // The latest download attempt of every instrument (index Source, AssetId, CompletedAtUtc). Taking only the newest 500
+        // log rows overall left most of ~1,900 tracked instruments without a result (the page showed "—").
+        var lastLogs = await db.SyncLogs.AsNoTracking().Where(l => l.Source == source)
+            .GroupBy(l => l.AssetId)
+            .Select(g => g.OrderByDescending(l => l.CompletedAtUtc).ThenByDescending(l => l.Id).Select(l => new { l.AssetId, l.Message, l.Success }).First())
+            .ToDictionaryAsync(l => l.AssetId, ct);
         var latest = await prices.GetLatestPricesAsync(assets.Select(a => a.Id).ToList(), source, settings.StalePriceDays, ct);
         var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
 

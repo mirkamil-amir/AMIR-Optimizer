@@ -21,14 +21,23 @@ import { cn } from '@/lib/utils'
 import { useCreateAsset, useFxSync, useMarketStatus, useSync, useUpdateAsset } from '@/lib/queries'
 import type { AssetCoverage, DataFreshness, FxCoverage } from '@/lib/types'
 import { date, dateTime, money, num, relativeTime } from '@/lib/format'
-import { describeCatalogue, describeSymbols, trackedTotal } from '@/lib/instrument-counts'
+import { currencyName } from '@/lib/currency'
+import { describeCatalogue, describeNotTracked, describeSymbols, notTrackedReason, notTrackedTotal, trackedTotal } from '@/lib/instrument-counts'
 
 const historyOptions = [
   { value: '1', label: '1 year' },
   { value: '3', label: '3 years' },
   { value: '5', label: '5 years' },
   { value: '10', label: '10 years' },
+  // Everything the provider has: Yahoo returns daily prices from the instrument's first trading day.
+  { value: 'max', label: 'All available' },
 ]
+
+/**
+ * Start date of "All available": before any listing the providers have, so the provider's own first day decides. Yahoo
+ * accepts dates before 1970 (negative Unix time): Altria comes back from 1962, a 1970 start would cut that off.
+ */
+const ALL_HISTORY_START = '1900-01-01'
 
 export function MarketDataPage() {
   const { data, isLoading, error, refetch } = useMarketStatus()
@@ -62,13 +71,18 @@ export function MarketDataPage() {
     { key: 'range', header: 'Coverage', sortValue: (c) => c.firstDate, cell: (c) => c.firstDate ? <span className="text-xs">{date(c.firstDate)} – {date(c.lastDate)}</span> : '—' },
     { key: 'adj', header: 'Adj. close', cell: (c) => c.observations === 0 ? '—' : c.hasAdjustedClose ? <Badge variant="secondary">Yes</Badge> : <Badge variant="outline" className="text-warn" title="Returns exclude dividends">Raw only</Badge> },
     { key: 'px', header: 'Latest price', align: 'right', sortValue: (c) => c.latestPrice, cell: (c) => <span title={c.latestPriceAsOfUtc ? dateTime(c.latestPriceAsOfUtc) : undefined}>{c.currency ? money(c.latestPrice, c.currency) : num(c.latestPrice)}</span> },
-    { key: 'ret', header: 'Retrieved', sortValue: (c) => c.lastRetrievedAtUtc, cell: (c) => <span className="text-xs text-muted-foreground">{relativeTime(c.lastRetrievedAtUtc)}</span> },
     {
-      key: 'msg', header: 'Last sync',
-      // Successful syncs show "OK"; routine notes (e.g. a history refresh after a dividend) stay available as a tooltip.
+      // Prices are stored and shown in the instrument's trading currency, never converted here.
+      key: 'cur', header: 'Original price currency', sortValue: (c) => c.currency,
+      cell: (c) => <div><div className="font-medium">{c.currency}</div><div className="max-w-36 truncate text-xs text-muted-foreground">{currencyName(c.currency)}</div></div>,
+    },
+    {
+      // When prices last arrived, and the outcome of the latest download when it failed (one column; "Retrieved" and
+      // "Last sync" were two). Routine notes (e.g. a history refresh after a dividend) stay available as a tooltip.
+      key: 'ret', header: 'Last download', sortValue: (c) => c.lastRetrievedAtUtc,
       cell: (c) => c.lastSyncSuccess === false
-        ? <span className="text-xs text-loss" title={c.lastSyncMessage ?? ''}>Failed: {(c.lastSyncMessage ?? '').slice(0, 60)}</span>
-        : <span className="text-xs text-muted-foreground" title={c.lastSyncMessage && c.lastSyncMessage !== 'Already up to date.' ? c.lastSyncMessage : undefined}>{c.lastSyncSuccess ? 'OK' : '—'}</span>,
+        ? <span className="text-xs text-loss" title={c.lastSyncMessage ?? ''}>Failed{c.lastRetrievedAtUtc ? ` (prices from ${relativeTime(c.lastRetrievedAtUtc)})` : ''}: {(c.lastSyncMessage ?? '').slice(0, 60)}</span>
+        : <span className="text-xs text-muted-foreground" title={c.lastSyncMessage && c.lastSyncMessage !== 'Already up to date.' ? c.lastSyncMessage : undefined}>{relativeTime(c.lastRetrievedAtUtc)}</span>,
     },
     {
       key: 'enabled', header: 'Enabled',
@@ -88,6 +102,7 @@ export function MarketDataPage() {
   ]
 
   function historyStart() {
+    if (years === 'max') return ALL_HISTORY_START
     const start = new Date()
     start.setFullYear(start.getFullYear() - Number(years))
     return start.toISOString().slice(0, 10)
@@ -173,12 +188,17 @@ export function MarketDataPage() {
                   'inline-flex border-b-2 px-3 py-2 text-sm whitespace-nowrap transition-colors focus-visible:rounded-t-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset',
                   x.path === current.path ? 'border-primary font-semibold text-foreground' : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground',
                 )}>
-                {x.label}<span className="ml-1.5 text-xs text-muted-foreground tabular">{x.path === 'currencies' ? currencies.length.toLocaleString() : `${trackedTotal(x.path === 'indexes' ? indexes : stocks).toLocaleString()} tracked`}</span>
+                {x.label}<span className="ml-1.5 text-xs text-muted-foreground tabular">{x.path === 'currencies' ? currencies.length.toLocaleString() : trackingLabel(x.path === 'indexes' ? indexes : stocks)}</span>
               </Link>
             </li>
           ))}
         </ul>
       </nav>
+
+      {current.path !== 'currencies' && (
+        <NotTrackedNote rows={current.path === 'indexes' ? indexes : stocks} historyLabel={historyOptions.find((o) => o.value === years)?.label ?? ''}
+          onDownload={isAdministrator && !running ? (symbols) => runSync(symbols) : undefined} />
+      )}
 
       {current.path === '' && (
         <SearchableTable key="stocks" label="stocks & ETFs" hint={current.hint} rows={stocks} columns={columns} rowKey={(c) => c.symbol} initialSort={{ key: 'symbol', dir: 'asc' }}
@@ -263,6 +283,33 @@ const SECTIONS = [
   { path: 'indexes', syncLabel: 'indexes', label: 'Indexes', hint: 'Stock indices used as benchmarks (e.g. ^GSPC, ^GDAXI). They are not investable; their prices are index points in the currency of their market.' },
   { path: 'currencies', syncLabel: 'currencies', label: 'Currencies', hint: 'Daily reference exchange rates, stored as units per 1 EUR – the pivot of every conversion: any other pair is calculated from two of these rates of the same day. Missing history is downloaded when an analysis needs it.' },
 ] as const
+
+/** The section tab's count: "1,899 tracked · 226 not tracked" (a zero "not tracked" is left out). */
+function trackingLabel(rows: AssetCoverage[]) {
+  const notTracked = notTrackedTotal(rows)
+  return `${trackedTotal(rows).toLocaleString()} tracked${notTracked ? ` · ${notTracked.toLocaleString()} not tracked` : ''}`
+}
+
+/**
+ * Why instruments of the open page are not tracked (lib/instrument-counts.ts › describeNotTracked); nothing when all are.
+ * Administrators can download every one that never got prices (never downloaded, or a download brought none) in one job,
+ * with the chosen history length; ones an administrator switched off stay off.
+ */
+function NotTrackedNote({ rows, historyLabel, onDownload }: { rows: AssetCoverage[]; historyLabel: string; onDownload?: (symbols: string[]) => void }) {
+  const text = describeNotTracked(rows)
+  if (!text) return null
+  const downloadable = rows.filter((r) => { const reason = notTrackedReason(r); return reason === 'never-downloaded' || reason === 'no-prices' }).map((r) => r.symbol)
+  return (
+    <div className="map-surface mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg px-3 py-2 text-sm text-muted-foreground">
+      <p className="min-w-0 flex-[999_1_24rem]">{text}</p>
+      {onDownload && downloadable.length > 0 && (
+        <Button size="sm" variant="outline" onClick={() => onDownload(downloadable)}>
+          Download {downloadable.length.toLocaleString()} without prices ({historyLabel.toLowerCase()})
+        </Button>
+      )}
+    </div>
+  )
+}
 
 /**
  * The count line of an instrument list: per type, tracked and not tracked (src/lib/instrument-counts.ts), then the
