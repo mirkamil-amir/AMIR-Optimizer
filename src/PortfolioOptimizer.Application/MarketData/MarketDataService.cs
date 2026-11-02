@@ -577,18 +577,22 @@ public sealed class MarketDataService(
         var settings = await prices.SettingsAsync(ct);
         var source = settings.ActiveProvider;
         var enabled = await db.Assets.AsNoTracking().Where(a => a.IsEnabled).Select(a => a.Id).ToListAsync(ct);
-        var stats = await db.HistoricalPrices.AsNoTracking()
+        // Index lookups only (every page polls the summary): the newest bar per instrument through (AssetId, Source, Date) and
+        // the latest retrieval through (Source, RetrievedAtUtc). A GROUP BY over the prices read the whole table (2.4 s on 13.8M
+        // prices, 2026-11-02; docs/performance.md).
+        var lastDates = await db.LatestPricesPerAsset(enabled, source, 1, DateOnly.MinValue, DateOnly.MaxValue)
+            .Select(p => new { p.AssetId, p.Date })
+            .ToDictionaryAsync(x => x.AssetId, x => x.Date, ct);
+        var lastRetrieved = await db.HistoricalPrices.AsNoTracking()
             .Where(p => p.Source == source && enabled.Contains(p.AssetId))
-            .GroupBy(p => p.AssetId)
-            .Select(g => new { g.Key, Last = g.Max(p => p.Date), Retrieved = g.Max(p => p.RetrievedAtUtc) })
-            .ToDictionaryAsync(x => x.Key, ct);
+            .MaxAsync(p => (DateTime?)p.RetrievedAtUtc, ct);
         var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
-        var counts = enabled.Select(id => Freshness(stats.TryGetValue(id, out var s) ? s.Last : null, today, settings.StalePriceDays))
+        var counts = enabled.Select(id => Freshness(lastDates.TryGetValue(id, out var last) ? last : null, today, settings.StalePriceDays))
             .GroupBy(f => f).ToDictionary(g => g.Key, g => g.Count());
         var running = await db.SyncJobs.AsNoTracking().AnyAsync(j => j.Status == JobStatus.Queued || j.Status == JobStatus.Running, ct);
         return new MarketDataSummaryDto(source, providers.Providers.FirstOrDefault(p => p.Name == source)?.IsSimulated ?? false,
             counts.GetValueOrDefault(DataFreshness.Fresh), counts.GetValueOrDefault(DataFreshness.Stale), counts.GetValueOrDefault(DataFreshness.Missing),
-            stats.Count == 0 ? null : stats.Values.Max(s => s.Retrieved), running, settings.StalePriceDays, clock.GetUtcNow().UtcDateTime);
+            lastRetrieved, running, settings.StalePriceDays, clock.GetUtcNow().UtcDateTime);
     }
 
     public static ProviderStatusDto ToDto(ProviderDescriptor p) =>
