@@ -10,6 +10,7 @@ public interface IApplicationDbContext
     DbSet<Asset> Assets { get; }
     DbSet<HistoricalPrice> HistoricalPrices { get; }
     DbSet<LatestQuote> LatestQuotes { get; }
+    DbSet<PriceCoverage> PriceCoverage { get; }
     DbSet<FxRate> FxRates { get; }
     DbSet<MarketIndex> MarketIndices { get; }
     DbSet<IndexMembership> IndexMemberships { get; }
@@ -56,6 +57,12 @@ public interface IApplicationDbContext
     /// over every price of the source – 25.8 ms instead of 0.4 ms on 55k prices.)
     /// </summary>
     IQueryable<HistoricalPrice> LatestPricesPerAsset(IReadOnlyCollection<int> assetIds, string source, int count, DateOnly from, DateOnly to);
+
+    /// <summary>
+    /// Rewrites the <see cref="PriceCoverage"/> rows of the given assets (all assets when null) from their stored prices, in one
+    /// transaction; assets without prices lose their row. Returns the number of coverage rows written.
+    /// </summary>
+    Task<int> RebuildPriceCoverageAsync(IReadOnlyCollection<int>? assetIds, CancellationToken ct);
 
     /// <summary>Inserts or updates FX observations (keyed by source, currency, date) without using the change tracker.</summary>
     Task UpsertFxRatesAsync(IReadOnlyCollection<FxRate> rates, CancellationToken ct);

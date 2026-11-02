@@ -93,6 +93,18 @@ public sealed class DatabaseInitializer(
         }
 
         await SeedAsync(ct);
+        await RebuildPriceCoverageAsync(ct);
+    }
+
+    /// <summary>
+    /// Rebuilds the stored price coverage from the prices (one pass, ~1–3 s on 13.8M prices), so prices changed outside the
+    /// application – SQL, a restore, the SQLite import – never leave stale counts in the market-data status.
+    /// </summary>
+    public async Task RebuildPriceCoverageAsync(CancellationToken ct)
+    {
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        var rows = await db.RebuildPriceCoverageAsync(null, ct);
+        logger.LogInformation("Rebuilt price coverage: {Rows} asset/source rows in {Ms} ms", rows, watch.ElapsedMilliseconds);
     }
 
     public async Task SeedAsync(CancellationToken ct)

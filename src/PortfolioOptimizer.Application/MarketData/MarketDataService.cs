@@ -482,6 +482,8 @@ public sealed class MarketDataService(
             inserted++;
         }
         await db.SaveChangesAsync(ct);
+        // Keep the stored coverage (counts, first/last date, retrieval) in step with this asset's prices.
+        if (inserted + updated > 0) await db.RebuildPriceCoverageAsync([asset.Id], ct);
         return new UpsertResult(inserted, updated, adjustmentsChanged);
     }
 
@@ -513,19 +515,9 @@ public sealed class MarketDataService(
         // The whole catalogue: tracked instruments and those nobody has downloaded yet (shown as "Missing", downloadable), so the
         // counts match the stock chooser.
         var assets = await db.Assets.AsNoTracking().OrderBy(a => a.Symbol).ToListAsync(ct);
-        var stats = await db.HistoricalPrices.AsNoTracking()
-            .Where(p => p.Source == source)
-            .GroupBy(p => p.AssetId)
-            .Select(g => new
-            {
-                AssetId = g.Key,
-                Count = g.Count(),
-                First = g.Min(p => p.Date),
-                Last = g.Max(p => p.Date),
-                Retrieved = g.Max(p => p.RetrievedAtUtc),
-                AdjCount = g.Count(p => p.AdjustedClose != null),
-            })
-            .ToDictionaryAsync(x => x.AssetId, ct);
+        // Stored coverage (one row per asset, kept by every price upsert and rebuilt on start) instead of an aggregate over every
+        // price: 1.3–4.9 s on 3–13.8M prices (2026-11-02; docs/performance.md #13).
+        var stats = await db.PriceCoverage.AsNoTracking().Where(c => c.Source == source).ToDictionaryAsync(c => c.AssetId, ct);
 
         // The latest download attempt of every instrument (index Source, AssetId, CompletedAtUtc). Taking only the newest 500
         // log rows overall left most of ~1,900 tracked instruments without a result (the page showed "—").
@@ -541,13 +533,27 @@ public sealed class MarketDataService(
             stats.TryGetValue(a.Id, out var s);
             lastLogs.TryGetValue(a.Id, out var log);
             latest.TryGetValue(a.Id, out var lp);
-            var freshness = Freshness(s?.Last, today, settings.StalePriceDays);
+            var freshness = Freshness(s?.LastDate, today, settings.StalePriceDays);
             return new AssetCoverageDto(a.Id, a.Symbol, a.Name, a.IsEnabled, source, providers.Providers.Any(p => p.Name == source && p.IsSimulated),
-                s?.Count ?? 0, s?.First, s?.Last, s is not null && s.AdjCount == s.Count, s?.Retrieved, freshness,
+                s?.Observations ?? 0, s?.FirstDate, s?.LastDate, s is not null && s.AdjustedObservations == s.Observations, s?.LastRetrievedAtUtc, freshness,
                 lp?.Price, lp?.AsOfUtc, log?.Message, log?.Success, a.Currency, a.AssetType);
         }).ToList();
 
-        var jobs = await db.SyncJobs.AsNoTracking().OrderByDescending(j => j.RequestedAtUtc).Take(10).Include(j => j.Logs).ToListAsync(ct);
+        // Recent jobs without their per-instrument logs (a job of ~2,150 instruments has as many; ten of them made the status
+        // ~21k log rows every 2 s while a job ran). Running jobs say which instruments are still waiting and which came last;
+        // the full log of one job is GET /market-data/jobs/{id}.
+        var recent = await db.SyncJobs.AsNoTracking().OrderByDescending(j => j.RequestedAtUtc).Take(10).ToListAsync(ct);
+        var activeIds = recent.Where(j => j.Status is JobStatus.Queued or JobStatus.Running).Select(j => j.Id).ToList();
+        var done = activeIds.Count == 0 ? [] : await db.SyncLogs.AsNoTracking().Where(l => l.JobId != null && activeIds.Contains(l.JobId.Value))
+            .Select(l => new { l.JobId, l.Symbol, l.CompletedAtUtc }).ToListAsync(ct);
+        var doneByJob = done.ToLookup(l => l.JobId);
+        var jobs = recent.Select(j =>
+        {
+            if (!activeIds.Contains(j.Id)) return j.ToSummaryDto(null, null);
+            var logged = doneByJob[j.Id].Select(l => l.Symbol).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var pending = j.Symbols.Split(',', StringSplitOptions.RemoveEmptyEntries).Where(s => !logged.Contains(s)).ToList();
+            return j.ToSummaryDto(pending, doneByJob[j.Id].MaxBy(l => l.CompletedAtUtc)?.Symbol);
+        }).ToList();
         var active = providers.Providers.FirstOrDefault(p => p.Name == source);
 
         // Exchange rates of the FX source that converts this price source (simulated prices use simulated rates).
@@ -569,7 +575,7 @@ public sealed class MarketDataService(
             active?.IsSimulated ?? false,
             providers.Providers.Select(ToDto).ToList(),
             coverage,
-            jobs.Select(j => j.ToDto()).ToList(),
+            jobs,
             settings.StalePriceDays,
             clock.GetUtcNow().UtcDateTime,
             currencies,

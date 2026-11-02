@@ -85,7 +85,13 @@ export interface SyncJob {
   assetsCompleted: number
   assetsFailed: number
   message: string | null
+  /** Empty in the market-data status (`logsIncluded` false); GET /market-data/jobs/{id} has them. */
   logs: SyncLog[]
+  logsIncluded?: boolean
+  /** Running or queued jobs in the status: symbols without a log yet. */
+  pendingSymbols?: string[] | null
+  /** Running jobs in the status: the symbol logged last. */
+  lastSymbol?: string | null
 }
 
 export interface AssetCoverage {
