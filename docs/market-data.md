@@ -221,7 +221,7 @@ admin ──► POST /admin/catalogue/quote-refresh;  scheduler (every 12 h) ─
   0.18 s with 8/s once stored prices are released from the DbContext after each symbol (the time per symbol had grown
   from 0.14 to 0.31 s during a job). History cannot be downloaded 20 symbols per request: Yahoo's multi-symbol endpoint
   (spark) returns plain closes only – no adjusted closes (dividends), no open/high/low/volume and no currency.
-* **Rate limits:** page and single refreshes share a per-user limit (60/min); ≤ 100 symbols per page refresh; the
+* **Rate limits:** page and single refreshes share a per-user limit (60/min); ≤ 200 symbols per page refresh (a full page of the stock list; it was 100, so 200-row pages could not refresh – fixed 2026-11-02); the
   provider throttles itself. A rejected Yahoo batch is retried once, then fetched symbol by symbol.
 * **States shown to users:** *Delayed quote* (last trade within 30 minutes), *Last close* (session finished or stored
   daily close), *cached*, *stale* (older than `StalePriceDays` business days), *SIMULATED*, *No price available*.
