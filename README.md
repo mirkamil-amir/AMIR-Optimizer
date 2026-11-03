@@ -8,11 +8,11 @@ and moves (surf, stones, tornadoes, a slow twinkle) only while the app calculate
 An educational portfolio-research platform. An **AI research assistant** turns an investment objective into an
 editable research brief, researches a universe with evidence, runs the real optimizer and risk review, explains the
 results only with numbers it can show, and lets students refine and compare alternatives before deliberately saving
-one (works without any language model; see [agentic architecture](docs/agentic-architecture.md)). Students browse ~2,150 stocks and index ETFs from thirty-five markets (S&P 500, DAX 40 and the
+one (works without any language model; see [agentic architecture](docs/agentic-architecture.md)). Students browse ~2,250 stocks and index ETFs from thirty-six markets (S&P 500, DAX 40 and the
 historical DAX 30, CAC 40, FTSE 100, Nikkei 225, SMI, IBEX 35, FTSE MIB, OMX Stockholm 30, OMX Copenhagen 25, S&P/TSX 60,
 S&P/ASX 50, Hang Seng, NIFTY 50, Straits Times, OBX, OMX Helsinki 25, BEL 20, PSI, ISEQ 20, ATX, WIG20, BUX, FTSE/Athex
 Large Cap, OMX Iceland 15, TA-35, KOSPI 200, SSE 50, FTSE Bursa Malaysia KLCI, SET50, Ibovespa, LQ45, S&P/BMV IPC, FTSE/JSE
-Top 40, S&P/NZX 50, plus local index ETFs of twenty markets – see [market data](docs/market-data.md)) with automatically refreshed,
+Top 40, S&P/NZX 50, BIST 100, plus local index ETFs of twenty markets – see [market data](docs/market-data.md)) with automatically refreshed,
 clearly labelled prices, build a
 temporary selection, follow stocks on a personal **watchlist** with price history and company news, read
 **financial news** from attributed sources (with an event and price-movement comparison that makes no causal claims),

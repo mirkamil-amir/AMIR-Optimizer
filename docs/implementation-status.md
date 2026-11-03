@@ -1,5 +1,15 @@
 # Implementation status
 
+## 2026-11-03: Türkiye – BIST 100 stocks, BIST 30 benchmark (AMIR-9, D-50)
+
+* New market Türkiye (Borsa İstanbul, `.IS`, TRY, 10:00–18:00 Istanbul): venue and session (`Markets.cs`), research brief
+  (`BriefInterpreter`, `lib/research.ts`), map city Istanbul with its own frame (`lib/markets.ts`, Europe region).
+* BIST 100: 96 members from the pinned Turkish Wikipedia list (August 2025), built by `tools/universe-builder`
+  (`bist100`, sub-sector mapping, four ticker changes) and checked with the provider; benchmark `XU100.IS`. BIST 30
+  (`XU030.IS`) is a benchmark only. Details and the reasons: market-data.md › Türkiye.
+* Tests: universe file, symbol mapping, session, BIST 30 benchmark-only, research brief (unit); markets list and BIST 100
+  provenance (integration); map venues (frontend).
+
 ## 2026-11-03: code scanning security alerts
 
 * Log forging (7 alerts): request path, method, exception messages and audit targets are logged through `LogText.Clean`

@@ -26,6 +26,9 @@
   composition), so every backtest, ML evaluation and comparison is subject to **survivorship bias**. ISINs are provided
   only for the FTSE MIB. Cross-market sectors are an approximate mapping onto GICS-style groups; for the Straits Times
   Index and the Hang Seng "Commerce & Industry" members the sector is a maintainer assignment (the sources list none).
+- Türkiye's BIST 100 file shows the members of August 2025 (Turkish Wikipedia, 96 of 100), not today's: quarterly
+  rebalancings since then are missing until an administrator uploads a newer list. The BIST 30 is a benchmark only –
+  no free member list exists (D-50).
 - The index-ETF lists of twenty markets are curated (1–2 funds per market, checked 2026-10-24/25), not a complete
   ETF catalogue.
 - Markets added 2026-10-25: several Wikipedia tables predate corporate events (the Mexican and Brazilian lists most of

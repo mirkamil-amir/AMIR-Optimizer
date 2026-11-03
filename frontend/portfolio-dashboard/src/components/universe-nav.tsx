@@ -24,7 +24,7 @@ export function marketCount(m: Market) {
 }
 
 /**
- * Region → market → index navigation, then sectors, for a large stock universe. Regions fold, so 36 markets stay one
+ * Region → market → index navigation, then sectors, for a large stock universe. Regions fold, so 37 markets stay one
  * short list; a region, a market or an index can each be chosen, and the sector list narrows to that choice. Every level
  * shows how many stocks it contains.
  */

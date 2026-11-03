@@ -43,6 +43,7 @@ against the live providers on 2026-10-14 (smoke tests: `PO_LIVE_SMOKE=1 dotnet t
 | Mexico | S&P/BMV IPC | 33 | Bolsa Mexicana de Valores (XMEX) | MXN | `WALMEX.MX`, `GFNORTEO.MX`, `PE&OLES.MX` | ^MXX |
 | South Africa | FTSE/JSE Top 40 | 39 | Johannesburg Stock Exchange (XJSE) | ZAR (provider quotes cents, ÷100) | `NPN.JO` | ^J200.JO |
 | New Zealand | S&P/NZX 50 | 50 | New Zealand Exchange (XNZE) | NZD | `FPH.NZ` | ^NZ50 (gross) |
+| Türkiye (2026-11-03) | BIST 100 | 96 (members as of August 2025) | Borsa İstanbul (XIST) | TRY | `THYAO.IS`, `ASELS.IS` | XU100.IS; XU030.IS (BIST 30) as an extra benchmark |
 
 **Twenty markets added 2026-10-25.** Every member and benchmark symbol was checked against the price provider that day
 (the instrument exists, trades in the recorded currency and has at least a year of daily prices); a sample download of a
@@ -56,8 +57,21 @@ listed are left out with the reason printed by the build (Golden Ocean, Sonae Ca
 MultiChoice, BRF, JBS, Eletrobras PNB, Azul PN, Gol, Cielo, Carrefour Brasil). The ATX, WIG20 and FTSE/JSE Top 40 tables
 name no tickers, and the ISEQ 20, SSE 50 and LQ45 tables no sectors: those are assigned in the script (company →
 ticker/sector, approximate sectors), each ticker checked with the provider. The **Philippines** (PSEi) was evaluated
-and left out: the provider has no data for the Philippine Stock Exchange. Turkey, the Czech Republic and Romania have
-no usable Wikipedia constituent table; Taiwan, Saudi Arabia and others have no ECB reference rate.
+and left out: the provider has no data for the Philippine Stock Exchange. The Czech Republic and Romania have no usable
+Wikipedia constituent table; Taiwan, Saudi Arabia and others have no ECB reference rate.
+
+**Türkiye (added 2026-11-03, D-50).** English Wikipedia lists only the BIST 100's ten largest members; the Turkish list of
+Borsa İstanbul companies has the full table ("Bist-100 Bileşenleri": ticker, name, Borsa İstanbul sector and sub-sector),
+pinned at revision 38227855. That section was last changed on 2025-08-21 and the index is rebalanced quarterly, so the
+file shows the members of August 2025, not today's – the index description says so. 96 rows (not 100); all 96 checked
+with the provider on 2026-11-03 (TRY, daily history, current prices). Four needed `TICKER_CHANGES`: Koza Altın → Türk
+Altın İşletmeleri `TRALT.IS`, Koza Anadolu Metal → TR Anadolu Metal Madencilik `TRMET.IS`, İpek Doğal Enerji `TRENJ.IS`
+(each carries the old listing's full history at the provider) and `IZMDC.IS` (İzmir Demir Çelik; the source has the
+typo "IZDMC"). Sectors map Borsa İstanbul's sub-sectors (`BIST_SUBSECTOR`; holdings → Industrials as conglomerates) with
+named exceptions (`BIST_OVERRIDES`: Tüpraş refining, the carmakers and appliance makers, Mavi, Şişecam, Astor, and the
+gold miner the source lists under coal). The **BIST 30** has no member list under a free licence anywhere, so it is a
+benchmark only (`XU030.IS` in `UniverseSeeder.Benchmarks`), not a stock filter. Session 10:00–18:00 Istanbul time;
+Türkiye is in the Europe region of the stock chooser.
 
 **Index ETFs.** Twenty markets also have a small universe "<Country> index ETFs" (`ETFCH` … `ETFSG`, checked
 2026-10-24; `ETFKR`, `ETFCN`, `ETFBR`, `ETFMX`, `ETFZA`, `ETFNZ`, `ETFPL`, `ETFTH`, `ETFMY`, `ETFID`, checked 2026-10-25;

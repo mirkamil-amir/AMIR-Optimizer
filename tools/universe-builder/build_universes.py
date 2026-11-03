@@ -19,7 +19,7 @@ Rules:
     Helsinki '.HE', Brussels '.BR', Lisbon '.LS', Dublin '.IR', Vienna '.VI', Warsaw '.WA', Budapest '.BD', Athens '.AT',
     Iceland '.IC', Tel Aviv '.TA', Korea '.KS' (six digits), Shanghai '.SS', Bursa Malaysia '.KL' (four digits), Bangkok
     '.BK', B3 '.SA' (share classes separately, PETR4.SA), Jakarta '.JK', Mexico '.MX' (series letters without a space,
-    GFNORTEO.MX), Johannesburg '.JO', NZX '.NZ'.
+    GFNORTEO.MX), Johannesburg '.JO', NZX '.NZ', and Borsa İstanbul '.IS' (added 2026-11-03).
   * Index ETFs of the newer markets (ETF<country>.csv) are a curated list in this file, not Wikipedia data.
   * 'sector' is an approximate GICS-style sector so one filter works across markets; 'industry' keeps the source's own
     classification (GICS sub-industry, Prime Standard sector, ICB sector, Nikkei industry translated from German).
@@ -82,6 +82,9 @@ PINNED = {
     "IBOV": ("pt", "Lista de companhias citadas no Ibovespa", 70162555),
     "LQ45": ("en", "LQ45", 1370624740),
     "IPC": ("en", "Indice de Precios y Cotizaciones", 1364117964),
+    # Türkiye, added 2026-11-03. Only the Turkish list of Borsa İstanbul companies has the members (section "Bist-100
+    # Bileşenleri", last changed 2025-08-21); no Wikipedia lists the BIST 30, which is a benchmark only (UniverseSeeder).
+    "BIST100": ("tr", "Borsa İstanbul'da işlem gören şirketler listesi", 38227855),
     "JSE40": ("en", "FTSE/JSE Top 40 Index", 1343081092),
     "NZX50": ("en", "S&P/NZX 50", 1381776750),
 }
@@ -160,6 +163,9 @@ INDICES = {
                   description="40 largest companies on the Johannesburg Stock Exchange (prices in ZAR; providers quote in cents)."),
     "NZX50": dict(name="S&P/NZX 50", country="NZ", currency="NZD", benchmark="^NZ50", historical=False,
                   description="50 largest companies on the New Zealand Exchange."),
+    "BIST100": dict(name="BIST 100", country="TR", currency="TRY", benchmark="XU100.IS", historical=False,
+                    description="100 largest companies on Borsa İstanbul. Members as listed on Turkish Wikipedia (last updated "
+                                "August 2025); the index is rebalanced quarterly, so today's members may differ."),
 }
 
 # Exchange-traded index funds of the newer markets: not on Wikipedia, so curated here. Every symbol, name, currency and
@@ -230,6 +236,7 @@ MARKET = {
     "MX": dict(suffix=".MX", exchange="Bolsa Mexicana de Valores", mic="XMEX", currency="MXN"),
     "ZA": dict(suffix=".JO", exchange="Johannesburg Stock Exchange", mic="XJSE", currency="ZAR"),
     "NZ": dict(suffix=".NZ", exchange="New Zealand Exchange", mic="XNZE", currency="NZD"),
+    "TR": dict(suffix=".IS", exchange="Borsa İstanbul", mic="XIST", currency="TRY"),
 }
 
 # ---------------------------------------------------------------------------------------------- sector mappings
@@ -583,6 +590,37 @@ NZX_SECTOR = {
     "property & casualty insurance": "Financials", "metals & mining": "Materials",
 }
 
+# BIST 100: Borsa İstanbul's own sub-sector (column "Alt sektör" of the Turkish list) -> GICS-style sector. Holdings are
+# conglomerates (GICS Industrials); the source's labels stay in 'industry'.
+BIST_SUBSECTOR = {
+    "elektrik, gaz ve buhar": "Utilities",
+    "ham petrol ve doğal gaz çıkartılması": "Energy", "kömür ve linyit madenciliği": "Energy", "metal cevheri madenciliği": "Materials",
+    "aracı kurum": "Financials", "bankacılık": "Financials", "holdingler ve yatırım şirketleri": "Financials",
+    "gayrimenkul yatırım ortaklığı": "Real Estate", "holding": "Industrials",
+    "mimarlık ve mühendislik faaliyetleri, teknik muayene ve analiz": "Industrials",
+    "bilişim": "Information Technology", "savunma": "Industrials",
+    "perakende ticaret": "Consumer Staples", "toptan ticaret": "Consumer Discretionary",
+    "haberleşme": "Communication Services", "ulaştırma ve depolama": "Industrials",
+    "ana metal sanayi": "Materials", "gıda, içecek ve tütün": "Consumer Staples",
+    "kimya, ilaç, petrol, lastik ve plastik ürünler": "Materials",
+    "metal eşya, makine, elektrikli cihazlar ve ulaşım araçları": "Industrials",
+    "taş ve toprağa dayalı imalat": "Materials", "tekstil, giyim eşyası ve deri": "Consumer Discretionary",
+    "inşaat ve bayındırlık işleri": "Industrials",
+}
+
+
+def turkish_key(label):
+    """Lower case for matching: Python lowers the Turkish 'İ' to 'i' plus a combining dot (U+0307), which is dropped."""
+    return label.lower().replace("̇", "")
+# Members whose business the broad sub-sector does not describe: a refinery, carmakers and car parts, household appliances,
+# an apparel retailer, a glass maker inside "Holding", a transformer maker inside the power sector, and a gold miner the
+# source lists under coal mining.
+BIST_OVERRIDES = {
+    "TUPRS": "Energy", "FROTO": "Consumer Discretionary", "TOASO": "Consumer Discretionary", "EGEEN": "Consumer Discretionary",
+    "ARCLK": "Consumer Discretionary", "VESTL": "Consumer Discretionary", "VESBE": "Consumer Discretionary",
+    "MAVI": "Consumer Discretionary", "SISE": "Materials", "ASTOR": "Industrials", "KOZAL": "Materials",
+}
+
 
 def gics(label):
     """A GICS sector name as given, or its alias; "Unclassified" when neither."""
@@ -610,6 +648,12 @@ TICKER_CHANGES = {
     "EMBR3.SA": ("EMBJ3", "Embraer"),
     "NTCO3.SA": ("NATU3", "Natura"),
     "MRFG3.SA": ("MBRF3", "MBRF Global Foods (Marfrig and BRF combined)"),
+    # Borsa İstanbul (checked 2026-11-03): the provider has no data under the old tickers; the new ones carry the old
+    # listings' full history (TRALT from Koza Altın's listing in Feb 2010) and the same companies' names.
+    "KOZAL.IS": ("TRALT", "Türk Altın İşletmeleri (formerly Koza Altın)"),
+    "KOZAA.IS": ("TRMET", "TR Anadolu Metal Madencilik (formerly Koza Anadolu Metal)"),
+    "IPEKE.IS": ("TRENJ", "İpek Doğal Enerji Kaynakları"),
+    "IZDMC.IS": ("IZMDC", "İzmir Demir Çelik"),  # a typo in the source: the listing has always been IZMDC
 }
 
 # Rows of a source table that are not index constituents (removed and reported).
@@ -1073,6 +1117,18 @@ def nzx50(text):
                        wiki_title(raw[c])) for cells, raw, _ in data]
 
 
+def bist100(text):
+    # The first table of the page ("Bist-100 Bileşenleri"); the later tables list every listed company, A to Z.
+    header, data = find_table(text, "kod", "firma adı", "alt sektör")
+    t, c, sub = col(header, "kod"), col(header, "firma adı"), col(header, "alt sektör")
+    out = []
+    for cells, raw, _ in data:
+        ticker = cells[t].upper()
+        sector = BIST_OVERRIDES.get(ticker) or BIST_SUBSECTOR.get(turkish_key(cells[sub]), "Unclassified")
+        out.append(market_row("TR", ticker, name_of(cells[c]), sector, cells[sub], wiki_title(raw[c])))
+    return out
+
+
 def market_row(country, ticker, name, sector, industry, wiki="", isin=""):
     m = MARKET[country]
     symbol = ticker + m["suffix"]
@@ -1085,7 +1141,7 @@ PARSERS = {"SP500": sp500, "DAX40": dax, "DAX30": dax, "CAC40": cac40, "FTSE100"
            "HSI": hsi, "NIFTY50": nifty50, "STI": sti,
            "OBX": obx, "OMXH25": omxh25, "BEL20": bel20, "PSI": psi, "ISEQ20": iseq20, "ATX": atx, "WIG20": wig20, "BUX": bux,
            "ATHEX25": athex25, "OMXI15": omxi15, "TA35": ta35, "KOSPI200": kospi200, "SSE50": sse50, "KLCI": klci, "SET50": set50,
-           "IBOV": ibov, "LQ45": lq45, "IPC": ipc, "JSE40": jse40, "NZX50": nzx50}
+           "IBOV": ibov, "LQ45": lq45, "IPC": ipc, "JSE40": jse40, "NZX50": nzx50, "BIST100": bist100}
 
 FIELDS = ["symbol", "name", "country", "exchange", "mic", "currency", "sector", "industry", "isin", "wiki"]
 

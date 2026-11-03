@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { countriesOf, countryOfSymbol, sectorAndIndices, unresolvedSymbols, venues } from './markets'
+import { countriesOf, countryOfSymbol, regionOf, sectorAndIndices, unresolvedSymbols, venues } from './markets'
 
 describe('markets', () => {
   it('finds the market of a symbol from its venue suffix or index symbol', () => {
@@ -39,12 +39,19 @@ describe('markets', () => {
 
   it('has one exchange city with valid coordinates per market', () => {
     expect(new Set(venues.map((v) => v.country)).size).toBe(venues.length)
-    expect(venues).toHaveLength(36)
+    expect(venues).toHaveLength(37)
     for (const v of venues) {
       expect(v.lat).toBeGreaterThan(-58)
       expect(v.lat).toBeLessThan(84)
       expect(Math.abs(v.lon)).toBeLessThanOrEqual(180)
     }
+  })
+
+  it('places Borsa İstanbul and its indices in Türkiye, in the Europe region', () => {
+    expect(countryOfSymbol('THYAO.IS')).toBe('TR')
+    expect(countryOfSymbol('XU100.IS')).toBe('TR')
+    expect(countryOfSymbol('XU030.IS')).toBe('TR')
+    expect(regionOf('TR')).toBe('Europe')
   })
 })
 

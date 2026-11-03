@@ -64,6 +64,8 @@ public static class Markets
         new("MX", "Mexico", "Bolsa Mexicana de Valores", "XMEX", "MXN", ".MX", null, "America/Mexico_City"),
         new("ZA", "South Africa", "Johannesburg Stock Exchange", "XJSE", "ZAR", ".JO", null, "Africa/Johannesburg"),
         new("NZ", "New Zealand", "New Zealand Exchange", "XNZE", "NZD", ".NZ", null, "Pacific/Auckland"),
+        // Added 2026-11-03 (BIST 100; the index symbols XU100.IS and XU030.IS carry the venue suffix).
+        new("TR", "Türkiye", "Borsa İstanbul", "XIST", "TRY", ".IS", null, "Europe/Istanbul"),
     ];
 
     /// <summary>The venue of a canonical symbol (index symbols such as ^GDAXI are matched by <see cref="IndexVenues"/>).</summary>
@@ -145,6 +147,7 @@ public static class Markets
         "ID" => (new(9, 0), new(16, 0)),
         "MX" => (new(8, 30), new(15, 0)),
         "NZ" => (new(10, 0), new(16, 45)),
+        "TR" => (new(10, 0), new(18, 0)),
         _ => (new(9, 0), new(17, 30)), // Xetra, Euronext Paris/Amsterdam/Brussels, SIX, Madrid, Milan, Stockholm, Vienna
     };
 

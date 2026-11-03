@@ -115,7 +115,7 @@ public sealed class MarketDataRefreshTests : IAsyncLifetime
     {
         var markets = await (await _admin.GetAsync("/api/v1/markets")).ReadAsync<List<MarketDto>>();
         Assert.Equal(["US", "DE", "FR", "GB", "JP", "CH", "ES", "IT", "SE", "DK", "CA", "AU", "HK", "IN", "SG",
-            "NO", "FI", "BE", "PT", "IE", "AT", "PL", "HU", "GR", "IS", "IL", "KR", "CN", "MY", "TH", "BR", "ID", "MX", "ZA", "NZ"],
+            "NO", "FI", "BE", "PT", "IE", "AT", "PL", "HU", "GR", "IS", "IL", "KR", "CN", "MY", "TH", "BR", "ID", "MX", "ZA", "NZ", "TR"],
             markets.Select(m => m.Country));
         var indices = markets.SelectMany(m => m.Indices).ToDictionary(i => i.Code);
         Assert.Equal(40, indices["DAX40"].Members);
@@ -134,7 +134,10 @@ public sealed class MarketDataRefreshTests : IAsyncLifetime
         Assert.InRange(indices["NIKKEI225"].Members, 220, 225);
         Assert.InRange(indices["SP500"].Members, 495, 510);
         var constituentLists = indices.Values.Where(i => !i.Code.StartsWith("ETF")).ToList();
-        Assert.Equal(36, constituentLists.Count);
+        Assert.Equal(37, constituentLists.Count);
+        Assert.Equal("XU100.IS", indices["BIST100"].BenchmarkSymbol);
+        Assert.Equal("TRY", indices["BIST100"].Currency);
+        Assert.Contains("tr.wikipedia.org", indices["BIST100"].SourceUrl);
         Assert.All(constituentLists, i => Assert.Contains("wikipedia.org", i.SourceUrl));
         Assert.All(constituentLists, i => Assert.Equal("CC BY-SA 4.0", i.Licence));
         Assert.Equal(48, indices["ASX50"].Members);
