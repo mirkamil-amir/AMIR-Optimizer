@@ -62,7 +62,7 @@ public sealed class StocksController(StockDiscoveryService stocks, MarketDataSer
     public Task<IReadOnlyList<HistoryCoverageDto>> HistoryCoverage(HistoryCoverageRequest request, CancellationToken ct) =>
         stocks.GetHistoryCoverageAsync(request.Symbols, ct);
 
-    /// <summary>Refreshes the latest quotes of up to 100 stocks (e.g. the visible page) through the server's data provider.</summary>
+    /// <summary>Refreshes the latest quotes of up to 200 stocks (a full page of the stock list) through the server's data provider.</summary>
     /// <remarks>Quotes retrieved within the cache window are reused unless <c>force</c> is set (a 30-second cooldown still applies).</remarks>
     [HttpPost("stocks/quotes/refresh")]
     [EnableRateLimiting(RateLimitPolicies.Quotes)]

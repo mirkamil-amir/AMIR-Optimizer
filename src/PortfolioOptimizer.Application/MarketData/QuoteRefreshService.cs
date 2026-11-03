@@ -21,8 +21,11 @@ public sealed class QuoteRefreshOptions
     public int CycleMinIntervalMinutes { get; set; } = 15;
     /// <summary>A forced single-stock refresh within this many seconds of the last retrieval returns the stored quote.</summary>
     public int SingleRefreshCooldownSeconds { get; set; } = 30;
-    /// <summary>Maximum symbols per synchronous page refresh.</summary>
-    public int PageRefreshMaxSymbols { get; set; } = 100;
+    /// <summary>
+    /// Maximum symbols per synchronous page refresh: a full page of the stock list (`pageSize` ≤ 200). It was 100, so the
+    /// Refresh button and the automatic refresh of a 200-row page failed with 400 (2026-11-02).
+    /// </summary>
+    public int PageRefreshMaxSymbols { get; set; } = 200;
     /// <summary>For providers with a daily quota, the share of the remaining budget a sign-in cycle may use.</summary>
     public double CycleQuotaShare { get; set; } = 0.5;
 }
