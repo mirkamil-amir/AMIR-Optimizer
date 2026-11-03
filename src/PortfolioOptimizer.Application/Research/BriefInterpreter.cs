@@ -14,7 +14,7 @@ public static class BriefRules
         ["CA"] = "TSX60", ["AU"] = "ASX50", ["HK"] = "HSI", ["IN"] = "NIFTY50", ["SG"] = "STI",
         ["NO"] = "OBX", ["FI"] = "OMXH25", ["BE"] = "BEL20", ["PT"] = "PSI", ["IE"] = "ISEQ20", ["AT"] = "ATX", ["PL"] = "WIG20",
         ["HU"] = "BUX", ["GR"] = "ATHEX25", ["IS"] = "OMXI15", ["IL"] = "TA35", ["KR"] = "KOSPI200", ["CN"] = "SSE50", ["MY"] = "KLCI",
-        ["TH"] = "SET50", ["BR"] = "IBOV", ["ID"] = "LQ45", ["MX"] = "IPC", ["ZA"] = "JSE40", ["NZ"] = "NZX50",
+        ["TH"] = "SET50", ["BR"] = "IBOV", ["ID"] = "LQ45", ["MX"] = "IPC", ["ZA"] = "JSE40", ["NZ"] = "NZX50", ["TR"] = "BIST100",
     };
 
     public static readonly IReadOnlyDictionary<string, string> MarketNames = new Dictionary<string, string>
@@ -28,7 +28,7 @@ public static class BriefRules
         ["GR"] = "Greece (FTSE/Athex Large Cap)", ["IS"] = "Iceland (OMX Iceland 15)", ["IL"] = "Israel (TA-35)",
         ["KR"] = "South Korea (KOSPI 200)", ["CN"] = "China (SSE 50)", ["MY"] = "Malaysia (FTSE Bursa Malaysia KLCI)",
         ["TH"] = "Thailand (SET50)", ["BR"] = "Brazil (Ibovespa)", ["ID"] = "Indonesia (LQ45)", ["MX"] = "Mexico (S&P/BMV IPC)",
-        ["ZA"] = "South Africa (FTSE/JSE Top 40)", ["NZ"] = "New Zealand (S&P/NZX 50)",
+        ["ZA"] = "South Africa (FTSE/JSE Top 40)", ["NZ"] = "New Zealand (S&P/NZX 50)", ["TR"] = "Türkiye (BIST 100)",
     };
 
     public static readonly string[] Sectors =
@@ -157,6 +157,7 @@ public sealed class BriefInterpreter(ILanguageModel model)
         ("MX", new Regex(@"\b(mexico|mexican|ipc|bmv)\b", RegexOptions.IgnoreCase)),
         ("ZA", new Regex(@"\b(south\s*africa|south\s*african|jse|johannesburg)\b", RegexOptions.IgnoreCase)),
         ("NZ", new Regex(@"\b(new\s*zealand|nzx(\s*50)?|auckland)\b", RegexOptions.IgnoreCase)),
+        ("TR", new Regex(@"\b(t[üu]rkiye|turkey|turkish|bist(\s*100)?|istanbul)\b", RegexOptions.IgnoreCase)),
     ];
 
     private static readonly Regex LowRisk = new(@"\b(low[- ]risk|conservative|cautious|defensive|stable|safe|capital preservation|avoid (big )?losses|don'?t want to lose)\b", RegexOptions.IgnoreCase);

@@ -15,7 +15,7 @@ export const marketNames: Record<string, string> = {
   AT: 'Austria (ATX)', PL: 'Poland (WIG20)', HU: 'Hungary (BUX)', GR: 'Greece (FTSE/Athex Large Cap)', IS: 'Iceland (OMX Iceland 15)',
   IL: 'Israel (TA-35)', KR: 'South Korea (KOSPI 200)', CN: 'China (SSE 50)', MY: 'Malaysia (FTSE Bursa Malaysia KLCI)',
   TH: 'Thailand (SET50)', BR: 'Brazil (Ibovespa)', ID: 'Indonesia (LQ45)', MX: 'Mexico (S&P/BMV IPC)',
-  ZA: 'South Africa (FTSE/JSE Top 40)', NZ: 'New Zealand (S&P/NZX 50)',
+  ZA: 'South Africa (FTSE/JSE Top 40)', NZ: 'New Zealand (S&P/NZX 50)', TR: 'Türkiye (BIST 100)',
 }
 
 export const sectors = [

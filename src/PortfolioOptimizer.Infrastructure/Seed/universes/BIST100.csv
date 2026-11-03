@@ -1,0 +1,97 @@
+symbol,name,country,exchange,mic,currency,sector,industry,isin,wiki
+AEFES.IS,Anadolu Efes Biracılık Ve Malt Sanayii A.Ş.,TR,Borsa İstanbul,XIST,TRY,Consumer Staples,"Gıda, İçecek ve Tütün",,tr:Anadolu Efes
+AGHOL.IS,AG Anadolu Grubu Holding,TR,Borsa İstanbul,XIST,TRY,Industrials,Holding,,tr:Anadolu Grubu
+AKBNK.IS,Akbank,TR,Borsa İstanbul,XIST,TRY,Financials,Bankacılık,,tr:Akbank
+AKCNS.IS,Akçansa Çimento,TR,Borsa İstanbul,XIST,TRY,Materials,Taş ve Toprağa Dayalı İmalat,,
+AKFGY.IS,Akfen Gayrimenkul Yatırım Ortaklığı,TR,Borsa İstanbul,XIST,TRY,Real Estate,Gayrimenkul Yatırım Ortaklığı,,
+AKFYE.IS,Akfen Yenilenebilir Enerji,TR,Borsa İstanbul,XIST,TRY,Utilities,"Elektrik, Gaz ve Buhar",,
+AKSA.IS,AKSA Akrilik Kimya,TR,Borsa İstanbul,XIST,TRY,Materials,"Kimya, İlaç, Petrol, Lastik ve Plastik Ürünler",,
+AKSEN.IS,AKSA Enerji Üretim,TR,Borsa İstanbul,XIST,TRY,Utilities,"Elektrik, Gaz ve Buhar",,
+ALARK.IS,Alarko Holding,TR,Borsa İstanbul,XIST,TRY,Industrials,Holding,,tr:Alarko Holding
+ALBRK.IS,Albaraka Türk Katılım Bankası,TR,Borsa İstanbul,XIST,TRY,Financials,Bankacılık,,tr:Albaraka Türk
+ALFAS.IS,Alfa Solar Enerji,TR,Borsa İstanbul,XIST,TRY,Utilities,"Elektrik, Gaz ve Buhar",,
+ARCLK.IS,Arçelik,TR,Borsa İstanbul,XIST,TRY,Consumer Discretionary,"Metal Eşya, Makine, Elektrikli Cihazlar ve Ulaşım Araçları",,tr:Arçelik
+ASELS.IS,Aselsan,TR,Borsa İstanbul,XIST,TRY,Industrials,Savunma,,tr:ASELSAN
+ASTOR.IS,Astor Enerji,TR,Borsa İstanbul,XIST,TRY,Industrials,"Elektrik, Gaz ve Buhar",,
+BERA.IS,Bera Holding,TR,Borsa İstanbul,XIST,TRY,Industrials,Holding,,tr:Bera Holding
+BIENY.IS,Bien Yapı Ürünleri,TR,Borsa İstanbul,XIST,TRY,Materials,Taş ve Toprağa Dayalı İmalat,,
+BIMAS.IS,BİM Birleşik Mağazalar,TR,Borsa İstanbul,XIST,TRY,Consumer Staples,Perakende Ticaret,,tr:BİM
+BRSAN.IS,Borusan Mannesmann,TR,Borsa İstanbul,XIST,TRY,Materials,Ana Metal Sanayi,,
+BRYAT.IS,Borusan Yatırım Pazarlama,TR,Borsa İstanbul,XIST,TRY,Financials,Holdingler ve Yatırım Şirketleri,,
+BUCIM.IS,Bursa Çimento,TR,Borsa İstanbul,XIST,TRY,Materials,Taş ve Toprağa Dayalı İmalat,,tr:Bursa Çimento
+CANTE.IS,Çan2 Termik,TR,Borsa İstanbul,XIST,TRY,Utilities,"Elektrik, Gaz ve Buhar",,
+CCOLA.IS,Coca-Cola İçecek,TR,Borsa İstanbul,XIST,TRY,Consumer Staples,"Gıda, İçecek ve Tütün",,tr:Coca-Cola İçecek A.Ş.
+CIMSA.IS,Çimsa Çimento,TR,Borsa İstanbul,XIST,TRY,Materials,Taş ve Toprağa Dayalı İmalat,,tr:Çimsa
+CWENE.IS,CW Enerji Mühendislik Ticaret ve Sanayi,TR,Borsa İstanbul,XIST,TRY,Utilities,"Elektrik, Gaz ve Buhar",,
+DOAS.IS,Doğuş Otomotiv,TR,Borsa İstanbul,XIST,TRY,Consumer Discretionary,Toptan Ticaret,,tr:Doğuş Otomotiv
+DOHOL.IS,Doğan Şirketler Grubu Holding,TR,Borsa İstanbul,XIST,TRY,Industrials,Holding,,tr:Doğan Holding
+ECILC.IS,EİS Eczacıbaşı İlaç,TR,Borsa İstanbul,XIST,TRY,Industrials,Holding,,tr:Eczacıbaşı Holding
+ECZYT.IS,Eczacıbaşı Yatırım Holding Ortaklığı,TR,Borsa İstanbul,XIST,TRY,Industrials,Holding,,
+EGEEN.IS,Ege Endüstri,TR,Borsa İstanbul,XIST,TRY,Consumer Discretionary,"Metal Eşya, Makine, Elektrikli Cihazlar ve Ulaşım Araçları",,
+EKGYO.IS,Emlak Konut Gayrimenkul Yatırım Ortaklığı,TR,Borsa İstanbul,XIST,TRY,Real Estate,Gayrimenkul Yatırım Ortaklığı,,tr:Emlak Konut GYO
+ENJSA.IS,Enerjisa,TR,Borsa İstanbul,XIST,TRY,Utilities,"Elektrik, Gaz ve Buhar",,tr:Enerjisa
+ENKAI.IS,Enka İnşaat,TR,Borsa İstanbul,XIST,TRY,Industrials,İnşaat ve Bayındırlık İşleri,,
+EREGL.IS,Ereğli Demir ve Çelik Fabrikaları,TR,Borsa İstanbul,XIST,TRY,Materials,Ana Metal Sanayi,,tr:Erdemir
+EUPWR.IS,Europower Enerji ve Otomasyon Sanayileri Ticaret,TR,Borsa İstanbul,XIST,TRY,Industrials,"Metal Eşya, Makine, Elektrikli Cihazlar ve Ulaşım Araçları",,
+EUREN.IS,Europen Endüstri İnşaat Sanayi ve Ticaret,TR,Borsa İstanbul,XIST,TRY,Materials,"Kimya, İlaç, Petrol, Lastik ve Plastik Ürünler",,
+FROTO.IS,Ford Otosan,TR,Borsa İstanbul,XIST,TRY,Consumer Discretionary,"Metal Eşya, Makine, Elektrikli Cihazlar ve Ulaşım Araçları",,tr:Ford Otosan
+GARAN.IS,Türkiye Garanti Bankası,TR,Borsa İstanbul,XIST,TRY,Financials,Bankacılık,,tr:Garanti BBVA
+GENIL.IS,Gen İlaç ve Sağlık Ürünleri Sanayi ve Ticaret,TR,Borsa İstanbul,XIST,TRY,Industrials,Holding,,
+GESAN.IS,Girişim Elektrik Sanayi Taahhüt ve Ticaret,TR,Borsa İstanbul,XIST,TRY,Industrials,İnşaat ve Bayındırlık İşleri,,
+GLYHO.IS,Global Yatırım Holding,TR,Borsa İstanbul,XIST,TRY,Industrials,Holding,,
+GUBRF.IS,Gübre Fabrikaları,TR,Borsa İstanbul,XIST,TRY,Materials,"Kimya, İlaç, Petrol, Lastik ve Plastik Ürünler",,
+GWIND.IS,Galata Wind Enerji,TR,Borsa İstanbul,XIST,TRY,Utilities,"Elektrik, Gaz ve Buhar",,
+HALKB.IS,Türkiye Halk Bankası,TR,Borsa İstanbul,XIST,TRY,Financials,Bankacılık,,tr:Halkbank
+HEKTS.IS,Hektaş Ticaret,TR,Borsa İstanbul,XIST,TRY,Materials,"Kimya, İlaç, Petrol, Lastik ve Plastik Ürünler",,
+IMASM.IS,İmaş Makina Sanayi,TR,Borsa İstanbul,XIST,TRY,Industrials,"Metal Eşya, Makine, Elektrikli Cihazlar ve Ulaşım Araçları",,
+ISCTR.IS,Türkiye İş Bankası,TR,Borsa İstanbul,XIST,TRY,Financials,Bankacılık,,tr:Türkiye İş Bankası
+ISDMR.IS,İskenderun Demir ve Çelik,TR,Borsa İstanbul,XIST,TRY,Materials,Ana Metal Sanayi,,tr:İskenderun Demir ve Çelik A.Ş.
+ISGYO.IS,İş Gayrimenkul Yatırım Ortaklığı,TR,Borsa İstanbul,XIST,TRY,Real Estate,Gayrimenkul Yatırım Ortaklığı,,
+ISMEN.IS,İş Yatırım Menkul Değerler,TR,Borsa İstanbul,XIST,TRY,Financials,Aracı Kurum,,tr:Türkiye İş Bankası
+IZMDC.IS,İzmir Demir Çelik,TR,Borsa İstanbul,XIST,TRY,Materials,Ana Metal Sanayi,,
+KARSN.IS,Karsan Otomotiv,TR,Borsa İstanbul,XIST,TRY,Industrials,"Metal Eşya, Makine, Elektrikli Cihazlar ve Ulaşım Araçları",,tr:Karsan
+KAYSE.IS,Kayseri Şeker Fabrikası,TR,Borsa İstanbul,XIST,TRY,Consumer Staples,"Gıda, İçecek ve Tütün",,
+KCAER.IS,Kocaer Çelik Sanayi ve Ticaret,TR,Borsa İstanbul,XIST,TRY,Materials,Ana Metal Sanayi,,
+KCHOL.IS,Koç Holding,TR,Borsa İstanbul,XIST,TRY,Industrials,Holding,,tr:Koç Holding
+KMPUR.IS,Kimteks Poliüretan Sanayi ve Ticaret,TR,Borsa İstanbul,XIST,TRY,Materials,"Kimya, İlaç, Petrol, Lastik ve Plastik Ürünler",,
+KONTR.IS,Kontrolmatik Teknoloji Enerji ve Mühendislik,TR,Borsa İstanbul,XIST,TRY,Industrials,"Mimarlık ve Mühendislik Faaliyetleri, Teknik Muayene ve Analiz",,
+KONYA.IS,Konya Çimento,TR,Borsa İstanbul,XIST,TRY,Materials,Taş ve Toprağa Dayalı İmalat,,tr:Konya Çimento
+KORDS.IS,Kordsa Teknik Tekstil,TR,Borsa İstanbul,XIST,TRY,Consumer Discretionary,"Tekstil, Giyim Eşyası ve Deri",,
+KRDMD.IS,Kardemir Karabük Demir Çelik,TR,Borsa İstanbul,XIST,TRY,Materials,Ana Metal Sanayi,,tr:Kardemir
+KZBGY.IS,Kızılbük Gayrimenkul Yatırım Ortaklığı,TR,Borsa İstanbul,XIST,TRY,Real Estate,Gayrimenkul Yatırım Ortaklığı,,
+MAVI.IS,Mavi Giyim,TR,Borsa İstanbul,XIST,TRY,Consumer Discretionary,Perakende Ticaret,,tr:Mavi (şirket)
+MGROS.IS,Migros Ticaret,TR,Borsa İstanbul,XIST,TRY,Consumer Staples,Perakende Ticaret,,tr:Migros (Türkiye)
+MIATK.IS,Mia Teknoloji,TR,Borsa İstanbul,XIST,TRY,Information Technology,Bilişim,,
+ODAS.IS,ODAŞ Elektrik Üretim,TR,Borsa İstanbul,XIST,TRY,Utilities,"Elektrik, Gaz ve Buhar",,
+OTKAR.IS,Otokar Otomotiv ve Savunma,TR,Borsa İstanbul,XIST,TRY,Industrials,"Metal Eşya, Makine, Elektrikli Cihazlar ve Ulaşım Araçları",,tr:Otokar
+OYAKC.IS,OYAK Çimento Fabrikaları,TR,Borsa İstanbul,XIST,TRY,Materials,Taş ve Toprağa Dayalı İmalat,,
+PENTA.IS,Penta Teknoloji Ürünleri Dağıtım Ticaret,TR,Borsa İstanbul,XIST,TRY,Information Technology,Bilişim,,
+PETKM.IS,Petkim Petrokimya Holding,TR,Borsa İstanbul,XIST,TRY,Materials,"Kimya, İlaç, Petrol, Lastik ve Plastik Ürünler",,tr:PETKİM
+PGSUS.IS,Pegasus Hava Taşımacılığı,TR,Borsa İstanbul,XIST,TRY,Industrials,Ulaştırma ve Depolama,,
+PSGYO.IS,Pasifik Gayrimenkul Yatırım Ortaklığı,TR,Borsa İstanbul,XIST,TRY,Real Estate,Gayrimenkul Yatırım Ortaklığı,,
+QUAGR.IS,Qua Granite Hayal Yapı ve Ürünleri Sanayi Ticaret,TR,Borsa İstanbul,XIST,TRY,Materials,Taş ve Toprağa Dayalı İmalat,,
+SAHOL.IS,Hacı Ömer Sabancı Holding,TR,Borsa İstanbul,XIST,TRY,Industrials,Holding,,tr:Sabancı Holding
+SASA.IS,SASA Polyester,TR,Borsa İstanbul,XIST,TRY,Materials,"Kimya, İlaç, Petrol, Lastik ve Plastik Ürünler",,tr:SASA Polyester
+SISE.IS,Türkiye Şişe ve Cam Fabrikaları,TR,Borsa İstanbul,XIST,TRY,Materials,Holding,,tr:Şişecam
+SKBNK.IS,Şekerbank,TR,Borsa İstanbul,XIST,TRY,Financials,Bankacılık,,tr:Şekerbank
+SMRTG.IS,Smart Güneş Enerjisi Teknolojileri Araştırma Geliştirme Üretim Sanayi ve Ticaret,TR,Borsa İstanbul,XIST,TRY,Utilities,"Elektrik, Gaz ve Buhar",,
+SOKM.IS,Şok Marketler,TR,Borsa İstanbul,XIST,TRY,Consumer Staples,Perakende Ticaret,,tr:Şok (market)
+TAVHL.IS,TAV Havalimanları Holding,TR,Borsa İstanbul,XIST,TRY,Industrials,Holding,,tr:TAV Havalimanları Holding
+TCELL.IS,Turkcell İletişim Hizmetleri,TR,Borsa İstanbul,XIST,TRY,Communication Services,Haberleşme,,tr:Turkcell
+THYAO.IS,Türk Hava Yolları,TR,Borsa İstanbul,XIST,TRY,Industrials,Ulaştırma ve Depolama,,tr:Türk Hava Yolları
+TKFEN.IS,Tekfen Holding,TR,Borsa İstanbul,XIST,TRY,Industrials,Holding,,tr:Tekfen Holding
+TOASO.IS,Tofaş Türk Otomobil Fabrikası,TR,Borsa İstanbul,XIST,TRY,Consumer Discretionary,"Metal Eşya, Makine, Elektrikli Cihazlar ve Ulaşım Araçları",,tr:TOFAŞ
+TRALT.IS,Türk Altın İşletmeleri (formerly Koza Altın),TR,Borsa İstanbul,XIST,TRY,Materials,Kömür ve Linyit Madenciliği,,tr:Koza Altın
+TRENJ.IS,İpek Doğal Enerji Kaynakları,TR,Borsa İstanbul,XIST,TRY,Energy,Ham Petrol ve Doğal Gaz Çıkartılması,,
+TRMET.IS,TR Anadolu Metal Madencilik (formerly Koza Anadolu Metal),TR,Borsa İstanbul,XIST,TRY,Materials,Metal Cevheri Madenciliği,,
+TSKB.IS,Türkiye Sınai Kalkınma Bankası,TR,Borsa İstanbul,XIST,TRY,Financials,Bankacılık,,tr:Türkiye Sınai Kalkınma Bankası
+TTKOM.IS,Türk Telekomünikasyon,TR,Borsa İstanbul,XIST,TRY,Communication Services,Haberleşme,,tr:Türk Telekom
+TTRAK.IS,Türk Traktör ve Ziraat Makineleri,TR,Borsa İstanbul,XIST,TRY,Industrials,"Metal Eşya, Makine, Elektrikli Cihazlar ve Ulaşım Araçları",,
+TUPRS.IS,TÜPRAŞ-Türkiye Petrol Rafinerileri,TR,Borsa İstanbul,XIST,TRY,Energy,"Kimya, İlaç, Petrol, Lastik ve Plastik Ürünler",,tr:TÜPRAŞ
+ULKER.IS,Ülker Bisküvi,TR,Borsa İstanbul,XIST,TRY,Consumer Staples,"Gıda, İçecek ve Tütün",,tr:Ülker (şirket)
+VAKBN.IS,Türkiye Vakıflar Bankası,TR,Borsa İstanbul,XIST,TRY,Financials,Bankacılık,,tr:VakıfBank
+VESBE.IS,Vestel Beyaz Eşya,TR,Borsa İstanbul,XIST,TRY,Consumer Discretionary,"Metal Eşya, Makine, Elektrikli Cihazlar ve Ulaşım Araçları",,tr:Vestel
+VESTL.IS,Vestel Elektronik,TR,Borsa İstanbul,XIST,TRY,Consumer Discretionary,"Metal Eşya, Makine, Elektrikli Cihazlar ve Ulaşım Araçları",,tr:Vestel
+YKBNK.IS,Yapı ve Kredi Bankası,TR,Borsa İstanbul,XIST,TRY,Financials,Bankacılık,,tr:Yapı Kredi Bankası
+YYLGD.IS,Yayla Agro Gıda Sanayi ve Ticaret,TR,Borsa İstanbul,XIST,TRY,Consumer Staples,"Gıda, İçecek ve Tütün",,
+ZOREN.IS,Zorlu Enerji Elektrik Üretim,TR,Borsa İstanbul,XIST,TRY,Utilities,"Elektrik, Gaz ve Buhar",,

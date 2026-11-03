@@ -2,6 +2,15 @@
 
 Short records of decisions that are not obvious from the code. Newest first. Format: context → decision → consequences.
 
+## D-50 Türkiye from an older Wikipedia list; the BIST 30 as a benchmark only (2026-11-03)
+**Context:** the owner asked for Türkiye (BIST 100 and BIST 30). D-42 had left it out for lack of a Wikipedia constituent
+table. The only one found is on Turkish Wikipedia (96 tickers, section last changed 2025-08-21); no language lists the BIST
+30; Borsa İstanbul's own lists are current but not under a free licence.
+**Decision (owner's choice):** the BIST 100 comes from the pinned Turkish Wikipedia revision, labelled as the members of
+August 2025, every symbol checked with the provider; the BIST 30 is offered only as a benchmark (`XU030.IS`), not as a
+stock filter. **Consequences:** the BIST 100 list ages faster than the others (quarterly rebalancing since August 2025 is
+not reflected) – an administrator can upload a newer member list; four renames/typos are mapped in `TICKER_CHANGES`.
+
 ## D-49 Name "Matrix"; a glowing M that moves only while the app calculates (2026-11-01)
 **Context:** the 4×4 correlation-matrix mark read as a generic grid; the owner wanted a new logo, a "thinking" state, and
 the shorter name. Candidates were rendered on a design canvas (nine marks, six variations, densities 11/15/22, eight

@@ -1,5 +1,15 @@
 # Implementation status
 
+## 2026-11-03: Türkiye – BIST 100 stocks, BIST 30 benchmark (AMIR-9, D-50)
+
+* New market Türkiye (Borsa İstanbul, `.IS`, TRY, 10:00–18:00 Istanbul): venue and session (`Markets.cs`), research brief
+  (`BriefInterpreter`, `lib/research.ts`), map city Istanbul with its own frame (`lib/markets.ts`, Europe region).
+* BIST 100: 96 members from the pinned Turkish Wikipedia list (August 2025), built by `tools/universe-builder`
+  (`bist100`, sub-sector mapping, four ticker changes) and checked with the provider; benchmark `XU100.IS`. BIST 30
+  (`XU030.IS`) is a benchmark only. Details and the reasons: market-data.md › Türkiye.
+* Tests: universe file, symbol mapping, session, BIST 30 benchmark-only, research brief (unit); markets list and BIST 100
+  provenance (integration); map venues (frontend).
+
 ## 2026-11-03: several markets, indices and sectors at once; filters in full screen (AMIR-8)
 
 * Choose stocks: the market/index/sector list became checkboxes (`UniverseNav`, helpers in `lib/universe-scope.ts`).
@@ -12,6 +22,17 @@
 * Map on Math/ML Optimization › Choose stocks: the workspace kept the portfolio's markets lit and framed there, so a
   ticked stock neither moved the camera nor lit its market (only a faint ripple). On those pages the map now follows only
   the selection, as on New portfolio (`WorkspaceHeader`; `portfolio-workspace.test.tsx`).
+
+## 2026-11-03: code scanning security alerts
+
+* Log forging (7 alerts): request path, method, exception messages and audit targets are logged through `LogText.Clean`
+  (control characters escaped, long values cut). Four third-party actions in `container-images.yml` are pinned to commit
+  SHAs. ROC-AUC computes $n_+(n_++1)$ in `double` (it overflowed above ~46,000 positives and returned e.g. 4,296).
+* `LogText.Clean` escapes through `Regex.Replace`: CodeQL only accepts `String.Replace/Remove` or `Regex.Replace` as a
+  log-forging sanitizer and kept reporting the earlier hand-written escape loop (same output).
+* The two "cleartext storage of sensitive information" alerts flagged the audit action *name* `PasswordChanged`, not a
+  password. The constant is now `AuditActions.SignInDetailsChanged`; its stored value `auth.password_changed` is unchanged.
+* The remaining notes are code quality, not security.
 
 ## 2026-11-03: a 200-row page of the stock list refreshes its prices
 
