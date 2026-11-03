@@ -1107,6 +1107,7 @@
       "tests": [
         "ModelTests.OutOfSampleR2_IsRelativeToTheTrainingMean",
         "ModelTests.Auc_Brier_AndCalibration_MatchDefinitions",
+        "ModelTests.Auc_WithMoreThan46kPositives_DoesNotOverflow",
         "ModelTests.Spearman_HandlesTiesAndMonotoneTransforms",
         "ModelTests.Ranking_TopKAndSpread_UseRealizedOutcomes"
       ],
