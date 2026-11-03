@@ -87,8 +87,12 @@ function WorkspaceHeader({ portfolio }: { portfolio: PortfolioSummary }) {
   const holdings = useHoldings(portfolio.id)
   // The background map highlights and frames the markets of the portfolio's holdings – or, while it holds nothing yet, of
   // the stocks it may invest in (its working universe). Recomputed when holdings change or another portfolio opens.
+  // Choosing stocks (Math/ML Optimization › Choose stocks) is about the new selection, so there the map follows only the
+  // selection, as on New portfolio: otherwise the portfolio's markets stay lit and framed, and a ticked stock neither
+  // moves the camera nor lights its market.
+  const choosingStocks = /\/stocks\/?$/.test(pathname)
   const held = (holdings.data?.holdings ?? []).filter((h) => h.quantity > 0).map((h) => h.symbol)
-  useMapHighlight('portfolio', countriesOf(held.length > 0 ? held : details.data?.settings.universe ?? []))
+  useMapHighlight('portfolio', choosingStocks ? [] : countriesOf(held.length > 0 ? held : details.data?.settings.universe ?? []))
   const archive = useArchivePortfolio()
   const [recording, setRecording] = useState(false)
   const [editing, setEditing] = useState(false)

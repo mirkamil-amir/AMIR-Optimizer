@@ -8,9 +8,9 @@ test('detail panel: large layout, Previous/Next/Close, ranges, description and s
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/stocks')
   const nav = page.getByRole('navigation', { name: 'Markets, indices and sectors' }).first()
-  await nav.getByRole('button', { name: /^Europe/ }).click()
-  await nav.getByRole('button', { name: /^Germany/ }).click()
-  await nav.getByRole('button', { name: /^DAX 40/ }).click()
+  await nav.getByRole('button', { name: 'Show Europe' }).click()
+  await nav.getByRole('button', { name: 'Show Germany indices' }).click()
+  await nav.getByRole('checkbox', { name: 'DAX 40' }).click()
   await expect(page.getByText(/^40 stocks$/)).toBeVisible()
 
   // A selection made before opening the panel must survive it.

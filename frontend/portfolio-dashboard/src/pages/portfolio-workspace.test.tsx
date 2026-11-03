@@ -5,6 +5,7 @@ import { createMemoryRouter, RouterProvider } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { PortfolioProvider, usePortfolioContext } from '@/lib/portfolio-context'
+import { WorldMapProvider, useWorldMap } from '@/lib/world-map'
 import type { PortfolioSummary } from '@/lib/types'
 import { PortfolioWorkspace, ToCurrentPortfolio } from './portfolio-workspace'
 
@@ -15,12 +16,12 @@ const summary = (id: string, name: string, extra: Partial<PortfolioSummary> = {}
   latestOptimizationAtUtc: null, lastTradeAtUtc: null, ...extra,
 })
 
-const data = vi.hoisted(() => ({ portfolios: [] as PortfolioSummary[] }))
+const data = vi.hoisted(() => ({ portfolios: [] as PortfolioSummary[], held: [] as string[] }))
 const idle = { mutateAsync: vi.fn(), isPending: false }
 vi.mock('@/lib/queries', () => ({
   usePortfolios: () => ({ data: data.portfolios, isLoading: false }),
   usePortfolio: () => ({ data: undefined }),
-  useHoldings: () => ({ data: undefined }),
+  useHoldings: () => ({ data: { holdings: data.held.map((symbol) => ({ symbol, quantity: 1 })) } }),
   useArchivePortfolio: () => idle,
   useUpdatePortfolioDetails: () => idle,
   useRecordTransaction: () => idle,
@@ -40,14 +41,22 @@ function Section() {
   )
 }
 
+/** The markets the background map currently highlights, as text. */
+function MapProbe() {
+  return <p data-testid="map-markets">{useWorldMap()?.highlighted.join(',')}</p>
+}
+
 function renderAt(path: string) {
   const router = createMemoryRouter([
     { path: '/', element: <p>my portfolios</p> },
     { path: '/holdings', element: <ToCurrentPortfolio section="" /> },
     { path: '/trades', element: <ToCurrentPortfolio section="transactions" /> },
-    { path: '/portfolios/:portfolioId', element: <PortfolioWorkspace />, children: [{ index: true, element: <Section /> }, { path: 'transactions', element: <Section /> }] },
+    {
+      path: '/portfolios/:portfolioId', element: <PortfolioWorkspace />,
+      children: [{ index: true, element: <Section /> }, { path: 'transactions', element: <Section /> }, { path: 'optimize/stocks', element: <Section /> }],
+    },
   ], { initialEntries: [path] })
-  render(<TooltipProvider><PortfolioProvider><RouterProvider router={router} /></PortfolioProvider></TooltipProvider>)
+  render(<TooltipProvider><WorldMapProvider><PortfolioProvider><RouterProvider router={router} /><MapProbe /></PortfolioProvider></WorldMapProvider></TooltipProvider>)
   return router
 }
 
@@ -74,6 +83,19 @@ describe('portfolio workspace', () => {
     // The branded names keep their plain term for screen readers (and as tooltip).
     expect(within(nav).getByRole('link', { name: 'Rewind' })).toHaveAccessibleDescription(/^Backtesting:/)
     expect(within(nav).getByRole('link', { name: 'Ledger' })).toHaveAccessibleDescription(/^Transactions:/)
+  })
+
+  it('lights the held markets on the map, but leaves the map to the selection while stocks are chosen', async () => {
+    data.portfolios = [summary('a', 'Growth')]
+    data.held = ['AAPL', 'SAP.DE']
+    const router = renderAt('/portfolios/a')
+    await screen.findByRole('heading', { level: 1, name: 'Growth' })
+    expect(screen.getByTestId('map-markets')).toHaveTextContent('US,DE')
+    await act(() => router.navigate('/portfolios/a/optimize/stocks'))
+    expect(screen.getByTestId('map-markets')).toBeEmptyDOMElement()
+    await act(() => router.navigate('/portfolios/a'))
+    expect(screen.getByTestId('map-markets')).toHaveTextContent('US,DE')
+    data.held = []
   })
 
   it('shows a safe not-found state for an unknown or foreign id', async () => {

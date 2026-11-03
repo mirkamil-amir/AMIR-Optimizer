@@ -424,7 +424,8 @@ export type StockSort = 'symbol' | 'name' | 'sector' | 'change' | 'change-desc'
 export interface StockQuery {
   country?: string
   index?: string
-  sector?: string
+  /** Any of these sectors (sent as one `sector` parameter each). */
+  sectors?: string[]
   search?: string
   symbols?: string[]
   withPrices?: boolean
@@ -438,7 +439,7 @@ function stockParams(q: StockQuery) {
   if (q.country) p.set('country', q.country)
   if (q.index) p.set('index', q.index)
   if (q.sort && q.sort !== 'symbol') p.set('sort', q.sort)
-  if (q.sector) p.set('sector', q.sector)
+  q.sectors?.forEach((s) => p.append('sector', s))
   if (q.search) p.set('search', q.search)
   if (q.symbols?.length) p.set('symbols', q.symbols.join(','))
   if (q.withPrices !== undefined) p.set('withPrices', String(q.withPrices))

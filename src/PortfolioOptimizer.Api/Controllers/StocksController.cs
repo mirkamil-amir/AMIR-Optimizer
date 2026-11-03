@@ -22,15 +22,17 @@ public sealed class StocksController(StockDiscoveryService stocks, MarketDataSer
     [HttpGet("markets")]
     public Task<IReadOnlyList<MarketDto>> Markets(CancellationToken ct) => stocks.GetMarketsAsync(ct);
 
-    /// <summary>Sectors with the number of stocks and how many have stored prices, optionally within a market or index.</summary>
+    /// <summary>Sectors with the number of stocks and how many have stored prices, optionally within markets and/or indices
+    /// (each comma-separated; a stock counts if it is in any of them).</summary>
     [HttpGet("sectors")]
     public Task<IReadOnlyList<SectorDto>> Sectors([FromQuery] string? country, [FromQuery] string? index, CancellationToken ct) =>
         stocks.GetSectorsAsync(country, index, ct);
 
     /// <summary>Searches the catalogue.</summary>
     /// <param name="country">Market (ISO country of a venue in Markets.Venues, e.g. US, DE, CH, IN) or several, comma-separated (a region); includes members of their indices.</param>
-    /// <param name="index">Index code (SP500, DAX40, DAX30, CAC40, FTSE100, NIKKEI225).</param>
-    /// <param name="sector">Exact sector name, or "Unclassified".</param>
+    /// <param name="index">Index code (SP500, DAX40, DAX30, CAC40, FTSE100, NIKKEI225) or several, comma-separated. With
+    /// <paramref name="country"/> the two are alternatives: a stock in any chosen market or any chosen index matches.</param>
+    /// <param name="sector">Exact sector name, or "Unclassified"; repeat the parameter for several (any of them matches).</param>
     /// <param name="search">Case-insensitive match on ticker, company name or ISIN.</param>
     /// <param name="tracked">Filter on tracked (scheduled refresh) instruments.</param>
     /// <param name="withPrices">Filter on instruments with stored daily prices from the active source.</param>
@@ -40,7 +42,7 @@ public sealed class StocksController(StockDiscoveryService stocks, MarketDataSer
     /// <param name="page">1-based page.</param>
     /// <param name="pageSize">Rows per page (max 200).</param>
     [HttpGet("stocks")]
-    public Task<PagedResult<StockListItemDto>> Search([FromQuery] string? country, [FromQuery] string? index, [FromQuery] string? sector,
+    public Task<PagedResult<StockListItemDto>> Search([FromQuery] string? country, [FromQuery] string? index, [FromQuery] string[]? sector,
         [FromQuery] string? search, [FromQuery] bool? tracked, [FromQuery] bool? withPrices, [FromQuery] string? symbols, [FromQuery] string? sort,
         CancellationToken ct, [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
         stocks.SearchAsync(new StockQuery(country, index, sector, search, tracked, withPrices, sort, page, pageSize,
