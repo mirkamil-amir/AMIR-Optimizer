@@ -7,11 +7,15 @@ using PortfolioOptimizer.Domain;
 
 namespace PortfolioOptimizer.Application.MarketData;
 
-/// <summary>Filters for the stock browser. All are optional and combine with AND.</summary>
+/// <summary>
+/// Filters for the stock browser. All are optional and combine with AND, except markets and indices: <see cref="Country"/>
+/// and <see cref="Index"/> each take one value or several, comma-separated, and a stock matches if it belongs to any chosen
+/// market OR any chosen index (e.g. "all of Japan plus the DAX 40"). <see cref="Sectors"/> keeps stocks of any listed sector.
+/// </summary>
 public sealed record StockQuery(
     string? Country = null,
     string? Index = null,
-    string? Sector = null,
+    IReadOnlyCollection<string>? Sectors = null,
     string? Search = null,
     bool? Tracked = null,
     bool? WithPrices = null,
@@ -200,22 +204,22 @@ public sealed class StockDiscoveryService(
             var list = query.Symbols.Select(Asset.NormalizeSymbol).Distinct().ToList();
             q = q.Where(a => list.Contains(a.Symbol));
         }
-        if (!string.IsNullOrWhiteSpace(query.Country))
+        var countries = SplitCodes(query.Country);
+        var indices = SplitCodes(query.Index);
+        if (countries.Count > 0 || indices.Count > 0)
         {
-            // One market or several (a region: "DE,FR,IT"). A market contains its listings and the members of its indices
-            // (e.g. ArcelorMittal, the Amsterdam-listed CAC 40 member).
-            var countries = query.Country.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Select(c => c.ToUpperInvariant()).Distinct().ToList();
+            // A market contains its listings and the members of its indices (e.g. ArcelorMittal, the Amsterdam-listed CAC 40
+            // member); a chosen index adds its members. Markets and indices are alternatives (OR), so several can be combined.
             var codes = db.MarketIndices.Where(i => countries.Contains(i.Country)).Select(i => i.Code);
-            q = q.Where(a => countries.Contains(a.Country) || a.Memberships.Any(m => codes.Contains(m.IndexCode)));
+            q = q.Where(a => countries.Contains(a.Country)
+                || a.Memberships.Any(m => codes.Contains(m.IndexCode) || indices.Contains(m.IndexCode)));
         }
-        if (!string.IsNullOrWhiteSpace(query.Index))
+        var sectors = query.Sectors?.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim()).Distinct().ToList() ?? [];
+        if (sectors.Count > 0)
         {
-            var index = query.Index.Trim().ToUpperInvariant();
-            q = q.Where(a => a.Memberships.Any(m => m.IndexCode == index));
+            var unclassified = sectors.Remove(UnclassifiedSector);
+            q = q.Where(a => (a.Sector != null && sectors.Contains(a.Sector)) || (unclassified && a.Sector == null));
         }
-        if (!string.IsNullOrWhiteSpace(query.Sector))
-            q = query.Sector == UnclassifiedSector ? q.Where(a => a.Sector == null) : q.Where(a => a.Sector == query.Sector);
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
             var term = query.Search.Trim().ToLowerInvariant();
@@ -224,6 +228,10 @@ public sealed class StockDiscoveryService(
         if (query.Tracked is { } t) q = q.Where(a => a.IsEnabled == t);
         return q;
     }
+
+    private static List<string> SplitCodes(string? value) =>
+        value?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(c => c.ToUpperInvariant()).Distinct().ToList() ?? [];
 
     private IQueryable<Asset> OrderByChange(IQueryable<Asset> q, string source, bool descending)
     {

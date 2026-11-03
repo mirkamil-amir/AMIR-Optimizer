@@ -1,15 +1,17 @@
 # Implementation status
 
-## 2026-11-03: code scanning security alerts
+## 2026-11-03: several markets, indices and sectors at once; filters in full screen (AMIR-8)
 
-* Log forging (7 alerts): request path, method, exception messages and audit targets are logged through `LogText.Clean`
-  (control characters escaped, long values cut). Four third-party actions in `container-images.yml` are pinned to commit
-  SHAs. ROC-AUC computes $n_+(n_++1)$ in `double` (it overflowed above ~46,000 positives and returned e.g. 4,296).
-* `LogText.Clean` escapes through `Regex.Replace`: CodeQL only accepts `String.Replace/Remove` or `Regex.Replace` as a
-  log-forging sanitizer and kept reporting the earlier hand-written escape loop (same output).
-* The two "cleartext storage of sensitive information" alerts flagged the audit action *name* `PasswordChanged`, not a
-  password. The constant is now `AuditActions.SignInDetailsChanged`; its stored value `auth.password_changed` is unchanged.
-* The remaining notes are code quality, not security.
+* Choose stocks: the market/index/sector list became checkboxes (`UniverseNav`, helpers in `lib/universe-scope.ts`).
+  Any number of regions, markets, indices and sectors can be ticked; a partly chosen region or market shows a dash;
+  "Find a market or index" filters the list. Full screen now shows the same filters on the left (folded above the list
+  on narrow windows), sharing one state with the page.
+* API: `/stocks` and `/sectors` take several comma-separated `country` and `index` values (a stock in any of them
+  matches – markets and indices are alternatives now, no longer combined with AND) and a repeated `sector` parameter.
+  `StockDiscoveryTests.Stocks_SeveralMarketsIndicesAndSectors_Combine` covers it.
+* Map on Math/ML Optimization › Choose stocks: the workspace kept the portfolio's markets lit and framed there, so a
+  ticked stock neither moved the camera nor lit its market (only a faint ripple). On those pages the map now follows only
+  the selection, as on New portfolio (`WorkspaceHeader`; `portfolio-workspace.test.tsx`).
 
 ## 2026-11-03: a 200-row page of the stock list refreshes its prices
 

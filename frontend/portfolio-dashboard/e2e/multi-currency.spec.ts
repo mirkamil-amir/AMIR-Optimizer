@@ -21,7 +21,8 @@ test('mixed-currency portfolio: EUR base with US, German, Japanese and UK stocks
   await page.getByRole('combobox', { name: 'Portfolio currency' }).click()
   await page.getByRole('option', { name: /^EUR/ }).click()
   await expect(page.getByText('Starting cash (EUR)')).toBeVisible()
-  await page.getByRole('button', { name: 'All markets' }).click()
+  // No market is ticked: the list covers all markets.
+  await expect(page.getByText('· all markets')).toBeVisible()
   await pick(page, 'AAPL', 'AAPL')
   await pick(page, 'SAP.DE', 'SAP.DE')
   await pick(page, '7203.T', '7203.T')
