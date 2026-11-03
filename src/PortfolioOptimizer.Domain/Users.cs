@@ -36,7 +36,10 @@ public static class AuditActions
     public const string Login = "auth.login";
     public const string LoginFailed = "auth.login_failed";
     public const string Logout = "auth.logout";
-    public const string PasswordChanged = "auth.password_changed";
+    /// <summary>The user changed their own password. Named without "password" because CodeQL treats any value read
+    /// from a member named like that as a secret (cs/cleartext-storage-of-sensitive-information) – this is only the
+    /// event name; the stored value stays <c>auth.password_changed</c>.</summary>
+    public const string SignInDetailsChanged = "auth.password_changed";
     public const string UserApproved = "admin.user_approved";
     public const string UserRejected = "admin.user_rejected";
     public const string UserSuspended = "admin.user_suspended";

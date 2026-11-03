@@ -893,12 +893,13 @@ well-posed). Tree models (ML.NET FastForest/FastTree) are not re-derived here; c
 |---|---|
 | Status | Verified correct |
 | Code | `src/PortfolioOptimizer.MachineLearning/Evaluation/Metrics.cs#Regression`; `src/PortfolioOptimizer.MachineLearning/Evaluation/Metrics.cs#Classification`; `src/PortfolioOptimizer.MachineLearning/Evaluation/Metrics.cs#Ranking`; `src/PortfolioOptimizer.MachineLearning/Evaluation/Metrics.cs#RocAuc`; `src/PortfolioOptimizer.MachineLearning/Evaluation/Metrics.cs#Spearman` |
-| Tests | `ModelTests.OutOfSampleR2_IsRelativeToTheTrainingMean`; `ModelTests.Auc_Brier_AndCalibration_MatchDefinitions`; `ModelTests.Spearman_HandlesTiesAndMonotoneTransforms`; `ModelTests.Ranking_TopKAndSpread_UseRealizedOutcomes` |
+| Tests | `ModelTests.OutOfSampleR2_IsRelativeToTheTrainingMean`; `ModelTests.Auc_Brier_AndCalibration_MatchDefinitions`; `ModelTests.Auc_WithMoreThan46kPositives_DoesNotOverflow`; `ModelTests.Spearman_HandlesTiesAndMonotoneTransforms`; `ModelTests.Ranking_TopKAndSpread_UseRealizedOutcomes` |
 | Skills | ml-pipeline |
 | Verified | 2026-10-28 |
 
 OOS $R^2 = 1 - \sum(\hat y-y)^2/\sum(\bar y_{train}-y)^2$ (Campbell & Thompson 2008, *RFS* 21(4)); AUC = Mann–Whitney
-$(\sum \text{rank}_+ - n_+(n_++1)/2)/(n_+n_-)$ with average ranks; Brier and skill vs. the training base rate; log loss
+$(\sum \text{rank}_+ - n_+(n_++1)/2)/(n_+n_-)$ with average ranks (computed in `double`: $n_+(n_++1)$ overflowed `int` above
+~46,000 positives, `ModelTests.Auc_WithMoreThan46kPositives_DoesNotOverflow`); Brier and skill vs. the training base rate; log loss
 clipped at 1e-12; decile calibration. Ranking: per-date Spearman IC on the realized forward **excess** return for every
 target; t-statistic $\bar{IC}\sqrt{k}/s_{IC}$ on dates ≥ h apart (overlap would overstate it). No multiple-testing
 correction across experiments (documented limitation).

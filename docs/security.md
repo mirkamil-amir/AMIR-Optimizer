@@ -56,7 +56,12 @@ Integration tests cover cross-user access for each area. The frontend route guar
 - **CORS:** only configured origins (`Cors:AllowedOrigins`). In compose the browser talks to nginx on the same origin.
 - **Forwarded headers** are trusted only when `ReverseProxy:TrustForwardedHeaders` is enabled (compose: behind nginx).
 - **Validation and errors:** request DTOs are validated; errors are Problem Details without stack traces outside
-  Development. Request logging does not log bodies, cookies or authorization headers.
+  Development. Request logging does not log bodies, cookies or authorization headers. Request-supplied text in log
+  lines (path, method, exception messages, audit targets) goes through `LogText.Clean`: control characters such as
+  line breaks are escaped, so a crafted request cannot forge log entries (CodeQL `cs/log-forging`, 2026-11-03; it must
+  stay a `Regex.Replace`, the only form CodeQL accepts as a sanitizer).
+- **CI supply chain:** third-party GitHub Actions are pinned to a commit SHA (version in a comment, updated by
+  Dependabot's `github-actions` entry); only `actions/*` and `github/*` run by tag.
 
 ## Audit trail
 

@@ -236,7 +236,8 @@ public static class MetricCalculator
         if (positives == 0 || negatives == 0) return null;
         var ranks = Ranks(obs.Select(o => o.Prediction).ToArray());
         var sumPositiveRanks = obs.Select((o, i) => o.Label >= 0.5 ? ranks[i] : 0).Sum();
-        return (sumPositiveRanks - positives * (positives + 1) / 2.0) / ((double)positives * negatives);
+        // In double: positives × (positives + 1) overflows int above ~46,000 positive labels.
+        return (sumPositiveRanks - (double)positives * (positives + 1) / 2.0) / ((double)positives * negatives);
     }
 
     private static double Median(double[] v)

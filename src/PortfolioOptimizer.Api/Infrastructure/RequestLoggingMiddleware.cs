@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using PortfolioOptimizer.Application.Common;
 
 namespace PortfolioOptimizer.Api.Infrastructure;
 
@@ -18,7 +19,7 @@ public sealed class RequestLoggingMiddleware(RequestDelegate next, ILogger<Reque
             if (!context.Request.Path.StartsWithSegments("/health"))
             {
                 logger.LogInformation("HTTP {Method} {Path} responded {StatusCode} in {Elapsed:0.0} ms (trace {TraceId})",
-                    context.Request.Method, context.Request.Path, context.Response.StatusCode, elapsed, context.TraceIdentifier);
+                    LogText.Clean(context.Request.Method), LogText.Clean(context.Request.Path.Value), context.Response.StatusCode, elapsed, context.TraceIdentifier);
             }
         }
     }
