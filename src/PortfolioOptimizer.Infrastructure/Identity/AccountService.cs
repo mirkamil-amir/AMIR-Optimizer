@@ -126,7 +126,7 @@ public sealed class AccountService(
         }
         // The security stamp changed: other sessions are invalidated at their next validation; keep this one.
         await signIn.RefreshSignInAsync(user);
-        await audit.RecordAsync(AuditActions.PasswordChanged, "User", id.ToString(), ct: ct);
+        await audit.RecordAsync(AuditActions.SignInDetailsChanged, "User", id.ToString(), ct: ct);
     }
 
     public async Task<UserAccountStatus?> GetStatusAsync(Guid userId, CancellationToken ct) =>

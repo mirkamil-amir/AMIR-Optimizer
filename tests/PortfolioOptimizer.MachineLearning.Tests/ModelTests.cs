@@ -234,6 +234,15 @@ public class MetricTests
     }
 
     [Fact]
+    public void Auc_WithMoreThan46kPositives_DoesNotOverflow()
+    {
+        // 50,000 positives all ranked above 10 negatives: AUC = 1. In int arithmetic 50,000 × 50,001 overflows (CodeQL #42).
+        var obs = Enumerable.Range(0, 50_000).Select(i => new ScoredObservation(0, i, 0.9, 1.0, 0))
+            .Concat(Enumerable.Range(0, 10).Select(i => new ScoredObservation(0, 50_000 + i, 0.1, 0.0, 0))).ToList();
+        Assert.Equal(1.0, MetricCalculator.RocAuc(obs)!.Value, 12);
+    }
+
+    [Fact]
     public void OutOfSampleR2_IsRelativeToTheTrainingMean()
     {
         var obs = new[] { (1.0, 1.0), (2.0, 2.0), (3.0, 3.0) }.Select((x, i) => new ScoredObservation(0, i, x.Item1, x.Item2, 0)).ToList();

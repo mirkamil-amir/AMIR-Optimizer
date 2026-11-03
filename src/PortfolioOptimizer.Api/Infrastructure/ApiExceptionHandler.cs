@@ -72,8 +72,8 @@ public sealed class ApiExceptionHandler(IProblemDetailsService problemDetails, I
             },
         };
 
-        if (problem.Status >= 500) logger.LogError(exception, "Unhandled exception for {Method} {Path}", context.Request.Method, context.Request.Path);
-        else logger.LogInformation("Request {Method} {Path} failed with {Status}: {Message}", context.Request.Method, context.Request.Path, problem.Status, exception.Message);
+        if (problem.Status >= 500) logger.LogError(exception, "Unhandled exception for {Method} {Path}", LogText.Clean(context.Request.Method), LogText.Clean(context.Request.Path.Value));
+        else logger.LogInformation("Request {Method} {Path} failed with {Status}: {Message}", LogText.Clean(context.Request.Method), LogText.Clean(context.Request.Path.Value), problem.Status, LogText.Clean(exception.Message));
 
         context.Response.StatusCode = problem.Status ?? 500;
         return await problemDetails.TryWriteAsync(new ProblemDetailsContext

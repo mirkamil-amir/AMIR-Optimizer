@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using PortfolioOptimizer.Application.Abstractions;
+using PortfolioOptimizer.Application.Common;
 using PortfolioOptimizer.Domain;
 using PortfolioOptimizer.Infrastructure.Persistence;
 
@@ -39,11 +40,11 @@ public sealed class AuditLog(
                 IpAddress = currentUser.IpAddress,
             });
             await db.SaveChangesAsync(CancellationToken.None);
-            logger.LogInformation("Audit {Action} by {ActorId} on {TargetType} {TargetId}: {Success}", action, actorId, targetType, targetId, success);
+            logger.LogInformation("Audit {Action} by {ActorId} on {TargetType} {TargetId}: {Success}", LogText.Clean(action), actorId, LogText.Clean(targetType), LogText.Clean(targetId), success);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to record audit event {Action}", action);
+            logger.LogError(ex, "Failed to record audit event {Action}", LogText.Clean(action));
         }
     }
 

@@ -1,10 +1,27 @@
 # Implementation status
 
+## 2026-11-03: code scanning security alerts
+
+* Log forging (7 alerts): request path, method, exception messages and audit targets are logged through `LogText.Clean`
+  (control characters escaped, long values cut). Four third-party actions in `container-images.yml` are pinned to commit
+  SHAs. ROC-AUC computes $n_+(n_++1)$ in `double` (it overflowed above ~46,000 positives and returned e.g. 4,296).
+* `LogText.Clean` escapes through `Regex.Replace`: CodeQL only accepts `String.Replace/Remove` or `Regex.Replace` as a
+  log-forging sanitizer and kept reporting the earlier hand-written escape loop (same output).
+* The two "cleartext storage of sensitive information" alerts flagged the audit action *name* `PasswordChanged`, not a
+  password. The constant is now `AuditActions.SignInDetailsChanged`; its stored value `auth.password_changed` is unchanged.
+* The remaining notes are code quality, not security.
+
 ## 2026-11-03: a 200-row page of the stock list refreshes its prices
 
 * The quote refresh accepted at most 100 symbols (request validation and `QuoteRefresh:PageRefreshMaxSymbols`), so on a
   200-row page (the list's maximum) both the Refresh button and the automatic refresh of old quotes failed with 400. Both
   limits are 200 now; `MarketDataRefreshTests` refreshes 200 symbols and rejects 201.
+
+## 2026-11-02: Atlas fast during downloads (stored price coverage)
+
+* The market-data status counted prices per instrument over every price (1.3–4.9 s) and carried ~21k download-log rows
+  every 2 s while a job ran. Now it reads `PriceCoverage` (migration `PriceCoverage`; kept by every upsert, rebuilt on
+  start) and lists jobs without logs; Atlas loads a job's log when it is opened, paged. See performance.md #13.
 
 ## 2026-11-02: navigation and stock lists fast again on a large price table
 
