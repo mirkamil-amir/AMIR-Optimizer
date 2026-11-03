@@ -1,5 +1,13 @@
 # Implementation status
 
+## 2026-11-03: code scanning security alerts
+
+* Log forging (7 alerts): request path, method, exception messages and audit targets are logged through `LogText.Clean`
+  (control characters escaped, long values cut). Four third-party actions in `container-images.yml` are pinned to commit
+  SHAs. ROC-AUC computes $n_+(n_++1)$ in `double` (it overflowed above ~46,000 positives and returned e.g. 4,296).
+* Not changed: the two "cleartext storage of sensitive information" alerts flag the audit action *name*
+  `PasswordChanged`, not a password (false positive); the remaining notes are code quality, not security.
+
 ## 2026-11-02: Atlas fast during downloads (stored price coverage)
 
 * The market-data status counted prices per instrument over every price (1.3–4.9 s) and carried ~21k download-log rows
