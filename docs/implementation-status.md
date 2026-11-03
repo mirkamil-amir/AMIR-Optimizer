@@ -1,5 +1,15 @@
 # Implementation status
 
+## 2026-11-03: several markets, indices and sectors at once; filters in full screen (AMIR-8)
+
+* Choose stocks: the market/index/sector list became checkboxes (`UniverseNav`, helpers in `lib/universe-scope.ts`).
+  Any number of regions, markets, indices and sectors can be ticked; a partly chosen region or market shows a dash;
+  "Find a market or index" filters the list. Full screen now shows the same filters on the left (folded above the list
+  on narrow windows), sharing one state with the page.
+* API: `/stocks` and `/sectors` take several comma-separated `country` and `index` values (a stock in any of them
+  matches – markets and indices are alternatives now, no longer combined with AND) and a repeated `sector` parameter.
+  `StockDiscoveryTests.Stocks_SeveralMarketsIndicesAndSectors_Combine` covers it.
+
 ## 2026-11-03: a 200-row page of the stock list refreshes its prices
 
 * The quote refresh accepted at most 100 symbols (request validation and `QuoteRefresh:PageRefreshMaxSymbols`), so on a

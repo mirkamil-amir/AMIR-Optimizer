@@ -37,6 +37,35 @@ public sealed class StockDiscoveryTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Stocks_SeveralMarketsIndicesAndSectors_Combine()
+    {
+        async Task<int> Count(string query) =>
+            (await (await _user.GetAsync($"/api/v1/stocks?{query}&pageSize=1")).ReadAsync<PagedResult<StockListItemDto>>()).TotalCount;
+
+        // Markets and indices are alternatives: Brazil plus the DAX 40 is both, and two indices are their union.
+        var brazil = await Count("country=BR");
+        var dax = await Count("index=DAX40");
+        var cac = await Count("index=CAC40");
+        Assert.True(brazil > 0 && dax > 0 && cac > 0);
+        Assert.Equal(brazil + dax, await Count("country=BR&index=DAX40"));
+        var both = await Count("index=DAX40,CAC40");
+        Assert.InRange(both, Math.Max(dax, cac) + 1, dax + cac);
+
+        // Several sectors keep stocks of any of them; sectors still narrow the chosen markets.
+        var energy = await Count("sector=Energy");
+        var utilities = await Count("sector=Utilities");
+        Assert.Equal(energy + utilities, await Count("sector=Energy&sector=Utilities"));
+        var daxTwoSectors = await (await _user.GetAsync("/api/v1/stocks?index=DAX40,CAC40&sector=Energy&sector=Utilities&pageSize=200"))
+            .ReadAsync<PagedResult<StockListItemDto>>();
+        Assert.NotEmpty(daxTwoSectors.Items);
+        Assert.All(daxTwoSectors.Items, s => Assert.Contains(s.Sector, new[] { "Energy", "Utilities" }));
+
+        // The sector counts follow the same choice of markets and indices.
+        var sectors = await (await _user.GetAsync("/api/v1/sectors?country=BR&index=DAX40")).ReadAsync<List<SectorDto>>();
+        Assert.Equal(brazil + dax, sectors.Sum(s => s.StockCount));
+    }
+
+    [Fact]
     public async Task Stocks_FilterBySector_AndSearch()
     {
         var energy = await (await _user.GetAsync("/api/v1/stocks?sector=Energy&pageSize=200")).ReadAsync<PagedResult<StockListItemDto>>();

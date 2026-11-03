@@ -17,7 +17,8 @@ import { DataTable, RangePager, type Column } from '@/components/data-table'
 import { EmptyState, ErrorState, InfoTip, LoadingBlock } from '@/components/common'
 import { QuoteCell, SelectionTray } from '@/components/stock-selection'
 import { ChangeText, Sparkline } from '@/components/watchlist'
-import { UniverseNav, type UniverseScope } from '@/components/universe-nav'
+import { UniverseNav } from '@/components/universe-nav'
+import { describeScope, emptyScope, scopeParts, type UniverseScope } from '@/lib/universe-scope'
 import { errorMessage } from '@/lib/api'
 import {
   useFxBoard, useFxInfo, useMarkets, useStockTrends, useQuoteRefreshCycle, useRefreshQuotes, useSectors, useStocks, type StockSort,
@@ -43,17 +44,17 @@ const sortOptions: { value: StockSort; label: string }[] = [
 ]
 
 /**
- * "Choose stocks": markets, indices and sectors on the left, a searchable list with prices on the right and the temporary
+ * "Choose stocks": markets, indices and sectors as checkboxes on the left (any number of each), a searchable list with prices on the right and the temporary
  * selection on top. Used by New portfolio and by the stock choice of Math and ML Optimization; `trayActions` replaces
  * the selection tray's default buttons (the optimization pages bring their own "use these stocks"). `priceCurrency` adds
  * a "Price (<currency>)" column converted with the server's latest reference rates (as in the trade proposal and the
  * holdings); `onPriceCurrencyChange` adds a "Prices in" picker (New portfolio: the same currency as the form above).
- * "Full screen" opens the same list, filters and pager over the window.
+ * "Full screen" opens the same filters, list and pager over the window.
  */
 export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange }: {
   trayActions?: ReactNode; priceCurrency?: string; onPriceCurrencyChange?: (currency: string) => void
 }) {
-  const [scope, setScope] = useState<UniverseScope>({})
+  const [scope, setScope] = useState<UniverseScope>(emptyScope)
   const [searchText, setSearchText] = useState('')
   const search = useDeferredValue(searchText.trim())
   const [sort, setSort] = useState<StockSort>('name')
@@ -71,12 +72,14 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
   // Opening a stock makes its exchange city blink on the background map.
   useEffect(() => { if (detail) signal(countryOfSymbol(detail), 'blink') }, [detail, signal])
   const markets = useMarkets()
-  const sectors = useSectors({ country: scope.country, index: scope.index })
+  const country = scope.countries.join(',') || undefined
+  const index = scope.indices.join(',') || undefined
+  const sectors = useSectors({ country, index })
   const selection = useSelection()
   // "Selected only" lists the temporary selection with the same filters, prices and paging.
   const reviewing = selectedOnly && selection.count > 0
   const stocks = useStocks({
-    country: scope.country, index: scope.index, sector: scope.sector, search: search || undefined, sort,
+    country, index, sectors: scope.sectors, search: search || undefined, sort,
     withPrices: withPricesOnly ? true : undefined, symbols: reviewing ? selection.symbols : undefined, page, pageSize,
   })
   const cycle = useQuoteRefreshCycle()
@@ -138,15 +141,12 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
     setPage(1)
   }
   const clearAll = () => {
-    setScope({}); setSearchText(''); setWithPricesOnly(false); setSelectedOnly(false); setPage(1)
+    setScope(emptyScope); setSearchText(''); setWithPricesOnly(false); setSelectedOnly(false); setPage(1)
   }
 
   // Every active narrowing as a removable chip, so a large catalogue never hides why a list is short.
   const chips: { key: string; label: string; remove: () => void }[] = []
-  if (scope.index) chips.push({ key: 'index', label: indexLabel(markets.data, scope.index), remove: () => changeScope({ sector: scope.sector }) })
-  else if (scope.region) chips.push({ key: 'region', label: scope.region, remove: () => changeScope({ sector: scope.sector }) })
-  else if (scope.country) chips.push({ key: 'market', label: markets.data?.find((m) => m.country === scope.country)?.name ?? scope.country, remove: () => changeScope({ sector: scope.sector }) })
-  if (scope.sector) chips.push({ key: 'sector', label: scope.sector, remove: () => changeScope({ ...scope, sector: undefined }) })
+  for (const part of scopeParts(markets.data, scope)) chips.push({ key: part.key, label: part.label, remove: () => changeScope(part.remove) })
   if (search) chips.push({ key: 'search', label: `“${search}”`, remove: () => { setSearchText(''); setPage(1) } })
   if (withPricesOnly) chips.push({ key: 'prices', label: 'With price history', remove: () => { setWithPricesOnly(false); setPage(1) } })
   if (reviewing) chips.push({ key: 'selected', label: `Selected only (${selection.count})`, remove: () => { setSelectedOnly(false); setPage(1) } })
@@ -364,18 +364,23 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
     </div>
   )
 
+  // The market, index and sector checkboxes – one shared state, so the page and full screen always show the same choice.
+  const filterNav = () => <UniverseNav markets={markets.data} sectors={sectors.data} scope={scope} onChange={changeScope} loading={markets.isLoading} />
+  // Small screens: the filters are collapsed so the stock list stays visible.
+  const foldedFilters = (className: string) => (
+    <details className={cn('rounded-xl border bg-background px-3 py-2', className)}>
+      <summary className="cursor-pointer text-sm font-medium">Filter: {scopeLabel}</summary>
+      <div className="mt-3">{filterNav()}</div>
+    </details>
+  )
+
   return (
     <>
       <div className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
-        {/* On a near-solid panel: the list sits next to the background map and must stay readable. */}
-        <div className="map-surface hidden self-start rounded-xl p-2 lg:block">
-          <UniverseNav markets={markets.data} sectors={sectors.data} scope={scope} onChange={changeScope} loading={markets.isLoading} />
-        </div>
-        {/* Small screens: the navigation is collapsed so the stock list stays visible. */}
-        <details className="rounded-xl border bg-background px-3 py-2 lg:hidden">
-          <summary className="cursor-pointer text-sm font-medium">Filter: {scopeLabel}</summary>
-          <div className="mt-3"><UniverseNav markets={markets.data} sectors={sectors.data} scope={scope} onChange={changeScope} loading={markets.isLoading} /></div>
-        </details>
+        {/* On a near-solid panel: the list sits next to the background map and must stay readable. It scrolls on its own
+            and stays in view, so opening several regions never pushes the stock list off the screen. */}
+        <div className="map-surface sticky top-4 hidden max-h-[calc(100dvh-8rem)] self-start overflow-y-auto rounded-xl p-2 lg:block">{!fullScreen && filterNav()}</div>
+        {!fullScreen && foldedFilters('lg:hidden')}
 
         <div className="min-w-0 space-y-4">
           <SelectionTray actions={trayActions} />
@@ -399,9 +404,18 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
         <DialogContent className="top-2 left-2 flex h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-none translate-x-0 translate-y-0 flex-col gap-3 sm:max-w-none">
           <DialogHeader>
             <DialogTitle>Choose stocks – {scopeLabel}</DialogTitle>
-            <DialogDescription>Select with the boxes; the selection is kept when you close. Esc closes.</DialogDescription>
+            <DialogDescription>Narrow the list with the markets, indices and sectors on the left; select stocks with the boxes. The selection and filters are kept when you close. Esc closes.</DialogDescription>
           </DialogHeader>
-          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">{fullScreen && listBody(true)}</div>
+          {/* The same filters as on the page: a scrolling column on the left, folded above the list on smaller screens. */}
+          <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
+            {fullScreen && (
+              <aside aria-label="Filters" className="hidden min-h-0 overflow-y-auto rounded-xl border bg-background p-2 lg:block">{filterNav()}</aside>
+            )}
+            <div className="min-h-0 space-y-3 overflow-y-auto">
+              {fullScreen && foldedFilters('lg:hidden')}
+              {fullScreen && listBody(true)}
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -434,13 +448,6 @@ function PriceStatus({ run, pageRefreshing }: { run: QuoteRefreshRun | undefined
 }
 
 const indexLabel = (markets: Market[] | undefined, code: string) => indexName(markets, code)
-
-function describeScope(markets: Market[] | undefined, scope: UniverseScope) {
-  const market = markets?.find((m) => m.country === scope.country)
-  const parts = [scope.index ? indexLabel(markets, scope.index) : scope.region ?? market?.name ?? 'All markets']
-  if (scope.sector) parts.push(scope.sector)
-  return parts.join(' › ')
-}
 
 /** Change and sparkline of one stock over a range (as on the watchlist), stretched to its column; "—" with the reason when history is missing. */
 function trendCell(symbol: string, query: { data?: StockTrend[]; isLoading: boolean }, rangeLabel: string) {

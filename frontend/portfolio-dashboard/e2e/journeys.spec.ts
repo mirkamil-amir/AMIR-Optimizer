@@ -28,17 +28,20 @@ test('stock selection loads prices automatically and refreshes the page on reque
 
 test('markets and indices organise the universe, with prices in local currency', async ({ page }) => {
   await page.goto('/stocks')
-  // Markets are grouped by region; a region is a filter of its own and opens to its markets.
+  // Markets are grouped by folded regions; ticking a region ticks all its markets, and it unticks the same way.
   const nav = page.getByRole('navigation', { name: 'Markets, indices and sectors' }).first()
-  await expect(nav.getByRole('button', { name: /^Germany/ })).toHaveCount(0)
-  await nav.getByRole('button', { name: /^Europe/ }).click()
+  await expect(nav.getByRole('checkbox', { name: 'Germany' })).toHaveCount(0)
+  await nav.getByRole('checkbox', { name: 'Europe' }).click()
   await expect(page.getByRole('button', { name: 'Remove filter Europe' })).toBeVisible()
-  await nav.getByRole('button', { name: /^Germany/ }).click()
-  await nav.getByRole('button', { name: /^DAX 40/ }).click()
+  await nav.getByRole('checkbox', { name: 'Europe' }).click()
+  await expect(page.getByText('· all markets')).toBeVisible()
+  await nav.getByRole('button', { name: 'Show Europe' }).click()
+  await nav.getByRole('button', { name: 'Show Germany indices' }).click()
+  await nav.getByRole('checkbox', { name: 'DAX 40' }).click()
   await expect(page.getByText(/^40 stocks$/)).toBeVisible()
   await expect(page.getByRole('button', { name: 'Remove filter DAX 40' })).toBeVisible()
   await expect(page.getByRole('row', { name: /SAP\.DE/ })).toContainText('€')
-  await expect(page.getByRole('button', { name: /DAX 30 \(historical\)/ })).toBeVisible()
+  await expect(nav.getByRole('checkbox', { name: 'DAX 30 (historical)' })).toBeVisible()
   // Rows per page and the position in the list; removing the chip returns to all markets.
   // The same selection and paging controls sit above and below the list.
   const top = page.getByRole('group', { name: 'List controls (top)' })
@@ -51,14 +54,29 @@ test('markets and indices organise the universe, with prices in local currency',
   await expect(bottom.getByRole('button', { name: 'Select page' })).toBeVisible()
   await page.getByRole('button', { name: 'Remove filter DAX 40' }).click()
   await expect(page.getByText('· all markets')).toBeVisible()
-  await nav.getByRole('button', { name: /^Europe/ }).click()
-  await nav.getByRole('button', { name: /^Germany/ }).click()
-  await nav.getByRole('button', { name: /^DAX 40/ }).click()
 
-  await nav.getByRole('button', { name: /^Asia-Pacific/ }).click()
-  await nav.getByRole('button', { name: /^Japan/ }).click()
+  // Several markets at once: the DAX 40 and Japan together, each stock in its own currency.
+  await nav.getByRole('checkbox', { name: 'DAX 40' }).click()
+  await nav.getByRole('button', { name: 'Show Asia-Pacific' }).click()
+  await nav.getByRole('checkbox', { name: 'Japan' }).click()
+  await expect(page.getByRole('button', { name: 'Remove filter Japan' })).toBeVisible()
   await page.getByLabel('Search company name or ticker').fill('Toyota')
   await expect(page.getByRole('row', { name: /7203\.T/ })).toContainText('¥')
+  await page.getByLabel('Search company name or ticker').fill('SAP')
+  await expect(page.getByRole('row', { name: /SAP\.DE/ })).toContainText('€')
+  await page.getByLabel('Search company name or ticker').fill('')
+
+  // Full screen has the same filters, already ticked, and changes there are kept on the page.
+  await page.getByRole('button', { name: 'Full screen', exact: true }).first().click()
+  const dialog = page.getByRole('dialog')
+  const fullNav = dialog.getByRole('navigation', { name: 'Markets, indices and sectors' })
+  await expect(fullNav.getByRole('checkbox', { name: 'Japan' })).toBeChecked()
+  await fullNav.getByRole('checkbox', { name: 'Energy' }).click()
+  await fullNav.getByRole('checkbox', { name: 'Utilities' }).click()
+  await expect(dialog.getByRole('button', { name: 'Remove filter Utilities' })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('button', { name: 'Remove filter Energy' })).toBeVisible()
+  await expect(nav.getByRole('checkbox', { name: 'Utilities' })).toBeChecked()
 })
 
 test('optimizing a selection explains the actual result', async ({ page }) => {
