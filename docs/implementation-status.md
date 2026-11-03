@@ -9,6 +9,9 @@
 * API: `/stocks` and `/sectors` take several comma-separated `country` and `index` values (a stock in any of them
   matches – markets and indices are alternatives now, no longer combined with AND) and a repeated `sector` parameter.
   `StockDiscoveryTests.Stocks_SeveralMarketsIndicesAndSectors_Combine` covers it.
+* Map on Math/ML Optimization › Choose stocks: the workspace kept the portfolio's markets lit and framed there, so a
+  ticked stock neither moved the camera nor lit its market (only a faint ripple). On those pages the map now follows only
+  the selection, as on New portfolio (`WorkspaceHeader`; `portfolio-workspace.test.tsx`).
 
 ## 2026-11-03: a 200-row page of the stock list refreshes its prices
 
