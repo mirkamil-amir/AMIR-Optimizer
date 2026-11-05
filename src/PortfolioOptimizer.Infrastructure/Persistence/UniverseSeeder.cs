@@ -67,6 +67,9 @@ public sealed class UniverseSeeder(UniverseService universes, AppDbContext db, I
         ("^MXX", "S&P/BMV IPC index", "MXN", AssetType.Index),
         ("^J200.JO", "FTSE/JSE Top 40 index", "ZAR", AssetType.Index),
         ("^NZ50", "S&P/NZX 50 index (gross)", "NZD", AssetType.Index),
+        ("XU100.IS", "BIST 100 index", "TRY", AssetType.Index),
+        // Benchmark only: no source lists the BIST 30 members under a free licence, so it is not a stock filter.
+        ("XU030.IS", "BIST 30 index", "TRY", AssetType.Index),
     ];
 
     public async Task SeedAsync(CancellationToken ct)

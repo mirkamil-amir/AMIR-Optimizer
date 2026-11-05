@@ -65,6 +65,7 @@ public class UniverseAndSymbolTests
     [InlineData("IPC", "MX", 30, 36, false)]
     [InlineData("JSE40", "ZA", 39, 40, true)]
     [InlineData("NZX50", "NZ", 50, 50, true)]
+    [InlineData("BIST100", "TR", 95, 100, true)] // Turkish Wikipedia lists 96 (August 2025)
     public void BundledUniverseFiles_AreWellFormed(string code, string country, int min, int max, bool hasIndustries)
     {
         var (rows, errors) = UniverseService.ParseMembers(File.ReadAllText(Path.Combine(UniverseDir, $"{code}.csv")));
@@ -101,7 +102,7 @@ public class UniverseAndSymbolTests
         Assert.Equal("code,name,country,currency,benchmark,is_historical,members,source,source_url,revision,licence,verified_on,description", lines[0]);
         var codes = lines.Skip(1).Select(l => l.Split(',')[0]).ToList();
         Assert.Equal(["SP500", "DAX40", "DAX30", "CAC40", "FTSE100", "NIKKEI225", "SMI", "IBEX35", "FTSEMIB", "OMXS30", "OMXC25", "TSX60",
-            "ASX50", "HSI", "NIFTY50", "STI", .. TwentyMarketIndices, .. NewMarkets.Concat(TwentyMarketEtfs).Select(c => $"ETF{c}")], codes);
+            "ASX50", "HSI", "NIFTY50", "STI", .. TwentyMarketIndices, "BIST100", .. NewMarkets.Concat(TwentyMarketEtfs).Select(c => $"ETF{c}")], codes);
         // Constituent lists come from pinned Wikipedia revisions; the ETF lists are curated and say so.
         Assert.All(lines.Skip(1).Where(l => !l.StartsWith("ETF")), l => Assert.Contains("wikipedia.org/w/index.php?oldid=", l));
         Assert.All(lines.Skip(1).Where(l => l.StartsWith("ETF")), l => Assert.Contains("Curated list", l));
@@ -120,6 +121,18 @@ public class UniverseAndSymbolTests
             // The benchmark instrument is created on start (index level or ETF) in the market's currency.
             Assert.Contains(Infrastructure.Persistence.UniverseSeeder.Benchmarks, b => b.Symbol == row[4] && b.Currency == venue.Currency);
         }
+    }
+
+    [Fact]
+    public void Bist30_IsABenchmarkOnly_BecauseNoFreeMemberListExists()
+    {
+        // Türkiye: the BIST 100 is the stock universe (benchmark XU100.IS); the BIST 30 can be chosen as a benchmark, but
+        // has no member file – no source lists its members under a free licence (2026-11-03).
+        Assert.Contains(Infrastructure.Persistence.UniverseSeeder.Benchmarks,
+            b => b is { Symbol: "XU030.IS", Currency: "TRY", Type: Domain.AssetType.Index });
+        Assert.False(File.Exists(Path.Combine(UniverseDir, "BIST30.csv")));
+        Assert.DoesNotContain(File.ReadAllLines(Path.Combine(UniverseDir, "indices.csv")), l => l.StartsWith("BIST30,"));
+        Assert.Contains(File.ReadAllLines(Path.Combine(UniverseDir, "indices.csv")), l => l.StartsWith("BIST100,BIST 100,TR,TRY,XU100.IS,"));
     }
 
     [Theory]
@@ -167,6 +180,9 @@ public class UniverseAndSymbolTests
     [InlineData("FPH.NZ", "NZ", "NZD", "FPH.NZ", null)]
     [InlineData("^BVSP", "BR", "BRL", "^BVSP", null)]
     [InlineData("^J200.JO", "ZA", "ZAR", "^J200.JO", null)]
+    [InlineData("THYAO.IS", "TR", "TRY", "THYAO.IS", null)]
+    [InlineData("XU100.IS", "TR", "TRY", "XU100.IS", null)]
+    [InlineData("XU030.IS", "TR", "TRY", "XU030.IS", null)]
     public void SymbolMapping_PerMarket(string symbol, string country, string currency, string yahoo, string? alphaVantage)
     {
         var venue = Markets.ForSymbol(symbol);
@@ -233,6 +249,7 @@ public class UniverseAndSymbolTests
     [InlineData("BR", 10, 0, 17, 0)]
     [InlineData("MX", 8, 30, 15, 0)]
     [InlineData("NZ", 10, 0, 16, 45)]
+    [InlineData("TR", 10, 0, 18, 0)]
     public void TradingSessions_OfTheNewMarkets(string country, int openH, int openM, int closeH, int closeM)
     {
         var (open, close) = Markets.Session(Markets.ByCountry(country), new DateOnly(2026, 10, 14));

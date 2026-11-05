@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils'
 /**
  * Region → market → index checkboxes, then sector checkboxes, for a large stock universe. Any number can be ticked: a
  * region ticks all its markets (a dash shows a region that is partly chosen), a market includes all its indices, and an
- * index adds only its members. Regions fold so 36 markets stay one short list; "Find a market" narrows the list. Every
+ * index adds only its members. Regions fold so 37 markets stay one short list; "Find a market" narrows the list. Every
  * entry shows how many stocks it contains; the sector counts follow the chosen markets.
  */
 export function UniverseNav({

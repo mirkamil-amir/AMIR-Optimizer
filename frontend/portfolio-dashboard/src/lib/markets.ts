@@ -64,6 +64,9 @@ export const venues: Venue[] = [
   { country: 'MX', countryName: 'Mexico', exchange: 'Bolsa Mexicana de Valores', suffix: '.MX', city: 'Mexico City', lat: 19.43, lon: -99.13, iso: '484', frame: [-118, 14, -86, 33], label: 'left' },
   { country: 'ZA', countryName: 'South Africa', exchange: 'Johannesburg Stock Exchange', suffix: '.JO', city: 'Johannesburg', lat: -26.2, lon: 28.05, iso: '710', frame: [15, -35, 34, -21], label: 'right' },
   { country: 'NZ', countryName: 'New Zealand', exchange: 'New Zealand Exchange', suffix: '.NZ', city: 'Wellington', lat: -41.29, lon: 174.78, iso: '554', frame: [165, -48, 180, -33], label: 'left' },
+  // Added 2026-11-03. In the Europe region (as the exchange's MSCI and FTSE groupings), framed on its own: most of the
+  // country lies east of the Europe frame.
+  { country: 'TR', countryName: 'Türkiye', exchange: 'Borsa İstanbul', suffix: '.IS', city: 'Istanbul', lat: 41.01, lon: 28.98, iso: '792', frame: [25, 35, 45, 43], label: 'right' },
 ]
 
 export const venueByCountry: ReadonlyMap<string, Venue> = new Map(venues.map((v) => [v.country, v]))

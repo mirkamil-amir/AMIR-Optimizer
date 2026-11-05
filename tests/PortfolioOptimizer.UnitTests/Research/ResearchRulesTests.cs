@@ -17,6 +17,8 @@ public sealed class BriefParserTests
     [InlineData("Polish shares", "PL", "medium", "MinimumVariance")]
     [InlineData("New Zealand stocks", "NZ", "medium", "MinimumVariance")]
     [InlineData("South African miners, cautious", "ZA", "low", "MinimumVariance")]
+    [InlineData("Turkish stocks", "TR", "medium", "MinimumVariance")]
+    [InlineData("BIST 100 companies, aggressive", "TR", "high", "MaximumSharpe")]
     public void MarketRiskAndObjective_AreRecognised(string text, string market, string risk, string objective)
     {
         var b = Parse(text);
