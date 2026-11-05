@@ -5,16 +5,42 @@ using PortfolioOptimizer.Infrastructure.MarketData;
 
 namespace PortfolioOptimizer.UnitTests.MarketData;
 
-public class ProviderTests
+public class ProviderTests : IDisposable
 {
+    // Clients of one test, disposed with it (each disposes its stub handler, which disposes the responses it created).
+    private readonly List<HttpClient> _clients = [];
+
+    private HttpClient Client(HttpMessageHandler handler)
+    {
+        var client = new HttpClient(handler) { BaseAddress = new Uri("https://example.test") };
+        _clients.Add(client);
+        return client;
+    }
+
+    public void Dispose()
+    {
+        foreach (var client in _clients) client.Dispose();
+        GC.SuppressFinalize(this);
+    }
+
     private sealed class StubHandler(HttpStatusCode status, string body) : HttpMessageHandler
     {
+        private readonly List<HttpResponseMessage> _sent = [];
+
         public Uri? LastUri { get; private set; }
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             LastUri = request.RequestUri;
-            return Task.FromResult(new HttpResponseMessage(status) { Content = new StringContent(body) });
+            var response = new HttpResponseMessage(status) { Content = new StringContent(body) };
+            _sent.Add(response);
+            return Task.FromResult(response);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing) foreach (var response in _sent) response.Dispose();
+            base.Dispose(disposing);
         }
     }
 
@@ -25,8 +51,8 @@ public class ProviderTests
 
     private static readonly FixedClock Clock = new(new DateTimeOffset(2026, 10, 12, 22, 0, 0, TimeSpan.Zero));
 
-    private static YahooFinanceProvider Yahoo(StubHandler h) =>
-        new(new HttpClient(h) { BaseAddress = new Uri("https://example.test") }, Options.Create(new YahooFinanceOptions()), Clock);
+    private YahooFinanceProvider Yahoo(StubHandler h) =>
+        new(Client(h), Options.Create(new YahooFinanceOptions()), Clock);
 
     // Shape taken from a real response (AAPL, 2025-01-02 .. 2025-01-03); 3rd row has nulls as on halted days.
     private const string ChartJson = """
@@ -111,7 +137,7 @@ public class ProviderTests
     public async Task AlphaVantage_ThrottleMessage_IsTransientAndRedactsKey()
     {
         var body = """{"Information":"Thank you for using Alpha Vantage! Our standard API rate limit is 25 requests per day. key SECRETKEY"}""";
-        var provider = new AlphaVantageProvider(new HttpClient(new StubHandler(HttpStatusCode.OK, body)) { BaseAddress = new Uri("https://example.test") },
+        var provider = new AlphaVantageProvider(Client(new StubHandler(HttpStatusCode.OK, body)),
             Options.Create(new AlphaVantageOptions { ApiKey = "SECRETKEY" }), new AlphaVantageQuota(Options.Create(new AlphaVantageOptions()), Clock), Clock);
         var ex = await Assert.ThrowsAsync<MarketDataProviderException>(() =>
             provider.GetHistoricalPricesAsync("IBM", new(2026, 9, 1), new(2026, 10, 1), CancellationToken.None));
@@ -127,7 +153,7 @@ public class ProviderTests
           "2026-10-09":{"1. open":"227.7750","2. high":"229.2850","3. low":"226.1000","4. close":"228.5000","5. volume":"3100000"},
           "2026-10-08":{"1. open":"225.0000","2. high":"228.0000","3. low":"224.5000","4. close":"227.0000","5. volume":"2900000"}}}
         """;
-        var provider = new AlphaVantageProvider(new HttpClient(new StubHandler(HttpStatusCode.OK, body)) { BaseAddress = new Uri("https://example.test") },
+        var provider = new AlphaVantageProvider(Client(new StubHandler(HttpStatusCode.OK, body)),
             Options.Create(new AlphaVantageOptions { ApiKey = "k" }), new AlphaVantageQuota(Options.Create(new AlphaVantageOptions()), Clock), Clock);
         var h = await provider.GetHistoricalPricesAsync("IBM", new(2026, 10, 1), new(2026, 10, 12), CancellationToken.None);
         Assert.Equal(2, h.Bars.Count);
@@ -195,8 +221,8 @@ public class ProviderTests
         await Assert.ThrowsAsync<ArgumentException>(() => Yahoo(new StubHandler(HttpStatusCode.OK, "{}")).GetLatestQuotesAsync(symbols, CancellationToken.None));
     }
 
-    private static AlphaVantageProvider AlphaVantage(StubHandler handler, int dailyLimit = 25) =>
-        new(new HttpClient(handler) { BaseAddress = new Uri("https://example.test") }, Options.Create(new AlphaVantageOptions { ApiKey = "k", DailyRequestLimit = dailyLimit }),
+    private AlphaVantageProvider AlphaVantage(StubHandler handler, int dailyLimit = 25) =>
+        new(Client(handler), Options.Create(new AlphaVantageOptions { ApiKey = "k", DailyRequestLimit = dailyLimit }),
             new AlphaVantageQuota(Options.Create(new AlphaVantageOptions { DailyRequestLimit = dailyLimit }), Clock), Clock);
 
     [Fact]
@@ -241,12 +267,21 @@ public class ProviderTests
     {
         private int _next;
         public List<string> Requests { get; } = [];
+        private readonly List<HttpResponseMessage> _sent = [];
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Requests.Add(request.RequestUri!.PathAndQuery);
             var (status, body) = responses[Math.Min(_next++, responses.Length - 1)];
-            return Task.FromResult(new HttpResponseMessage(status) { Content = new StringContent(body) });
+            var response = new HttpResponseMessage(status) { Content = new StringContent(body) };
+            _sent.Add(response);
+            return Task.FromResult(response);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing) foreach (var response in _sent) response.Dispose();
+            base.Dispose(disposing);
         }
     }
 
@@ -255,7 +290,7 @@ public class ProviderTests
     {
         // Two rejected batch attempts, then per-symbol chart requests succeed.
         var handler = new SequenceHandler((HttpStatusCode.BadRequest, "{}"), (HttpStatusCode.BadRequest, "{}"), (HttpStatusCode.OK, ChartJson));
-        var provider = new YahooFinanceProvider(new HttpClient(handler) { BaseAddress = new Uri("https://example.test") },
+        var provider = new YahooFinanceProvider(Client(handler),
             Options.Create(new YahooFinanceOptions()), TimeProvider.System);
         var results = await provider.GetLatestQuotesAsync(["AAPL"], CancellationToken.None);
         Assert.Equal(340.97m, Assert.Single(results).Quote!.Price);

@@ -19,8 +19,8 @@ public class OptimizerTests
         var n = vol.Length;
         var c = new double[n, n];
         for (var i = 0; i < n; i++)
-        for (var j = 0; j < n; j++)
-            c[i, j] = corr[i, j] * vol[i] * vol[j];
+            for (var j = 0; j < n; j++)
+                c[i, j] = corr[i, j] * vol[i] * vol[j];
         return c;
     }
 

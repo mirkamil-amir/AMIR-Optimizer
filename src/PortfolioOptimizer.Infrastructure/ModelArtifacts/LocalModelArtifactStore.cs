@@ -28,7 +28,7 @@ public sealed partial class LocalModelArtifactStore : IModelArtifactStore
     public LocalModelArtifactStore(IOptions<ModelArtifactOptions> options, IHostEnvironment environment)
     {
         var configured = options.Value.RootPath;
-        _root = Path.GetFullPath(Path.IsPathRooted(configured) ? configured : Path.Combine(environment.ContentRootPath, configured));
+        _root = Path.GetFullPath(Path.IsPathRooted(configured) ? configured : Path.Join(environment.ContentRootPath, configured));
         Directory.CreateDirectory(_root);
     }
 
@@ -52,7 +52,7 @@ public sealed partial class LocalModelArtifactStore : IModelArtifactStore
 
     public Task DeleteExperimentAsync(Guid experimentId, CancellationToken ct)
     {
-        var dir = Path.Combine(_root, experimentId.ToString("N"));
+        var dir = Path.Join(_root, experimentId.ToString("N"));
         if (Directory.Exists(dir)) Directory.Delete(dir, recursive: true);
         return Task.CompletedTask;
     }
@@ -60,7 +60,7 @@ public sealed partial class LocalModelArtifactStore : IModelArtifactStore
     private string Resolve(string relative)
     {
         if (!PathPattern().IsMatch(relative)) throw new InvalidOperationException("Invalid model artifact path.");
-        var full = Path.GetFullPath(Path.Combine(_root, relative));
+        var full = Path.GetFullPath(Path.Join(_root, relative));
         if (!full.StartsWith(_root + Path.DirectorySeparatorChar, StringComparison.Ordinal)) throw new InvalidOperationException("Invalid model artifact path.");
         return full;
     }

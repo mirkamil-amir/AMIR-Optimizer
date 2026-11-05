@@ -3,6 +3,7 @@ using PortfolioOptimizer.Domain;
 
 namespace PortfolioOptimizer.Application.Trading;
 
+/// <summary>An asset of a trade proposal: its current quantity, latest price and exchange rate into the portfolio currency.</summary>
 /// <param name="Price">Latest price in the asset's own currency.</param>
 /// <param name="Currency">Trading currency (empty = the portfolio currency).</param>
 /// <param name="FxRate">Portfolio-currency units per unit of <paramref name="Currency"/>, dated at the price date (1 for the same currency).</param>

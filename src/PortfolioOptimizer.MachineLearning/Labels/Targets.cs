@@ -45,6 +45,7 @@ public static class TargetCatalog
 /// <summary>Label construction. A label for decision index t becomes known at index t+h (its availability index).</summary>
 public static class LabelEngine
 {
+    /// <summary>The label of one asset at time index t for the prediction target and horizon.</summary>
     /// <returns>The label, or NaN when the horizon extends beyond the data or a required price is missing.</returns>
     public static double Compute(MarketPanel panel, int asset, int t, PredictionTarget target, int horizon)
     {

@@ -74,9 +74,8 @@ public sealed class EcbFxProvider(HttpClient http, IOptions<EcbFxOptions> option
         int Col(string name) => Array.IndexOf(header, name) is var i and >= 0 ? i : throw new FxProviderException($"ECB response has no {name} column.");
         int cur = Col("CURRENCY"), denom = Col("CURRENCY_DENOM"), date = Col("TIME_PERIOD"), value = Col("OBS_VALUE");
         var result = new List<FxObservation>();
-        foreach (var line in lines.Skip(1))
+        foreach (var f in lines.Skip(1).Select(line => line.Split(',')))
         {
-            var f = line.Split(',');
             if (f.Length <= Math.Max(Math.Max(cur, denom), Math.Max(date, value))) continue;
             // Only the documented direction is accepted: currency per 1 EUR.
             if (f[denom] != "EUR") throw new FxProviderException($"Unexpected ECB quote denominator {f[denom]}.");

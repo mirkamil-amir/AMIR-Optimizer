@@ -44,10 +44,11 @@ public sealed class AlphaVantageProvider(HttpClient http, IOptions<AlphaVantageO
         var venue = Markets.ForSymbol(symbol);
         var unit = venue.Country == "GB" ? 100d : 1d; // London prices are in pence
         var raw = new List<RawBar>();
-        foreach (var day in series.EnumerateObject())
+        // Days whose key is not a date are skipped.
+        foreach (var (date, v) in series.EnumerateObject().SelectMany(day =>
+                     DateOnly.TryParseExact(day.Name, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d)
+                         ? new[] { (d, day.Value) } : []))
         {
-            if (!DateOnly.TryParseExact(day.Name, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date)) continue;
-            var v = day.Value;
             raw.Add(new RawBar(date, Num(v, "1. open") / unit, Num(v, "2. high") / unit, Num(v, "3. low") / unit, Num(v, "4. close") / unit,
                 o.UseAdjustedEndpoint ? Num(v, "5. adjusted close") / unit : null,
                 (long?)(Num(v, o.UseAdjustedEndpoint ? "6. volume" : "5. volume"))));
@@ -107,17 +108,23 @@ public sealed class AlphaVantageProvider(HttpClient http, IOptions<AlphaVantageO
         try { doc = JsonDocument.Parse(body); }
         catch (JsonException ex) { throw new MarketDataProviderException(Name, symbol, "Response is not valid JSON.", inner: ex); }
 
-        // Alpha Vantage reports errors and throttling with HTTP 200 and a message field.
-        foreach (var field in new[] { "Error Message", "Note", "Information" })
+        // Alpha Vantage reports errors and throttling with HTTP 200 and a message field. The document goes to the caller
+        // only when it holds data; on every other path (an error message, or a failure while reading) it is disposed here.
+        var handedOver = false;
+        try
         {
-            if (doc.RootElement.TryGetProperty(field, out var msg) && msg.ValueKind == JsonValueKind.String)
+            foreach (var field in new[] { "Error Message", "Note", "Information" })
             {
-                var text = msg.GetString() ?? field;
-                doc.Dispose();
-                throw new MarketDataProviderException(Name, symbol, Redact(text, key), isTransient: field != "Error Message");
+                if (doc.RootElement.TryGetProperty(field, out var msg) && msg.ValueKind == JsonValueKind.String)
+                    throw new MarketDataProviderException(Name, symbol, Redact(msg.GetString() ?? field, key), isTransient: field != "Error Message");
             }
+            handedOver = true;
+            return doc;
         }
-        return doc;
+        finally
+        {
+            if (!handedOver) doc.Dispose();
+        }
     }
 
     private static string Redact(string text, string key) => text.Replace(key, "***", StringComparison.Ordinal);

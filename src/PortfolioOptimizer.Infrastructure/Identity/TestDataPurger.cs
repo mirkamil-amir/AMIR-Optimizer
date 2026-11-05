@@ -49,11 +49,16 @@ public sealed class TestDataPurger(AppDbContext db, IModelArtifactStore artifact
 
         var portfolioIds = await db.Portfolios.Where(p => ids.Contains(p.OwnerId)).Select(p => p.Id).ToListAsync(ct);
         var experimentIds = await db.MlExperiments.Where(e => ids.Contains(e.OwnerId)).Select(e => e.Id).ToListAsync(ct);
-        var auditQuery = db.AuditEvents.Where(a =>
-            (a.ActorUserId != null && ids.Contains(a.ActorUserId.Value)) ||
-            (a.TargetId != null && idStrings.Contains(a.TargetId)) ||
-            (a.ActorEmail != null && emails.Contains(a.ActorEmail)) ||
-            (a.ActorEmail != null && a.ActorEmail.EndsWith(TestDataPolicy.ReservedTestDomain)));
+        // Audit events of the test accounts: by user id (actor or target) or by e-mail (theirs, or any reserved test domain –
+        // e.g. failed sign-ins). One subquery, so the count and the delete below stay single statements.
+        var byAccount = db.AuditEvents
+            .Where(a => (a.ActorUserId != null && ids.Contains(a.ActorUserId.Value)) || (a.TargetId != null && idStrings.Contains(a.TargetId)))
+            .Select(a => a.Id);
+        var byEmail = db.AuditEvents
+            .Where(a => a.ActorEmail != null && (emails.Contains(a.ActorEmail) || a.ActorEmail.EndsWith(TestDataPolicy.ReservedTestDomain)))
+            .Select(a => a.Id);
+        var matching = byAccount.Union(byEmail);
+        var auditQuery = db.AuditEvents.Where(a => matching.Contains(a.Id));
 
         var report = new TestDataPurgeReport(
             environment.EnvironmentName,

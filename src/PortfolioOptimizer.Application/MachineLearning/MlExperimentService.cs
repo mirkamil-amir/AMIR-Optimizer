@@ -158,6 +158,7 @@ public sealed class MlExperimentService(
         return await ToDtoAsync(experiment, ct);
     }
 
+    /// <summary>One page of the caller's ML Optimizations, optionally limited to one portfolio or to unlinked ones.</summary>
     /// <param name="portfolioId">Only experiments of this portfolio (one of the caller's).</param>
     /// <param name="unlinked">Only experiments without a portfolio (created before portfolios were recorded).</param>
     public async Task<PagedResult<MlExperimentSummaryDto>> ListAsync(int page, int pageSize, CancellationToken ct, Guid? portfolioId = null, bool unlinked = false)

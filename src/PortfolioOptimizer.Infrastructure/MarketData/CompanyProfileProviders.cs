@@ -102,11 +102,13 @@ public sealed class WikipediaProfileProvider(HttpClient http, IOptions<Wikipedia
     public static string? ParseEnglishTitle(JsonElement root)
     {
         if (!root.TryGetProperty("query", out var q) || !q.TryGetProperty("pages", out var pages) || pages.ValueKind != JsonValueKind.Array) return null;
-        foreach (var page in pages.EnumerateArray())
-            if (page.TryGetProperty("langlinks", out var links) && links.ValueKind == JsonValueKind.Array)
-                foreach (var l in links.EnumerateArray())
-                    if (Str(l, "lang") == "en" && Str(l, "title") is { } t) return t;
-        return null;
+        // The first English language link of any page.
+        return pages.EnumerateArray()
+            .Where(page => page.TryGetProperty("langlinks", out var links) && links.ValueKind == JsonValueKind.Array)
+            .SelectMany(page => page.GetProperty("langlinks").EnumerateArray())
+            .Where(l => Str(l, "lang") == "en")
+            .Select(l => Str(l, "title"))
+            .FirstOrDefault(t => t is not null);
     }
 
     private async Task<HttpResponseMessage> SendAsync(string url, CancellationToken ct)

@@ -83,13 +83,13 @@ public class FeatureAndLabelTests
         var a = new FeatureEngine(panel, FeatureCatalog.All);
         var b = new FeatureEngine(panel2, FeatureCatalog.All);
         for (var asset = 0; asset < panel.AssetCount; asset++)
-        for (var t = 260; t <= cutoffIndex; t += 7)
-        {
-            var x = a.Compute(asset, t)!;
-            var y = b.Compute(asset, t)!;
-            for (var k = 0; k < x.Length; k++)
-                Assert.True(x[k].Equals(y[k]), $"{a.Names[k]} of asset {asset} at t={t} changed when only later prices changed.");
-        }
+            for (var t = 260; t <= cutoffIndex; t += 7)
+            {
+                var x = a.Compute(asset, t)!;
+                var y = b.Compute(asset, t)!;
+                for (var k = 0; k < x.Length; k++)
+                    Assert.True(x[k].Equals(y[k]), $"{a.Names[k]} of asset {asset} at t={t} changed when only later prices changed.");
+            }
         // Sanity check: the perturbation does change later features.
         Assert.NotEqual(a.Compute(0, cutoffIndex + 30)![1], b.Compute(0, cutoffIndex + 30)![1]);
     }

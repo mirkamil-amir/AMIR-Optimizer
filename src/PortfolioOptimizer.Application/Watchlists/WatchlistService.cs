@@ -111,9 +111,9 @@ public sealed class WatchlistService(
         var source = (await prices.SettingsAsync(ct)).ActiveProvider;
         var bars = await stocks.LoadBarsAsync(ids, source, range, ct);
         var result = new List<WatchlistItemDto>();
-        foreach (var e in entries)
+        foreach (var e in entries.Where(e => items.ContainsKey(e.AssetId)))
         {
-            if (!items.TryGetValue(e.AssetId, out var item)) continue;
+            var item = items[e.AssetId];
             bars.TryGetValue(e.AssetId, out var own);
             var slice = PriceHistory.Slice(own?.Bars ?? [], range);
             result.Add(new WatchlistItemDto(e.Id, e.AddedAtUtc, item, new PeriodChangeDto(

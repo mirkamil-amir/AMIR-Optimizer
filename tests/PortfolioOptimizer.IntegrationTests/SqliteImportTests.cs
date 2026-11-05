@@ -23,7 +23,7 @@ public sealed class SqliteImportTests : IAsyncLifetime
     {
         _factory = await ApiFactory.CreateAsync();
         using (_factory.CreateClient()) { } // start the host: migrate, seed assets/settings, bootstrap the administrator
-        _sqlitePath = Path.Combine(Path.GetTempPath(), $"po-legacy-{Guid.NewGuid():N}.db");
+        _sqlitePath = Path.Join(Path.GetTempPath(), $"po-legacy-{Guid.NewGuid():N}.db");
         await CreateLegacyDatabaseAsync(_sqlitePath);
     }
 
@@ -110,7 +110,7 @@ public sealed class SqliteImportTests : IAsyncLifetime
     {
         await using var c = new SqliteConnection($"Data Source={path}");
         await c.OpenAsync();
-        var schema = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "Fixtures", "legacy-sqlite-schema.sql"));
+        var schema = await File.ReadAllTextAsync(Path.Join(AppContext.BaseDirectory, "Fixtures", "legacy-sqlite-schema.sql"));
         await using (var cmd = c.CreateCommand())
         {
             cmd.CommandText = schema;

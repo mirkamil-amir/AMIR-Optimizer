@@ -16,6 +16,7 @@ public sealed record ConcentrationProfile(
     double EffectiveHoldings,
     IReadOnlyList<SectorWeight> Sectors);
 
+/// <summary>How a portfolio's risk is spread across its assets.</summary>
 /// <param name="Volatility">Ex-ante annualized volatility √(wᵀΣw).</param>
 /// <param name="RiskShares">Share of variance per asset wᵢ(Σw)ᵢ / wᵀΣw (sums to 1; negative = diversifying).</param>
 /// <param name="DiversificationRatio">Σ wᵢσᵢ / σ_p (1 = no diversification benefit).</param>

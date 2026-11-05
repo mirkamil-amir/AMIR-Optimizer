@@ -47,8 +47,8 @@ public sealed class BriefParserTests
     [Fact]
     public void EveryMarket_HasADefaultIndexAndAName_FromTheBundledUniverses()
     {
-        var dir = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "src", "PortfolioOptimizer.Infrastructure", "Seed", "universes");
-        var codes = File.ReadAllLines(Path.Combine(dir, "indices.csv")).Skip(1).Select(l => l.Split(',')[0]).ToHashSet();
+        var dir = Path.Join(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "src", "PortfolioOptimizer.Infrastructure", "Seed", "universes");
+        var codes = File.ReadAllLines(Path.Join(dir, "indices.csv")).Skip(1).Select(l => l.Split(',')[0]).ToHashSet();
         foreach (var venue in PortfolioOptimizer.Application.MarketData.Markets.Venues.Where(v => v.Country != "NL"))
         {
             Assert.Contains(BriefRules.DefaultIndex[venue.Country], codes);
@@ -93,7 +93,7 @@ public sealed class BriefParserTests
             market = "US", market_quote = "American",                   // quote not in text
             risk_preference = "extreme", risk_preference_quote = "lose",  // value not allowed
             loss_capacity = "low", loss_capacity_quote = "can't afford to lose",
-            horizon_years = 30, horizon_years_quote = (string?)null,       // no quote
+            horizon_years = 30, horizon_years_quote = default(string),       // no quote
             excluded_sectors = new[] { "Crypto" }, excluded_sectors_quote = "Japanese",
         });
         var rejected = new List<string>();

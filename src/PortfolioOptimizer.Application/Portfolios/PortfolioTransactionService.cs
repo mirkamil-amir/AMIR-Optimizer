@@ -168,7 +168,7 @@ public sealed class PortfolioTransactionService(IApplicationDbContext db, Portfo
         var q = db.PortfolioTransactions.AsNoTracking().Where(t => t.PortfolioId == portfolioId);
         var total = await q.CountAsync(ct);
         var items = await q.OrderByDescending(t => t.BookedAtUtc).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
-        var cashIds = items.Select(t => t.CashEntryId).Concat(items.Select(t => (Guid?)t.ExecutionId)).OfType<Guid>().ToList();
+        var cashIds = items.Select(t => t.CashEntryId).Concat(items.Select(t => t.ExecutionId)).OfType<Guid>().ToList();
         var balances = await db.CashLedger.AsNoTracking().Where(c => c.PortfolioId == portfolioId && (cashIds.Contains(c.Id) || (c.ReferenceId != null && cashIds.Contains(c.ReferenceId.Value))))
             .Select(c => new { c.Id, c.ReferenceId, c.BalanceAfter, c.TimestampUtc }).ToListAsync(ct);
         var executionIds = items.Where(t => t.ExecutionId is not null).Select(t => t.ExecutionId!.Value).ToList();

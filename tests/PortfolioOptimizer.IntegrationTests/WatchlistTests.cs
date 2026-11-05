@@ -93,6 +93,7 @@ public sealed class WatchlistTests : IAsyncLifetime
             history = await (await _user.GetAsync("/api/v1/stocks/CVX/history?range=1Y")).ReadAsync<PriceHistoryDto>();
         }
         Assert.NotNull(history);
+        history = history ?? throw new InvalidOperationException("unreachable: checked above");
         Assert.NotEmpty(history.Points);
         Assert.True(history.IsSimulated); // mock provider in tests – the API labels it
         Assert.Equal("USD", history.Currency);

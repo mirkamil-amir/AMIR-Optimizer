@@ -245,7 +245,7 @@ public sealed class StrategyComparisonRunner(
             comparison.Status = JobStatus.Failed;
             comparison.Error = ex.Message;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ExceptionFilters.IsRecoverable(ex))
         {
             logger.LogError(ex, "Strategy comparison {ComparisonId} failed", id);
             comparison.Status = JobStatus.Failed;

@@ -88,10 +88,10 @@ public sealed class FxTable
         var dates = legs.Select(c => _series[c].Dates.Where(d => d >= start && d <= end).ToHashSet())
             .Aggregate((a, b) => { a.IntersectWith(b); return a; })
             .Order();
-        var result = new List<(DateOnly, double)>();
-        foreach (var d in dates)
-            if (TryRate(from, to, d, out var q, out _) && q!.CarriedForwardDays == 0) result.Add((d, q.Rate));
-        return result;
+        // Only dates with an observed rate of their own (no carried-forward rate).
+        return dates.SelectMany(d => TryRate(from, to, d, out var quote, out _) && quote is { CarriedForwardDays: 0 } q
+            ? new[] { (d, q.Rate) }
+            : Array.Empty<(DateOnly, double)>()).ToList();
     }
 
     public FxQuote Rate(string from, string to, DateOnly date)

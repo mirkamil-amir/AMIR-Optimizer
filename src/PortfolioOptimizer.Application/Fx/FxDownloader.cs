@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using PortfolioOptimizer.Application.Abstractions;
 using PortfolioOptimizer.Domain;
+using PortfolioOptimizer.Application.Common;
 
 namespace PortfolioOptimizer.Application.Fx;
 
@@ -184,7 +185,7 @@ public sealed class FxDownloader(IServiceScopeFactory scopes, FxFetchThrottle th
         {
             problems.Add("The exchange-rate download was stopped because the application is shutting down.");
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ExceptionFilters.IsRecoverable(ex))
         {
             logger.LogError(ex, "FX download from {Provider} failed", providerName);
             problems.Add("The exchange-rate download failed unexpectedly; the details were logged on the server.");

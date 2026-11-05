@@ -50,7 +50,7 @@ public sealed class DiversificationMathTests
         var r = DiversificationMath.Risk(["A", "B"], [0.5, 0.5], cov);
         Assert.Equal(1, r.DiversificationRatio, 12);
         Assert.Equal(1, r.AverageCorrelation!.Value, 12);
-        Assert.Equal(("A", "B"), (r.HighestCorrelation!.Value.A, r.HighestCorrelation.Value.B));
+        Assert.True(r.HighestCorrelation is { A: "A", B: "B" });
     }
 
     [Fact]

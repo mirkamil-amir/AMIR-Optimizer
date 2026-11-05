@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using PortfolioOptimizer.Application.News;
+using PortfolioOptimizer.Application.Common;
 
 namespace PortfolioOptimizer.Infrastructure.News;
 
@@ -50,9 +51,10 @@ public sealed class NewsRefreshWorker(IServiceScopeFactory scopes, ILogger<NewsR
             try
             {
                 var feeds = Interlocked.Exchange(ref _feeds, 0) == 1;
-                var companies = new List<(string, string?)>();
-                foreach (var symbol in _companies.Keys.ToList())
-                    if (_companies.TryRemove(symbol, out var name)) companies.Add((symbol, name));
+                // Take every queued company once (another thread may have taken one in the meantime).
+                var companies = _companies.Keys.ToList()
+                    .SelectMany(symbol => _companies.TryRemove(symbol, out var name) ? new[] { (symbol, name) } : [])
+                    .ToList();
                 using var scope = scopes.CreateScope();
                 await scope.ServiceProvider.GetRequiredService<NewsService>().RefreshDueAsync(new NewsRefreshRequest(feeds, companies), stoppingToken);
             }
@@ -60,7 +62,7 @@ public sealed class NewsRefreshWorker(IServiceScopeFactory scopes, ILogger<NewsR
             {
                 break;
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ExceptionFilters.IsRecoverable(ex))
             {
                 // Each source records its own failure in NewsFetchStates; this only catches unexpected errors of the run itself.
                 logger.LogWarning(ex, "Background news refresh failed");

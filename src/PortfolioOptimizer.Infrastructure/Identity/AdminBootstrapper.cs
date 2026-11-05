@@ -18,14 +18,11 @@ public sealed class AdminBootstrapper(
     TimeProvider clock,
     ILogger<AdminBootstrapper> logger)
 {
+    /// <summary>Creates the roles and, when no administrator exists yet, the bootstrap administrator from configuration.</summary>
     /// <returns>The id of the bootstrapped administrator, or null when nothing was created.</returns>
     public async Task<Guid?> EnsureAsync(CancellationToken ct)
     {
-        foreach (var role in Roles.All)
-        {
-            if (!await roles.RoleExistsAsync(role))
-                Check(await roles.CreateAsync(new IdentityRole<Guid>(role) { Id = Guid.NewGuid() }), $"create role {role}");
-        }
+        foreach (var role in Roles.All) await EnsureRoleExistsAsync(role);
 
         if ((await users.GetUsersInRoleAsync(Roles.Administrator)).Count > 0) return null;
 
@@ -63,13 +60,21 @@ public sealed class AdminBootstrapper(
             Check(await users.UpdateAsync(user), "approve the bootstrap administrator");
         }
 
-        foreach (var role in Roles.All)
-        {
-            if (!await users.IsInRoleAsync(user, role)) Check(await users.AddToRoleAsync(user, role), $"assign {role}");
-        }
+        foreach (var role in Roles.All) await EnsureInRoleAsync(user, role);
         await audit.RecordForAsync(user.Id, user.Email, AuditActions.AdminBootstrapped, "User", user.Id.ToString(), ct: ct);
         logger.LogInformation("Bootstrap administrator {Email} is ready", user.Email);
         return user.Id;
+    }
+
+    private async Task EnsureRoleExistsAsync(string role)
+    {
+        if (!await roles.RoleExistsAsync(role))
+            Check(await roles.CreateAsync(new IdentityRole<Guid>(role) { Id = Guid.NewGuid() }), $"create role {role}");
+    }
+
+    private async Task EnsureInRoleAsync(ApplicationUser user, string role)
+    {
+        if (!await users.IsInRoleAsync(user, role)) Check(await users.AddToRoleAsync(user, role), $"assign {role}");
     }
 
     private static void Check(IdentityResult result, string what)

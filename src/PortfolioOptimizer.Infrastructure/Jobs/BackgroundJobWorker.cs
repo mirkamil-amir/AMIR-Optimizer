@@ -9,6 +9,7 @@ using PortfolioOptimizer.Application.Comparisons;
 using PortfolioOptimizer.Application.Fx;
 using PortfolioOptimizer.Application.MarketData;
 using PortfolioOptimizer.Domain;
+using PortfolioOptimizer.Application.Common;
 
 namespace PortfolioOptimizer.Infrastructure.Jobs;
 
@@ -55,7 +56,7 @@ public sealed class BackgroundJobWorker(
             {
                 break;
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ExceptionFilters.IsRecoverable(ex))
             {
                 logger.LogError(ex, "Background job {Kind} {JobId} failed", job.Kind, job.Id);
                 await MarkFailedAsync(scope.ServiceProvider.GetRequiredService<IApplicationDbContext>(), job, ex.Message);
@@ -120,7 +121,7 @@ public sealed class BackgroundJobWorker(
                     break;
             }
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ExceptionFilters.IsRecoverable(ex))
         {
             logger.LogError(ex, "Could not mark job {JobId} as failed", job.Id);
         }

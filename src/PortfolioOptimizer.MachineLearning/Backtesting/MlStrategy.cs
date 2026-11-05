@@ -95,9 +95,9 @@ public sealed class MlStrategy
             return PortfolioDecision.Hold([], "Not enough realized labels yet to train the model; the portfolio stays in cash.");
 
         var candidates = new List<(int Asset, double[] Features)>();
-        foreach (var symbol in ctx.Symbols)
+        // Symbols outside the training panel (e.g. the benchmark) are not investable by this strategy.
+        foreach (var a in ctx.Symbols.Where(_assetIndex.ContainsKey).Select(symbol => _assetIndex[symbol]))
         {
-            if (!_assetIndex.TryGetValue(symbol, out var a)) continue; // e.g. the benchmark: not investable by this strategy
             var x = _dataset.Features.Compute(a, t);
             if (x is null || x.Count(double.IsNaN) > Dataset.MaxMissingFeatureFraction * x.Length) continue;
             candidates.Add((a, x));

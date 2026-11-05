@@ -45,8 +45,8 @@ public static class CovarianceEstimator
         var covArr = new double[n, n];
         var vols = new double[n];
         for (var i = 0; i < n; i++)
-        for (var j = 0; j < n; j++)
-            covArr[i, j] = 0.5 * (cov[i, j] + cov[j, i]) * annual; // enforce exact symmetry
+            for (var j = 0; j < n; j++)
+                covArr[i, j] = 0.5 * (cov[i, j] + cov[j, i]) * annual; // enforce exact symmetry
         for (var i = 0; i < n; i++) vols[i] = Math.Sqrt(Math.Max(0, covArr[i, i]));
 
         return new MomentEstimates(
@@ -62,11 +62,11 @@ public static class CovarianceEstimator
         var n = covariance.GetLength(0);
         var corr = new double[n, n];
         for (var i = 0; i < n; i++)
-        for (var j = 0; j < n; j++)
-        {
-            var d = Math.Sqrt(covariance[i, i] * covariance[j, j]);
-            corr[i, j] = i == j ? 1d : d > 1e-18 ? Math.Clamp(covariance[i, j] / d, -1d, 1d) : 0d;
-        }
+            for (var j = 0; j < n; j++)
+            {
+                var d = Math.Sqrt(covariance[i, i] * covariance[j, j]);
+                corr[i, j] = i == j ? 1d : d > 1e-18 ? Math.Clamp(covariance[i, j] / d, -1d, 1d) : 0d;
+            }
         return corr;
     }
 

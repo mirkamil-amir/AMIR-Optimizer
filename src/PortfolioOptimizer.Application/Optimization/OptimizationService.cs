@@ -372,8 +372,8 @@ public sealed class OptimizationService(
     {
         var r = new double[m.Observations];
         for (var t = 0; t < m.Observations; t++)
-        for (var j = 0; j < w.Length; j++)
-            r[t] += w[j] * m.Returns[t, j];
+            for (var j = 0; j < w.Length; j++)
+                r[t] += w[j] * m.Returns[t, j];
         return Wealth(r);
     }
 
@@ -385,8 +385,8 @@ public sealed class OptimizationService(
         var sb = new StringBuilder();
         var dateSet = dates.ToHashSet();
         foreach (var s in symbols.OrderBy(x => x, StringComparer.Ordinal))
-        foreach (var p in series[s].Points.Where(p => dateSet.Contains(p.Date)))
-            sb.Append(s).Append('|').Append(p.Date.ToString("yyyy-MM-dd")).Append('|').Append(p.Price.ToString("R")).Append('\n');
+            foreach (var p in series[s].Points.Where(p => dateSet.Contains(p.Date)))
+                sb.Append(s).Append('|').Append(p.Date.ToString("yyyy-MM-dd")).Append('|').Append(p.Price.ToString("R")).Append('\n');
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(sb.ToString())))[..16].ToLowerInvariant();
     }
 

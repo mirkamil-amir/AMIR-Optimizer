@@ -32,7 +32,6 @@ public sealed record StockQuery(
 public sealed class StockDiscoveryService(
     IApplicationDbContext db,
     PriceQueryService prices,
-    IMarketDataProviderRegistry providers,
     UniverseService universes,
     QuoteRefreshService quoteRefresh,
     IOptions<QuoteRefreshOptions> quoteOptions,
@@ -304,7 +303,6 @@ public sealed class StockDiscoveryService(
     {
         var ids = assets.Select(a => a.Id).ToList();
         var source = settings.ActiveProvider;
-        var providerName = providers.Providers.FirstOrDefault(p => p.Name == source)?.DisplayName ?? source;
         var now = clock.GetUtcNow().UtcDateTime;
         var today = DateOnly.FromDateTime(now);
         var freshFor = TimeSpan.FromMinutes(quoteOptions.Value.FreshForMinutes);

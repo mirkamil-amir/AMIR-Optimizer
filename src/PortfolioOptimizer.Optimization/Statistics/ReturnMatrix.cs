@@ -22,6 +22,7 @@ public sealed record ReturnMatrix(
         return col;
     }
 
+    /// <summary>Daily returns of the symbols on the dates every one of them has a price.</summary>
     /// <param name="series">Per-symbol price observations (any order, must be strictly positive).</param>
     public static ReturnMatrix Build(IReadOnlyDictionary<string, IReadOnlyList<PricePoint>> series, IReadOnlyList<string> symbols)
     {

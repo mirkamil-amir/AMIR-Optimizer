@@ -207,7 +207,7 @@ public sealed class MeanVarianceOptimizer(IQuadraticProgramSolver solver) : IPor
         for (var i = 0; i < spec.N; i++)
         {
             var sector = c.Sectors.GetValueOrDefault(input.Symbols[i]);
-            if (sector is not null && room.ContainsKey(sector)) { sectorOf[i] = sector; room[sector] -= w[i]; }
+            if (sector is not null && room.TryGetValue(sector, out var left)) { sectorOf[i] = sector; room[sector] = left - w[i]; }
         }
         if (room.Values.Any(r => r < -1e-12)) return null;
 
@@ -361,11 +361,11 @@ public sealed class MeanVarianceOptimizer(IQuadraticProgramSolver solver) : IPor
         if (input.Covariance.GetLength(0) != n || input.Covariance.GetLength(1) != n) return "Covariance matrix dimensions do not match the number of assets.";
         if (input.ExpectedReturns.Any(v => !double.IsFinite(v))) return "Expected returns contain non-finite values.";
         for (var i = 0; i < n; i++)
-        for (var j = 0; j < n; j++)
-        {
-            if (!double.IsFinite(input.Covariance[i, j])) return "Covariance matrix contains non-finite values.";
-            if (Math.Abs(input.Covariance[i, j] - input.Covariance[j, i]) > 1e-10) return "Covariance matrix is not symmetric.";
-        }
+            for (var j = 0; j < n; j++)
+            {
+                if (!double.IsFinite(input.Covariance[i, j])) return "Covariance matrix contains non-finite values.";
+                if (Math.Abs(input.Covariance[i, j] - input.Covariance[j, i]) > 1e-10) return "Covariance matrix is not symmetric.";
+            }
         if (c.MinWeight < 0 || c.AssetBounds.Values.Any(b => b.Min < 0))
             return "Negative minimum weights (short selling) are not supported in this release.";
         if (c.MaxWeight <= 0 || c.MaxWeight > 1) return "Maximum weight must be in (0, 1].";
@@ -642,8 +642,8 @@ public sealed class MeanVarianceOptimizer(IQuadraticProgramSolver solver) : IPor
         {
             var p = Matrix<double>.Build.Dense(VariableCount, VariableCount);
             for (var i = 0; i < N; i++)
-            for (var j = 0; j < N; j++)
-                p[i, j] = Input.Covariance[i, j] * scale;
+                for (var j = 0; j < N; j++)
+                    p[i, j] = Input.Covariance[i, j] * scale;
             return p;
         }
     }

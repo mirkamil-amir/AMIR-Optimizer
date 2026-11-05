@@ -16,8 +16,8 @@ public static class PortfolioMath
         var n = w.Count;
         var s = 0d;
         for (var i = 0; i < n; i++)
-        for (var j = 0; j < n; j++)
-            s += w[i] * sigma[i, j] * w[j];
+            for (var j = 0; j < n; j++)
+                s += w[i] * sigma[i, j] * w[j];
         return Math.Max(0d, s);
     }
 

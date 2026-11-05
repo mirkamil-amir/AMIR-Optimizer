@@ -151,7 +151,7 @@ public sealed class ApiTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.BadRequest, noKey.StatusCode);
 
         var key = Guid.NewGuid().ToString();
-        var request = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/portfolios/{portfolio.Id}/paper-trades")
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/portfolios/{portfolio.Id}/paper-trades")
         {
             Content = JsonContent(new ExecutePaperTradesRequest { ProposalId = proposal.Id, Confirm = true }),
         };
@@ -160,7 +160,7 @@ public sealed class ApiTests : IAsyncLifetime
         Assert.False(result.IdempotentReplay);
         Assert.Equal(buys.Count, result.Orders.Count(o => o.Status == OrderStatus.Filled));
 
-        var replayRequest = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/portfolios/{portfolio.Id}/paper-trades")
+        using var replayRequest = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/portfolios/{portfolio.Id}/paper-trades")
         {
             Content = JsonContent(new ExecutePaperTradesRequest { ProposalId = proposal.Id, Confirm = true }),
         };
@@ -169,7 +169,7 @@ public sealed class ApiTests : IAsyncLifetime
         Assert.True(replay.IdempotentReplay);
         Assert.Equal(result.BatchId, replay.BatchId);
 
-        var again = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/portfolios/{portfolio.Id}/paper-trades")
+        using var again = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/portfolios/{portfolio.Id}/paper-trades")
         {
             Content = JsonContent(new ExecutePaperTradesRequest { ProposalId = proposal.Id, Confirm = true }),
         };

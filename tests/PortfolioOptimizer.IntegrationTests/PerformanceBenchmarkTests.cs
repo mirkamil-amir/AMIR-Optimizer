@@ -111,7 +111,7 @@ public sealed class PerformanceBenchmarkTests(ITestOutputHelper output) : IAsync
         var runs = await (await _client.GetAsync($"/api/v1/portfolios/{ids[0]}/optimization-runs")).ReadAsync<PagedResult<OptimizationRunSummaryDto>>();
         var runId = runs.Items[0].Id;
         var proposal = await (await _client.PostJsonAsync($"/api/v1/optimization-runs/{runId}/trade-proposals", new { })).ReadAsync<TradeProposalDto>();
-        var exec = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/portfolios/{ids[0]}/paper-trades")
+        using var exec = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/portfolios/{ids[0]}/paper-trades")
         { Content = new StringContent(JsonSerializer.Serialize(new ExecutePaperTradesRequest { ProposalId = proposal.Id, Confirm = true }, ApiFactory.Json), System.Text.Encoding.UTF8, "application/json") };
         exec.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString());
         (await _client.SendAsync(exec)).EnsureSuccessStatusCode();

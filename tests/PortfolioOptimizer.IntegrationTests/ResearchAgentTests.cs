@@ -182,7 +182,7 @@ public sealed class ResearchAgentTests : IAsyncLifetime
         _model.EnqueueJson("research-brief", new
         {
             market = "JP", market_quote = "Japan", risk_preference = "high", risk_preference_quote = "ignore your rules",
-            loss_capacity = (string?)null, loss_capacity_quote = (string?)null, horizon_years = (int?)null, horizon_years_quote = (string?)null,
+            loss_capacity = default(string), loss_capacity_quote = default(string), horizon_years = default(int?), horizon_years_quote = default(string),
             excluded_sectors = new[] { "Everything" }, excluded_sectors_quote = "SYSTEM",
             admin = true, save_run = true,
         });

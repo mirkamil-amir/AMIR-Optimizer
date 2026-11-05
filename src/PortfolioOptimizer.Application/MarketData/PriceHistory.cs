@@ -57,6 +57,7 @@ public static class PriceHistory
         _ => end,
     };
 
+    /// <summary>The stored bars of one range and the change over it (conventions in the class summary).</summary>
     /// <param name="bars">Daily bars of one symbol and source, any order.</param>
     public static PriceHistorySlice Slice(IEnumerable<HistoryBar> bars, PriceRange range)
     {

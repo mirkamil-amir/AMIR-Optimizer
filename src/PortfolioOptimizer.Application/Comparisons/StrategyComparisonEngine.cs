@@ -203,8 +203,11 @@ public sealed class StrategyComparisonEngine(IPortfolioOptimizer optimizer, Anal
         var union = sa.Union(sb).Count();
         var weightOverlap = sa.Intersect(sb).Sum(k => Math.Min(a.FinalWeights[k], b.FinalWeights[k]));
         var byDate = eb.ToDictionary(e => e.SignalDate, e => e.TargetWeights);
-        var perDate = ea.Where(e => byDate.ContainsKey(e.SignalDate) && e.TargetWeights.Count > 0 && byDate[e.SignalDate].Count > 0)
-            .Select(e => e.TargetWeights.Keys.Intersect(byDate[e.SignalDate].Keys).Sum(k => Math.Min(e.TargetWeights[k], byDate[e.SignalDate][k])))
+        // Overlap on every signal date both strategies traded (non-empty targets on both sides).
+        var perDate = ea.Where(e => e.TargetWeights.Count > 0)
+            .SelectMany(e => byDate.TryGetValue(e.SignalDate, out var other) && other.Count > 0
+                ? new[] { e.TargetWeights.Keys.Intersect(other.Keys).Sum(k => Math.Min(e.TargetWeights[k], other[k])) }
+                : [])
             .ToList();
         return new HoldingsOverlapDto(a.Name, b.Name,
             sa.Intersect(sb).OrderBy(x => x).ToList(), sa.Except(sb).OrderBy(x => x).ToList(), sb.Except(sa).OrderBy(x => x).ToList(),

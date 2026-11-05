@@ -139,11 +139,12 @@ public sealed class GeminiLanguageModel : ILanguageModel
                 throw new LanguageModelException(LlmFailure.Refused, $"The model declined the request ({finish}).");
         }
 
-        var text = "";
-        if (candidate.TryGetProperty("content", out var content) && content.TryGetProperty("parts", out var parts))
-            foreach (var part in parts.EnumerateArray())
-                if (!(part.TryGetProperty("thought", out var thought) && thought.ValueKind == JsonValueKind.True) && part.TryGetProperty("text", out var t))
-                    text += t.GetString();
+        // The answer's text parts in order, without the model's "thought" parts.
+        var text = candidate.TryGetProperty("content", out var content) && content.TryGetProperty("parts", out var parts)
+            ? string.Concat(parts.EnumerateArray()
+                .Where(part => !(part.TryGetProperty("thought", out var thought) && thought.ValueKind == JsonValueKind.True))
+                .Select(part => part.TryGetProperty("text", out var t) ? t.GetString() : null))
+            : "";
         JsonElement output;
         try { output = JsonDocument.Parse(text).RootElement.Clone(); }
         catch (JsonException ex) { throw new LanguageModelException(LlmFailure.InvalidOutput, "The model's answer was not valid JSON.", ex); }

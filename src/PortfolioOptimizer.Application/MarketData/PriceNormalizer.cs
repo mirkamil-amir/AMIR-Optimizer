@@ -21,9 +21,8 @@ public static class PriceNormalizer
         var byDate = new Dictionary<DateOnly, ProviderBar>();
         var duplicates = 0;
 
-        foreach (var r in raw)
+        foreach (var r in raw.Where(r => r.Date >= start && r.Date <= end))
         {
-            if (r.Date < start || r.Date > end) continue;
             if (r.Date > today)
             {
                 rejected++;

@@ -519,14 +519,14 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         v => JsonSerializer.Deserialize<T>(JsonSerializer.Serialize(v, Json), Json)!);
 
     public IQueryable<HistoricalPrice> LatestPricesPerAsset(IReadOnlyCollection<int> assetIds, string source, int count, DateOnly from, DateOnly to) =>
-        // Parameterized (interpolation becomes parameters, never string concatenation); LATERAL + LIMIT = backward index scan per asset.
-        HistoricalPrices.FromSql($"""
-            SELECT h.* FROM unnest({assetIds.ToArray()}) AS a(id)
+        // Parameterized ({0}…{4} become SQL parameters, never text); LATERAL + LIMIT = backward index scan per asset.
+        HistoricalPrices.FromSqlRaw("""
+            SELECT h.* FROM unnest({0}) AS a(id)
             CROSS JOIN LATERAL (
                 SELECT * FROM "HistoricalPrices" p
-                WHERE p."AssetId" = a.id AND p."Source" = {source} AND p."Date" >= {from} AND p."Date" <= {to}
-                ORDER BY p."Date" DESC LIMIT {count}) h
-            """).AsNoTracking();
+                WHERE p."AssetId" = a.id AND p."Source" = {1} AND p."Date" >= {2} AND p."Date" <= {3}
+                ORDER BY p."Date" DESC LIMIT {4}) h
+            """, assetIds.ToArray(), source, from, to, count).AsNoTracking();
 
     public async Task<int> RebuildPriceCoverageAsync(IReadOnlyCollection<int>? assetIds, CancellationToken ct)
     {
@@ -547,12 +547,12 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             else
             {
                 var ids = assetIds.Distinct().ToArray();
-                await Database.ExecuteSqlInterpolatedAsync($"""DELETE FROM "PriceCoverage" WHERE "AssetId" = ANY({ids})""", ct);
-                written = await Database.ExecuteSqlInterpolatedAsync($"""
+                await Database.ExecuteSqlRawAsync("""DELETE FROM "PriceCoverage" WHERE "AssetId" = ANY({0})""", [ids], ct);
+                written = await Database.ExecuteSqlRawAsync("""
                     INSERT INTO "PriceCoverage" ("AssetId", "Source", "Observations", "FirstDate", "LastDate", "LastRetrievedAtUtc", "AdjustedObservations")
                     SELECT "AssetId", "Source", count(*), min("Date"), max("Date"), max("RetrievedAtUtc"), count("AdjustedClose")
-                    FROM "HistoricalPrices" WHERE "AssetId" = ANY({ids}) GROUP BY "AssetId", "Source"
-                    """, ct);
+                    FROM "HistoricalPrices" WHERE "AssetId" = ANY({0}) GROUP BY "AssetId", "Source"
+                    """, [ids], ct);
             }
             if (own is not null) await own.CommitAsync(ct);
             return written;

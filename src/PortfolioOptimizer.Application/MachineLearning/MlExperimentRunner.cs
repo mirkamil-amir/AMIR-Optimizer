@@ -85,7 +85,7 @@ public sealed class MlExperimentRunner(
             experiment.Status = JobStatus.Failed;
             experiment.Error = ex.Message;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ExceptionFilters.IsRecoverable(ex))
         {
             logger.LogError(ex, "ML experiment {ExperimentId} failed", id);
             experiment.Status = JobStatus.Failed;

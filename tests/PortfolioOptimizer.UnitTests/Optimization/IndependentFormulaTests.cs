@@ -29,8 +29,18 @@ public sealed class IndependentFormulaTests
             for (var i = 0; i < t; i++) x[i, j] = Returns[i, j] - mean;
         }
         var s = new double[p, p];
-        for (var a = 0; a < p; a++) for (var b = 0; b < p; b++) for (var i = 0; i < t; i++) s[a, b] += x[i, a] * x[i, b] / t;
-        double Norm2(Func<int, int, double> m) { var sum = 0d; for (var a = 0; a < p; a++) for (var b = 0; b < p; b++) sum += m(a, b) * m(a, b); return sum / p; }
+        for (var a = 0; a < p; a++)
+            for (var b = 0; b < p; b++)
+                for (var i = 0; i < t; i++)
+                    s[a, b] += x[i, a] * x[i, b] / t;
+        double Norm2(Func<int, int, double> m)
+        {
+            var sum = 0d;
+            for (var a = 0; a < p; a++)
+                for (var b = 0; b < p; b++)
+                    sum += m(a, b) * m(a, b);
+            return sum / p;
+        }
         var mu = Enumerable.Range(0, p).Sum(a => s[a, a]) / p;
         var d2 = Norm2((a, b) => s[a, b] - (a == b ? mu : 0));
         var b2Bar = Enumerable.Range(0, t).Sum(k => Norm2((a, b) => x[k, a] * x[k, b] - s[a, b])) / ((double)t * t);

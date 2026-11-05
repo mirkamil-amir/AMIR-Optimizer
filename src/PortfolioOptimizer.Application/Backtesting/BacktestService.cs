@@ -248,7 +248,7 @@ public sealed class BacktestService(
             run.Status = JobStatus.Failed;
             run.Error = ex.Message;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ExceptionFilters.IsRecoverable(ex))
         {
             logger.LogError(ex, "Backtest {BacktestId} failed", id);
             run.Status = JobStatus.Failed;

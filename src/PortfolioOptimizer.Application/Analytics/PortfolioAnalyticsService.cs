@@ -34,6 +34,7 @@ public sealed class PortfolioAnalyticsService(
 
     // ------------------------------------------------------------------ holdings
 
+    /// <summary>The portfolio's current holdings, valued in the reporting currency.</summary>
     /// <param name="currency">Reporting currency (default: the portfolio's account currency). Reporting never changes holdings.</param>
     public async Task<HoldingsResponse> GetHoldingsAsync(Guid portfolioId, CancellationToken ct, string? currency = null)
     {
@@ -122,10 +123,10 @@ public sealed class PortfolioAnalyticsService(
         }
 
         double? totalReturn = accountValuation.TotalValue is { } accountTotal && netContrib > 0 ? (double)(accountTotal / netContrib - 1) : netContrib > 0 ? null : 0;
-        var exposure = totalValue is > 0
+        var exposure = totalValue is { } total && total > 0
             ? valuation.Positions.Values.Where(p => p.Quantity > 0 && p.Value is not null).GroupBy(p => p.Currency)
-                .Select(g => new CurrencyExposureDto(g.Key, (double)(g.Sum(p => p.Value!.Value) / totalValue.Value), g.Count()))
-                .Append(new CurrencyExposureDto($"{account} cash", (double)(valuation.Cash / totalValue.Value), 0))
+                .Select(g => new CurrencyExposureDto(g.Key, (double)(g.Sum(p => p.Value ?? 0m) / total), g.Count()))
+                .Append(new CurrencyExposureDto($"{account} cash", (double)(valuation.Cash / total), 0))
                 .Where(e => e.Weight > 0).OrderByDescending(e => e.Weight).ToList()
             : null;
         var summary = new PortfolioValuationDto(
@@ -373,8 +374,8 @@ public sealed class PortfolioAnalyticsService(
         var w = usable.Select(s => positions.Single(p => p.Symbol == s).Weight!.Value).ToArray();
         var portReturns = new double[matrix.Observations];
         for (var t = 0; t < matrix.Observations; t++)
-        for (var j = 0; j < w.Length; j++)
-            portReturns[t] += w[j] * matrix.Returns[t, j];
+            for (var j = 0; j < w.Length; j++)
+                portReturns[t] += w[j] * matrix.Returns[t, j];
 
         var metrics = new PerformanceMetrics(conventions);
         var est = matrix.Observations >= 2 ? CovarianceEstimator.Estimate(matrix.Returns, CovarianceMethod.Sample, conventions) : null;
