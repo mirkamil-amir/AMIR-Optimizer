@@ -36,9 +36,9 @@ public sealed class AlphaVantageProvider(HttpClient http, IOptions<AlphaVantageO
         var outputSize = today.DayNumber - startDate.DayNumber > CompactDays * 1.4 ? "full" : "compact";
         var function = o.UseAdjustedEndpoint ? "TIME_SERIES_DAILY_ADJUSTED" : "TIME_SERIES_DAILY";
         var avSymbol = Map(symbol);
-        using var doc = await GetJsonAsync($"/query?function={function}&symbol={Uri.EscapeDataString(avSymbol)}&outputsize={outputSize}&datatype=json", symbol, cancellationToken);
+        var root = await GetJsonAsync($"/query?function={function}&symbol={Uri.EscapeDataString(avSymbol)}&outputsize={outputSize}&datatype=json", symbol, cancellationToken);
 
-        if (!doc.RootElement.TryGetProperty("Time Series (Daily)", out var series) || series.ValueKind != JsonValueKind.Object)
+        if (!root.TryGetProperty("Time Series (Daily)", out var series) || series.ValueKind != JsonValueKind.Object)
             throw new MarketDataProviderException(Name, symbol, "Response contains no daily time series.");
 
         var venue = Markets.ForSymbol(symbol);
@@ -63,8 +63,8 @@ public sealed class AlphaVantageProvider(HttpClient http, IOptions<AlphaVantageO
 
     public async Task<MarketQuote?> GetLatestQuoteAsync(string symbol, CancellationToken cancellationToken)
     {
-        using var doc = await GetJsonAsync($"/query?function=GLOBAL_QUOTE&symbol={Uri.EscapeDataString(Map(symbol))}", symbol, cancellationToken);
-        if (!doc.RootElement.TryGetProperty("Global Quote", out var q) || q.ValueKind != JsonValueKind.Object) return null;
+        var root = await GetJsonAsync($"/query?function=GLOBAL_QUOTE&symbol={Uri.EscapeDataString(Map(symbol))}", symbol, cancellationToken);
+        if (!root.TryGetProperty("Global Quote", out var q) || q.ValueKind != JsonValueKind.Object) return null;
         var price = Num(q, "05. price");
         var day = q.TryGetProperty("07. latest trading day", out var d) ? d.GetString() : null;
         // An empty object means the symbol is unknown to Alpha Vantage.
@@ -89,7 +89,7 @@ public sealed class AlphaVantageProvider(HttpClient http, IOptions<AlphaVantageO
     private static string Map(string symbol) =>
         SymbolMapper.ForAlphaVantage(symbol) ?? throw new MarketDataProviderException(Name, symbol, "The data source does not cover this market (e.g. Tokyo listings or index levels).");
 
-    private async Task<JsonDocument> GetJsonAsync(string pathAndQuery, string symbol, CancellationToken ct)
+    private async Task<JsonElement> GetJsonAsync(string pathAndQuery, string symbol, CancellationToken ct)
     {
         var key = options.Value.ApiKey;
         if (string.IsNullOrWhiteSpace(key))
@@ -104,27 +104,23 @@ public sealed class AlphaVantageProvider(HttpClient http, IOptions<AlphaVantageO
         if (!response.IsSuccessStatusCode)
             throw new MarketDataProviderException(Name, symbol, $"HTTP {(int)response.StatusCode}.", isTransient: (int)response.StatusCode >= 500);
 
-        JsonDocument doc;
-        try { doc = JsonDocument.Parse(body); }
-        catch (JsonException ex) { throw new MarketDataProviderException(Name, symbol, "Response is not valid JSON.", inner: ex); }
+        using var doc = Parse(body, symbol);
 
-        // Alpha Vantage reports errors and throttling with HTTP 200 and a message field. The document goes to the caller
-        // only when it holds data; on every other path (an error message, or a failure while reading) it is disposed here.
-        var handedOver = false;
-        try
-        {
-            foreach (var field in new[] { "Error Message", "Note", "Information" })
-            {
-                if (doc.RootElement.TryGetProperty(field, out var msg) && msg.ValueKind == JsonValueKind.String)
-                    throw new MarketDataProviderException(Name, symbol, Redact(msg.GetString() ?? field, key), isTransient: field != "Error Message");
-            }
-            handedOver = true;
-            return doc;
-        }
-        finally
-        {
-            if (!handedOver) doc.Dispose();
-        }
+        // Alpha Vantage reports errors and throttling with HTTP 200 and a message field.
+        var root = doc.RootElement;
+        var errorField = new[] { "Error Message", "Note", "Information" }
+            .FirstOrDefault(f => root.ValueKind == JsonValueKind.Object && root.TryGetProperty(f, out var m) && m.ValueKind == JsonValueKind.String);
+        if (errorField is not null)
+            throw new MarketDataProviderException(Name, symbol, Redact(root.GetProperty(errorField).GetString() ?? errorField, key),
+                isTransient: errorField != "Error Message");
+        // A copy that stays valid after the document is disposed, so callers own no disposable.
+        return root.Clone();
+    }
+
+    private JsonDocument Parse(string body, string symbol)
+    {
+        try { return JsonDocument.Parse(body); }
+        catch (JsonException ex) { throw new MarketDataProviderException(Name, symbol, "Response is not valid JSON.", inner: ex); }
     }
 
     private static string Redact(string text, string key) => text.Replace(key, "***", StringComparison.Ordinal);
