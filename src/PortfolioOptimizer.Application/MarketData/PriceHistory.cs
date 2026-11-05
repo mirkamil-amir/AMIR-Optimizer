@@ -57,6 +57,15 @@ public static class PriceHistory
         _ => end,
     };
 
+    /// <summary>
+    /// First date of a history download covering <paramref name="years"/> years: that span plus one month. The 5Y chart
+    /// ends at the last stored bar (usually yesterday) and needs a base on or before that date minus five years, so a
+    /// download starting exactly five years before today was always a day or two short and showed no 5Y change until new
+    /// prices arrived. The month also covers weekends and long market holidays before the base date. A later sync with
+    /// this start fills the missing days of histories downloaded before (the planner fetches any gap before the first bar).
+    /// </summary>
+    public static DateOnly DefaultDownloadStart(DateOnly today, int years = 5) => today.AddYears(-years).AddMonths(-1);
+
     /// <param name="bars">Daily bars of one symbol and source, any order.</param>
     public static PriceHistorySlice Slice(IEnumerable<HistoryBar> bars, PriceRange range)
     {

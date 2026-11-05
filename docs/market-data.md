@@ -212,6 +212,11 @@ admin ──► POST /admin/catalogue/quote-refresh;  scheduler (every 12 h) ─
 * **De-duplication:** a sign-in starts a cycle only if none is running and the last one was requested more than
   `MarketData:Quotes:CycleMinIntervalMinutes` (15) ago; otherwise it reuses that cycle.
 * **Cache window:** quotes retrieved within `FreshForMinutes` (15) are reused; the UI marks older ones "cached".
+* **How far back:** a download without an explicit start (sync default, the scheduled refresh with
+  `MarketData:DefaultHistoryYears`, a stock added to the watchlist) begins at today − 5 years − 1 month
+  (`PriceHistory.DefaultDownloadStart`), so the 5-year chart always has its starting price; exactly five years was a
+  day or two short on every fresh download. Histories stored before are completed by the next sync (the gap before the
+  first stored day is fetched).
 * **History downloads (sync jobs):** the stored date range of every symbol of a job is read in one query, the provider
   downloads run ahead in parallel (`IMarketDataProvider.HistoryParallelism`: Yahoo 8, Alpha Vantage 1) while the
   database work stays sequential and in job order, and the latest quotes are fetched afterwards in batches (20 per spark

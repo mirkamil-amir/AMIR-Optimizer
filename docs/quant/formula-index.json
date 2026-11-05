@@ -892,12 +892,13 @@
         "PriceHistoryTests.AdjustedCloses_AreUsed_SoASplitIsNotALoss",
         "PriceHistoryTests.MissingAdjustedClose_FallsBackToRawCloses_ForTheWholeSlice_AndSaysSo",
         "PriceHistoryTests.Sparkline_KeepsFirstAndLastObservation",
+        "PriceHistoryTests.FreshDefaultDownload_AlwaysHasA5YearChange",
         "WatchlistTests.StockTrends_MatchTheWatchlist_ForOnePageOfStocks"
       ],
       "skills": [
         "market-data-fx"
       ],
-      "verified": "2026-11-01"
+      "verified": "2026-11-04"
     },
     {
       "id": "F-MD-003",

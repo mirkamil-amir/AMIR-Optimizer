@@ -727,14 +727,17 @@ return). Adjustments themselves come from the provider; the app does not compute
 |---|---|
 | Status | Verified correct |
 | Code | `src/PortfolioOptimizer.Application/MarketData/PriceHistory.cs#PriceHistory`; `src/PortfolioOptimizer.Application/MarketData/PriceHistory.cs#Downsample`; `src/PortfolioOptimizer.Application/MarketData/StockDiscoveryService.cs#GetTrendsAsync` |
-| Tests | `PriceHistoryTests.OneMonth_UsesLastObservationOnOrBeforeTheStart_AsBase`; `PriceHistoryTests.AdjustedCloses_AreUsed_SoASplitIsNotALoss`; `PriceHistoryTests.MissingAdjustedClose_FallsBackToRawCloses_ForTheWholeSlice_AndSaysSo`; `PriceHistoryTests.Sparkline_KeepsFirstAndLastObservation`; `WatchlistTests.StockTrends_MatchTheWatchlist_ForOnePageOfStocks` |
+| Tests | `PriceHistoryTests.OneMonth_UsesLastObservationOnOrBeforeTheStart_AsBase`; `PriceHistoryTests.AdjustedCloses_AreUsed_SoASplitIsNotALoss`; `PriceHistoryTests.MissingAdjustedClose_FallsBackToRawCloses_ForTheWholeSlice_AndSaysSo`; `PriceHistoryTests.Sparkline_KeepsFirstAndLastObservation`; `PriceHistoryTests.FreshDefaultDownload_AlwaysHasA5YearChange`; `WatchlistTests.StockTrends_MatchTheWatchlist_ForOnePageOfStocks` |
 | Skills | market-data-fx |
-| Verified | 2026-11-01 |
+| Verified | 2026-11-04 |
 
 $P_{end}/P_{base} - 1$ with base = last bar on or before end − range, one price kind for the whole slice. The same slice
 serves the stock chart, the watchlist and the stock list's trend columns (`GET /stocks/trends`); their sparklines are the
 slice's points downsampled evenly to at most 60, always keeping the first and last observation (display only – the
 change uses the full slice). The stock list's change equals the watchlist's for the same stock and range (tested).
+Downloads start at `DefaultDownloadStart` = today − years − 1 month (sync default, scheduled refresh, watchlist): the
+base of 5Y lies on or before (last bar − 5 years), which a download starting exactly five years back never contained
+(fixed 2026-11-04; seen first on the BIST 100). The formula itself is unchanged.
 
 ### F-MD-003 · Event price comparison (news)
 

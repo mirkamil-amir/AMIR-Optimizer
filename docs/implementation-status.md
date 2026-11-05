@@ -1,5 +1,13 @@
 # Implementation status
 
+## 2026-11-04: the 5-year chart after a fresh download (AMIR-10)
+
+* Downloads started exactly five years before today, but the 5Y chart ends at the last stored day (yesterday) and needs a
+  price from five years before that – one day short, so every newly downloaded stock showed "—" for 5 years (seen on the
+  BIST 100). Downloads now start one month earlier (`PriceHistory.DefaultDownloadStart`: sync default, scheduled refresh,
+  watchlist); the next sync fills the month for histories already stored. Test:
+  `PriceHistoryTests.FreshDefaultDownload_AlwaysHasA5YearChange`.
+
 ## 2026-11-03: several markets, indices and sectors at once; filters in full screen (AMIR-8)
 
 * Choose stocks: the market/index/sector list became checkboxes (`UniverseNav`, helpers in `lib/universe-scope.ts`).
