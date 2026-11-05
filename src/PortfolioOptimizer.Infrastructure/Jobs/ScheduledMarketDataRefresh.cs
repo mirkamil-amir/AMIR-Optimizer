@@ -66,7 +66,7 @@ public sealed class ScheduledMarketDataRefresh(
             }
             var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
             var job = await scope.ServiceProvider.GetRequiredService<MarketDataService>()
-                .EnqueueSyncAsync(new SyncRequest { StartDate = today.AddYears(-options.Value.DefaultHistoryYears) }, ct);
+                .EnqueueSyncAsync(new SyncRequest { StartDate = PriceHistory.DefaultDownloadStart(today, options.Value.DefaultHistoryYears) }, ct);
             logger.LogInformation("Scheduled market-data refresh enqueued: {JobId} ({Count} assets)", job.Id, job.AssetsTotal);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
