@@ -126,9 +126,10 @@ jobs:
       - name: Type check and build
         run: npm run build
 
+  # No `needs`: the job builds its own images from source, so it starts with the other jobs instead of ~1.5 min later
+  # (a compile error still fails it within its image build).
   e2e:
     name: End-to-end (disposable stack)
-    needs: [backend, frontend]
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -138,11 +139,25 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: frontend/portfolio-dashboard/package-lock.json
+      # The browser download is cached per lockfile (the Playwright version lives there); the system libraries it needs
+      # are installed on every run, as the runner image is discarded.
+      - name: Cache the Playwright browser
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('frontend/portfolio-dashboard/package-lock.json') }}
       - name: Install Playwright
         working-directory: frontend/portfolio-dashboard
+        env:
+          BROWSER_CACHED: ${{ steps.playwright-cache.outputs.cache-hit }}
         run: |
           npm ci
-          ./node_modules/.bin/playwright install --with-deps chromium
+          if [[ "$BROWSER_CACHED" == "true" ]]; then
+            ./node_modules/.bin/playwright install-deps chromium
+          else
+            ./node_modules/.bin/playwright install --with-deps chromium
+          fi
       # scripts/e2e.sh builds the po-e2e compose project (E2E environment, Mock providers, random passwords).
       # The stack is kept so its logs can be collected; the runner is discarded afterwards.
       - name: Playwright against the e2e stack
