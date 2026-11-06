@@ -74,9 +74,9 @@ public sealed class PortfolioValuationService(IApplicationDbContext db, PriceQue
         var problems = new List<string>();
         var warnings = new List<string>();
         var positions = new Dictionary<int, HoldingValue>();
-        foreach (var id in ids)
+        foreach (var id in ids.Where(assets.ContainsKey))
         {
-            if (!assets.TryGetValue(id, out var asset)) continue;
+            var asset = assets[id];
             var quantity = held.GetValueOrDefault(id);
             latest.TryGetValue(id, out var lp);
             FxQuote? quote = null;

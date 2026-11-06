@@ -37,7 +37,8 @@ public static class ImportCommand
             Console.WriteLine(report.Committed ? "Import committed." : "Nothing was written.");
             return 0;
         }
-        catch (Exception ex)
+        // Fatal runtime errors are not reported as an ordinary failed import.
+        catch (Exception ex) when (ex is not (OutOfMemoryException or InsufficientExecutionStackException or AccessViolationException))
         {
             await Console.Error.WriteLineAsync($"Import failed, nothing was written: {ex.Message}");
             return 1;

@@ -67,7 +67,7 @@ public static class PortfolioConstructor
         }
         if (settings.Weighting == WeightingMethod.InverseVolatility)
         {
-            var noVol = ranked.Where(c => !(c.TrailingVolatility > 0) || !double.IsFinite(c.TrailingVolatility)).Select(c => c.Symbol).ToList();
+            var noVol = ranked.Where(c => c.TrailingVolatility <= 0 || !double.IsFinite(c.TrailingVolatility)).Select(c => c.Symbol).ToList();
             if (noVol.Count > 0)
             {
                 ranked = ranked.Where(c => c.TrailingVolatility > 0 && double.IsFinite(c.TrailingVolatility)).ToList();
@@ -120,9 +120,12 @@ public static class PortfolioConstructor
         for (var iteration = 0; iteration < 100; iteration++)
         {
             var changed = false;
-            foreach (var key in w.Keys.ToList())
+            // Capping one weight never changes another, so the keys above the cap can be listed first.
+            foreach (var key in w.Keys.Where(k => w[k] > s.MaxWeight + 1e-12).ToList())
             {
-                if (w[key] > s.MaxWeight + 1e-12) { w[key] = s.MaxWeight; frozen.Add(key); changed = true; }
+                w[key] = s.MaxWeight;
+                frozen.Add(key);
+                changed = true;
             }
             foreach (var (sector, limit) in s.SectorLimits)
             {

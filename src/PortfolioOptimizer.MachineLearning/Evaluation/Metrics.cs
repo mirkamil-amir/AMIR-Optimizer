@@ -89,11 +89,13 @@ public static class MetricCalculator
             brier += (o.Prediction - o.Label) * (o.Prediction - o.Label);
             brierBase += (trainingBaseRate - o.Label) * (trainingBaseRate - o.Label);
             logLoss -= o.Label * Math.Log(p) + (1 - o.Label) * Math.Log(1 - p);
+            // Labels are exactly 0 or 1; compared as integers.
             var predicted = o.Prediction >= 0.5 ? 1 : 0;
-            if (predicted == (int)o.Label) correct++;
-            if (predicted == 1 && o.Label == 1) tp++;
-            if (predicted == 1 && o.Label == 0) fp++;
-            if (predicted == 0 && o.Label == 1) fn++;
+            var actual = (int)o.Label;
+            if (predicted == actual) correct++;
+            if (predicted == 1 && actual == 1) tp++;
+            if (predicted == 1 && actual == 0) fp++;
+            if (predicted == 0 && actual == 1) fn++;
         }
         var calibration = obs.OrderBy(o => o.Prediction).Select((o, i) => (o, bin: (int)((long)i * 10 / Math.Max(1, n))))
             .GroupBy(x => x.bin)
@@ -154,8 +156,13 @@ public static class MetricCalculator
             previous = current;
         }
 
-        double? meanIc = ics.Count > 0 ? ics.Average(x => x.Ic) : null;
-        double? sdIc = ics.Count > 1 ? Math.Sqrt(ics.Sum(x => (x.Ic - meanIc!.Value) * (x.Ic - meanIc.Value)) / (ics.Count - 1)) : null;
+        double? meanIc = null, sdIc = null;
+        if (ics.Count > 0)
+        {
+            var mean = ics.Average(x => x.Ic);
+            meanIc = mean;
+            if (ics.Count > 1) sdIc = Math.Sqrt(ics.Sum(x => (x.Ic - mean) * (x.Ic - mean)) / (ics.Count - 1));
+        }
         // t-statistic on dates spaced at least one horizon apart (independent forward windows).
         var spaced = new List<double>();
         int? lastDate = null;
@@ -220,7 +227,8 @@ public static class MetricCalculator
         while (i0 < order.Length)
         {
             var i1 = i0;
-            while (i1 + 1 < order.Length && values[order[i1 + 1]] == values[order[i0]]) i1++;
+            // Exact ties share their average rank (an intended exact comparison).
+            while (i1 + 1 < order.Length && values[order[i1 + 1]].CompareTo(values[order[i0]]) == 0) i1++;
             var avg = (i0 + i1) / 2.0 + 1;
             for (var k = i0; k <= i1; k++) ranks[order[k]] = avg;
             i0 = i1 + 1;

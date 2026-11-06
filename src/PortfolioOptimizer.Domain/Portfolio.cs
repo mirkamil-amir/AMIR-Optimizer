@@ -308,6 +308,7 @@ public class Holding
         UpdatedAtUtc = ts;
     }
 
+    /// <summary>Books a sale: reduces the quantity at the unchanged average cost and adds the realized profit or loss.</summary>
     /// <returns>Realized P&amp;L of this sale.</returns>
     public decimal ApplySell(decimal quantity, decimal price, decimal fee, DateTime ts)
     {

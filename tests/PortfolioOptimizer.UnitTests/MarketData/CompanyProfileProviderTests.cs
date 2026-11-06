@@ -80,9 +80,9 @@ public sealed class CompanyProfileProviderTests
     [Fact]
     public void SeedUniverses_LinkNearlyEveryCompanyToAnArticle()
     {
-        var dir = Path.Combine(AppContext.BaseDirectory, "Seed", "universes");
-        if (!Directory.Exists(dir)) dir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../src/PortfolioOptimizer.Infrastructure/Seed/universes"));
-        var (rows, errors) = UniverseService.ParseMembers(File.ReadAllText(Path.Combine(dir, "SP500.csv")));
+        var dir = Path.Join(AppContext.BaseDirectory, "Seed", "universes");
+        if (!Directory.Exists(dir)) dir = Path.GetFullPath(Path.Join(AppContext.BaseDirectory, "../../../../../src/PortfolioOptimizer.Infrastructure/Seed/universes"));
+        var (rows, errors) = UniverseService.ParseMembers(File.ReadAllText(Path.Join(dir, "SP500.csv")));
         Assert.Empty(errors);
         Assert.Equal("en:Apple Inc.", rows.Single(r => r.Symbol == "AAPL").ReferenceArticle);
         Assert.True(rows.Count(r => r.ReferenceArticle is not null) >= 500);

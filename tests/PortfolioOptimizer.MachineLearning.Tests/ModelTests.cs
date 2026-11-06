@@ -121,9 +121,8 @@ public class ModelTests
     public void Trainers_AreDeterministicForASeed()
     {
         var data = Linear(800, 10, (a, b) => a * b);
-        foreach (var family in new[] { ModelFamily.RandomForest, ModelFamily.GradientBoosting })
+        foreach (var trainer in new[] { ModelFamily.RandomForest, ModelFamily.GradientBoosting }.Select(ModelRegistry.Get))
         {
-            var trainer = ModelRegistry.Get(family);
             var a = trainer.Train(data, trainer.DefaultGrid(TaskKind.Regression)[1], TaskKind.Regression, 3, CancellationToken.None).Predict(data.Features);
             var b = trainer.Train(data, trainer.DefaultGrid(TaskKind.Regression)[1], TaskKind.Regression, 3, CancellationToken.None).Predict(data.Features);
             Assert.Equal(a, b);

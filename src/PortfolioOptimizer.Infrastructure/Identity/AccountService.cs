@@ -95,7 +95,7 @@ public sealed class AccountService(
             // Every sign-in validates market data: a background cycle refreshes quotes (cached ones are reused) and queues an
             // incremental history download if tracked instruments are behind. A failure here must never block the sign-in.
             try { await quoteRefresh.RequestCycleAsync(QuoteRefreshService.TriggerLogin, ct); }
-            catch (Exception ex) { logger.LogWarning(ex, "Could not start the market-data refresh after sign-in"); }
+            catch (Exception ex) when (ExceptionFilters.IsRecoverable(ex)) { logger.LogWarning(ex, "Could not start the market-data refresh after sign-in"); }
         }
         return await ToDtoAsync(user);
     }

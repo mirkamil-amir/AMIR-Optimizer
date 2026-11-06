@@ -39,6 +39,7 @@ public sealed record FxPointDto(DateOnly Date, double Rate);
 /// <summary>Latest reference rates of several currencies against one base, with recent changes.</summary>
 public sealed record FxBoardDto(string Base, string Source, bool IsSimulated, IReadOnlyList<FxBoardRowDto> Rows, string Note);
 
+/// <summary>One currency on the exchange-rate board, quoted against the board's base currency.</summary>
 /// <param name="Rate">Units of <paramref name="Quote"/> per one unit of the base.</param>
 /// <param name="Change1D">Relative change since the previous published rate (null when not available).</param>
 /// <param name="Change1M">Relative change since the last rate at least one month earlier.</param>

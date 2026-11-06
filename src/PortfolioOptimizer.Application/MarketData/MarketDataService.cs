@@ -202,7 +202,7 @@ public sealed class MarketDataService(
 
         IMarketDataProvider provider;
         try { provider = providers.Get(job.Source); }
-        catch (Exception ex)
+        catch (Exception ex) when (ExceptionFilters.IsRecoverable(ex))
         {
             job.Status = JobStatus.Failed;
             job.Message = ex.Message;
@@ -353,10 +353,10 @@ public sealed class MarketDataService(
                 Accumulate(log, history, upsert);
                 messages.AddRange(history.Warnings);
 
-                if (upsert.AdjustmentsChanged && !plan.Force && plan.HadHistory)
+                if (upsert.AdjustmentsChanged && !plan.Force && plan is { HadHistory: true, StoredFrom: { } storedFrom })
                 {
                     // Back-adjusted series changed (new dividend or split): refresh the full stored history.
-                    var fullFrom = plan.StoredFrom!.Value < plan.Start ? plan.StoredFrom.Value : plan.Start;
+                    var fullFrom = storedFrom < plan.Start ? storedFrom : plan.Start;
                     // Routine, not a problem: kept as a short note (shown on demand), logged for operators.
                     messages.Add($"History refreshed from {fullFrom:yyyy-MM-dd} after a dividend or split adjustment.");
                     logger.LogInformation("{Symbol}: adjusted closes changed (dividend/split); full history re-downloaded from {From}", plan.Symbol, fullFrom);
@@ -407,8 +407,9 @@ public sealed class MarketDataService(
                 logger.LogWarning(ex, "Quote batch after a sync failed ({Count} symbols)", batch.Length);
                 continue;
             }
-            foreach (var r in results)
-                if (r.Quote is { } quote && bySymbol.TryGetValue(r.Symbol, out var asset)) await UpsertQuoteAsync(asset, provider, quote, ct);
+            foreach (var (asset, quote) in results.Where(r => bySymbol.ContainsKey(r.Symbol))
+                         .SelectMany(r => r.Quote is { } q ? new[] { (bySymbol[r.Symbol], q) } : []))
+                await UpsertQuoteAsync(asset, provider, quote, ct);
             await db.SaveChangesAsync(ct);
         }
     }

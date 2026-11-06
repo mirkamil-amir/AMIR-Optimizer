@@ -119,6 +119,7 @@ public interface IMarketDataProviderRegistry
 {
     IReadOnlyList<ProviderDescriptor> Providers { get; }
 
+    /// <summary>The configured provider with this name.</summary>
     /// <exception cref="Common.ValidationException">Unknown or unconfigured provider.</exception>
     IMarketDataProvider Get(string name);
 }

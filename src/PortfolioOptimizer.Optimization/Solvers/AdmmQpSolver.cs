@@ -37,7 +37,7 @@ public sealed class AdmmQpSolver : IQuadraticProgramSolver
         var rho = BuildRho(rhoScalar, l, u);
         Cholesky<double> factor;
         try { factor = Factor(p, a, rho, s.Sigma); }
-        catch (Exception ex) { return Fail(QpStatus.NumericalError, n, m, $"KKT factorization failed: {ex.Message}"); }
+        catch (Exception ex) when (IsRecoverable(ex)) { return Fail(QpStatus.NumericalError, n, m, $"KKT factorization failed: {ex.Message}"); }
 
         var x = Vector<double>.Build.Dense(n);
         var z = Vector<double>.Build.Dense(m);
@@ -113,7 +113,7 @@ public sealed class AdmmQpSolver : IQuadraticProgramSolver
                     rhoScalar = newRho;
                     rho = BuildRho(rhoScalar, l, u);
                     try { factor = Factor(p, a, rho, s.Sigma); }
-                    catch (Exception ex) { return Fail(QpStatus.NumericalError, n, m, $"KKT re-factorization failed: {ex.Message}"); }
+                    catch (Exception ex) when (IsRecoverable(ex)) { return Fail(QpStatus.NumericalError, n, m, $"KKT re-factorization failed: {ex.Message}"); }
                 }
             }
 
@@ -167,22 +167,47 @@ public sealed class AdmmQpSolver : IQuadraticProgramSolver
         QuadraticProgram problem, Vector<double> x, Vector<double> z, Vector<double> y, QpSettings s, double primAdmm, double dualAdmm)
     {
         var n = problem.Variables;
-        var m = problem.Constraints;
-        var a = problem.A;
+        var (active, lowCount) = ActiveSet(problem, z, y);
+        var (kkt, kktReg, rhs) = BuildKkt(problem, active, lowCount, s.PolishDelta);
+        if (SolveRefined(kkt, kktReg, rhs, s.PolishRefinementSteps) is not { } sol) return null;
+
+        var xPol = sol.SubVector(0, n);
+        var yPol = Vector<double>.Build.Dense(problem.Constraints);
+        for (var r = 0; r < active.Length; r++) yPol[active[r]] = sol[n + r];
+        if (!DualSignsHold(problem, active, lowCount, yPol)) return null;
+
+        var prim = PrimalResidual(problem, problem.A * xPol);
+        var dual = (problem.P * xPol + problem.Q + problem.A.TransposeThisAndMultiply(yPol)).InfinityNorm();
+
+        var primOk = prim <= Math.Max(primAdmm, s.EpsAbs * 10);
+        var dualOk = dual <= Math.Max(dualAdmm, s.EpsAbs * 10);
+        return primOk && dualOk ? (xPol, yPol, Math.Max(prim, 0), dual) : null;
+    }
+
+    /// <summary>Constraints the ADMM iterate treats as active: lower-active rows first, then upper-active rows.</summary>
+    private static (int[] Active, int LowCount) ActiveSet(QuadraticProgram problem, Vector<double> z, Vector<double> y)
+    {
         var l = problem.Lower;
         var u = problem.Upper;
-
         var lowActive = new List<int>();
         var upActive = new List<int>();
-        for (var i = 0; i < m; i++)
+        for (var i = 0; i < problem.Constraints; i++)
         {
             if (z[i] - l[i] < -y[i]) lowActive.Add(i);
             else if (u[i] - z[i] < y[i]) upActive.Add(i);
         }
+        return (lowActive.Concat(upActive).ToArray(), lowActive.Count);
+    }
 
-        var active = lowActive.Concat(upActive).ToArray();
-        var k = active.Length;
-        var size = n + k;
+    /// <summary>
+    /// The KKT system of the active constraints as equalities, plain and regularized (± delta on the diagonal), with its
+    /// right-hand side (−q, then the lower bound of lower-active rows and the upper bound of upper-active rows).
+    /// </summary>
+    private static (Matrix<double> Kkt, Matrix<double> KktReg, Vector<double> Rhs) BuildKkt(
+        QuadraticProgram problem, int[] active, int lowCount, double delta)
+    {
+        var n = problem.Variables;
+        var size = n + active.Length;
         var kktReg = Matrix<double>.Build.Dense(size, size);
         var kkt = Matrix<double>.Build.Dense(size, size);
         var rhs = Vector<double>.Build.Dense(size);
@@ -194,64 +219,67 @@ public sealed class AdmmQpSolver : IQuadraticProgramSolver
                 kkt[i, j] = problem.P[i, j];
                 kktReg[i, j] = problem.P[i, j];
             }
-            kktReg[i, i] += s.PolishDelta;
+            kktReg[i, i] += delta;
             rhs[i] = -problem.Q[i];
         }
 
-        for (var r = 0; r < k; r++)
+        for (var r = 0; r < active.Length; r++)
         {
             var row = active[r];
             for (var j = 0; j < n; j++)
             {
-                kkt[n + r, j] = kkt[j, n + r] = a[row, j];
-                kktReg[n + r, j] = kktReg[j, n + r] = a[row, j];
+                kkt[n + r, j] = kkt[j, n + r] = problem.A[row, j];
+                kktReg[n + r, j] = kktReg[j, n + r] = problem.A[row, j];
             }
-            kktReg[n + r, n + r] = -s.PolishDelta;
-            rhs[n + r] = r < lowActive.Count ? l[row] : u[row];
+            kktReg[n + r, n + r] = -delta;
+            rhs[n + r] = r < lowCount ? problem.Lower[row] : problem.Upper[row];
         }
+        return (kkt, kktReg, rhs);
+    }
 
+    /// <summary>Solves the regularized system and refines against the plain one; null when it fails or is not finite.</summary>
+    private static Vector<double>? SolveRefined(Matrix<double> kkt, Matrix<double> kktReg, Vector<double> rhs, int refinementSteps)
+    {
         Vector<double> sol;
         try
         {
             var lu = kktReg.LU();
             sol = lu.Solve(rhs);
-            for (var it = 0; it < s.PolishRefinementSteps; it++)
+            for (var it = 0; it < refinementSteps; it++)
             {
                 var residual = rhs - kkt * sol;
                 sol += lu.Solve(residual);
             }
         }
-        catch
+        catch (Exception ex) when (IsRecoverable(ex))
         {
-            return null;
+            return null; // polishing is optional: the unpolished ADMM solution stands
         }
+        return AllFinite(sol) ? sol : null;
+    }
 
-        if (!AllFinite(sol)) return null;
-
-        var xPol = sol.SubVector(0, n);
-        var yPol = Vector<double>.Build.Dense(m);
-        for (var r = 0; r < k; r++) yPol[active[r]] = sol[n + r];
-
-        // Dual sign conditions: multipliers of lower-active rows must be <= 0, upper-active rows >= 0.
+    /// <summary>Dual sign conditions: multipliers of lower-active rows must be ≤ 0, upper-active rows ≥ 0 (equalities are free).</summary>
+    private static bool DualSignsHold(QuadraticProgram problem, int[] active, int lowCount, Vector<double> yPol)
+    {
         const double signTol = 1e-7;
-        for (var r = 0; r < k; r++)
+        for (var r = 0; r < active.Length; r++)
         {
             var row = active[r];
-            var isEquality = Math.Abs(u[row] - l[row]) < 1e-12;
+            var isEquality = Math.Abs(problem.Upper[row] - problem.Lower[row]) < 1e-12;
             if (isEquality) continue;
-            if (r < lowActive.Count && yPol[row] > signTol) return null;
-            if (r >= lowActive.Count && yPol[row] < -signTol) return null;
+            if (r < lowCount && yPol[row] > signTol) return false;
+            if (r >= lowCount && yPol[row] < -signTol) return false;
         }
+        return true;
+    }
 
-        var ax = a * xPol;
+    /// <summary>Largest violation of l ≤ Ax ≤ u (0 when every constraint holds).</summary>
+    private static double PrimalResidual(QuadraticProgram problem, Vector<double> ax)
+    {
         var prim = 0d;
-        for (var i = 0; i < m; i++)
-            prim = Math.Max(prim, Math.Max(l[i] - ax[i], ax[i] - u[i]));
-        var dual = (problem.P * xPol + problem.Q + a.TransposeThisAndMultiply(yPol)).InfinityNorm();
-
-        var primOk = prim <= Math.Max(primAdmm, s.EpsAbs * 10);
-        var dualOk = dual <= Math.Max(dualAdmm, s.EpsAbs * 10);
-        return primOk && dualOk ? (xPol, yPol, Math.Max(prim, 0), dual) : null;
+        for (var i = 0; i < problem.Constraints; i++)
+            prim = Math.Max(prim, Math.Max(problem.Lower[i] - ax[i], ax[i] - problem.Upper[i]));
+        return prim;
     }
 
     private static Cholesky<double> Factor(Matrix<double> p, Matrix<double> a, Vector<double> rho, double sigma)
@@ -322,6 +350,11 @@ public sealed class AdmmQpSolver : IQuadraticProgramSolver
         }
         return true;
     }
+
+    /// <summary>A failed factorization is reported as a numerical error; fatal runtime errors are not caught (same rule as
+    /// <c>ExceptionFilters</c> in the application layer, which this pure library does not reference).</summary>
+    private static bool IsRecoverable(Exception ex) =>
+        ex is not (OutOfMemoryException or InsufficientExecutionStackException or AccessViolationException);
 
     private static bool AllFinite(Vector<double> v)
     {

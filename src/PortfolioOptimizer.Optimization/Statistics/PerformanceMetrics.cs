@@ -53,11 +53,8 @@ public sealed class PerformanceMetrics(AnalyticsConventions conventions)
         if (returns.Count < MinimumObservations) return Insufficient(returns.Count);
         var rf = Conventions.DailyRate(annualRiskFreeRate);
         var downside = 0d;
-        foreach (var r in returns)
-        {
-            var d = Math.Min(0d, r - rf);
+        foreach (var d in returns.Select(r => Math.Min(0d, r - rf)))
             downside += d * d;
-        }
         var dd = Math.Sqrt(downside / returns.Count);
         if (dd < ZeroTolerance) return MetricValue.Unavailable("No downside deviation; Sortino ratio is undefined.");
         return MetricValue.Of((Descriptive.Mean(returns) - rf) / dd * Math.Sqrt(Conventions.TradingDaysPerYear));

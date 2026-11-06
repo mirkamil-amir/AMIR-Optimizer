@@ -1,5 +1,17 @@
 # Implementation status
 
+## 2026-11-05: code-quality findings of code scanning (AMIR-9)
+
+* The 129 open CodeQL findings on main (none security-relevant) are addressed in code; no formula changed:
+  nullable values read after a visible check (9), `Path.Join` instead of `Path.Combine` (18), filters and projections in
+  loop headers (20), nested loops indented as nested (11), summaries on documented members (15), disposed HTTP messages,
+  clients and documents (17), explicit SQL parameters `{0}` instead of interpolation (3), integer comparison of 0/1 labels
+  and `CompareTo` for exact rank ties (4), `TryGetValue` instead of `ContainsKey` + indexer (2), the solver's polish step
+  split into named steps, the test-data purge query split into two conditions, and small cleanups.
+* Last-resort handlers (jobs, best-effort side tasks, solver fallbacks) now catch with
+  `ExceptionFilters.IsRecoverable`: fatal runtime errors (out of memory, …) end the process instead of being logged as an
+  ordinary failure.
+
 ## 2026-11-04: the 5-year chart after a fresh download (AMIR-10)
 
 * Downloads started exactly five years before today, but the 5Y chart ends at the last stored day (yesterday) and needs a

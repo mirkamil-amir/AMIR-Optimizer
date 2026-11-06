@@ -239,7 +239,8 @@ public sealed class LiveEcbSmokeTests
     [PortfolioOptimizer.UnitTests.MarketData.LiveSmokeFact]
     public async Task Ecb_ReturnsRecentRates_ForUsdGbpJpyChf()
     {
-        var provider = new EcbFxProvider(new HttpClient { Timeout = TimeSpan.FromSeconds(30) }, Microsoft.Extensions.Options.Options.Create(new EcbFxOptions()));
+        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+        var provider = new EcbFxProvider(http, Microsoft.Extensions.Options.Options.Create(new EcbFxOptions()));
         var to = DateOnly.FromDateTime(DateTime.UtcNow);
         var rows = await provider.GetRatesAsync(["USD", "GBP", "JPY", "CHF"], to.AddDays(-14), to, CancellationToken.None);
         foreach (var c in new[] { "USD", "GBP", "JPY", "CHF" })
@@ -253,7 +254,8 @@ public sealed class LiveEcbSmokeTests
     [PortfolioOptimizer.UnitTests.MarketData.LiveSmokeFact]
     public async Task Ecb_PublishesEveryListedCurrency_AndNoBgnAfter2025()
     {
-        var provider = new EcbFxProvider(new HttpClient { Timeout = TimeSpan.FromSeconds(30) }, Microsoft.Extensions.Options.Options.Create(new EcbFxOptions()));
+        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+        var provider = new EcbFxProvider(http, Microsoft.Extensions.Options.Options.Create(new EcbFxOptions()));
         var to = DateOnly.FromDateTime(DateTime.UtcNow);
         var rows = await provider.GetRatesAsync(EcbFxProvider.Currencies, to.AddDays(-14), to, CancellationToken.None);
         Assert.Equal(EcbFxProvider.Currencies.Order(), rows.Select(r => r.Currency).Distinct().Order());

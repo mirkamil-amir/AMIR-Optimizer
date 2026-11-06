@@ -147,7 +147,7 @@ public sealed class DatabaseInitializer(
                     var job = await marketData.EnqueueSyncAsync(new SyncRequest { StartDate = DateOnly.FromDateTime(now).AddYears(-seed.InitialHistoryYears) }, ct);
                     logger.LogInformation("Enqueued initial {Provider} history download ({Count} assets), job {JobId}", job.Source, job.AssetsTotal, job.Id);
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (ExceptionFilters.IsRecoverable(ex))
                 {
                     logger.LogWarning(ex, "Initial market-data sync could not be enqueued");
                 }

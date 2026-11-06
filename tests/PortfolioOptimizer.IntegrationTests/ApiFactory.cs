@@ -61,7 +61,7 @@ public sealed class ApiFactory(string connectionString) : WebApplicationFactory<
         builder.UseSetting("RateLimiting:ExpensivePermitPerMinute", "1000");
         builder.UseSetting("RateLimiting:AuthenticationPermitPerMinute", "1000");
         if (TestServices is not null) builder.ConfigureServices(TestServices);
-        builder.UseSetting("ModelArtifacts:RootPath", Path.Combine(Path.GetTempPath(), $"po-it-artifacts-{Guid.NewGuid():N}"));
+        builder.UseSetting("ModelArtifacts:RootPath", Path.Join(Path.GetTempPath(), $"po-it-artifacts-{Guid.NewGuid():N}"));
     }
 
     public Task DeleteDatabaseAsync() => PostgresTestServer.DropDatabaseAsync(ConnectionString);

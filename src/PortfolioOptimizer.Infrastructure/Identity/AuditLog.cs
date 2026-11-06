@@ -42,7 +42,7 @@ public sealed class AuditLog(
             await db.SaveChangesAsync(CancellationToken.None);
             logger.LogInformation("Audit {Action} by {ActorId} on {TargetType} {TargetId}: {Success}", LogText.Clean(action), actorId, LogText.Clean(targetType), LogText.Clean(targetId), success);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ExceptionFilters.IsRecoverable(ex))
         {
             logger.LogError(ex, "Failed to record audit event {Action}", LogText.Clean(action));
         }

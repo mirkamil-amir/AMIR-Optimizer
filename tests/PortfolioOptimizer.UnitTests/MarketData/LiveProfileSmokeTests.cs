@@ -9,7 +9,8 @@ public class LiveProfileSmokeTests
     [LiveSmokeFact]
     public async Task Wikipedia_ReturnsDescriptions_ForUsGermanAndJapaneseReferences()
     {
-        var provider = new WikipediaProfileProvider(new HttpClient { Timeout = TimeSpan.FromSeconds(30) }, Options.Create(new WikipediaProfileOptions()));
+        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+        var provider = new WikipediaProfileProvider(http, Options.Create(new WikipediaProfileOptions()));
         foreach (var (reference, expected) in new[] { ("en:Apple Inc.", "Apple"), ("en:SAP", "SAP"), ("de:Toyota", "Toyota") })
         {
             var p = await provider.GetAsync(reference, CancellationToken.None);

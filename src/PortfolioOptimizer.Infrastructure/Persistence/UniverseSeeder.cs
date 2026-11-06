@@ -78,9 +78,8 @@ public sealed class UniverseSeeder(UniverseService universes, AppDbContext db, I
 
         var indicesCsv = Read("indices.csv") ?? throw new InvalidOperationException("Universe definition file indices.csv is missing.");
         var header = CatalogueService.SplitCsvLine(indicesCsv.Split('\n')[0]).Select(h => h.Trim()).ToList();
-        foreach (var line in indicesCsv.Replace("\r\n", "\n").Split('\n').Skip(1).Where(l => !string.IsNullOrWhiteSpace(l)))
+        foreach (var cells in indicesCsv.Replace("\r\n", "\n").Split('\n').Skip(1).Where(l => !string.IsNullOrWhiteSpace(l)).Select(CatalogueService.SplitCsvLine))
         {
-            var cells = CatalogueService.SplitCsvLine(line);
             string? Cell(string name) => header.IndexOf(name) is var i and >= 0 && i < cells.Count && cells[i].Trim() is { Length: > 0 } v ? v : null;
             var code = Cell("code")!;
             var definition = new IndexDefinition(code, Cell("name")!, Cell("country")!, Cell("currency")!, Cell("benchmark"),
@@ -109,8 +108,8 @@ public sealed class UniverseSeeder(UniverseService universes, AppDbContext db, I
     {
         if (!string.IsNullOrWhiteSpace(options.Value.Directory))
         {
-            var dir = Path.IsPathRooted(options.Value.Directory) ? options.Value.Directory : Path.Combine(environment.ContentRootPath, options.Value.Directory);
-            var path = Path.Combine(dir, file);
+            var dir = Path.IsPathRooted(options.Value.Directory) ? options.Value.Directory : Path.Join(environment.ContentRootPath, options.Value.Directory);
+            var path = Path.Join(dir, file);
             if (File.Exists(path)) return File.ReadAllText(path);
         }
         using var stream = typeof(UniverseSeeder).Assembly.GetManifestResourceStream(ResourcePrefix + file);

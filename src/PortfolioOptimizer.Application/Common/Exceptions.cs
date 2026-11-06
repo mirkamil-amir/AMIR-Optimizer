@@ -33,3 +33,14 @@ public sealed class AuthenticationFailedException(string message) : Exception(me
 
 /// <summary>The caller is authenticated but not allowed to perform the operation (maps to HTTP 403).</summary>
 public sealed class ForbiddenException(string message) : Exception(message);
+
+/// <summary>
+/// For last-resort handlers (background jobs, best-effort side tasks, solver fallbacks) that record a failure and carry
+/// on: <c>catch (Exception ex) when (ExceptionFilters.IsRecoverable(ex))</c>. Fatal runtime errors are not caught – after
+/// them the process state cannot be trusted, so they must end the process instead of being logged as an ordinary failure.
+/// </summary>
+public static class ExceptionFilters
+{
+    public static bool IsRecoverable(Exception ex) =>
+        ex is not (OutOfMemoryException or InsufficientExecutionStackException or AccessViolationException);
+}

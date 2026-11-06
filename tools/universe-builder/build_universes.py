@@ -700,6 +700,7 @@ def fetch_json(url, attempts=6):
             if attempt == attempts - 1:
                 raise
             time.sleep(5 * (attempt + 1))
+    raise ValueError(f"attempts must be at least 1 (got {attempts}) for {url}")
 
 
 def api(lang, **params):

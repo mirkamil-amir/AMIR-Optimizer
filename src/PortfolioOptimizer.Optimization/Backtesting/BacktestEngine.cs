@@ -90,6 +90,7 @@ public sealed class BacktestEngine(IPortfolioOptimizer optimizer, AnalyticsConve
 
     public BacktestEngine() : this(new MeanVarianceOptimizer(), AnalyticsConventions.Default) { }
 
+    /// <summary>Simulates the strategy over the input's prices with the given settings, next to its baselines.</summary>
     /// <param name="strategyRule">
     /// Decision rule of the strategy when it is not this engine's mean-variance optimization (e.g. a walk-forward ML strategy).
     /// It decides at the same signal dates with the same execution, costs and valuation; the buy-and-hold baseline then holds
@@ -186,9 +187,8 @@ public sealed class BacktestEngine(IPortfolioOptimizer optimizer, AnalyticsConve
         var lookback = settings.LookbackDays;
         var eligible = new List<string>();
         var windows = new Dictionary<string, IReadOnlyList<PricePoint>>();
-        foreach (var s in symbols)
+        foreach (var s in symbols.Where(x => allowed is null || allowed.Contains(x)))
         {
-            if (allowed is not null && !allowed.Contains(s)) continue;
             var dates = grid.SortedDates[s];
             var end = grid.CountUpTo(s, ctx.Date); // count of dates ≤ signal
             // The latest close on or before the signal date (its exchange may be closed that day); none recently → not trading.

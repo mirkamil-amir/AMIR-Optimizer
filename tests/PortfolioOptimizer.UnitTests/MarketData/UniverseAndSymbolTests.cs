@@ -4,7 +4,7 @@ namespace PortfolioOptimizer.UnitTests.MarketData;
 
 public class UniverseAndSymbolTests
 {
-    private static readonly string UniverseDir = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..",
+    private static readonly string UniverseDir = Path.Join(AppContext.BaseDirectory, "..", "..", "..", "..", "..",
         "src", "PortfolioOptimizer.Infrastructure", "Seed", "universes");
 
     private static readonly HashSet<string> GicsSectors =
@@ -68,7 +68,7 @@ public class UniverseAndSymbolTests
     [InlineData("BIST100", "TR", 95, 100, true)] // Turkish Wikipedia lists 96 (August 2025)
     public void BundledUniverseFiles_AreWellFormed(string code, string country, int min, int max, bool hasIndustries)
     {
-        var (rows, errors) = UniverseService.ParseMembers(File.ReadAllText(Path.Combine(UniverseDir, $"{code}.csv")));
+        var (rows, errors) = UniverseService.ParseMembers(File.ReadAllText(Path.Join(UniverseDir, $"{code}.csv")));
         Assert.Empty(errors);
         Assert.InRange(rows.Count, min, max);
         Assert.All(rows, r => Assert.Contains(r.Sector!, GicsSectors));
@@ -86,7 +86,7 @@ public class UniverseAndSymbolTests
     {
         foreach (var country in NewMarkets.Concat(TwentyMarketEtfs))
         {
-            var (rows, errors) = UniverseService.ParseMembers(File.ReadAllText(Path.Combine(UniverseDir, $"ETF{country}.csv")));
+            var (rows, errors) = UniverseService.ParseMembers(File.ReadAllText(Path.Join(UniverseDir, $"ETF{country}.csv")));
             Assert.Empty(errors);
             Assert.InRange(rows.Count, 1, 3);
             Assert.All(rows, r => Assert.Equal(Domain.AssetType.Etf, r.Type));
@@ -98,7 +98,7 @@ public class UniverseAndSymbolTests
     [Fact]
     public void IndexDefinitions_ListEveryUniverseWithSourceAndRevision()
     {
-        var lines = File.ReadAllLines(Path.Combine(UniverseDir, "indices.csv"));
+        var lines = File.ReadAllLines(Path.Join(UniverseDir, "indices.csv"));
         Assert.Equal("code,name,country,currency,benchmark,is_historical,members,source,source_url,revision,licence,verified_on,description", lines[0]);
         var codes = lines.Skip(1).Select(l => l.Split(',')[0]).ToList();
         Assert.Equal(["SP500", "DAX40", "DAX30", "CAC40", "FTSE100", "NIKKEI225", "SMI", "IBEX35", "FTSEMIB", "OMXS30", "OMXC25", "TSX60",
@@ -112,7 +112,7 @@ public class UniverseAndSymbolTests
     [Fact]
     public void EveryMarketHasAnIndexBenchmark_WithItsCurrency()
     {
-        var lines = File.ReadAllLines(Path.Combine(UniverseDir, "indices.csv")).Skip(1).Select(l => l.Split(',')).ToList();
+        var lines = File.ReadAllLines(Path.Join(UniverseDir, "indices.csv")).Skip(1).Select(l => l.Split(',')).ToList();
         foreach (var venue in Markets.Venues.Where(v => v.Country != "NL"))
         {
             var row = lines.First(l => l[2] == venue.Country);
@@ -130,9 +130,9 @@ public class UniverseAndSymbolTests
         // has no member file – no source lists its members under a free licence (2026-11-03).
         Assert.Contains(Infrastructure.Persistence.UniverseSeeder.Benchmarks,
             b => b is { Symbol: "XU030.IS", Currency: "TRY", Type: Domain.AssetType.Index });
-        Assert.False(File.Exists(Path.Combine(UniverseDir, "BIST30.csv")));
-        Assert.DoesNotContain(File.ReadAllLines(Path.Combine(UniverseDir, "indices.csv")), l => l.StartsWith("BIST30,"));
-        Assert.Contains(File.ReadAllLines(Path.Combine(UniverseDir, "indices.csv")), l => l.StartsWith("BIST100,BIST 100,TR,TRY,XU100.IS,"));
+        Assert.False(File.Exists(Path.Join(UniverseDir, "BIST30.csv")));
+        Assert.DoesNotContain(File.ReadAllLines(Path.Join(UniverseDir, "indices.csv")), l => l.StartsWith("BIST30,"));
+        Assert.Contains(File.ReadAllLines(Path.Join(UniverseDir, "indices.csv")), l => l.StartsWith("BIST100,BIST 100,TR,TRY,XU100.IS,"));
     }
 
     [Theory]

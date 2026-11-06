@@ -142,7 +142,9 @@ public sealed class YahooFinanceProvider(HttpClient http, IOptions<YahooFinanceO
             }
         }
 
-        using (doc!)
+        // Unreachable in practice (the second failure returns above), but never read a batch that did not arrive.
+        if (doc is null) return await QuoteFetching.OneByOneAsync(this, symbols, cancellationToken);
+        using (doc)
         {
             var results = new List<QuoteFetch>(symbols.Count);
             foreach (var (yahooSymbol, symbol) in bySymbol)

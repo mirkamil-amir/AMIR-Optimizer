@@ -51,7 +51,7 @@ public sealed class MultiCurrencyTests : IAsyncLifetime
 
     private async Task<PaperTradeResultDto> ExecuteAsync(Guid portfolioId, Guid proposalId)
     {
-        var request = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/portfolios/{portfolioId}/paper-trades")
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/portfolios/{portfolioId}/paper-trades")
         {
             Content = new StringContent(JsonSerializer.Serialize(new ExecutePaperTradesRequest { ProposalId = proposalId, Confirm = true }, ApiFactory.Json), Encoding.UTF8, "application/json"),
         };
@@ -198,7 +198,7 @@ public sealed class MultiCurrencyTests : IAsyncLifetime
         foreach (var t in tx.Items)
         {
             Assert.Equal(Math.Round(t.Quantity * t.Price * t.FxRate, 6), Math.Round(t.GrossAmount, 6));
-            if (t.Currency == "EUR") Assert.Equal((1m, (string?)null), (t.FxRate, t.FxSource));
+            if (t.Currency == "EUR") { Assert.Equal(1m, t.FxRate); Assert.Null(t.FxSource); }
             else Assert.Equal("MockFx", t.FxSource);
         }
         // Cash reconciles in EUR: initial − Σ gross − Σ fees.

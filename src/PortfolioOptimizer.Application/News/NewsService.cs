@@ -173,8 +173,9 @@ public sealed class NewsService(
         var day = DateOnly.FromDateTime(article.PublishedAtUtc);
         var symbols = benchmark is null ? new[] { asset.Symbol } : [asset.Symbol, benchmark];
         var series = await prices.GetDailyObservationsAsync(symbols, settings.ActiveProvider, day.AddDays(-30), day.AddDays(60), ct);
-        var stockBars = series.TryGetValue(asset.Symbol, out var sb) ? sb.Bars.Select(b => new DailyClose(b.Date, b.Price)).ToList() : [];
-        var benchBars = benchmark is not null && series.TryGetValue(benchmark, out var bb) ? bb.Bars.Select(b => new DailyClose(b.Date, b.Price)).ToList() : [];
+        var sb = series.GetValueOrDefault(asset.Symbol);
+        var stockBars = sb is null ? [] : sb.Bars.Select(b => new DailyClose(b.Date, b.Price)).ToList();
+        var benchBars = benchmark is not null && series.GetValueOrDefault(benchmark) is { } bb ? bb.Bars.Select(b => new DailyClose(b.Date, b.Price)).ToList() : [];
 
         var result = EventPriceComparison.Compute(article.PublishedAtUtc, venue, stockBars, benchBars);
         var limitations = result.Limitations.ToList();

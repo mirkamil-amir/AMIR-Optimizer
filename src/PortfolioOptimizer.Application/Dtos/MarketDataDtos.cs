@@ -177,6 +177,7 @@ public sealed record FxSyncRequest
     public DateOnly? StartDate { get; init; }
 }
 
+/// <summary>Result of requesting an exchange-rate download for a date range.</summary>
 /// <param name="Started">False when every rate of the range is already stored (nothing to download).</param>
 public sealed record FxSyncDto(bool Started, string Source, IReadOnlyList<string> Currencies, DateOnly From, DateOnly To);
 

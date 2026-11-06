@@ -120,9 +120,9 @@ public sealed class PriceQueryService(IApplicationDbContext db, TimeProvider clo
                 .ToListAsync(ct))
             .ToDictionary(c => c.AssetId);
 
-        foreach (var id in assetIds)
+        foreach (var id in assetIds.Where(assets.ContainsKey))
         {
-            if (!assets.TryGetValue(id, out var asset)) continue;
+            var asset = assets[id];
             var close = closes.GetValueOrDefault(id);
             var quote = quotes.FirstOrDefault(q => q.AssetId == id);
 

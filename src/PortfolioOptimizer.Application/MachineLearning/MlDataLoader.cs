@@ -20,6 +20,7 @@ public sealed class MlDataLoader(PriceQueryService prices, FxService fx)
     /// <summary>Stocks with fewer stored observations are excluded (features need ≈ 1 year of history).</summary>
     public const int MinimumObservations = 300;
 
+    /// <summary>Loads the stored prices of the symbols and the benchmark for an ML Optimization, with the reasons for every exclusion.</summary>
     /// <param name="currency">Analysis currency: prices are converted with the FX rate of each date; volumes are unchanged.</param>
     public async Task<MlData> LoadAsync(IReadOnlyList<string> symbols, string benchmark, string source, DateOnly from, DateOnly to, string currency, CancellationToken ct)
     {
@@ -41,9 +42,10 @@ public sealed class MlDataLoader(PriceQueryService prices, FxService fx)
             var converted = conversion.Series[kv.Key].Series.Points.ToDictionary(p => p.Date, p => p.Price);
             return kv.Value with { Bars = kv.Value.Bars.Where(b => converted.ContainsKey(b.Date)).Select(b => b with { Price = converted[b.Date] }).ToList() };
         }, StringComparer.OrdinalIgnoreCase);
-        if (!series.TryGetValue(benchmark, out var bench) || bench.Bars.Count < MinimumObservations)
+        var bench = series.GetValueOrDefault(benchmark);
+        if (bench is null || bench.Bars.Count < MinimumObservations)
             throw new InvalidOperationException(
-                $"The benchmark {benchmark} has {(bench?.Bars.Count ?? 0)} stored prices in the period (minimum {MinimumObservations}). Synchronize it first.");
+                $"The benchmark {benchmark} has {bench?.Bars.Count ?? 0} stored prices in the period (minimum {MinimumObservations}). Synchronize it first.");
 
         var warnings = new List<string>(conversion.Notes);
         var outside = symbols.Where(s => stored.TryGetValue(s, out var full) && full.Bars.Count > native[s].Bars.Count).ToList();
@@ -67,14 +69,15 @@ public sealed class MlDataLoader(PriceQueryService prices, FxService fx)
             if (symbol != benchmark) eligibility.Add(Row(symbol, false, $"Exchange rates: {why}"));
         }
         var assets = new List<InstrumentHistory>();
-        foreach (var symbol in symbols)
+        foreach (var symbol in symbols.Where(x => !conversion.Excluded.ContainsKey(x)))
         {
-            if (conversion.Excluded.ContainsKey(symbol)) continue;
-            if (!series.TryGetValue(symbol, out var s) || s.Bars.Count < MinimumObservations)
+            var s = series.GetValueOrDefault(symbol);
+            if (s is null || s.Bars.Count < MinimumObservations)
             {
+                var count = s?.Bars.Count ?? 0;
                 excluded.Add(symbol);
-                warnings.Add($"{symbol}: {(s?.Bars.Count ?? 0)} stored prices (minimum {MinimumObservations}); excluded. Fetch prices to include it.");
-                eligibility.Add(Row(symbol, false, $"Price history: {(s?.Bars.Count ?? 0)} usable prices in the period (minimum {MinimumObservations})."));
+                warnings.Add($"{symbol}: {count} stored prices (minimum {MinimumObservations}); excluded. Fetch prices to include it.");
+                eligibility.Add(Row(symbol, false, $"Price history: {count} usable prices in the period (minimum {MinimumObservations})."));
                 continue;
             }
             eligibility.Add(Row(symbol, true, null));

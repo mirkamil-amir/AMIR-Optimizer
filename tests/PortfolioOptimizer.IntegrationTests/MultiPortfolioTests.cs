@@ -46,14 +46,14 @@ public sealed class MultiPortfolioTests : IAsyncLifetime
             Name = name, Description = description, BaseCurrency = currency, InitialInvestment = cash, Universe = [.. universe],
         })).ReadAsync<PortfolioDto>();
 
-    private static Task<HttpResponseMessage> RecordAsync(HttpClient client, Guid portfolioId, RecordTransactionRequest body, string? key = null)
+    private static async Task<HttpResponseMessage> RecordAsync(HttpClient client, Guid portfolioId, RecordTransactionRequest body, string? key = null)
     {
-        var request = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/portfolios/{portfolioId}/journal")
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/portfolios/{portfolioId}/journal")
         {
             Content = new StringContent(JsonSerializer.Serialize(body, ApiFactory.Json), System.Text.Encoding.UTF8, "application/json"),
         };
         if (key is not "") request.Headers.Add("Idempotency-Key", key ?? Guid.NewGuid().ToString());
-        return client.SendAsync(request);
+        return await client.SendAsync(request); // awaited, so the request is disposed only after it was sent
     }
 
     private static async Task<PortfolioTransactionDto> BookAsync(HttpClient client, Guid portfolioId, RecordTransactionRequest body) =>
