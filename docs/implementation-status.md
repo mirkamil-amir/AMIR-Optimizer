@@ -1,5 +1,16 @@
 # Implementation status
 
+## 2026-11-06: faster integration tests (AMIR-11)
+
+* Test databases are copies of one template that the API start-up migrates and seeds once per run, instead of migrating
+  and importing the index catalogue for each test (~1.7 s each).
+* 12 of 22 classes share one database per class (`SharedApi`) with the price download done once; tests still use their
+  own users. Classes that change or count global state keep a database per test (docs/testing.md).
+* Local suite, 152 tests: 4 min 04 s → 1 min 04 s.
+* Known: `MultiCurrencyTests.HistoricalConversion_UsesStoredDatedRates_NotTodaysRate` looks up the rate of each price
+  date exactly, without the documented ≤ 4-day carry-forward, so it fails when a price for today exists before today's
+  rate; it keeps a database per test for that reason.
+
 ## 2026-11-05: code-quality findings of code scanning (AMIR-9)
 
 * The 129 open CodeQL findings on main (none security-relevant) are addressed in code; no formula changed:

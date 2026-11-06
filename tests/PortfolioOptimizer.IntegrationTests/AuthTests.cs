@@ -5,22 +5,19 @@ using PortfolioOptimizer.Domain;
 namespace PortfolioOptimizer.IntegrationTests;
 
 /// <summary>Authentication, approval workflow, role enforcement, per-user isolation, CSRF and audit logging.</summary>
-public sealed class AuthTests : IAsyncLifetime
+public sealed class AuthTests(AuthTests.Shared shared) : IClassFixture<AuthTests.Shared>, IAsyncLifetime
 {
-    private ApiFactory _factory = null!;
+    public sealed class Shared : SharedApi;
+
+    private readonly ApiFactory _factory = shared.Factory;
     private HttpClient _admin = null!;
 
-    public async Task InitializeAsync()
-    {
-        _factory = await ApiFactory.CreateAsync();
-        _admin = await _factory.CreateAdminSessionAsync();
-    }
+    public async Task InitializeAsync() => _admin = await _factory.CreateAdminSessionAsync();
 
-    public async Task DisposeAsync()
+    public Task DisposeAsync()
     {
         _admin.Dispose();
-        await _factory.DisposeAsync();
-        await _factory.DeleteDatabaseAsync();
+        return Task.CompletedTask;
     }
 
     [Fact]

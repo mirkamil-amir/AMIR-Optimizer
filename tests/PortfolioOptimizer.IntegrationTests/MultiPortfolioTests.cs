@@ -13,9 +13,14 @@ namespace PortfolioOptimizer.IntegrationTests;
 /// Several independent portfolios per user: overview, isolation of holdings/runs/transactions, manual bookkeeping and its
 /// accounting rules, performance with external cash flows, archive/delete lifecycle and cross-user protection.
 /// </summary>
-public sealed class MultiPortfolioTests : IAsyncLifetime
+public sealed class MultiPortfolioTests(MultiPortfolioTests.Shared shared) : IClassFixture<MultiPortfolioTests.Shared>, IAsyncLifetime
 {
-    private ApiFactory _factory = null!;
+    public sealed class Shared : SharedApi
+    {
+        protected override Task SeedAsync(HttpClient admin) => SyncAsync(admin, 3);
+    }
+
+    private readonly ApiFactory _factory = shared.Factory;
     private HttpClient _admin = null!;
     private HttpClient _alice = null!;
     private HttpClient _bob = null!;
@@ -23,20 +28,17 @@ public sealed class MultiPortfolioTests : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        _factory = await ApiFactory.CreateAsync();
         _admin = await _factory.CreateAdminSessionAsync();
-        await _admin.SyncAndWaitAsync(new SyncRequest { StartDate = DateOnly.FromDateTime(DateTime.UtcNow).AddYears(-3) });
         (_alice, _aliceUser) = await _factory.CreateApprovedUserAsync(_admin);
         (_bob, _) = await _factory.CreateApprovedUserAsync(_admin);
     }
 
-    public async Task DisposeAsync()
+    public Task DisposeAsync()
     {
         _alice.Dispose();
         _bob.Dispose();
         _admin.Dispose();
-        await _factory.DisposeAsync();
-        await _factory.DeleteDatabaseAsync();
+        return Task.CompletedTask;
     }
 
     private static async Task<PortfolioDto> CreateAsync(HttpClient client, string name, string[] universe, string currency = "USD", decimal cash = 100_000m,

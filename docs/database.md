@@ -68,7 +68,7 @@ when no prices exist.
 
 | Kind | Where it lives | Protection |
 |---|---|---|
-| Integration tests | a fresh `po_it_*` database per test class on a disposable PostgreSQL (Testcontainers) or `PO_TEST_POSTGRES`, dropped afterwards | never touches the application database |
+| Integration tests | a `po_it_*` database per test class or test (a copy of one migrated and seeded template per run, see testing.md) on a disposable PostgreSQL (Testcontainers) or `PO_TEST_POSTGRES`, dropped afterwards | never touches the application database |
 | End-to-end tests | a separate compose project `po-e2e` (own volumes and ports, `ASPNETCORE_ENVIRONMENT=E2E`, Mock data), removed afterwards by `scripts/e2e.sh` | Playwright refuses to run unless `/api/v1/system/test-environment` reports an E2E stack |
 | Test accounts | e-mail under the reserved `.test` domain (RFC 6761), see `TestDataPolicy` | hidden from the admin user list by default, excluded from admin counts, refused at registration in Production, removable with `purge-test-data` |
 | Demo data | the administrator's "Demo Portfolio" | created only for the bootstrap administrator; disable with `Seed__DemoPortfolio=false` |

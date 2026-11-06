@@ -8,27 +8,29 @@ using PortfolioOptimizer.MachineLearning.Models;
 namespace PortfolioOptimizer.IntegrationTests;
 
 /// <summary>ML experiment lifecycle through the API: submit → background training → results, model registry, predictions.</summary>
-public sealed class MachineLearningTests : IAsyncLifetime
+public sealed class MachineLearningTests(MachineLearningTests.Shared shared) : IClassFixture<MachineLearningTests.Shared>, IAsyncLifetime
 {
+    public sealed class Shared : SharedApi
+    {
+        protected override Task SeedAsync(HttpClient admin) => SyncAsync(admin, 7);
+    }
+
     private static readonly string[] Universe = ["AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "JPM", "JNJ", "XOM", "PG"];
-    private ApiFactory _factory = null!;
+    private readonly ApiFactory _factory = shared.Factory;
     private HttpClient _admin = null!;
     private HttpClient _user = null!;
 
     public async Task InitializeAsync()
     {
-        _factory = await ApiFactory.CreateAsync();
         _admin = await _factory.CreateAdminSessionAsync();
-        await _admin.SyncAndWaitAsync(new SyncRequest { StartDate = DateOnly.FromDateTime(DateTime.UtcNow).AddYears(-7) });
         (_user, _) = await _factory.CreateApprovedUserAsync(_admin);
     }
 
-    public async Task DisposeAsync()
+    public Task DisposeAsync()
     {
         _user.Dispose();
         _admin.Dispose();
-        await _factory.DisposeAsync();
-        await _factory.DeleteDatabaseAsync();
+        return Task.CompletedTask;
     }
 
     private static CreateMlExperimentRequest Request(ModelFamily family = ModelFamily.RidgeRegression, PredictionTarget target = PredictionTarget.ForwardExcessReturn) => new()
