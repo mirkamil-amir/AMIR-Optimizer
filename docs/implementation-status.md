@@ -12,6 +12,14 @@
   `ExceptionFilters.IsRecoverable`: fatal runtime errors (out of memory, …) end the process instead of being logged as an
   ordinary failure.
 
+## 2026-11-04: the 5-year chart after a fresh download (AMIR-10)
+
+* Downloads started exactly five years before today, but the 5Y chart ends at the last stored day (yesterday) and needs a
+  price from five years before that – one day short, so every newly downloaded stock showed "—" for 5 years (seen on the
+  BIST 100). Downloads now start one month earlier (`PriceHistory.DefaultDownloadStart`: sync default, scheduled refresh,
+  watchlist); the next sync fills the month for histories already stored. Test:
+  `PriceHistoryTests.FreshDefaultDownload_AlwaysHasA5YearChange`.
+
 ## 2026-11-03: Türkiye – BIST 100 stocks, BIST 30 benchmark (AMIR-9, D-50)
 
 * New market Türkiye (Borsa İstanbul, `.IS`, TRY, 10:00–18:00 Istanbul): venue and session (`Markets.cs`), research brief
