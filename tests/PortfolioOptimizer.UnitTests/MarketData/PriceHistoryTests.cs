@@ -85,4 +85,35 @@ public sealed class PriceHistoryTests
         Assert.Equal(0m, spark[0].Price);
         Assert.Equal(249m, spark[^1].Price);
     }
+
+    /// <summary>Weekday bars from <paramref name="from"/> to <paramref name="to"/>, as a fresh download would store them.</summary>
+    private static List<HistoryBar> Weekdays(DateOnly from, DateOnly to)
+    {
+        var bars = new List<HistoryBar>();
+        for (var d = from; d <= to; d = d.AddDays(1))
+            if (d.DayOfWeek is not (DayOfWeek.Saturday or DayOfWeek.Sunday)) bars.Add(new HistoryBar(d, 100m, 100m));
+        return bars;
+    }
+
+    [Fact]
+    public void FreshDefaultDownload_AlwaysHasA5YearChange()
+    {
+        // Downloaded on Tue 2026-11-03; the last stored bar is Mon 2026-11-02 (Borsa İstanbul, 2026-11-03).
+        var today = new DateOnly(2026, 11, 3);
+        var yesterday = new DateOnly(2026, 11, 2);
+
+        // The old start (exactly five years before today) stores 2021-11-03 onward, but 5Y needs 2021-11-02 or earlier.
+        var exact = PriceHistory.Slice(Weekdays(today.AddYears(-5), yesterday), PriceRange.FiveYears);
+        Assert.Null(exact.Change);
+        Assert.Contains("needs a price on or before 2021-11-02", exact.Limitation);
+
+        // The default start adds a month, so the base exists – also with a long holiday right before the base date.
+        Assert.Equal(new DateOnly(2021, 10, 3), PriceHistory.DefaultDownloadStart(today));
+        var bars = Weekdays(PriceHistory.DefaultDownloadStart(today), yesterday)
+            .Where(b => b.Date < new DateOnly(2021, 10, 20) || b.Date > new DateOnly(2021, 11, 2)).ToList(); // two weeks closed
+        var slice = PriceHistory.Slice(bars, PriceRange.FiveYears);
+        Assert.Equal(0.0, slice.Change!.Value, 12);
+        Assert.Equal(new DateOnly(2021, 10, 19), slice.BaseDate);
+        Assert.Equal(new DateOnly(2020, 10, 3), PriceHistory.DefaultDownloadStart(today, years: 6));
+    }
 }

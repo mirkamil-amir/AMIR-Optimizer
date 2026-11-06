@@ -122,7 +122,7 @@ public sealed class MarketDataService(
         var providerName = request.Provider ?? settings.ActiveProvider;
         var provider = providers.Get(providerName); // validates name/configuration
         var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
-        var start = request.StartDate ?? today.AddYears(-5);
+        var start = request.StartDate ?? PriceHistory.DefaultDownloadStart(today);
         var end = request.EndDate ?? today;
         if (end < start) throw new ValidationException("endDate", "EndDate must not be before StartDate.");
         if (end > today) end = today;

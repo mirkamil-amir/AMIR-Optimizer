@@ -57,7 +57,7 @@ public sealed class WatchlistService(
 
         // Charts need daily history; download up to five years when (almost) nothing is stored yet.
         var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
-        IReadOnlyList<string> queued = asset.Symbol.StartsWith('^') ? [] : await marketData.EnsureHistoryAsync([asset.Symbol], today.AddYears(-5), 20, ct);
+        IReadOnlyList<string> queued = asset.Symbol.StartsWith('^') ? [] : await marketData.EnsureHistoryAsync([asset.Symbol], PriceHistory.DefaultDownloadStart(today), 20, ct);
         var item = (await BuildAsync([entry], PriceRange.OneMonth, ct))[0];
         return new WatchlistAddResultDto(item, queued.Count > 0);
     }
