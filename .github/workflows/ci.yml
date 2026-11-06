@@ -126,9 +126,10 @@ jobs:
       - name: Type check and build
         run: npm run build
 
+  # No `needs`: the job builds its own images from source, so it starts with the other jobs instead of ~1.5 min later
+  # (a compile error still fails it within its image build).
   e2e:
     name: End-to-end (disposable stack)
-    needs: [backend, frontend]
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -138,11 +139,48 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: frontend/portfolio-dashboard/package-lock.json
+      # The browser download is cached per lockfile (the Playwright version lives there).
+      - name: Cache the Playwright browser
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('frontend/portfolio-dashboard/package-lock.json') }}
+      # The system packages the browser needs (~21 MB, mostly fonts) come from Ubuntu's mirror, whose speed varies widely
+      # (16 s on one run, 7 min on the next, 2026-11-06). Their .deb files are cached per runner image and lockfile; apt
+      # still installs them itself and downloads only a package whose version or checksum differs.
+      - name: Runner image
+        id: image
+        run: echo "id=${ImageOS:-unknown}-${ImageVersion:-unknown}" >> "$GITHUB_OUTPUT"
+      - name: Cache the system packages
+        id: apt-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/apt-debs
+          key: apt-debs-${{ steps.image.outputs.id }}-${{ hashFiles('frontend/portfolio-dashboard/package-lock.json') }}
       - name: Install Playwright
         working-directory: frontend/portfolio-dashboard
+        env:
+          BROWSER_CACHED: ${{ steps.playwright-cache.outputs.cache-hit }}
+          DEBS_CACHED: ${{ steps.apt-cache.outputs.cache-hit }}
         run: |
           npm ci
-          ./node_modules/.bin/playwright install --with-deps chromium
+          # Keep downloaded packages and hand apt the cached ones (it skips a download whose file is already present).
+          echo 'APT::Keep-Downloaded-Packages "true";' | sudo tee /etc/apt/apt.conf.d/99-keep-debs >/dev/null
+          mkdir -p ~/.cache/apt-debs
+          if compgen -G "$HOME/.cache/apt-debs/*.deb" >/dev/null; then
+            sudo cp "$HOME"/.cache/apt-debs/*.deb /var/cache/apt/archives/
+          fi
+          if [[ "$BROWSER_CACHED" == "true" ]]; then
+            ./node_modules/.bin/playwright install-deps chromium
+          else
+            ./node_modules/.bin/playwright install --with-deps chromium
+          fi
+          # On a miss, collect the downloaded packages; actions/cache saves them when the job succeeds.
+          if [[ "$DEBS_CACHED" != "true" ]]; then
+            cp /var/cache/apt/archives/*.deb ~/.cache/apt-debs/ 2>/dev/null || true
+            echo "Cached $(ls ~/.cache/apt-debs | wc -l) system packages ($(du -sh ~/.cache/apt-debs | cut -f1))"
+          fi
       # scripts/e2e.sh builds the po-e2e compose project (E2E environment, Mock providers, random passwords).
       # The stack is kept so its logs can be collected; the runner is discarded afterwards.
       - name: Playwright against the e2e stack
