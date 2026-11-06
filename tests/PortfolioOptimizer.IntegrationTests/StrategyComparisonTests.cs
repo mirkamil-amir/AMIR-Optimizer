@@ -10,36 +10,46 @@ namespace PortfolioOptimizer.IntegrationTests;
 /// Comparing and backtesting the optimizations of one portfolio on the shared evaluation engine: mathematical vs
 /// mathematical, ML vs ML, mathematical vs ML; only within the same portfolio of the same user.
 /// </summary>
-public sealed class StrategyComparisonTests : IAsyncLifetime
+public sealed class StrategyComparisonTests(StrategyComparisonTests.Shared shared) : IClassFixture<StrategyComparisonTests.Shared>, IAsyncLifetime
 {
-    private static readonly string[] Universe = ["AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "JPM", "JNJ", "XOM", "PG"];
-    private ApiFactory _factory = null!;
-    private HttpClient _admin = null!;
-    private HttpClient _user = null!;
-    private PortfolioDto _portfolio = null!;
-    private OptimizationRunDto _run = null!;
-    private OptimizationRunDto _run2 = null!;
-    private MlExperimentDto _experiment = null!;
-
-    public async Task InitializeAsync()
+    /// <summary>
+    /// Seven years of prices and one user's "Comparison" portfolio with two Math Optimizations and one ML Optimization,
+    /// created once: the tests only read them (and add their own optimizations, portfolios and comparisons).
+    /// </summary>
+    public sealed class Shared : SharedApi
     {
-        _factory = await ApiFactory.CreateAsync();
-        _admin = await _factory.CreateAdminSessionAsync();
-        await _admin.SyncAndWaitAsync(new SyncRequest { StartDate = DateOnly.FromDateTime(DateTime.UtcNow).AddYears(-7) });
-        (_user, _) = await _factory.CreateApprovedUserAsync(_admin);
+        public HttpClient User { get; private set; } = null!;
+        public PortfolioDto Portfolio { get; private set; } = null!;
+        public OptimizationRunDto Run { get; private set; } = null!;
+        public OptimizationRunDto Run2 { get; private set; } = null!;
+        public MlExperimentDto Experiment { get; private set; } = null!;
 
-        _portfolio = await CreatePortfolioAsync(_user, "Comparison", "USD");
-        _run = await RunAsync(_portfolio.Id, ObjectiveKind.MinimumVariance);
-        _run2 = await RunAsync(_portfolio.Id, ObjectiveKind.MaximumSharpe);
-        _experiment = await ExperimentAsync(_portfolio.Id, ModelFamily.RidgeRegression, 6);
+        protected override async Task SeedAsync(HttpClient admin)
+        {
+            await SyncAsync(admin, 7);
+            (User, _) = await Factory.CreateApprovedUserAsync(admin);
+            Portfolio = await CreatePortfolioAsync(User, "Comparison", "USD");
+            Run = await RunAsync(User, Portfolio.Id, ObjectiveKind.MinimumVariance);
+            Run2 = await RunAsync(User, Portfolio.Id, ObjectiveKind.MaximumSharpe);
+            Experiment = await ExperimentAsync(User, Portfolio.Id, ModelFamily.RidgeRegression, 6);
+        }
     }
 
-    public async Task DisposeAsync()
+    private static readonly string[] Universe = ["AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "JPM", "JNJ", "XOM", "PG"];
+    private readonly ApiFactory _factory = shared.Factory;
+    private readonly HttpClient _user = shared.User;
+    private readonly PortfolioDto _portfolio = shared.Portfolio;
+    private readonly OptimizationRunDto _run = shared.Run;
+    private readonly OptimizationRunDto _run2 = shared.Run2;
+    private readonly MlExperimentDto _experiment = shared.Experiment;
+    private HttpClient _admin = null!;
+
+    public async Task InitializeAsync() => _admin = await _factory.CreateAdminSessionAsync();
+
+    public Task DisposeAsync()
     {
-        _user.Dispose();
         _admin.Dispose();
-        await _factory.DisposeAsync();
-        await _factory.DeleteDatabaseAsync();
+        return Task.CompletedTask;
     }
 
     private static async Task<PortfolioDto> CreatePortfolioAsync(HttpClient client, string name, string currency) =>
@@ -50,9 +60,13 @@ public sealed class StrategyComparisonTests : IAsyncLifetime
             Settings = new PortfolioSettingsDto { Universe = [.. Universe], MaxWeight = 0.3, LookbackDays = 252, Objective = ObjectiveKind.MinimumVariance },
         })).ReadAsync<PortfolioDto>();
 
-    private async Task<OptimizationRunDto> RunAsync(Guid portfolioId, ObjectiveKind objective)
+    private Task<OptimizationRunDto> RunAsync(Guid portfolioId, ObjectiveKind objective) => RunAsync(_user, portfolioId, objective);
+
+    private Task<MlExperimentDto> ExperimentAsync(Guid? portfolioId, ModelFamily family, int years) => ExperimentAsync(_user, portfolioId, family, years);
+
+    private static async Task<OptimizationRunDto> RunAsync(HttpClient user, Guid portfolioId, ObjectiveKind objective)
     {
-        var run = await (await _user.PostJsonAsync($"/api/v1/portfolios/{portfolioId}/optimization-runs", new RunOptimizationRequest
+        var run = await (await user.PostJsonAsync($"/api/v1/portfolios/{portfolioId}/optimization-runs", new RunOptimizationRequest
         {
             Settings = new PortfolioSettingsDto { Universe = [.. Universe], MaxWeight = 0.3, LookbackDays = 252, Objective = objective },
             PersistSettings = false,
@@ -61,13 +75,13 @@ public sealed class StrategyComparisonTests : IAsyncLifetime
         return run;
     }
 
-    private async Task<MlExperimentDto> ExperimentAsync(Guid? portfolioId, ModelFamily family, int years)
+    private static async Task<MlExperimentDto> ExperimentAsync(HttpClient user, Guid? portfolioId, ModelFamily family, int years)
     {
-        var created = await (await _user.PostJsonAsync("/api/v1/ml/experiments", new CreateMlExperimentRequest
+        var created = await (await user.PostJsonAsync("/api/v1/ml/experiments", new CreateMlExperimentRequest
         {
             Universe = [.. Universe], ModelFamily = family, HistoryYears = years, TopK = 4, MaxWeight = 0.3, PortfolioId = portfolioId,
         })).ReadAsync<MlExperimentDto>();
-        var done = await WaitAsync<MlExperimentDto>(_user, $"/api/v1/ml/experiments/{created.Summary.Id}", e => e.Summary.Status);
+        var done = await WaitAsync<MlExperimentDto>(user, $"/api/v1/ml/experiments/{created.Summary.Id}", e => e.Summary.Status);
         Assert.True(done.Summary.Status == JobStatus.Succeeded, done.Summary.Error);
         return done;
     }
@@ -191,7 +205,9 @@ public sealed class StrategyComparisonTests : IAsyncLifetime
         var unlinked = await ExperimentAsync(null, ModelFamily.RidgeRegression, 5);
         Assert.Null(unlinked.Summary.PortfolioId);
         var withoutPortfolio = await (await _user.GetAsync("/api/v1/ml/experiments?unlinked=true")).ReadAsync<PagedResult<MlExperimentSummaryDto>>();
-        Assert.Equal([unlinked.Summary.Id], withoutPortfolio.Items.Select(e => e.Id));
+        // The class's user also keeps unlinked experiments of other tests: the filter returns only unlinked ones, ours among them.
+        Assert.Contains(unlinked.Summary.Id, withoutPortfolio.Items.Select(e => e.Id));
+        Assert.All(withoutPortfolio.Items, e => Assert.Null(e.PortfolioId));
         var eur = await CreatePortfolioAsync(_user, "Euro", "EUR");
         var mismatch = await _user.PutJsonAsync($"/api/v1/ml/experiments/{unlinked.Summary.Id}/portfolio", new AssignMlExperimentPortfolioRequest(eur.Id));
         Assert.Equal(HttpStatusCode.BadRequest, mismatch.StatusCode);

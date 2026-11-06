@@ -5,27 +5,29 @@ using PortfolioOptimizer.Domain;
 namespace PortfolioOptimizer.IntegrationTests;
 
 /// <summary>Portfolio Reality Check of a saved run: consistency with the run, sensitivity scenarios, ownership.</summary>
-public sealed class RealityCheckTests : IAsyncLifetime
+public sealed class RealityCheckTests(RealityCheckTests.Shared shared) : IClassFixture<RealityCheckTests.Shared>, IAsyncLifetime
 {
+    public sealed class Shared : SharedApi
+    {
+        protected override Task SeedAsync(HttpClient admin) => SyncAsync(admin, 2, [.. Universe, "SPY"]);
+    }
+
     private static readonly string[] Universe = ["AAPL", "MSFT", "NVDA", "JPM", "XOM", "JNJ"];
-    private ApiFactory _factory = null!;
+    private readonly ApiFactory _factory = shared.Factory;
     private HttpClient _admin = null!;
     private HttpClient _user = null!;
 
     public async Task InitializeAsync()
     {
-        _factory = await ApiFactory.CreateAsync();
         _admin = await _factory.CreateAdminSessionAsync();
-        await _admin.SyncAndWaitAsync(new SyncRequest { Symbols = [.. Universe, "SPY"], StartDate = DateOnly.FromDateTime(DateTime.UtcNow).AddYears(-2) });
         (_user, _) = await _factory.CreateApprovedUserAsync(_admin);
     }
 
-    public async Task DisposeAsync()
+    public Task DisposeAsync()
     {
         _user.Dispose();
         _admin.Dispose();
-        await _factory.DisposeAsync();
-        await _factory.DeleteDatabaseAsync();
+        return Task.CompletedTask;
     }
 
     private async Task<OptimizationRunDto> RunAsync(HttpClient client, ObjectiveKind objective)

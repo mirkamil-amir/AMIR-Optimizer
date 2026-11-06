@@ -13,31 +13,48 @@ namespace PortfolioOptimizer.IntegrationTests;
 /// The agentic research workflow against the real API, optimizer and PostgreSQL (simulated prices). Also the evaluation
 /// suite: each test name states the case of docs/agent-evaluation.md it covers.
 /// </summary>
-public sealed class ResearchAgentTests : IAsyncLifetime
+public sealed class ResearchAgentTests(ResearchAgentTests.Shared shared) : IClassFixture<ResearchAgentTests.Shared>, IAsyncLifetime
 {
+    /// <summary>The prices, plus a model slot each test fills with its own fresh <see cref="MockLanguageModel"/>.</summary>
+    public sealed class Shared : SharedApi
+    {
+        public MockLanguageModel Model { get; set; } = new() { IsAvailable = false };
+
+        protected override Task<ApiFactory> CreateFactoryAsync() =>
+            ApiFactory.CreateAsync(testServices: s => s.AddSingleton<ILanguageModel>(new CurrentModel(this)));
+
+        protected override Task SeedAsync(HttpClient admin) => SyncAsync(admin, 3, Synced);
+    }
+
+    /// <summary>Forwards to the model of the running test, so no scripted output or recorded request crosses tests.</summary>
+    private sealed class CurrentModel(Shared shared) : ILanguageModel
+    {
+        public string Provider => shared.Model.Provider;
+        public string Model => shared.Model.Model;
+        public bool IsAvailable => shared.Model.IsAvailable;
+        public Task<LlmResponse> GenerateAsync(LlmRequest request, CancellationToken ct) => shared.Model.GenerateAsync(request, ct);
+    }
+
     // Three IT stocks (sector concentration case), two financials, two staples, one health care, two energy (excludable).
     private static readonly string[] Synced = ["AAPL", "MSFT", "NVDA", "JPM", "BAC", "PG", "KO", "JNJ", "XOM", "CVX", "SPY"];
-    private ApiFactory _factory = null!;
+    private readonly ApiFactory _factory = shared.Factory;
     private HttpClient _admin = null!;
     private HttpClient _user = null!;
     private MockLanguageModel _model = null!;
 
     public async Task InitializeAsync()
     {
-        _model = new MockLanguageModel { IsAvailable = false };
-        _factory = await ApiFactory.CreateAsync(testServices: s => s.AddSingleton<ILanguageModel>(_model));
+        _model = shared.Model = new MockLanguageModel { IsAvailable = false };
         _admin = await _factory.CreateAdminSessionAsync();
-        await _admin.SyncAndWaitAsync(new SyncRequest { Symbols = [.. Synced], StartDate = DateOnly.FromDateTime(DateTime.UtcNow).AddYears(-3) });
         (_user, _) = await _factory.CreateApprovedUserAsync(_admin);
         (await _user.PostJsonAsync("/api/v1/portfolios", new CreatePortfolioRequest { Name = "Research USD", BaseCurrency = "USD" })).EnsureStatus(HttpStatusCode.Created);
     }
 
-    public async Task DisposeAsync()
+    public Task DisposeAsync()
     {
         _user.Dispose();
         _admin.Dispose();
-        await _factory.DisposeAsync();
-        await _factory.DeleteDatabaseAsync();
+        return Task.CompletedTask;
     }
 
     private async Task<ResearchSessionDto> Start(string objective, HttpClient? client = null) =>

@@ -17,7 +17,20 @@ Setup once per shell: `export PATH="$HOME/.dotnet:/opt/homebrew/opt/node@22/bin:
 
 ## Integration tests and PostgreSQL
 
-Each test class creates its own database (`po_it_<guid>`) and drops it afterwards. The server comes from:
+Every database (`po_it_<guid>`) is a copy (`CREATE DATABASE … TEMPLATE`, ~20 ms) of a template that the real API
+start-up migrates and seeds once per test run (`po_it_tpl_<guid>`, dropped when the run ends); building each from
+scratch – migrations plus the index catalogue – cost ~1.7 s (`PostgresTestServer`).
+
+* **One database per class** (`SharedApi`, an xUnit class fixture): most classes share one database and API host,
+  with the simulated price download (or, in `StrategyComparisonTests`, the optimizations) done once. Each test still
+  signs in its own sessions and creates its own users, so user-owned data stays apart; global data (prices, catalogue,
+  FX rates, settings, news) is shared within the class – assert on your own records, not on global counts.
+* **One database per test** (`ApiFactory.CreateAsync` in the class's `InitializeAsync`): classes whose tests change or
+  count global state – FX downloads and their provider calls, the quote refresh cycle, the test-data purge, the SQLite
+  import, news refresh counting, company-profile caching, dated FX conversion of the latest bar, the benchmarks.
+
+Suite time (local, 152 tests): 4 min 04 s from scratch per test → 2 min 08 s with the template → 1 min 04 s with
+shared classes. The server comes from:
 
 * `PO_TEST_POSTGRES` – an admin connection string to an existing server (e.g. the compose database; the application
   database is never touched), or

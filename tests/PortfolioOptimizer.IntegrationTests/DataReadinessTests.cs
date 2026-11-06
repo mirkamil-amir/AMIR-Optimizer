@@ -7,25 +7,25 @@ namespace PortfolioOptimizer.IntegrationTests;
 /// Before an analysis: which prices and exchange rates are missing, and downloading them when the user agrees
 /// (the frontend asks in a dialog). Runs as an approved, non-administrator user with simulated prices and rates.
 /// </summary>
-public sealed class DataReadinessTests : IAsyncLifetime
+public sealed class DataReadinessTests(DataReadinessTests.Shared shared) : IClassFixture<DataReadinessTests.Shared>, IAsyncLifetime
 {
-    private ApiFactory _factory = null!;
+    public sealed class Shared : SharedApi;
+
+    private readonly ApiFactory _factory = shared.Factory;
     private HttpClient _admin = null!;
     private HttpClient _user = null!;
 
     public async Task InitializeAsync()
     {
-        _factory = await ApiFactory.CreateAsync();
         _admin = await _factory.CreateAdminSessionAsync();
         (_user, _) = await _factory.CreateApprovedUserAsync(_admin);
     }
 
-    public async Task DisposeAsync()
+    public Task DisposeAsync()
     {
         _user.Dispose();
         _admin.Dispose();
-        await _factory.DisposeAsync();
-        await _factory.DeleteDatabaseAsync();
+        return Task.CompletedTask;
     }
 
     [Fact]

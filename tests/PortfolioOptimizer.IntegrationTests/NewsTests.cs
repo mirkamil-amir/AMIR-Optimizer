@@ -6,26 +6,28 @@ using PortfolioOptimizer.Application.Dtos;
 namespace PortfolioOptimizer.IntegrationTests;
 
 /// <summary>News feed with the simulated provider: storage, dedup, provider-tag linking, filters, watchlist and event comparison.</summary>
-public sealed class NewsTests : IAsyncLifetime
+public sealed class NewsTests(NewsTests.Shared shared) : IClassFixture<NewsTests.Shared>, IAsyncLifetime
 {
-    private ApiFactory _factory = null!;
+    public sealed class Shared : SharedApi
+    {
+        protected override Task SeedAsync(HttpClient admin) => SyncAsync(admin, 1, "AAPL", "MSFT", "SPY");
+    }
+
+    private readonly ApiFactory _factory = shared.Factory;
     private HttpClient _admin = null!;
     private HttpClient _user = null!;
 
     public async Task InitializeAsync()
     {
-        _factory = await ApiFactory.CreateAsync();
         _admin = await _factory.CreateAdminSessionAsync();
-        await _admin.SyncAndWaitAsync(new SyncRequest { Symbols = ["AAPL", "MSFT", "SPY"], StartDate = DateOnly.FromDateTime(DateTime.UtcNow).AddYears(-1) });
         (_user, _) = await _factory.CreateApprovedUserAsync(_admin);
     }
 
-    public async Task DisposeAsync()
+    public Task DisposeAsync()
     {
         _user.Dispose();
         _admin.Dispose();
-        await _factory.DisposeAsync();
-        await _factory.DeleteDatabaseAsync();
+        return Task.CompletedTask;
     }
 
     [Fact]

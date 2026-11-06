@@ -4,9 +4,14 @@ using PortfolioOptimizer.Application.Dtos;
 namespace PortfolioOptimizer.IntegrationTests;
 
 /// <summary>Watchlist persistence, duplicate prevention, owner isolation, refresh and price-history ranges.</summary>
-public sealed class WatchlistTests : IAsyncLifetime
+public sealed class WatchlistTests(WatchlistTests.Shared shared) : IClassFixture<WatchlistTests.Shared>, IAsyncLifetime
 {
-    private ApiFactory _factory = null!;
+    public sealed class Shared : SharedApi
+    {
+        protected override Task SeedAsync(HttpClient admin) => SyncAsync(admin, 2, "AAPL", "MSFT");
+    }
+
+    private readonly ApiFactory _factory = shared.Factory;
     private HttpClient _admin = null!;
     private HttpClient _user = null!;
     private CurrentUserDto _userInfo = null!;
@@ -14,19 +19,16 @@ public sealed class WatchlistTests : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        _factory = await ApiFactory.CreateAsync();
         _admin = await _factory.CreateAdminSessionAsync();
-        await _admin.SyncAndWaitAsync(new SyncRequest { Symbols = ["AAPL", "MSFT"], StartDate = DateOnly.FromDateTime(DateTime.UtcNow).AddYears(-2) });
         _email = $"watcher-{Guid.NewGuid():N}@test.local";
         (_user, _userInfo) = await _factory.CreateApprovedUserAsync(_admin, _email);
     }
 
-    public async Task DisposeAsync()
+    public Task DisposeAsync()
     {
         _user.Dispose();
         _admin.Dispose();
-        await _factory.DisposeAsync();
-        await _factory.DeleteDatabaseAsync();
+        return Task.CompletedTask;
     }
 
     private static Task<HttpResponseMessage> Add(HttpClient client, string symbol) =>

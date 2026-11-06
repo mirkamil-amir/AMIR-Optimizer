@@ -13,9 +13,9 @@ namespace PortfolioOptimizer.IntegrationTests;
 /// Exchange rates that stop: the simulated source publishes no JPY rate for the last 60 days. Every layer must say so
 /// explicitly – no conversion with a rate of 1 or an old rate beyond the carry-forward window, no plausible total.
 /// </summary>
-public sealed class MissingFxTests : IAsyncLifetime
+public sealed class MissingFxTests(MissingFxTests.Shared shared) : IClassFixture<MissingFxTests.Shared>, IAsyncLifetime
 {
-    private ApiFactory _factory = null!;
+    private readonly ApiFactory _factory = shared.Factory;
     private HttpClient _client = null!;
 
     /// <summary>The simulated rates, except JPY ends 60 days ago.</summary>
@@ -33,22 +33,23 @@ public sealed class MissingFxTests : IAsyncLifetime
         }
     }
 
-    public async Task InitializeAsync()
+    public sealed class Shared : SharedApi
     {
-        _factory = await ApiFactory.CreateAsync(testServices: s =>
+        protected override Task<ApiFactory> CreateFactoryAsync() => ApiFactory.CreateAsync(testServices: s =>
         {
             s.RemoveAll<IFxRateProvider>();
             s.AddSingleton<IFxRateProvider>(sp => new StaleJpyProvider(sp.GetRequiredService<TimeProvider>()));
         });
-        _client = await _factory.CreateAdminSessionAsync();
-        await _client.SyncAndWaitAsync(new SyncRequest { Symbols = ["AAPL", "SAP.DE", "SIE.DE", "7203.T", "SPY"], StartDate = DateOnly.FromDateTime(DateTime.UtcNow).AddYears(-3) });
+
+        protected override Task SeedAsync(HttpClient admin) => SyncAsync(admin, 3, "AAPL", "SAP.DE", "SIE.DE", "7203.T", "SPY");
     }
 
-    public async Task DisposeAsync()
+    public async Task InitializeAsync() => _client = await _factory.CreateAdminSessionAsync();
+
+    public Task DisposeAsync()
     {
         _client.Dispose();
-        await _factory.DisposeAsync();
-        await _factory.DeleteDatabaseAsync();
+        return Task.CompletedTask;
     }
 
     private async Task<PortfolioDto> CreatePortfolioAsync() =>

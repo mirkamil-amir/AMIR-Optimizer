@@ -5,9 +5,15 @@ using PortfolioOptimizer.Domain;
 
 namespace PortfolioOptimizer.IntegrationTests;
 
-public sealed class ApiTests : IAsyncLifetime
+public sealed class ApiTests(ApiTests.Shared shared) : IClassFixture<ApiTests.Shared>, IAsyncLifetime
 {
-    private ApiFactory _factory = null!;
+    /// <summary>Simulated history for the universe and the benchmark, downloaded once through the real job pipeline.</summary>
+    public sealed class Shared : SharedApi
+    {
+        protected override Task SeedAsync(HttpClient admin) => SyncAsync(admin, 3);
+    }
+
+    private readonly ApiFactory _factory = shared.Factory;
     private HttpClient _admin = null!;
     private HttpClient _client = null!;
     private CurrentUserDto _user = null!;
@@ -16,19 +22,15 @@ public sealed class ApiTests : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        _factory = await ApiFactory.CreateAsync();
         _admin = await _factory.CreateAdminSessionAsync();
-        // Download simulated history for the universe and the benchmark through the real background job pipeline.
-        await _admin.SyncAndWaitAsync(new SyncRequest { StartDate = DateOnly.FromDateTime(DateTime.UtcNow).AddYears(-3) });
         (_client, _user) = await _factory.CreateApprovedUserAsync(_admin);
     }
 
-    public async Task DisposeAsync()
+    public Task DisposeAsync()
     {
         _client.Dispose();
         _admin.Dispose();
-        await _factory.DisposeAsync();
-        await _factory.DeleteDatabaseAsync();
+        return Task.CompletedTask;
     }
 
     private async Task<PortfolioDto> CreatePortfolioAsync(PortfolioSettingsDto? settings = null) =>
