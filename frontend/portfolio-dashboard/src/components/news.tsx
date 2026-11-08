@@ -105,7 +105,6 @@ export function CompanyNews({ symbol }: { symbol: string }) {
     <section>
       <SectionTitle
         hint="Articles that the news provider itself tagged with this listing. Untagged articles about the company may exist elsewhere; the full text is only at the original publisher."
-        right={<Button size="sm" variant="ghost" render={<Link to={`/news?symbol=${encodeURIComponent(symbol)}`} />}>All {symbol} news</Button>}
       >
         Company news
       </SectionTitle>
@@ -136,7 +135,7 @@ export function SourceProblems({ sources }: { sources: NewsSourceStatus[] }) {
 }
 
 /** Event and price-movement comparison (descriptive; not evidence of causation). */
-export function EventComparisonDialog({ article, symbol, onClose }: { article: NewsArticle; symbol: string; onClose: () => void }) {
+export function EventComparisonDialog({ article, symbol, onClose }: { article: Pick<NewsArticle, 'id' | 'headline'>; symbol: string; onClose: () => void }) {
   const cmp = useEventComparison(article.id, symbol)
   const c = cmp.data
   return (

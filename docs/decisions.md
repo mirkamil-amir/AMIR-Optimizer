@@ -8,9 +8,11 @@ watched stock appeared in everyone's Latest and Company News. The owner's answer
 **Decision:** a story layer groups reports of one event; each tab is its own endpoint with written inclusion,
 exclusion and order (financial-news.md › Wire feeds), tested on one fixed data set. By default a story is shown only
 when it has no listing or one of its listings is curated, an index or benchmark, or the viewer's own
-(`News:Feeds:HideOthersInterests`). No cache: personal feeds are computed per request. **Consequences:** until a
-curated list exists, company news in Latest and Company News is limited to the viewer's own listings; flipping the
-setting shows everything fetched.
+(`News:Feeds:HideOthersInterests`; owner confirmed "keep hidden", 2026-11-08). No cache: personal feeds are computed per
+request. Market stories tagged with two or more market instruments get +1 attention so fresh ones reach Latest
+(owner's choice among keep / +1 broad / +1 all, 2026-11-08; story rules version 2). **Consequences:** until a curated
+list exists, company news in Latest and Company News is limited to the viewer's own listings; flipping the setting shows
+everything fetched.
 
 ## D-51 Wire gets its own sources, fetched on a schedule (2026-11-08)
 **Context:** Latest, My Watchlist and Company News showed the same stories: the only company-news source was asked

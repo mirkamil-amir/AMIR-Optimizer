@@ -71,6 +71,18 @@ public sealed class StoryRulesTests
         Assert.Equal(expected, StoryRules.BasePoints(type, category, official, publishers));
 
     [Fact]
+    public void BroadMarketStories_GetOnePoint_OnlyWithTwoOrMoreInstruments()
+    {
+        Assert.Equal(0, StoryRules.BasePoints(NewsEventType.MarketNews, NewsCategory.General, false, 1, marketInstruments: 1));
+        Assert.Equal(1, StoryRules.BasePoints(NewsEventType.MarketNews, NewsCategory.General, false, 1, marketInstruments: 2));
+        Assert.Equal(2, StoryRules.BasePoints(NewsEventType.Results, NewsCategory.General, false, 1, marketInstruments: 3)); // company story: no market point
+        var fresh = StoryRules.Assess(NewsEventType.MarketNews, NewsCategory.General, false, 1, T.AddHours(-1), T, marketInstruments: 2);
+        Assert.Equal((AttentionLevel.Medium, 2), (fresh.Level, fresh.Points));
+        Assert.Contains("concerns 2 market instruments at once (+1)", fresh.Reasons);
+        Assert.Equal(AttentionLevel.Low, StoryRules.Assess(NewsEventType.MarketNews, NewsCategory.General, false, 1, T.AddDays(-2), T, marketInstruments: 2).Level);
+    }
+
+    [Fact]
     public void Assess_AddsRecency_LevelsHaveDocumentedThresholds_AndEveryPointHasAReason()
     {
         var fresh = StoryRules.Assess(NewsEventType.InflationRelease, NewsCategory.Macroeconomic, true, 1, T.AddHours(-2), T);

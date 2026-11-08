@@ -213,6 +213,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             e.Property(x => x.EventTypeBasis).HasMaxLength(200);
             e.Property(x => x.MarketArea).HasConversion<string>().HasMaxLength(20);
             e.Property(x => x.RuleVersion).HasDefaultValue(1);
+            e.Property(x => x.ProviderTags).HasMaxLength(500);
             e.HasIndex(x => x.Fingerprint).IsUnique();
             e.HasIndex(x => x.HeadlineKey);
             e.HasIndex(x => x.PublishedAtUtc);

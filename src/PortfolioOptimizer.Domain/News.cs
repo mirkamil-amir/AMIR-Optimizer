@@ -93,6 +93,8 @@ public class NewsArticle
     public int RuleVersion { get; set; } = 1;
     /// <summary>When Matrix normalized and classified the article (≥ retrieval; publication time is never replaced).</summary>
     public DateTime? ProcessedAtUtc { get; set; }
+    /// <summary>The provider's own tags as delivered (comma-separated, e.g. "^STOXX,EURUSD=X"); null for articles stored before 2026-11-08.</summary>
+    public string? ProviderTags { get; set; }
     public List<NewsArticleAsset> Assets { get; set; } = [];
 }
 
@@ -121,6 +123,8 @@ public class NewsStory
     public bool IsSimulated { get; set; }
     /// <summary>Time-independent attention points (material event, official source, several publishers); recency is added at query time.</summary>
     public int BasePoints { get; set; }
+    /// <summary>Most market instruments (indexes, yields, currencies, commodities, volatility) any of its reports was tagged with.</summary>
+    public int MarketInstrumentCount { get; set; }
     /// <summary>Version of the grouping and attention rules that built this story.</summary>
     public int RuleVersion { get; set; }
     public DateTime CreatedAtUtc { get; set; }

@@ -250,6 +250,13 @@ public sealed class NewsService(
         return refresher.IsBusy;
     }
 
+    /// <summary>
+    /// What a Wire feed request does before reading: sources never fetched are fetched now, due feeds and the viewer's
+    /// stalest watched companies are refreshed in the background. Returns whether a background refresh is pending.
+    /// </summary>
+    public async Task<bool> RefreshForViewerAsync(IReadOnlyList<(string Symbol, string? Name)> watched, CancellationToken ct) =>
+        Options.Enabled && await RefreshOrScheduleAsync(watched, stalestOnly: true, ct);
+
     /// <summary>Refreshes the requested sources that are (still) due; called by the background refresher.</summary>
     public async Task RefreshDueAsync(NewsRefreshRequest request, CancellationToken ct)
     {
@@ -360,7 +367,10 @@ public sealed class NewsService(
                 story.PublisherCount = publishers[story.Id].Count;
                 story.HasOfficialSource |= a.IsOfficialSource;
                 story.IsSimulated |= a.IsSimulated;
-                story.BasePoints = StoryRules.BasePoints(story.EventType, story.Category, story.HasOfficialSource, story.PublisherCount);
+                var instruments = (a.ProviderTags ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries).Count(t => NewsTaxonomy.Kind(t) != InstrumentKind.Security);
+                story.MarketInstrumentCount = Math.Max(story.MarketInstrumentCount, instruments);
+                story.BasePoints = StoryRules.BasePoints(story.EventType, story.Category, story.HasOfficialSource, story.PublisherCount, story.MarketInstrumentCount);
+                story.RuleVersion = StoryRules.RuleVersion;
                 story.UpdatedAtUtc = now;
             }
             try
@@ -516,6 +526,7 @@ public sealed class NewsService(
                 MarketArea = scope == NewsScope.Market ? NewsTaxonomy.MarketArea(a.RelatedSymbols) ?? NewsMarketArea.Equities : null,
                 RuleVersion = NewsTaxonomy.RuleVersion,
                 ProcessedAtUtc = Now,
+                ProviderTags = a.RelatedSymbols.Count == 0 ? null : Truncate(string.Join(',', a.RelatedSymbols.Distinct()), 500),
             };
             article.Assets.AddRange(linked.Select(x => new NewsArticleAsset { ArticleId = article.Id, AssetId = x.Id, MatchMethod = matchMethod }));
             db.NewsArticles.Add(article);

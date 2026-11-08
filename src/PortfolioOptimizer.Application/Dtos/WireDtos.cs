@@ -47,7 +47,8 @@ public sealed record WireFeedDto(
     DateTime AsOfUtc,
     int WindowHours,
     IReadOnlyList<WireSourceStatusDto> Sources,
-    IReadOnlyList<string> Notes);
+    IReadOnlyList<string> Notes,
+    bool Refreshing);
 
 /// <summary>A company in Company News: its newest stories and how many it has in the window.</summary>
 public sealed record WireCompanyDto(
@@ -68,7 +69,8 @@ public sealed record WireCompaniesDto(
     DateTime AsOfUtc,
     int WindowHours,
     IReadOnlyList<WireSourceStatusDto> Sources,
-    IReadOnlyList<string> Notes);
+    IReadOnlyList<string> Notes,
+    bool Refreshing);
 
 /// <summary>One market area of Market-wide (Equities, Rates, Fx, Commodities, Volatility).</summary>
 public sealed record WireMarketSectionDto(string Area, string Label, int StoryCount, IReadOnlyList<WireStoryDto> Stories, string? NextCursor);
@@ -78,4 +80,5 @@ public sealed record WireMarketsDto(
     DateTime AsOfUtc,
     int WindowHours,
     IReadOnlyList<WireSourceStatusDto> Sources,
-    IReadOnlyList<string> Notes);
+    IReadOnlyList<string> Notes,
+    bool Refreshing);

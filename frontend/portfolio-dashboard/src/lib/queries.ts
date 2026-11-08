@@ -7,7 +7,7 @@ import type {
   Transaction, UserAccountStatus, UserSummary, MlCatalog, MlExperiment, MlExperimentRequest, MlExperimentSummary, MlBacktest,
   MlPredictionSet, StrategyComparison, StrategyComparisonRequest, StrategyComparisonSummary, Market, QuoteRefreshRun, QuoteRefreshResult,
   AdminOverview, HistoryRange, PriceHistory, Watchlist, WatchlistAddResult, NewsFeed, NewsFilters, EventComparison, RealityCheck, CompanyProfile,
-  WireFeedName, WireQuery, WireResponses,
+  WireFeedName, WireQuery, WireResponses, NewsSourceStatus,
   FxInfo, FxRate, FxHistory, FxBoard, ResearchSession, ResearchSessionSummary, UpdateBriefRequest, HypothesisComparison, CompanyContext, RefinementChange,
   PortfolioOverview, PortfolioTransaction, RecordTransactionRequest, MarketDataSummary, DataCheck, DataCheckRequest, DataDownload,
   PortfolioStrategy, StrategyBacktestRequest,
@@ -886,9 +886,20 @@ export const useWireFeed = <F extends WireFeedName>(feed: F, query: WireQuery = 
     queryFn: ({ signal }) => api.get<WireResponses[F]>(`${V1}/news/${feed}${params ? `?${params}` : ''}`, signal),
     placeholderData: keepPreviousData,
     staleTime: 2 * 60_000,
+    // While the server refreshes due sources, check again – every 5 s keeps well inside the 60 requests per minute limit.
+    refetchInterval: (q) => (q.state.data?.refreshing ? 5000 : false),
     enabled,
   })
 }
+
+/** Configured news sources with provider names, terms and fetch status – shown to administrators only. */
+export const useNewsSources = (enabled: boolean) =>
+  useQuery({
+    queryKey: ['news-sources'] as const,
+    queryFn: ({ signal }) => api.get<NewsSourceStatus[]>(`${V1}/news/sources`, signal),
+    staleTime: 60_000,
+    enabled,
+  })
 
 export const useEventComparison = (articleId: string | undefined, symbol: string | undefined) =>
   useQuery({

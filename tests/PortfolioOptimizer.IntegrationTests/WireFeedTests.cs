@@ -20,6 +20,10 @@ public sealed class WireFeedTests(WireFeedTests.Shared shared) : IClassFixture<W
         public HttpClient Alice { get; private set; } = null!;
         public HttpClient Bob { get; private set; } = null!;
 
+        // Only the articles ingested below: feed requests would otherwise fetch simulated news for the watched stocks.
+        protected override Task<ApiFactory> CreateFactoryAsync() =>
+            ApiFactory.CreateAsync(testServices: s => s.PostConfigure<PortfolioOptimizer.Infrastructure.News.MockNewsOptions>(o => o.Enabled = false));
+
         protected override async Task SeedAsync(HttpClient admin)
         {
             await SyncAsync(admin, 1, "AAPL", "MSFT", "SAP.DE", "SPY");
@@ -86,7 +90,10 @@ public sealed class WireFeedTests(WireFeedTests.Shared shared) : IClassFixture<W
         Assert.Contains("ECB decides on key interest rates", heads);
         Assert.Equal(2, latest.Stories.Count(s => s.Assets.Any(a => a.Symbol == "AAPL")));       // four material AAPL stories, two per page
         Assert.DoesNotContain("Apple opens a store in Berlin", heads);                             // Low attention
-        Assert.DoesNotContain("Bank stocks lead European markets higher", heads);                  // Low attention
+        // Market stories about two or more instruments get +1 (rules version 2): fresh ones are Medium and reach Latest.
+        var broad = Assert.Single(latest.Stories, s => s.Headline == "Bank stocks lead European markets higher");
+        Assert.Equal("Medium", broad.Attention.Level);
+        Assert.Contains("concerns 2 market instruments at once (+1)", broad.Attention.Reasons);
         Assert.DoesNotContain(latest.Stories, s => s.Assets.Any(a => a.Symbol == "MSFT"));         // only Bob watches MSFT
         Assert.All(latest.Stories, s => Assert.Contains(s.Attention.Level, new[] { "Medium", "High" }));
         Assert.Equal(latest.Stories.OrderByDescending(s => s.LastPublishedAtUtc).Select(s => s.Id), latest.Stories.Select(s => s.Id));
@@ -181,7 +188,7 @@ public sealed class WireFeedTests(WireFeedTests.Shared shared) : IClassFixture<W
         }
         Assert.Null(cursor);
         Assert.Equal(seen.Count, seen.Distinct().Count());
-        Assert.Equal(6, seen.Count); // four material AAPL stories, the ECB decision, the inflation release
+        Assert.Equal(8, seen.Count); // four material AAPL stories, the ECB decision, the inflation release, two broad market stories
 
         foreach (var bad in new[] { "/api/v1/news/latest?cursor=garbage", "/api/v1/news/latest?attention=Low", "/api/v1/news/latest?hours=0",
                      "/api/v1/news/markets?area=Bonds", "/api/v1/news/markets?cursor=x", "/api/v1/news/macro?eventType=Nope", "/api/v1/news/companies?pageSize=500" })

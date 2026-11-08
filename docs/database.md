@@ -47,7 +47,7 @@ Money and quantities are `numeric` (`decimal`); keys of user-facing records are 
 portfolio description and archive date, research portfolio link, `PortfolioTransactions`), …, `NewsTaxonomyV2` (additive:
 `NewsArticles.EventType`, `EventTypeBasis`, `MarketArea`, `ProcessedAtUtc` nullable, `RuleVersion` default 1 for existing rows),
 `NewsStories` (additive: `NewsStories`, `NewsStoryArticles` with a unique article index, `NewsStoryAssets`; existing articles
-are grouped by the next scheduled run).
+are grouped by the next scheduled run), `NewsProviderTags` (additive: `NewsArticles.ProviderTags`, `NewsStories.MarketInstrumentCount`).
 
 ```bash
 set -a; . ./.env; set +a

@@ -1390,6 +1390,8 @@ export interface WireFeed {
   windowHours: number
   sources: WireSourceStatus[]
   notes: string[]
+  /** Due sources are being refreshed in the background; stored stories are shown meanwhile. */
+  refreshing: boolean
 }
 
 export interface WireCompany {
@@ -1412,6 +1414,7 @@ export interface WireCompanies {
   windowHours: number
   sources: WireSourceStatus[]
   notes: string[]
+  refreshing: boolean
 }
 
 export interface WireMarketSection {
@@ -1428,6 +1431,7 @@ export interface WireMarkets {
   windowHours: number
   sources: WireSourceStatus[]
   notes: string[]
+  refreshing: boolean
 }
 
 export interface WireQuery {

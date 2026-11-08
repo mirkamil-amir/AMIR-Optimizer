@@ -23,7 +23,8 @@ public sealed record StoryArticleFacts(
 /// </summary>
 public static partial class StoryRules
 {
-    public const int RuleVersion = 1;
+    /// <summary>2 (2026-11-08): market stories tagged with two or more market instruments get +1 (owner's decision, D-52).</summary>
+    public const int RuleVersion = 2;
 
     /// <summary>Two reports more than this apart are never one story.</summary>
     public static readonly TimeSpan Window = TimeSpan.FromHours(36);
@@ -87,15 +88,22 @@ public static partial class StoryRules
     public static bool IsMaterial(NewsEventType type, NewsCategory category) =>
         MaterialTypes.Contains(type) || (type == NewsEventType.General && MaterialCategories.Contains(category));
 
-    /// <summary>Points that do not depend on time: material event +2, official source +1, two or more publishers +1.</summary>
-    public static int BasePoints(NewsEventType type, NewsCategory category, bool official, int publishers) =>
-        (IsMaterial(type, category) ? 2 : 0) + (official ? 1 : 0) + (publishers >= 2 ? 1 : 0);
+    /// <summary>A market story about several instruments at once (e.g. an index and a currency) is about the market as a whole.</summary>
+    public static bool IsBroadMarket(NewsEventType type, int marketInstruments) => type == NewsEventType.MarketNews && marketInstruments >= 2;
+
+    /// <summary>
+    /// Points that do not depend on time: material event +2, official source +1, two or more publishers +1, market story
+    /// tagged with two or more market instruments +1.
+    /// </summary>
+    public static int BasePoints(NewsEventType type, NewsCategory category, bool official, int publishers, int marketInstruments = 0) =>
+        (IsMaterial(type, category) ? 2 : 0) + (official ? 1 : 0) + (publishers >= 2 ? 1 : 0) + (IsBroadMarket(type, marketInstruments) ? 1 : 0);
 
     /// <summary>
     /// General attention: base points plus 1 when the latest report is at most 24 hours old. High ≥ 4, Medium 2–3,
     /// Low ≤ 1. A label of how material and well-supported a story is – never a prediction of a price move.
     /// </summary>
-    public static Attention Assess(NewsEventType type, NewsCategory category, bool official, int publishers, DateTime lastPublishedAtUtc, DateTime nowUtc)
+    public static Attention Assess(NewsEventType type, NewsCategory category, bool official, int publishers, DateTime lastPublishedAtUtc, DateTime nowUtc,
+        int marketInstruments = 0)
     {
         var reasons = new List<string>();
         var points = 0;
@@ -106,6 +114,7 @@ public static partial class StoryRules
         }
         if (official) { points += 1; reasons.Add("published by the issuing institution or company (+1)"); }
         if (publishers >= 2) { points += 1; reasons.Add($"reported by {publishers} publishers (+1)"); }
+        if (IsBroadMarket(type, marketInstruments)) { points += 1; reasons.Add($"concerns {marketInstruments} market instruments at once (+1)"); }
         if (nowUtc - lastPublishedAtUtc <= TimeSpan.FromHours(24)) { points += 1; reasons.Add("latest report within 24 hours (+1)"); }
         if (reasons.Count == 0) reasons.Add("no attention criterion met");
         return new Attention(Level(points), points, reasons);

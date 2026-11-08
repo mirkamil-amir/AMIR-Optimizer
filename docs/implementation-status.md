@@ -1,5 +1,17 @@
 # Implementation status
 
+## 2026-11-08: the Wire page on the five story feeds (AMIR-16)
+
+* `/news` shows Latest, My watchlist, Company news, Market-wide and Macroeconomic from their own endpoints; dense story
+  rows with time in UTC, event type and basis, publishers and every report on demand, "Why you see this", attention
+  with reasons; company blocks; market areas; side panels for source freshness and benchmark closes.
+* Feeds refresh due sources on request like the article feed did (`refreshing`, re-checked every 5 s).
+* Checked: Vitest 266, e2e 35 (journey E asserts each tab calls its own endpoint), screenshots light, dark and 390 px
+  (no horizontal overflow) on the disposable stack.
+* Owner's decisions: others' interests stay hidden; market stories with two or more instruments get +1 attention
+  (story rules version 2, provider tags stored per article, migration `NewsProviderTags`).
+* Not yet: portfolio news on the Overview (plan PR 4); the curated company list awaits the owner.
+
 ## 2026-11-08: Wire story layer and five feed contracts (AMIR-15, D-52)
 
 * Story layer: reports of one event are grouped (36 h, same subject and event type, half the headline words, or the same

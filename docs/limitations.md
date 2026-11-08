@@ -69,8 +69,10 @@
   supply depends on articles tagged only with market instruments.
 - The scheduled company set covers held, watched and curated listings only (curated list empty until chosen), so Company
   News and the company part of Latest show only the viewer's own listings until a curated list exists.
-- The Wire page still uses the article feed `/news`, which shows every stored article (including news fetched for
-  other users' watched stocks), until it moves to the story feeds (Wire plan, PR 3).
+- The Company news section of a stock page still lists the articles tagged with that listing from the article feed,
+  whoever's interest caused them to be fetched (it shows only the stock being looked at).
+- Market stories reach Latest when fresh and tagged with two or more market instruments; single-instrument market news
+  stays in Market-wide. Articles stored before 2026-11-08 have no stored provider tags and cannot earn that point.
 - Story grouping is a word-overlap rule: differently worded reports of one event can stay separate, and two events
   about one company with similar headlines within 36 hours can be merged. Not evaluated against a labelled sample.
 - Latest shows at most two stories per company per page; further ones of that page are skipped there (Company News

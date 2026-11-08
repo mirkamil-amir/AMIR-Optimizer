@@ -1188,6 +1188,10 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<string>("ProviderTags")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
                     b.Property<DateTime>("PublishedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -1334,6 +1338,9 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                     b.Property<string>("MarketArea")
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
+
+                    b.Property<int>("MarketInstrumentCount")
+                        .HasColumnType("integer");
 
                     b.Property<int>("PublisherCount")
                         .HasColumnType("integer");
