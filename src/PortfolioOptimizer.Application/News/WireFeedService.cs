@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using PortfolioOptimizer.Application.Abstractions;
 using PortfolioOptimizer.Application.Common;
 using PortfolioOptimizer.Application.Dtos;
+using PortfolioOptimizer.Application.Portfolios;
 using PortfolioOptimizer.Domain;
 
 namespace PortfolioOptimizer.Application.News;
@@ -34,6 +35,8 @@ public sealed class WireFeedService(
     IEnumerable<INewsFeedProvider> feedProviders,
     IOptions<NewsOptions> options,
     NewsService news,
+    PortfolioService portfolios,
+    PortfolioValuationService valuations,
     TimeProvider clock)
 {
     public const string AttentionNote =
@@ -222,6 +225,76 @@ public sealed class WireFeedService(
             "Macroeconomic shows central-bank announcements, official statistics releases and other economy-wide news. Release figures are not extracted; open the release for the numbers.",
             .. CommonNotes(),
         ], viewer.Refreshing);
+    }
+
+    // ------------------------------------------------------------------ portfolio news (Overview)
+
+    /// <summary>
+    /// News about one portfolio (owner-scoped; another user's portfolio → 404): stories linked to its holdings and official
+    /// rate decisions for the currencies it holds, newest first. Each story states the holding's weight or the currency's
+    /// share from the current valuation – facts, never predicted effects. Stories linked to a holding are High attention.
+    /// </summary>
+    public async Task<PortfolioNewsDto> PortfolioAsync(Guid portfolioId, WireQuery query, CancellationToken ct)
+    {
+        var portfolio = await portfolios.LoadAsync(portfolioId, ct);
+        var (since, hours) = Window(query, 24 * 7);
+        var size = PageSize(query, 10);
+        var valuation = await valuations.ValueAsync(portfolio, null, ct);
+        var positions = valuation.Positions.Values.Where(p => p.Quantity > 0).ToList();
+        var total = valuation.TotalValue;
+        double? Share(decimal value) => total is > 0 ? (double)(value / total.Value) : null;
+
+        var heldIds = positions.Select(p => p.AssetId).ToList();
+        var holdings = positions.ToDictionary(p => p.Symbol, p => new WireExposureDto("Holding", p.Symbol, p.Value is { } v ? Share(v) : null,
+            p.Price is { } price ? $"market value at the {price.PriceDate:yyyy-MM-dd} close ÷ total value incl. cash" : "no stored price"),
+            StringComparer.OrdinalIgnoreCase);
+        var currencyValues = positions.GroupBy(p => p.Currency, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.Sum(p => p.Value ?? 0m), StringComparer.OrdinalIgnoreCase);
+        currencyValues[valuation.AccountCurrency] = currencyValues.GetValueOrDefault(valuation.AccountCurrency) + valuation.Cash;
+        var currencies = currencyValues.Where(kv => kv.Value > 0).ToDictionary(kv => kv.Key,
+            kv => new WireExposureDto("Currency", kv.Key, Share(kv.Value), $"positions and cash in {kv.Key} ÷ total value"), StringComparer.OrdinalIgnoreCase);
+        var regions = StoryRules.CentralBankCurrency.Where(kv => currencies.ContainsKey(kv.Value)).Select(kv => kv.Key).ToList();
+
+        // Like the feeds: never-fetched sources now, the held companies' due news in the background.
+        var names = await db.Assets.AsNoTracking().Where(a => heldIds.Contains(a.Id)).Select(a => new { a.Symbol, a.Name }).ToListAsync(ct);
+        var refreshing = await news.RefreshForViewerAsync(names.Select(n => (n.Symbol, n.Name)).ToList(), ct);
+        var viewer = await ViewerAsync(ct);
+
+        var q = db.NewsStories.AsNoTracking().Where(s =>
+            s.Assets.Any(x => heldIds.Contains(x.AssetId)) ||
+            (s.EventType == NewsEventType.RateDecision && s.HasOfficialSource && s.Region != null && regions.Contains(s.Region)));
+        q = Filter(q, query, since);
+        var rows = await After(q, Decode(query.Cursor)).Take(size + 1).ToListAsync(ct);
+        var page = rows.Take(size).ToList();
+
+        static string Percent(double? w) => w is { } x ? x.ToString("0.0%", System.Globalization.CultureInfo.InvariantCulture) : "not available";
+        List<WireExposureDto> Exposure(NewsStory s, IReadOnlyList<WireAssetDto> assets)
+        {
+            var list = assets.Select(a => holdings.GetValueOrDefault(a.Symbol)).OfType<WireExposureDto>().ToList();
+            if (list.Count == 0 && s.EventType == NewsEventType.RateDecision && s.Region is { } r && StoryRules.CentralBankCurrency.TryGetValue(r, out var c) &&
+                currencies.TryGetValue(c, out var share))
+                list.Add(share);
+            return list;
+        }
+        var exposures = new Dictionary<Guid, List<WireExposureDto>>();
+        var stories = await ToDtosAsync(page, viewer, (s, assets) =>
+        {
+            var e = exposures[s.Id] = Exposure(s, assets);
+            var why = e.Select(x => x.Kind == "Holding"
+                ? $"{x.Label} is {Percent(x.Weight)} of this portfolio ({x.Basis})"
+                : $"rate decision for the {x.Label}; {Percent(x.Weight)} of this portfolio is in {x.Label}").ToList();
+            Attention? own = e.Any(x => x.Kind == "Holding") ? new Attention(AttentionLevel.High, 0, ["linked to a holding of this portfolio"]) : null;
+            return (own, why);
+        }, ct);
+
+        var notes = new List<string>
+        {
+            "Stories linked to this portfolio's holdings, and official rate decisions for the currencies it holds. Weights and currency shares are facts from the current valuation, not predicted effects; Compare opens the price movement around a story, which is not evidence that the news caused it.",
+        };
+        if (positions.Count == 0) notes.Insert(0, "This portfolio holds no positions yet: news appears here once it does.");
+        return new PortfolioNewsDto(portfolio.Id, valuation.Currency, stories.Select(s => new PortfolioNewsItemDto(s, exposures.GetValueOrDefault(s.Id, []))).ToList(),
+            rows.Count > size ? Cursor(page[^1]) : null, Now, hours, await SourcesAsync(ct), [.. notes, .. CommonNotes()],
+            [.. valuation.Problems, .. valuation.Warnings], refreshing || viewer.Refreshing);
     }
 
     // ------------------------------------------------------------------ query building

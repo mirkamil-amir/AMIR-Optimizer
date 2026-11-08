@@ -10,6 +10,7 @@ import {
 import { DataBadge, EmptyState, ErrorState, LoadingBlock, MetricCard, MetricGroup, MetricValue, ResultSection, Signed, Warnings } from '@/components/common'
 import { CurrencyExposureList, ReportingCurrencySelect, ReportingNote, ValuationProblems } from '@/components/currency'
 import { HoldingsTable } from '@/components/holdings-table'
+import { PortfolioNewsSection } from '@/components/wire'
 import { portfolioPath, usePortfolioContext } from '@/lib/portfolio-context'
 import { useHoldings, useMarketSummary, usePerformance, useProposals, useRisk, useRuns, useTransactions } from '@/lib/queries'
 import { date, dateTime, money, num, objectiveLabels, pct, qty, relativeTime } from '@/lib/format'
@@ -214,6 +215,9 @@ export function OverviewPage() {
           <HoldingsTable data={holdings.data} loading={holdings.isLoading} currency={ccy} account={account} portfolioId={id} />
         </ResultSection>
       </div>
+
+      {/* News about what the portfolio holds, right after the holdings it concerns (shown once there are holdings). */}
+      {hasHoldings && <div className="mt-8"><PortfolioNewsSection portfolioId={id} /></div>}
 
       <div className="mt-8 space-y-8">
         <ResultSection title="Performance history" hint="Recorded value, drawdown and monthly returns of this portfolio for the date range above. Not a backtest.">

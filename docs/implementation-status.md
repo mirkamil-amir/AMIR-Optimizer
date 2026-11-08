@@ -1,5 +1,13 @@
 # Implementation status
 
+## 2026-11-08: news about your holdings on the portfolio Overview (AMIR-17)
+
+* `GET /api/v1/portfolios/{id}/news` (owner-scoped, 404 for others): stories about the portfolio's holdings and the
+  rate decisions of the currencies it holds, each with the holding's weight or currency share from the valuation.
+* Overview section after Holdings (7/30/90 days, paging, "Why you see this" with the weight, Compare). Tested:
+  `WireFeedTests` (USD and EUR portfolios, cross-user, anonymous), `MultiPortfolioTests` cross-user list, e2e
+  `portfolios.spec.ts`.
+
 ## 2026-11-08: the Wire page on the five story feeds (AMIR-16)
 
 * `/news` shows Latest, My watchlist, Company news, Market-wide and Macroeconomic from their own endpoints; dense story

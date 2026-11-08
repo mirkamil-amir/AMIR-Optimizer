@@ -445,7 +445,7 @@ public sealed class MultiPortfolioTests(MultiPortfolioTests.Shared shared) : ICl
                      $"/api/v1/portfolios/{p.Id}", $"/api/v1/portfolios/{p.Id}/holdings", $"/api/v1/portfolios/{p.Id}/journal",
                      $"/api/v1/portfolios/{p.Id}/transactions", $"/api/v1/portfolios/{p.Id}/cash-ledger", $"/api/v1/portfolios/{p.Id}/orders",
                      $"/api/v1/portfolios/{p.Id}/performance", $"/api/v1/portfolios/{p.Id}/risk", $"/api/v1/portfolios/{p.Id}/optimization-runs",
-                     $"/api/v1/portfolios/{p.Id}/trade-proposals", $"/api/v1/optimization-runs/{run.Id}",
+                     $"/api/v1/portfolios/{p.Id}/trade-proposals", $"/api/v1/optimization-runs/{run.Id}", $"/api/v1/portfolios/{p.Id}/news",
                  })
             Assert.True((await _bob.GetAsync(url)).StatusCode == HttpStatusCode.NotFound, url);
 
