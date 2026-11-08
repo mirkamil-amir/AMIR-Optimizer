@@ -67,8 +67,14 @@
   service yet. Release figures (actual, previous) are not extracted; no source provides forecasts.
 - Yahoo tags many single-stock articles with an index as well; such articles count as company news, so the Market-wide
   supply depends on articles tagged only with market instruments.
-- The scheduled company set covers held, watched and curated listings only (curated list empty until chosen); Wire
-  still uses the page-view queries until the feed contracts (Wire plan, PR 2) replace them.
+- The scheduled company set covers held, watched and curated listings only (curated list empty until chosen), so Company
+  News and the company part of Latest show only the viewer's own listings until a curated list exists.
+- The Wire page still uses the article feed `/news`, which shows every stored article (including news fetched for
+  other users' watched stocks), until it moves to the story feeds (Wire plan, PR 3).
+- Story grouping is a word-overlap rule: differently worded reports of one event can stay separate, and two events
+  about one company with similar headlines within 36 hours can be merged. Not evaluated against a labelled sample.
+- Latest shows at most two stories per company per page; further ones of that page are skipped there (Company News
+  shows them).
 - Categories and event types from keywords are unevaluated; the relevance indicator is unvalidated and never a price
   prediction. Articles stored before 2026-11-08 keep rules version 1 (no event type).
 - Images are off by default (rights unverified). No notifications.

@@ -20,6 +20,22 @@ public sealed class NewsOptions
     public int WatchlistRefreshLimit { get; set; } = 5;
     /// <summary>Scheduled fetching of all feeds and of the company set, independent of page views (<c>News:Schedule</c>).</summary>
     public NewsScheduleOptions Schedule { get; set; } = new();
+    /// <summary>Wire feed rules (<c>News:Feeds</c>).</summary>
+    public WireFeedOptions Feeds { get; set; } = new();
+}
+
+public sealed class WireFeedOptions
+{
+    /// <summary>
+    /// Stories linked only to listings that other users hold or watch are not shown (they would reveal what others follow):
+    /// a story is visible when it has no listing, or one of its listings is curated, an index or benchmark, or held or
+    /// watched by the viewer. Default on (owner's open question; plan default).
+    /// </summary>
+    public bool HideOthersInterests { get; set; } = true;
+    /// <summary>At most this many stories about one company on a page of Latest.</summary>
+    public int LatestPerCompanyPerPage { get; set; } = 2;
+    /// <summary>Stories shown per company in Company News.</summary>
+    public int StoriesPerCompany { get; set; } = 3;
 }
 
 public sealed class NewsScheduleOptions

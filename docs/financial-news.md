@@ -115,7 +115,52 @@ corporate transaction, regulatory/legal, central bank) +2, other market types +1
 24 h +1; reported by ≥ 2 publishers +1. High ≥ 5, Medium 3–4, Low ≤ 2. **It does not predict the direction or size of
 any price move and has not been validated against returns.** No sentiment scores are shown.
 
-## Feed filters
+## Stories and attention (2026-11-08, AMIR-15)
+
+Articles are grouped into **stories** (`NewsStories`, `NewsStoryArticles`, `NewsStoryAssets`; `StoryRules`, version 1):
+an article joins a story when it was published within **36 hours** of the story's reports and either has the same
+headline words as one of them (a syndicated copy) or has the same scope and event type, concerns the same thing (a shared
+listing; without listings, the same region) and shares at least **half of its headline words** (Jaccard index of words
+of three or more letters, common stop words removed). Otherwise it starts a new story. The earliest report leads
+(headline, link, publisher); every report stays listed with publisher and time, and each membership records when it
+joined. Grouping runs right after each fetch and in every scheduled run (which also grouped the articles stored before
+the story layer). A story leaves with its last report at the retention limit.
+
+**Attention** (`StoryRules.Assess`): material event type +2 (results, guidance, merger or acquisition, bankruptcy,
+management change, rate decision, inflation, labour or growth release; for articles from before event types, the
+earnings, corporate-transaction, regulatory/legal and central-bank categories), official source +1, two or more
+publishers +1, latest report within 24 hours +1. **High ≥ 4, Medium 2–3, Low ≤ 1.** The time-independent part is stored
+(`BasePoints`) so feeds filter in SQL; every reason is returned. It is not a prediction and has not been validated
+against returns.
+
+## Wire feeds (story endpoints)
+
+Five endpoints, each its own query with written rules; a story is in two feeds only when it meets both
+(`WireFeedService`, contract tests in `WireFeedTests`). Shared filters: `hours` (window), `region`, `attention`
+(minimum), `search`, `eventType` where it applies, `cursor` (keyset on latest report time and id), `pageSize` (1–50).
+
+| Feed | Endpoint | Includes | Excludes | Order | Default window |
+|---|---|---|---|---|---|
+| Latest | `GET /api/v1/news/latest` | every visible story with Medium or High attention | Low attention; a third story about the same company on the same page | newest first | 48 h |
+| My Watchlist | `GET /api/v1/news/watchlist` | stories linked to a listing the caller watches (High, "X is on your watchlist"); official rate decisions of the central bank of a currency a watched listing trades in (US→USD, EU→EUR, GB→GBP, JP→JPY) | general market, sector or country news | newest first | 7 days |
+| Company News | `GET /api/v1/news/companies` | companies (curated, held or watched by the caller) with company stories, each with its 3 newest | companies only other users follow | newest company first | 7 days |
+| Market-wide | `GET /api/v1/news/markets` | market-level stories by area: Equities, Rates, Currencies, Commodities, Volatility (5 each; `area` → one area, paged) | single-company stories | newest first per area | 72 h |
+| Macroeconomic | `GET /api/v1/news/macro` | central-bank, statistics and other economy-wide stories | company and market stories | newest first | 30 days |
+
+**Visibility (privacy):** with `News:Feeds:HideOthersInterests` (default true) a story is shown only when it has no
+listing, or one of its listings is curated, an index or benchmark, or held or watched by the caller – otherwise stories
+fetched because another user watches a stock would reveal what they follow. Watchlist and holdings are read for the
+authenticated user on every request; nothing is cached (there is no cache layer). The article feed `/api/v1/news` still
+shows every stored article until the Wire page moves to these endpoints (plan PR 3).
+
+**Source freshness** is returned with every feed per group – central banks, statistics offices, company filings, company
+news, market news – as Fresh, Delayed (no success for twice the group's refresh interval) or Unavailable, without
+provider names (D-30).
+
+**Measured** (`WireBenchmarkTests`, `PERF_BENCH=1`, 100,000 stories, in-process, 2026-11-08): median 26 ms Latest
+(also page 5), 9 ms My Watchlist, 41 ms Company News, 21 ms Market-wide, 11 ms Macroeconomic.
+
+## Feed filters (article feed)
 
 Views: Latest, My watchlist, Company, Market-wide, Macroeconomic. Filters: category, market/region (US, EU, DE, FR, NL,
 GB, JP), date range, publisher (click a publisher), headline/ticker/company search, `symbol` (from a stock page).
@@ -157,6 +202,8 @@ deduplicated delivery log.
 `NewsRulesTests` (normalizer, classifier incl. word boundaries, relevance points, Yahoo/RSS parsing incl. malformed
 input and time zones, event comparison timing/benchmark gaps), `NewsTests` (dedup, provider-tag linking, filters,
 watchlist filter, event comparison end-to-end, auth, scheduled run over another user's watchlist with rules version 2),
-`NewsProviderFailureTests`, `WireSourcesTests` (taxonomy, schedule selection, BEA/ONS/Eurostat/EDGAR/Yahoo-market parsing
+`NewsProviderFailureTests`, `StoryRulesTests` (grouping, attention thresholds incl. the SQL filter for every combination,
+cursor), `WireFeedTests` (the five feed contracts on one data set for two users, privacy, paging, validation, auth),
+`WireBenchmarkTests` (`PERF_BENCH=1`), `WireSourcesTests` (taxonomy, schedule selection, BEA/ONS/Eurostat/EDGAR/Yahoo-market parsing
 on payloads in the live shape), live smoke tests (`PO_LIVE_SMOKE=1`; SEC also needs `PO_SEC_CONTACT`), Vitest
 `news.test.ts`, e2e journey E.

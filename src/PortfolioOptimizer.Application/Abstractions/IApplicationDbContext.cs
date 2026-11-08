@@ -40,6 +40,9 @@ public interface IApplicationDbContext
     DbSet<NewsArticle> NewsArticles { get; }
     DbSet<NewsArticleAsset> NewsArticleAssets { get; }
     DbSet<NewsFetchState> NewsFetchStates { get; }
+    DbSet<NewsStory> NewsStories { get; }
+    DbSet<NewsStoryArticle> NewsStoryArticles { get; }
+    DbSet<NewsStoryAsset> NewsStoryAssets { get; }
 
     DatabaseFacade Database { get; }
 
