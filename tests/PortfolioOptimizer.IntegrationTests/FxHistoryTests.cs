@@ -93,6 +93,12 @@ public sealed class FxHistoryTests : IAsyncLifetime
         Assert.InRange(first.Points.Count, 450, 560);
         AssertContinuous(first.Points);
 
+        // The next request resumes the missing older part. It waits at most ProviderWait (1 s here) and the download goes on in
+        // the background, so on a slow machine it can answer with the stored part first (CI, 2026-11-08: 521 points): wait
+        // until the older years are stored, then read the history again.
+        await _client.GetAsync("/api/v1/fx/history?from=EUR&to=ZAR&days=3000");
+        var deadline = DateTime.UtcNow.AddSeconds(60);
+        while ((await StoredAsync("ZAR"))?.Count is not > 2100 && DateTime.UtcNow < deadline) await Task.Delay(250);
         var second = await (await _client.GetAsync("/api/v1/fx/history?from=EUR&to=ZAR&days=3000")).ReadAsync<FxHistoryDto>();
         Assert.InRange(_provider.Calls - 2, 1, 4);                       // only the missing older part, in chunks
         Assert.True(second.Points.Count > 2100, $"{second.Points.Count} points");
