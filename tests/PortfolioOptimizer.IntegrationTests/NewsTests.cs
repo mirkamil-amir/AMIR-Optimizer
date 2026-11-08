@@ -115,6 +115,26 @@ public sealed class NewsTests(NewsTests.Shared shared) : IClassFixture<NewsTests
     }
 
     [Fact]
+    public async Task WatchlistFeed_FetchesTheViewersWatchedCompanies_LikeThePageViewFeed()
+    {
+        var (viewer, _) = await _factory.CreateApprovedUserAsync(_admin);
+        using (viewer)
+        {
+            (await viewer.PostJsonAsync("/api/v1/watchlist", new AddWatchlistEntryRequest { Symbol = "MSFT" })).EnsureStatus(HttpStatusCode.Created);
+            // The simulated articles are 12 and 40 days old: outside the default 7-day window, so ask for 90 days.
+            var feed = await (await viewer.GetAsync("/api/v1/news/watchlist?hours=2160")).EnsureStatus(HttpStatusCode.OK).ReadAsync<WireFeedDto>();
+            // Never-fetched sources are fetched in the request, already-fetched ones in the background: either way MSFT has stories.
+            var msft = feed.Stories.Where(s => s.Assets.Any(a => a.Symbol == "MSFT")).ToList();
+            Assert.NotEmpty(msft);
+            Assert.All(msft, s => Assert.True(s.IsSimulated));
+            Assert.Contains(msft, s => s.ArticleCount == 2); // the simulated earnings story is reported twice
+            Assert.All(msft, s => Assert.Contains("MSFT is on your watchlist", s.Why));
+            // Everything else is a rate decision of the US central bank (MSFT trades in USD) – here the simulated feed's.
+            Assert.All(feed.Stories.Except(msft), s => Assert.Equal(("RateDecision", "US"), (s.EventType, s.Region)));
+        }
+    }
+
+    [Fact]
     public async Task ScheduledRun_FetchesAnyUsersWatchedListings_AndClassifiesWithRuleVersion2()
     {
         // Another user's watchlist puts SPY into the scheduled set; nobody opens a news page for it.

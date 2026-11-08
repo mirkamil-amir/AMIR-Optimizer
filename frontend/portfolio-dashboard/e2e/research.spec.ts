@@ -98,28 +98,44 @@ test('watchlist: a row opens the stock; previous/next step through the watchlist
   await expect(page).toHaveURL(new RegExp(`/stocks/${first}$`))
 })
 
-test('financial news: views, filters, official sources and attribution', async ({ page }) => {
+test('financial news: five feeds with their own rules, stories, sources and attribution', async ({ page }) => {
   await newStudent(page)
   await page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Wire' }).click()
   await expect(page.getByRole('heading', { name: 'Financial news' })).toBeVisible()
 
+  // Each tab asks its own endpoint (not one query with another label).
+  const asked = (feed: string) => page.waitForResponse((r) => r.url().includes(`/api/v1/news/${feed}`) && r.status() === 200)
+  const macroResponse = asked('macro')
   await page.getByRole('tab', { name: 'Macroeconomic' }).click()
-  const macro = page.getByText('SIMULATED: Central bank leaves interest rates unchanged')
+  await macroResponse
+  const macro = page.getByRole('article', { name: 'SIMULATED: Central bank leaves interest rates unchanged' })
   await expect(macro).toBeVisible()
-  await expect(page.getByText('Official source').first()).toBeVisible()
-  await expect(page.getByText(/Potential relevance: (Low|Medium|High)/).first()).toBeVisible()
+  await expect(macro.getByText('Official source')).toBeVisible()
+  await expect(macro.getByText(/(Low|Medium|High) attention/)).toBeVisible()
+  await expect(macro.getByText('rate decision')).toBeVisible()
 
   // Original article opens in a new tab with safe rel attributes.
   const link = page.getByRole('link', { name: /SIMULATED: Central bank leaves interest rates unchanged/ })
   await expect(link).toHaveAttribute('target', '_blank')
   await expect(link).toHaveAttribute('rel', /noopener/)
 
-  // Watchlist view is empty until a stock is watched.
-  await page.getByRole('tab', { name: 'My watchlist' }).click()
-  await expect(page.getByText('No news about your watched stocks yet')).toBeVisible()
+  // The side panels: freshness per source group (no provider names) and benchmarks with stored prices.
+  await expect(page.getByRole('complementary', { name: 'Market context' }).getByText('Sources')).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Benchmarks' })).toBeVisible()
 
-  // Attribution and limitations are disclosed; the news-source table (provider names, fetch status) is for administrators.
-  await page.getByText('Attribution and limitations').click()
-  await expect(page.getByText(/Articles are linked to stocks only when the provider tagged them/)).toBeVisible()
+  // Watchlist view is empty until a stock is watched; Market-wide is grouped by area.
+  const watchResponse = asked('watchlist')
+  await page.getByRole('tab', { name: 'My watchlist' }).click()
+  await watchResponse
+  await expect(page.getByText('No news about your watched stocks yet')).toBeVisible()
+  const marketsResponse = asked('markets')
+  await page.getByRole('tab', { name: 'Market-wide' }).click()
+  await marketsResponse
+  for (const area of ['Equities', 'Rates', 'Currencies', 'Commodities', 'Volatility'])
+    await expect(page.getByRole('heading', { name: area, exact: true })).toBeVisible()
+
+  // How the feed works is disclosed; the news-source table (provider names, fetch status) is for administrators.
+  await page.getByText('How this feed works and limitations').click()
+  await expect(page.getByText(/A story groups reports of the same event/)).toBeVisible()
   await expect(page.getByRole('columnheader', { name: 'Last fetched' })).toHaveCount(0)
 })

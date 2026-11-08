@@ -129,7 +129,10 @@ the story layer). A story leaves with its last report at the retention limit.
 **Attention** (`StoryRules.Assess`): material event type +2 (results, guidance, merger or acquisition, bankruptcy,
 management change, rate decision, inflation, labour or growth release; for articles from before event types, the
 earnings, corporate-transaction, regulatory/legal and central-bank categories), official source +1, two or more
-publishers +1, latest report within 24 hours +1. **High ≥ 4, Medium 2–3, Low ≤ 1.** The time-independent part is stored
+publishers +1, a market story tagged with two or more market instruments +1 (rules version 2, owner's decision
+2026-11-08: such stories concern the market as a whole and reach Latest while fresh; the provider's tags are stored per
+article as `ProviderTags` since then, so older market stories cannot earn this point), latest report within 24 hours
++1. **High ≥ 4, Medium 2–3, Low ≤ 1.** The time-independent part is stored
 (`BasePoints`) so feeds filter in SQL; every reason is returned. It is not a prediction and has not been validated
 against returns.
 
@@ -147,11 +150,25 @@ Five endpoints, each its own query with written rules; a story is in two feeds o
 | Market-wide | `GET /api/v1/news/markets` | market-level stories by area: Equities, Rates, Currencies, Commodities, Volatility (5 each; `area` → one area, paged) | single-company stories | newest first per area | 72 h |
 | Macroeconomic | `GET /api/v1/news/macro` | central-bank, statistics and other economy-wide stories | company and market stories | newest first | 30 days |
 
+**On request** (2026-11-08, AMIR-16) each feed does what the article feed did: sources never fetched are fetched now,
+due feeds and the viewer's stalest watched companies are refreshed in the background, and the response says
+`refreshing: true` until then (the page checks again every 5 s – within the 60 requests per minute limit).
+
+**The Wire page** (`/news`, AMIR-16) shows the five feeds as tabs with search, time window (default per feed, shown as
+"Default: …"), market or region and attention filters, all in the URL (`view`, `hours`, `region`, `attention`, `q`,
+`cursor`, `area`; old `view=Company|Market|Macro` and `symbol=` links still work). Each story is one dense row: latest
+report time in UTC and relative, headline linking to the earliest report, linked listings (stock page), event type with
+its basis, market area, region, the publishers ("A and 2 more · 3 reports", expands to every report with its time and
+link), official and SIMULATED labels, "Why you see this" in My watchlist, the attention label with every reason, and
+the event comparison for linked listings. Company news shows one block per company; Market-wide one section per area
+with a link to the paged area. Side panels: freshness per source group and five benchmarks with their stored last close,
+change, kind and date (`useStocksBySymbols`; never called live). Text only, no icons; dense lists on `.map-surface`.
+
 **Visibility (privacy):** with `News:Feeds:HideOthersInterests` (default true) a story is shown only when it has no
 listing, or one of its listings is curated, an index or benchmark, or held or watched by the caller – otherwise stories
 fetched because another user watches a stock would reveal what they follow. Watchlist and holdings are read for the
-authenticated user on every request; nothing is cached (there is no cache layer). The article feed `/api/v1/news` still
-shows every stored article until the Wire page moves to these endpoints (plan PR 3).
+authenticated user on every request; nothing is cached (there is no cache layer). The article feed `/api/v1/news` remains
+only for the Company news section of a stock page (articles tagged with that listing).
 
 **Source freshness** is returned with every feed per group – central banks, statistics offices, company filings, company
 news, market news – as Fresh, Delayed (no success for twice the group's refresh interval) or Unavailable, without

@@ -33,6 +33,7 @@ public sealed class WireFeedService(
     IEnumerable<ICompanyNewsProvider> companyProviders,
     IEnumerable<INewsFeedProvider> feedProviders,
     IOptions<NewsOptions> options,
+    NewsService news,
     TimeProvider clock)
 {
     public const string AttentionNote =
@@ -42,7 +43,8 @@ public sealed class WireFeedService(
     private NewsOptions Options => options.Value;
     private DateTime Now => clock.GetUtcNow().UtcDateTime;
 
-    private sealed record Viewer(HashSet<int> Watched, HashSet<int> Held, HashSet<int> Curated, HashSet<int> Benchmarks, Dictionary<int, string> WatchedCurrency)
+    private sealed record Viewer(HashSet<int> Watched, HashSet<int> Held, HashSet<int> Curated, HashSet<int> Benchmarks, Dictionary<int, string> WatchedCurrency,
+        bool Refreshing)
     {
         public List<int> Visible { get; } = [.. Watched.Union(Held).Union(Curated).Union(Benchmarks)];
     }
@@ -93,7 +95,7 @@ public sealed class WireFeedService(
         [
             "Latest shows Medium and High attention stories of every kind, newest first; at most " + cap + " stories per company per page – Company News shows them all.",
             .. CommonNotes(),
-        ]);
+        ], viewer.Refreshing);
     }
 
     /// <summary>My Watchlist: stories linked to a watched listing, and rate decisions of the central bank of a watched listing's currency.</summary>
@@ -117,7 +119,7 @@ public sealed class WireFeedService(
             "My Watchlist shows stories linked to a listing you watch (by the provider's tag or an official filing) and rate decisions of the central bank of a currency your watched listings trade in. General market news is not included.",
         };
         if (viewer.Watched.Count == 0) notes.Insert(0, "Your watchlist is empty: add listings in Radar to see their news here.");
-        return new WireFeedDto("Watchlist", stories, rows.Count > size ? Cursor(page[^1]) : null, Now, hours, await SourcesAsync(ct), [.. notes, .. CommonNotes()]);
+        return new WireFeedDto("Watchlist", stories, rows.Count > size ? Cursor(page[^1]) : null, Now, hours, await SourcesAsync(ct), [.. notes, .. CommonNotes()], viewer.Refreshing);
     }
 
     /// <summary>Company News: companies with stories in the window, newest first, each with its latest stories.</summary>
@@ -174,7 +176,7 @@ public sealed class WireFeedService(
                 : "Company News lists every company with stories in the window, each with its newest stories.",
         };
         if (restrict && allowed.Count == 0) notes.Insert(0, "No companies to show yet: the curated list is empty and you hold or watch no listings.");
-        return new WireCompaniesDto(companies, groups.Count > size ? EncodeOffset(offset + size) : null, Now, hours, await SourcesAsync(ct), [.. notes, .. CommonNotes()]);
+        return new WireCompaniesDto(companies, groups.Count > size ? EncodeOffset(offset + size) : null, Now, hours, await SourcesAsync(ct), [.. notes, .. CommonNotes()], viewer.Refreshing);
     }
 
     private static readonly NewsMarketArea[] Areas = [NewsMarketArea.Equities, NewsMarketArea.Rates, NewsMarketArea.Fx, NewsMarketArea.Commodities, NewsMarketArea.Volatility];
@@ -203,7 +205,7 @@ public sealed class WireFeedService(
         [
             "Market-wide shows stories tagged only with market instruments – indexes, yields, currencies, commodities, volatility – grouped by area. Single-company stories are in Company News even when an index is tagged too.",
             .. CommonNotes(),
-        ]);
+        ], viewer.Refreshing);
     }
 
     /// <summary>Macroeconomic: central-bank and statistics releases and macro news, newest first.</summary>
@@ -219,7 +221,7 @@ public sealed class WireFeedService(
         [
             "Macroeconomic shows central-bank announcements, official statistics releases and other economy-wide news. Release figures are not extracted; open the release for the numbers.",
             .. CommonNotes(),
-        ]);
+        ], viewer.Refreshing);
     }
 
     // ------------------------------------------------------------------ query building
@@ -227,15 +229,17 @@ public sealed class WireFeedService(
     private async Task<Viewer> ViewerAsync(CancellationToken ct)
     {
         var owner = currentUser.RequireUserId();
-        var watched = await db.WatchlistEntries.AsNoTracking().Where(e => e.OwnerId == owner).Select(e => new { e.AssetId, e.Asset!.Currency }).ToListAsync(ct);
+        var watched = await db.WatchlistEntries.AsNoTracking().Where(e => e.OwnerId == owner).Select(e => new { e.AssetId, e.Asset!.Currency, e.Asset.Symbol, e.Asset.Name }).ToListAsync(ct);
         var held = await db.Holdings.AsNoTracking().Where(h => h.Quantity > 0 && db.Portfolios.Any(p => p.Id == h.PortfolioId && p.OwnerId == owner))
             .Select(h => h.AssetId).Distinct().ToListAsync(ct);
         var curatedSymbols = Options.Schedule.CuratedSymbols.Select(Asset.NormalizeSymbol).Distinct().ToList();
         var curated = await db.Assets.AsNoTracking().Where(a => curatedSymbols.Contains(a.Symbol)).Select(a => a.Id).ToListAsync(ct);
         var benchmarks = await db.Assets.AsNoTracking().Where(a => a.AssetType != AssetType.Equity && db.MarketIndices.Any(i => i.BenchmarkSymbol == a.Symbol))
             .Select(a => a.Id).ToListAsync(ct);
+        // Like the article feed: never-fetched sources now, due feeds and the stalest watched companies in the background.
+        var refreshing = await news.RefreshForViewerAsync(watched.Select(w => (w.Symbol, w.Name)).ToList(), ct);
         return new Viewer([.. watched.Select(w => w.AssetId)], [.. held], [.. curated], [.. benchmarks],
-            watched.GroupBy(w => w.AssetId).ToDictionary(g => g.Key, g => g.First().Currency));
+            watched.GroupBy(w => w.AssetId).ToDictionary(g => g.Key, g => g.First().Currency), refreshing);
     }
 
     /// <summary>Stories the viewer may see: no listing, or a listing that is curated, an index or benchmark, or the viewer's own.</summary>
@@ -358,7 +362,7 @@ public sealed class WireFeedService(
             var assets = links.Where(l => l.StoryId == s.Id)
                 .Select(l => new WireAssetDto(l.Symbol, l.Name, l.AssetType.ToString(), l.Currency, viewer.Watched.Contains(l.AssetId), viewer.Held.Contains(l.AssetId)))
                 .OrderByDescending(a => a.OnWatchlist || a.Held).ThenBy(a => a.Symbol, StringComparer.Ordinal).ToList();
-            var general = StoryRules.Assess(s.EventType, s.Category, s.HasOfficialSource, s.PublisherCount, s.LastPublishedAtUtc, now);
+            var general = StoryRules.Assess(s.EventType, s.Category, s.HasOfficialSource, s.PublisherCount, s.LastPublishedAtUtc, now, s.MarketInstrumentCount);
             var (own, why) = personal?.Invoke(s, assets) ?? (null, []);
             var attention = own is null ? general : new Attention(AttentionLevel.High, general.Points, [.. own.Reasons, .. general.Reasons]);
             return new WireStoryDto(s.Id, s.Headline, lead?.Url ?? "", lead?.Publisher ?? "", s.FirstPublishedAtUtc, s.LastPublishedAtUtc,
