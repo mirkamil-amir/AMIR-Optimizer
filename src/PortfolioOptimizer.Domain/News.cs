@@ -96,6 +96,56 @@ public class NewsArticle
     public List<NewsArticleAsset> Assets { get; set; } = [];
 }
 
+/// <summary>
+/// One event as reported by one or more articles (story layer, docs/financial-news.md › Stories). Built by the versioned
+/// grouping rule from stored articles; keeps every contributing article (<see cref="Articles"/>) and when it joined, so
+/// the story as known at any past time can be reconstructed. Facts of the lead (earliest) article are copied for fast,
+/// indexed feed queries; nothing here is generated text.
+/// </summary>
+public class NewsStory
+{
+    public Guid Id { get; set; }
+    public Guid LeadArticleId { get; set; }
+    public required string Headline { get; set; }
+    public NewsScope Scope { get; set; }
+    public NewsCategory Category { get; set; }
+    public NewsEventType EventType { get; set; }
+    public string? EventTypeBasis { get; set; }
+    public NewsMarketArea? MarketArea { get; set; }
+    public string? Region { get; set; }
+    public DateTime FirstPublishedAtUtc { get; set; }
+    public DateTime LastPublishedAtUtc { get; set; }
+    public int ArticleCount { get; set; }
+    public int PublisherCount { get; set; }
+    public bool HasOfficialSource { get; set; }
+    public bool IsSimulated { get; set; }
+    /// <summary>Time-independent attention points (material event, official source, several publishers); recency is added at query time.</summary>
+    public int BasePoints { get; set; }
+    /// <summary>Version of the grouping and attention rules that built this story.</summary>
+    public int RuleVersion { get; set; }
+    public DateTime CreatedAtUtc { get; set; }
+    public DateTime UpdatedAtUtc { get; set; }
+    public List<NewsStoryArticle> Articles { get; set; } = [];
+    public List<NewsStoryAsset> Assets { get; set; } = [];
+}
+
+/// <summary>An article's membership in a story (each article belongs to exactly one story).</summary>
+public class NewsStoryArticle
+{
+    public Guid StoryId { get; set; }
+    public Guid ArticleId { get; set; }
+    public NewsArticle? Article { get; set; }
+    public DateTime JoinedAtUtc { get; set; }
+}
+
+/// <summary>Catalogue listing linked to a story (union of its articles' links), for indexed watchlist and company queries.</summary>
+public class NewsStoryAsset
+{
+    public Guid StoryId { get; set; }
+    public int AssetId { get; set; }
+    public Asset? Asset { get; set; }
+}
+
 /// <summary>Link between an article and a catalogue listing, with how it was established (provider tag, never a fuzzy name match).</summary>
 public class NewsArticleAsset
 {

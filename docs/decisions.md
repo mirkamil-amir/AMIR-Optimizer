@@ -2,6 +2,16 @@
 
 Short records of decisions that are not obvious from the code. Newest first. Format: context → decision → consequences.
 
+## D-52 Wire feeds are separate queries over stories; others' interests stay hidden (2026-11-08)
+**Context:** the five Wire tabs were one article query with a label. Shared storage meant news fetched for one user's
+watched stock appeared in everyone's Latest and Company News. The owner's answer on visibility is still open.
+**Decision:** a story layer groups reports of one event; each tab is its own endpoint with written inclusion,
+exclusion and order (financial-news.md › Wire feeds), tested on one fixed data set. By default a story is shown only
+when it has no listing or one of its listings is curated, an index or benchmark, or the viewer's own
+(`News:Feeds:HideOthersInterests`). No cache: personal feeds are computed per request. **Consequences:** until a
+curated list exists, company news in Latest and Company News is limited to the viewer's own listings; flipping the
+setting shows everything fetched.
+
 ## D-51 Wire gets its own sources, fetched on a schedule (2026-11-08)
 **Context:** Latest, My Watchlist and Company News showed the same stories: the only company-news source was asked
 only about the viewer's watched stocks, and Market-wide had no source. The owner chose four additions (official

@@ -1,5 +1,16 @@
 # Implementation status
 
+## 2026-11-08: Wire story layer and five feed contracts (AMIR-15, D-52)
+
+* Story layer: reports of one event are grouped (36 h, same subject and event type, half the headline words, or the same
+  headline); every report and when it joined is kept. Attention High/Medium/Low from documented points.
+* Five endpoints with their own rules: `/news/latest`, `/watchlist`, `/companies`, `/markets`, `/macro`; keyset paging;
+  source freshness per group. Contract, privacy and paging tests (`WireFeedTests`, 8).
+* Stories linked only to listings other users follow are hidden by default (`News:Feeds:HideOthersInterests`).
+* Measured on 100,000 stories: medians 9–41 ms per feed (`WireBenchmarkTests`).
+* Not yet: the Wire page still uses `/news` (plan PR 3); classification history table and non-stock entity links
+  moved to PR 5.
+
 ## 2026-11-08: Wire news sources and scheduled fetching (AMIR-14, D-51)
 
 * Root cause of identical Latest / My Watchlist / Company News: company news was fetched only for the viewer's

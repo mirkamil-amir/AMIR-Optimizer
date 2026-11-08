@@ -1283,6 +1283,119 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                     b.ToTable("NewsFetchStates");
                 });
 
+            modelBuilder.Entity("PortfolioOptimizer.Domain.NewsStory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ArticleCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("BasePoints")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("EventTypeBasis")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime>("FirstPublishedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("HasOfficialSource")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Headline")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("IsSimulated")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("LastPublishedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("LeadArticleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("MarketArea")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<int>("PublisherCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Region")
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<int>("RuleVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Scope")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LastPublishedAtUtc", "Id");
+
+                    b.HasIndex("Scope", "LastPublishedAtUtc", "Id");
+
+                    b.ToTable("NewsStories");
+                });
+
+            modelBuilder.Entity("PortfolioOptimizer.Domain.NewsStoryArticle", b =>
+                {
+                    b.Property<Guid>("StoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ArticleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("JoinedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("StoryId", "ArticleId");
+
+                    b.HasIndex("ArticleId")
+                        .IsUnique();
+
+                    b.ToTable("NewsStoryArticles");
+                });
+
+            modelBuilder.Entity("PortfolioOptimizer.Domain.NewsStoryAsset", b =>
+                {
+                    b.Property<Guid>("StoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("AssetId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("StoryId", "AssetId");
+
+                    b.HasIndex("AssetId", "StoryId");
+
+                    b.ToTable("NewsStoryAssets");
+                });
+
             modelBuilder.Entity("PortfolioOptimizer.Domain.OptimizationRun", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2544,6 +2657,40 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                     b.Navigation("Asset");
                 });
 
+            modelBuilder.Entity("PortfolioOptimizer.Domain.NewsStoryArticle", b =>
+                {
+                    b.HasOne("PortfolioOptimizer.Domain.NewsArticle", "Article")
+                        .WithMany()
+                        .HasForeignKey("ArticleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PortfolioOptimizer.Domain.NewsStory", null)
+                        .WithMany("Articles")
+                        .HasForeignKey("StoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Article");
+                });
+
+            modelBuilder.Entity("PortfolioOptimizer.Domain.NewsStoryAsset", b =>
+                {
+                    b.HasOne("PortfolioOptimizer.Domain.Asset", "Asset")
+                        .WithMany()
+                        .HasForeignKey("AssetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PortfolioOptimizer.Domain.NewsStory", null)
+                        .WithMany("Assets")
+                        .HasForeignKey("StoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Asset");
+                });
+
             modelBuilder.Entity("PortfolioOptimizer.Domain.OptimizationRun", b =>
                 {
                     b.HasOne("PortfolioOptimizer.Infrastructure.Identity.ApplicationUser", null)
@@ -2747,6 +2894,13 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("PortfolioOptimizer.Domain.NewsArticle", b =>
                 {
+                    b.Navigation("Assets");
+                });
+
+            modelBuilder.Entity("PortfolioOptimizer.Domain.NewsStory", b =>
+                {
+                    b.Navigation("Articles");
+
                     b.Navigation("Assets");
                 });
 

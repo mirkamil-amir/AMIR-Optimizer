@@ -7,6 +7,7 @@ import type {
   Transaction, UserAccountStatus, UserSummary, MlCatalog, MlExperiment, MlExperimentRequest, MlExperimentSummary, MlBacktest,
   MlPredictionSet, StrategyComparison, StrategyComparisonRequest, StrategyComparisonSummary, Market, QuoteRefreshRun, QuoteRefreshResult,
   AdminOverview, HistoryRange, PriceHistory, Watchlist, WatchlistAddResult, NewsFeed, NewsFilters, EventComparison, RealityCheck, CompanyProfile,
+  WireFeedName, WireQuery, WireResponses,
   FxInfo, FxRate, FxHistory, FxBoard, ResearchSession, ResearchSessionSummary, UpdateBriefRequest, HypothesisComparison, CompanyContext, RefinementChange,
   PortfolioOverview, PortfolioTransaction, RecordTransactionRequest, MarketDataSummary, DataCheck, DataCheckRequest, DataDownload,
   PortfolioStrategy, StrategyBacktestRequest,
@@ -870,6 +871,21 @@ export const useNews = (filters: NewsFilters, enabled = true) => {
     staleTime: 5 * 60_000,
     // While the server refreshes due sources in the background, check again shortly to show the new articles.
     refetchInterval: (q) => (q.state.data?.refreshing ? 3000 : false),
+    enabled,
+  })
+}
+
+/**
+ * One Wire feed (`/news/latest|watchlist|companies|markets|macro`), each with its own server-side rules. Personal feeds
+ * are computed per request for the signed-in user; the cache key carries every filter.
+ */
+export const useWireFeed = <F extends WireFeedName>(feed: F, query: WireQuery = {}, enabled = true) => {
+  const params = newsParams(query as NewsFilters)
+  return useQuery({
+    queryKey: ['wire', feed, params] as const,
+    queryFn: ({ signal }) => api.get<WireResponses[F]>(`${V1}/news/${feed}${params ? `?${params}` : ''}`, signal),
+    placeholderData: keepPreviousData,
+    staleTime: 2 * 60_000,
     enabled,
   })
 }

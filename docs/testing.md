@@ -115,7 +115,8 @@ these files.
 * Vitest 138, build, lint (no errors); `./scripts/e2e.sh` 32 passed (final run with the Podman VM clock ~3 h behind the host,
   after the transaction-date fix; the run before the fix failed exactly there).
 * `PerformanceBenchmarkTests` is opt-in (`PERF_BENCH=1`) and reports latency and SQL commands per request; see
-  [performance.md](performance.md).
+  [performance.md](performance.md). `WireBenchmarkTests` (same switch) measures the five Wire feeds over 100,000 stories
+  inserted with SQL; it stays under the news rate limit (60 requests per minute per user).
 
 ## Results (2026-10-17, multi-portfolio workspaces)
 

@@ -1318,6 +1318,138 @@ export interface NewsFilters {
   pageSize?: number
 }
 
+// ---------------------------------------------------------------- Wire feeds (stories; docs/financial-news.md › Wire feeds)
+
+export type WireFeedName = 'latest' | 'watchlist' | 'companies' | 'markets' | 'macro'
+export type AttentionLevel = 'High' | 'Medium' | 'Low'
+export type MarketArea = 'Equities' | 'Rates' | 'Fx' | 'Commodities' | 'Volatility'
+
+export interface WireSourceItem {
+  articleId: string
+  publisher: string
+  url: string
+  publishedAtUtc: string
+  isOfficial: boolean
+}
+
+export interface WireAsset {
+  symbol: string
+  name: string | null
+  assetType: string
+  currency: string
+  onWatchlist: boolean
+  held: boolean
+}
+
+/** Rule-based attention with every reason; never a prediction of a price move. */
+export interface WireAttention {
+  level: AttentionLevel
+  points: number
+  reasons: string[]
+  note: string
+}
+
+/** One event reported by one or more articles; headline, link and publisher are the earliest report's. */
+export interface WireStory {
+  id: string
+  headline: string
+  url: string
+  publisher: string
+  firstPublishedAtUtc: string
+  lastPublishedAtUtc: string
+  scope: NewsScope
+  eventType: string
+  eventTypeLabel: string
+  eventTypeBasis: string | null
+  marketArea: MarketArea | null
+  region: string | null
+  isOfficial: boolean
+  isSimulated: boolean
+  summary: string | null
+  articleCount: number
+  sources: WireSourceItem[]
+  assets: WireAsset[]
+  attention: WireAttention
+  /** Why a personal feed shows the story (My Watchlist); empty elsewhere. */
+  why: string[]
+  ruleVersion: number
+}
+
+export interface WireSourceStatus {
+  group: string
+  status: 'Fresh' | 'Delayed' | 'Unavailable'
+  lastSuccessUtc: string | null
+  problem: string | null
+}
+
+export interface WireFeed {
+  feed: string
+  stories: WireStory[]
+  nextCursor: string | null
+  asOfUtc: string
+  windowHours: number
+  sources: WireSourceStatus[]
+  notes: string[]
+}
+
+export interface WireCompany {
+  symbol: string
+  name: string | null
+  sector: string | null
+  currency: string
+  onWatchlist: boolean
+  held: boolean
+  curated: boolean
+  storyCount: number
+  newestAtUtc: string
+  stories: WireStory[]
+}
+
+export interface WireCompanies {
+  companies: WireCompany[]
+  nextCursor: string | null
+  asOfUtc: string
+  windowHours: number
+  sources: WireSourceStatus[]
+  notes: string[]
+}
+
+export interface WireMarketSection {
+  area: MarketArea
+  label: string
+  storyCount: number
+  stories: WireStory[]
+  nextCursor: string | null
+}
+
+export interface WireMarkets {
+  sections: WireMarketSection[]
+  asOfUtc: string
+  windowHours: number
+  sources: WireSourceStatus[]
+  notes: string[]
+}
+
+export interface WireQuery {
+  hours?: number
+  region?: string
+  attention?: AttentionLevel
+  search?: string
+  cursor?: string
+  pageSize?: number
+  area?: MarketArea
+  eventType?: string
+}
+
+/** Response type of each Wire feed. */
+export interface WireResponses {
+  latest: WireFeed
+  watchlist: WireFeed
+  companies: WireCompanies
+  markets: WireMarkets
+  macro: WireFeed
+}
+
 // ---------------------------------------------------------------- portfolio reality check
 
 export interface RealityFinding {

@@ -288,8 +288,101 @@ public sealed class NewsService(
             symbol => providers.Where(p => p.Supports(symbol)).Select(p => states.GetValueOrDefault(CompanyKey(p, symbol))?.LastAttemptUtc).Min(),
             Options.Schedule.CompaniesPerRun);
         foreach (var c in due) await RefreshCompanyAsync(c.Symbol, c.Name, interval, ct);
+        // Articles stored before the story layer existed, or by a run that stopped early, are grouped here in batches.
+        for (var batch = 0; batch < 20 && await GroupPendingAsync(ct) > 0; batch++) { }
         return new NewsScheduleRun(merged.Count, due.Count);
     }
+
+    private static readonly SemaphoreSlim GroupingGate = new(1, 1);
+    private const int GroupingBatch = 1000;
+
+    /// <summary>
+    /// Puts stored articles that belong to no story into stories (<see cref="StoryRules"/>), oldest first, at most
+    /// <see cref="GroupingBatch"/> per call; returns how many were grouped. One grouping at a time in this process; a
+    /// concurrent instance that grouped the same article first wins (unique article index) and this batch is retried later.
+    /// </summary>
+    public async Task<int> GroupPendingAsync(CancellationToken ct)
+    {
+        await GroupingGate.WaitAsync(ct);
+        try
+        {
+            var pending = await db.NewsArticles.Include(a => a.Assets)
+                .Where(a => !db.NewsStoryArticles.Any(s => s.ArticleId == a.Id))
+                .OrderBy(a => a.PublishedAtUtc).ThenBy(a => a.Id).Take(GroupingBatch).ToListAsync(ct);
+            if (pending.Count == 0) return 0;
+
+            var from = pending[0].PublishedAtUtc - StoryRules.Window;
+            var to = pending[^1].PublishedAtUtc + StoryRules.Window;
+            var stories = await db.NewsStories.Include(s => s.Assets)
+                .Where(s => s.LastPublishedAtUtc >= from && s.FirstPublishedAtUtc <= to).ToListAsync(ct);
+            var storyIds = stories.Select(s => s.Id).ToList();
+            var members = await db.NewsStoryArticles.AsNoTracking().Where(m => storyIds.Contains(m.StoryId))
+                .Select(m => new { m.StoryId, m.Article!.HeadlineKey, m.Article.Publisher }).ToListAsync(ct);
+            var keys = stories.ToDictionary(s => s.Id, s => members.Where(m => m.StoryId == s.Id).Select(m => m.HeadlineKey).ToHashSet(StringComparer.Ordinal));
+            var publishers = stories.ToDictionary(s => s.Id, s => members.Where(m => m.StoryId == s.Id).Select(m => m.Publisher).ToHashSet(StringComparer.OrdinalIgnoreCase));
+            StoryCandidate Candidate(NewsStory s) => new(s.Id, s.Headline, s.Scope, s.EventType, s.Region, s.FirstPublishedAtUtc, s.LastPublishedAtUtc,
+                s.Assets.Select(x => x.AssetId).ToHashSet(), keys[s.Id]);
+
+            var now = Now;
+            foreach (var a in pending)
+            {
+                var type = a.EventType ?? NewsEventType.General;
+                var facts = new StoryArticleFacts(a.Headline, a.HeadlineKey, a.Scope, type, a.Region, a.PublishedAtUtc, a.Assets.Select(x => x.AssetId).ToHashSet());
+                var chosen = StoryRules.Choose(stories.Select(Candidate), facts);
+                var story = chosen is null ? null : stories.Single(s => s.Id == chosen.Id);
+                if (story is null)
+                {
+                    story = new NewsStory
+                    {
+                        Id = Guid.NewGuid(), LeadArticleId = a.Id, Headline = a.Headline, Scope = a.Scope, Category = a.Category, EventType = type,
+                        EventTypeBasis = a.EventTypeBasis, MarketArea = a.MarketArea, Region = a.Region,
+                        FirstPublishedAtUtc = a.PublishedAtUtc, LastPublishedAtUtc = a.PublishedAtUtc, RuleVersion = StoryRules.RuleVersion, CreatedAtUtc = now,
+                    };
+                    db.NewsStories.Add(story);
+                    stories.Add(story);
+                    keys[story.Id] = new HashSet<string>(StringComparer.Ordinal);
+                    publishers[story.Id] = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                }
+                else if (a.PublishedAtUtc < story.FirstPublishedAtUtc)
+                {
+                    // An earlier report becomes the lead: the story shows the first publication.
+                    story.LeadArticleId = a.Id;
+                    story.Headline = a.Headline;
+                }
+                story.Articles.Add(new NewsStoryArticle { StoryId = story.Id, ArticleId = a.Id, JoinedAtUtc = now });
+                foreach (var assetId in facts.AssetIds.Where(id => story.Assets.All(x => x.AssetId != id)))
+                    story.Assets.Add(new NewsStoryAsset { StoryId = story.Id, AssetId = assetId });
+                keys[story.Id].Add(a.HeadlineKey);
+                publishers[story.Id].Add(a.Publisher);
+                story.FirstPublishedAtUtc = story.ArticleCount == 0 ? a.PublishedAtUtc : Min(story.FirstPublishedAtUtc, a.PublishedAtUtc);
+                story.LastPublishedAtUtc = story.ArticleCount == 0 ? a.PublishedAtUtc : Max(story.LastPublishedAtUtc, a.PublishedAtUtc);
+                story.ArticleCount++;
+                story.PublisherCount = publishers[story.Id].Count;
+                story.HasOfficialSource |= a.IsOfficialSource;
+                story.IsSimulated |= a.IsSimulated;
+                story.BasePoints = StoryRules.BasePoints(story.EventType, story.Category, story.HasOfficialSource, story.PublisherCount);
+                story.UpdatedAtUtc = now;
+            }
+            try
+            {
+                await db.SaveChangesAsync(ct);
+            }
+            catch (DbUpdateException ex) when (db.IsUniqueConstraintViolation(ex))
+            {
+                db.ChangeTracker.Clear(); // nothing of this batch was written; the next run regroups what is still pending
+                logger.LogInformation("News grouping: another instance grouped the same articles first; retried on the next run.");
+                return 0;
+            }
+            return pending.Count;
+        }
+        finally
+        {
+            GroupingGate.Release();
+        }
+    }
+
+    private static DateTime Min(DateTime a, DateTime b) => a < b ? a : b;
+    private static DateTime Max(DateTime a, DateTime b) => a > b ? a : b;
 
     private static string CompanyKey(ICompanyNewsProvider p, string symbol) => $"{p.Descriptor.Name}:company:{symbol}";
 
@@ -336,10 +429,15 @@ public sealed class NewsService(
                 logger.LogWarning("News fetch {Key} failed: {Message}", key, ex.Message);
                 state.LastError = ex is OperationCanceledException ? "Timed out." : Truncate(ex.Message, 300);
             }
-            try { await db.SaveChangesAsync(ct); }
+            try
+            {
+                await db.SaveChangesAsync(ct);
+                if (state.LastArticleCount > 0) await GroupPendingAsync(ct); // new articles join or start stories right away
+            }
             catch (DbUpdateException ex) when (db.IsUniqueConstraintViolation(ex))
             {
                 // Another instance stored the same state/article concurrently; the next request reads its result.
+                db.ChangeTracker.Clear();
                 logger.LogInformation("News fetch {Key}: concurrent update ignored.", key);
             }
         }
@@ -424,6 +522,8 @@ public sealed class NewsService(
             existing[fingerprint] = article;
         }
         await db.NewsArticles.Where(a => a.PublishedAtUtc < oldest).ExecuteDeleteAsync(ct);
+        // A story whose every report is past the retention goes with them (its memberships went with the articles).
+        await db.NewsStories.Where(s => s.LastPublishedAtUtc < oldest).ExecuteDeleteAsync(ct);
         return valid.Count;
     }
 

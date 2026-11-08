@@ -50,6 +50,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<NewsArticle> NewsArticles => Set<NewsArticle>();
     public DbSet<NewsArticleAsset> NewsArticleAssets => Set<NewsArticleAsset>();
     public DbSet<NewsFetchState> NewsFetchStates => Set<NewsFetchState>();
+    public DbSet<NewsStory> NewsStories => Set<NewsStory>();
+    public DbSet<NewsStoryArticle> NewsStoryArticles => Set<NewsStoryArticle>();
+    public DbSet<NewsStoryAsset> NewsStoryAssets => Set<NewsStoryAsset>();
 
     /// <summary>ASP.NET Core data-protection keys (cookie and antiforgery encryption), shared across restarts and instances.</summary>
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
@@ -214,6 +217,37 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             e.HasIndex(x => x.HeadlineKey);
             e.HasIndex(x => x.PublishedAtUtc);
             e.HasMany(x => x.Assets).WithOne().HasForeignKey(x => x.ArticleId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<NewsStory>(e =>
+        {
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.Headline).HasMaxLength(500);
+            e.Property(x => x.Scope).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.Category).HasConversion<string>().HasMaxLength(30);
+            e.Property(x => x.EventType).HasConversion<string>().HasMaxLength(30);
+            e.Property(x => x.EventTypeBasis).HasMaxLength(200);
+            e.Property(x => x.MarketArea).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.Region).HasMaxLength(8);
+            // Feeds page newest first per scope (keyset on time + id).
+            e.HasIndex(x => new { x.Scope, x.LastPublishedAtUtc, x.Id });
+            e.HasIndex(x => new { x.LastPublishedAtUtc, x.Id });
+            e.HasMany(x => x.Articles).WithOne().HasForeignKey(x => x.StoryId).OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(x => x.Assets).WithOne().HasForeignKey(x => x.StoryId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<NewsStoryArticle>(e =>
+        {
+            e.HasKey(x => new { x.StoryId, x.ArticleId });
+            e.HasIndex(x => x.ArticleId).IsUnique();
+            e.HasOne(x => x.Article).WithMany().HasForeignKey(x => x.ArticleId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<NewsStoryAsset>(e =>
+        {
+            e.HasKey(x => new { x.StoryId, x.AssetId });
+            e.HasIndex(x => new { x.AssetId, x.StoryId });
+            e.HasOne(x => x.Asset).WithMany().HasForeignKey(x => x.AssetId).OnDelete(DeleteBehavior.Cascade);
         });
 
         b.Entity<NewsArticleAsset>(e =>

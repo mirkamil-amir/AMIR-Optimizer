@@ -68,6 +68,7 @@ public static class DependencyInjection
         services.AddScoped<StrategyComparisonRunner>();
         services.AddScoped<WatchlistService>();
         services.AddScoped<NewsService>();
+        services.AddScoped<WireFeedService>();
         return services;
     }
 }

@@ -12,8 +12,90 @@ namespace PortfolioOptimizer.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/v1")]
-public sealed class NewsController(NewsService news) : ControllerBase
+public sealed class NewsController(NewsService news, WireFeedService wire) : ControllerBase
 {
+    // ------------------------------------------------------------------ Wire feeds (stories; docs/financial-news.md › Wire feeds)
+
+    /// <summary>Latest: Medium and High attention stories of every kind, newest first, at most two per company per page.</summary>
+    /// <param name="hours">Time window back from now (default 48, max 2160).</param>
+    /// <param name="region">ISO country (US, DE, …) or EU.</param>
+    /// <param name="attention">Minimum attention: Medium (default) or High.</param>
+    /// <param name="search">Headline text, ticker or company name.</param>
+    /// <param name="cursor">NextCursor of the previous page.</param>
+    /// <param name="pageSize">Stories per page (1–50, default 20).</param>
+    /// <param name="ct">Cancellation token.</param>
+    [HttpGet("news/latest")]
+    [EnableRateLimiting(RateLimitPolicies.Quotes)]
+    [ProducesResponseType<WireFeedDto>(StatusCodes.Status200OK)]
+    public Task<WireFeedDto> Latest([FromQuery] int? hours, [FromQuery] string? region, [FromQuery] string? attention, [FromQuery] string? search,
+        [FromQuery] string? cursor, [FromQuery] int? pageSize, CancellationToken ct) =>
+        wire.LatestAsync(new WireQuery(hours, region, attention, search, cursor, pageSize), ct);
+
+    /// <summary>My Watchlist: stories linked to the caller's watched listings, and rate decisions of their currencies' central banks.</summary>
+    /// <param name="hours">Time window (default 168).</param>
+    /// <param name="region">ISO country or EU.</param>
+    /// <param name="attention">Minimum attention.</param>
+    /// <param name="search">Headline text, ticker or company name.</param>
+    /// <param name="eventType">Event type (Results, RateDecision, …).</param>
+    /// <param name="cursor">NextCursor of the previous page.</param>
+    /// <param name="pageSize">Stories per page (1–50, default 20).</param>
+    /// <param name="ct">Cancellation token.</param>
+    [HttpGet("news/watchlist")]
+    [EnableRateLimiting(RateLimitPolicies.Quotes)]
+    [ProducesResponseType<WireFeedDto>(StatusCodes.Status200OK)]
+    public Task<WireFeedDto> Watchlist([FromQuery] int? hours, [FromQuery] string? region, [FromQuery] string? attention, [FromQuery] string? search,
+        [FromQuery] string? eventType, [FromQuery] string? cursor, [FromQuery] int? pageSize, CancellationToken ct) =>
+        wire.WatchlistAsync(new WireQuery(hours, region, attention, search, cursor, pageSize, EventType: eventType), ct);
+
+    /// <summary>Company News: companies (curated, held, watched) with their newest stories, newest company first.</summary>
+    /// <param name="hours">Time window (default 168).</param>
+    /// <param name="region">ISO country of the listing.</param>
+    /// <param name="search">Ticker, company name or headline text.</param>
+    /// <param name="eventType">Event type (Results, MergerOrAcquisition, …).</param>
+    /// <param name="cursor">NextCursor of the previous page.</param>
+    /// <param name="pageSize">Companies per page (1–50, default 10).</param>
+    /// <param name="ct">Cancellation token.</param>
+    [HttpGet("news/companies")]
+    [EnableRateLimiting(RateLimitPolicies.Quotes)]
+    [ProducesResponseType<WireCompaniesDto>(StatusCodes.Status200OK)]
+    public Task<WireCompaniesDto> Companies([FromQuery] int? hours, [FromQuery] string? region, [FromQuery] string? search, [FromQuery] string? eventType,
+        [FromQuery] string? cursor, [FromQuery] int? pageSize, CancellationToken ct) =>
+        wire.CompaniesAsync(new WireQuery(hours, region, null, search, cursor, pageSize, EventType: eventType), ct);
+
+    /// <summary>Market-wide: market-level stories by area (Equities, Rates, Fx, Commodities, Volatility); with area one area, paged.</summary>
+    /// <param name="area">One market area; omit for all areas.</param>
+    /// <param name="hours">Time window (default 72).</param>
+    /// <param name="region">ISO country or EU.</param>
+    /// <param name="attention">Minimum attention.</param>
+    /// <param name="search">Headline text.</param>
+    /// <param name="cursor">NextCursor of the area's previous page (needs area).</param>
+    /// <param name="pageSize">Stories per area (default 5; 20 with area).</param>
+    /// <param name="ct">Cancellation token.</param>
+    [HttpGet("news/markets")]
+    [EnableRateLimiting(RateLimitPolicies.Quotes)]
+    [ProducesResponseType<WireMarketsDto>(StatusCodes.Status200OK)]
+    public Task<WireMarketsDto> Markets([FromQuery] string? area, [FromQuery] int? hours, [FromQuery] string? region, [FromQuery] string? attention,
+        [FromQuery] string? search, [FromQuery] string? cursor, [FromQuery] int? pageSize, CancellationToken ct) =>
+        wire.MarketsAsync(new WireQuery(hours, region, attention, search, cursor, pageSize, Area: area), ct);
+
+    /// <summary>Macroeconomic: central-bank and statistics releases and macro news, newest first.</summary>
+    /// <param name="hours">Time window (default 720).</param>
+    /// <param name="region">ISO country or EU.</param>
+    /// <param name="attention">Minimum attention.</param>
+    /// <param name="search">Headline text.</param>
+    /// <param name="eventType">Event type (RateDecision, InflationRelease, …).</param>
+    /// <param name="cursor">NextCursor of the previous page.</param>
+    /// <param name="pageSize">Stories per page (1–50, default 20).</param>
+    /// <param name="ct">Cancellation token.</param>
+    [HttpGet("news/macro")]
+    [EnableRateLimiting(RateLimitPolicies.Quotes)]
+    [ProducesResponseType<WireFeedDto>(StatusCodes.Status200OK)]
+    public Task<WireFeedDto> Macro([FromQuery] int? hours, [FromQuery] string? region, [FromQuery] string? attention, [FromQuery] string? search,
+        [FromQuery] string? eventType, [FromQuery] string? cursor, [FromQuery] int? pageSize, CancellationToken ct) =>
+        wire.MacroAsync(new WireQuery(hours, region, attention, search, cursor, pageSize, EventType: eventType), ct);
+
+    // ------------------------------------------------------------------ article feed (Wire page until the story feeds replace it)
+
     /// <summary>
     /// News feed, newest first, one row per story. Stale sources are re-fetched (at most once per refresh window, shared by
     /// all users) before the stored articles are returned.
