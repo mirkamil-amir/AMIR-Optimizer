@@ -49,6 +49,10 @@ public sealed class ApiFactory(string connectionString) : WebApplicationFactory<
         // News: deterministic simulated articles only (no network).
         builder.UseSetting("News:Yahoo:Enabled", "false");
         builder.UseSetting("News:OfficialFeeds:Enabled", "false");
+        builder.UseSetting("News:Statistics:Enabled", "false");
+        builder.UseSetting("News:SecEdgar:Enabled", "false");
+        // Tests call NewsService.RefreshScheduledAsync themselves; no timer runs in the test host.
+        builder.UseSetting("News:Schedule:Enabled", "false");
         builder.UseSetting("News:Mock:Enabled", "true");
         // Company descriptions: simulated provider only (no network).
         builder.UseSetting("MarketData:Profiles:Wikipedia:Enabled", "false");

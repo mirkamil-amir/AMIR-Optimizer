@@ -19,6 +19,41 @@ public enum NewsCategory
 public enum NewsScope { Company, Market, Macro }
 
 /// <summary>
+/// Finer event type (classification rules version 2, docs/financial-news.md › Taxonomy). Official sources set it from their
+/// own structure (SEC form and 8-K item, statistics release title); other articles from headline keywords (a heuristic).
+/// </summary>
+public enum NewsEventType
+{
+    General,
+    // Company
+    Results,
+    PeriodicReport,
+    Guidance,
+    DividendOrBuyback,
+    MergerOrAcquisition,
+    MaterialAgreement,
+    ManagementChange,
+    CapitalRaise,
+    LegalOrRegulatory,
+    Bankruptcy,
+    OtherFiling,
+    // Macro
+    RateDecision,
+    PolicyStatement,
+    InflationRelease,
+    LabourRelease,
+    GrowthRelease,
+    ActivityRelease,
+    TradeOrFiscalRelease,
+    OtherRelease,
+    // Market
+    MarketNews,
+}
+
+/// <summary>Part of the financial system a market-level article concerns, from the kind of instruments it is tagged with.</summary>
+public enum NewsMarketArea { Equities, Rates, Fx, Commodities, Volatility }
+
+/// <summary>
 /// A news item as delivered by a provider, normalized and shared by all users (never copied per user). Only metadata and
 /// the provider's short summary are stored – never full article text. <see cref="Fingerprint"/> (canonical URL hash) is
 /// unique; <see cref="HeadlineKey"/> groups syndicated copies of the same story.
@@ -48,6 +83,16 @@ public class NewsArticle
     /// <summary>Published by the issuing institution itself (central bank, statistics office).</summary>
     public bool IsOfficialSource { get; set; }
     public bool IsSimulated { get; set; }
+    /// <summary>Event type from classification rules version ≥ 2; null for articles classified before (version 1).</summary>
+    public NewsEventType? EventType { get; set; }
+    /// <summary>Why the event type was assigned (source structure or matched term).</summary>
+    public string? EventTypeBasis { get; set; }
+    /// <summary>Market area for market-level articles (all tags are index, rate, currency, commodity or volatility instruments).</summary>
+    public NewsMarketArea? MarketArea { get; set; }
+    /// <summary>Version of the classification rules that set Category, Scope, EventType and MarketArea (1 = before 2026-11).</summary>
+    public int RuleVersion { get; set; } = 1;
+    /// <summary>When Matrix normalized and classified the article (≥ retrieval; publication time is never replaced).</summary>
+    public DateTime? ProcessedAtUtc { get; set; }
     public List<NewsArticleAsset> Assets { get; set; } = [];
 }
 

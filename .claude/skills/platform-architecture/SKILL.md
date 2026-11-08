@@ -39,7 +39,8 @@ layer** (no Redis, no response cache) – fix queries first; measure with `PERF_
 ## Background work
 `src/PortfolioOptimizer.Infrastructure/Jobs/BackgroundJobWorker.cs` with `ChannelBackgroundJobQueue.cs`: one worker,
 sequential; on start, `Running` jobs are marked failed and `Queued` jobs re-enqueued. Hosted services also run
-`ScheduledMarketDataRefresh` and the news refresh. Jobs must load their entities owner-scoped and be safe to re-run.
+`ScheduledMarketDataRefresh`, the news refresh (page-view) and `NewsScheduleWorker` (all feeds + held/watched/curated
+companies on a timer, `News:Schedule`; off in tests). Jobs must load their entities owner-scoped and be safe to re-run.
 
 ## Observability and configuration
 `ILogger` with `RequestLoggingMiddleware.cs`; `/health` (liveness) and `/health/ready` (database) in `Program.cs`; no

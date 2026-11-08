@@ -19,6 +19,8 @@ public sealed class YahooNewsOptions
     public int MaxArticles { get; set; } = 20;
     public int MinRequestIntervalMs { get; set; } = 1000;
     public int TimeoutSeconds { get; set; } = 15;
+    /// <summary>Also query news for benchmark indexes, major currency pairs, commodities and volatility (Market-wide feed).</summary>
+    public bool MarketFeeds { get; set; } = true;
 }
 
 public sealed class OfficialFeedOptions
@@ -42,24 +44,65 @@ public sealed class MockNewsOptions
 /// Company news from Yahoo Finance's search endpoint (<c>/v1/finance/search</c>, unofficial, personal non-commercial use).
 /// The query is the ticker for US listings and the company name elsewhere (the endpoint does not resolve suffixed
 /// tickers such as 7203.T); results are returned with the provider's <c>relatedTickers</c>, which are the only basis for
-/// linking an article to a listing.
+/// linking an article to a listing. The same endpoint, queried with an index, currency-pair or futures symbol, feeds
+/// Market-wide news (<see cref="Feeds"/>); one client, so both share Yahoo's request interval.
 /// </summary>
-public sealed class YahooNewsProvider(HttpClient http, IOptions<YahooNewsOptions> options) : ICompanyNewsProvider
+public sealed class YahooNewsProvider(HttpClient http, IOptions<YahooNewsOptions> options) : ICompanyNewsProvider, INewsFeedProvider
 {
     public const string Name = "YahooNews";
 
-    public NewsProviderDescriptor Descriptor { get; } = new(Name, "Yahoo Finance news search (unofficial)", options.Value.Enabled, false,
-        "Company news for US and international listings as tagged by Yahoo; coverage outside the US is sparse.",
+    private const string Terms =
         "Unofficial endpoint; personal, non-commercial use only per Yahoo terms. Headlines and links only; summaries are not provided by this endpoint. " +
-        "Thumbnail display rights belong to the publishers and were not verified.");
+        "Thumbnail display rights belong to the publishers and were not verified.";
+
+    public NewsProviderDescriptor Descriptor { get; } = new(Name, "Yahoo Finance news search (unofficial)", options.Value.Enabled, false,
+        "Company news for US and international listings as tagged by Yahoo; coverage outside the US is sparse.", Terms);
+
+    /// <summary>Market instruments queried for Market-wide news; the key is the Yahoo symbol, the region the market it belongs to.</summary>
+    public static readonly IReadOnlyList<NewsFeed> MarketInstruments =
+    [
+        new("^GSPC", "S&P 500", "", "US", NewsCategory.MarketIndex, false, Terms),
+        new("^IXIC", "Nasdaq Composite", "", "US", NewsCategory.MarketIndex, false, Terms),
+        new("^DJI", "Dow Jones Industrial Average", "", "US", NewsCategory.MarketIndex, false, Terms),
+        new("^STOXX50E", "EURO STOXX 50", "", "EU", NewsCategory.MarketIndex, false, Terms),
+        new("^GDAXI", "DAX", "", "DE", NewsCategory.MarketIndex, false, Terms),
+        new("^FTSE", "FTSE 100", "", "GB", NewsCategory.MarketIndex, false, Terms),
+        new("^N225", "Nikkei 225", "", "JP", NewsCategory.MarketIndex, false, Terms),
+        new("^HSI", "Hang Seng", "", "HK", NewsCategory.MarketIndex, false, Terms),
+        new("^TNX", "US 10-year Treasury yield", "", "US", NewsCategory.CurrenciesBonds, false, Terms),
+        new("EURUSD=X", "EUR/USD", "", "EU", NewsCategory.CurrenciesBonds, false, Terms),
+        new("USDJPY=X", "USD/JPY", "", "JP", NewsCategory.CurrenciesBonds, false, Terms),
+        new("GBPUSD=X", "GBP/USD", "", "GB", NewsCategory.CurrenciesBonds, false, Terms),
+        new("GC=F", "Gold futures", "", "", NewsCategory.CommoditiesEnergy, false, Terms),
+        new("CL=F", "WTI crude oil futures", "", "", NewsCategory.CommoditiesEnergy, false, Terms),
+        new("BZ=F", "Brent crude oil futures", "", "", NewsCategory.CommoditiesEnergy, false, Terms),
+        new("^VIX", "CBOE Volatility Index", "", "US", NewsCategory.MarketIndex, false, Terms),
+    ];
+
+    public IReadOnlyList<NewsFeed> Feeds { get; } = options.Value.MarketFeeds ? MarketInstruments : [];
 
     public async Task<IReadOnlyList<ProviderArticle>> GetCompanyNewsAsync(string symbol, string? companyName, CancellationToken ct)
     {
         var venue = Markets.ForSymbol(symbol);
         var term = venue.Suffix.Length == 0 || string.IsNullOrWhiteSpace(companyName) ? SymbolMapper.ForYahoo(symbol) : companyName;
+        return await SearchAsync(term, symbol, ct);
+    }
+
+    /// <summary>
+    /// News for one market instrument. The region of the instrument's market is kept only when Yahoo tagged the article with
+    /// that instrument; the feed's category is never forced on the articles (they are classified like any other).
+    /// </summary>
+    public async Task<IReadOnlyList<ProviderArticle>> GetFeedAsync(NewsFeed feed, CancellationToken ct)
+    {
+        var items = await SearchAsync(feed.Key, feed.Key, ct);
+        return items.Select(i => feed.Region.Length > 0 && i.RelatedSymbols.Contains(feed.Key, StringComparer.OrdinalIgnoreCase) ? i with { Region = feed.Region } : i).ToList();
+    }
+
+    private async Task<IReadOnlyList<ProviderArticle>> SearchAsync(string term, string label, CancellationToken ct)
+    {
         var url = $"/v1/finance/search?q={Uri.EscapeDataString(term)}&quotesCount=0&newsCount={options.Value.MaxArticles}&enableFuzzyQuery=false";
         using var response = await http.GetAsync(url, ct);
-        if (!response.IsSuccessStatusCode) throw new NewsProviderException(Name, $"HTTP {(int)response.StatusCode} for {symbol}.");
+        if (!response.IsSuccessStatusCode) throw new NewsProviderException(Name, $"HTTP {(int)response.StatusCode} for {label}.");
         await using var stream = await response.Content.ReadAsStreamAsync(ct);
         try
         {
@@ -169,7 +212,13 @@ public sealed class OfficialFeedProvider(HttpClient http, IOptions<OfficialFeedO
     private static readonly string[] Months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
     /// <summary>RFC 822 dates as used by RSS ("Tue, 13 Oct 2026 18:00:00 GMT", "Wed, 14 Oct 2026 02:00:00 +0200"); unknown zone names fail.</summary>
-    public static bool TryParseDate(string? value, out DateTime utc)
+    public static bool TryParseDate(string? value, out DateTime utc) => TryParseDate(value, null, out utc);
+
+    /// <summary>
+    /// As above; <paramref name="zones"/> resolves zone abbreviations that are unambiguous for one feed only (e.g. EST/EDT
+    /// for a US federal agency). Without a map, abbreviations are rejected rather than guessed.
+    /// </summary>
+    public static bool TryParseDate(string? value, IReadOnlyDictionary<string, TimeSpan>? zones, out DateTime utc)
     {
         utc = default;
         var m = value is null ? null : Rfc822.Match(value.Trim());
@@ -184,6 +233,7 @@ public sealed class OfficialFeedProvider(HttpClient http, IOptions<OfficialFeedO
             offset = new TimeSpan(int.Parse(zone[1..3], CultureInfo.InvariantCulture), int.Parse(zone[3..5], CultureInfo.InvariantCulture), 0);
             if (zone[0] == '-') offset = -offset;
         }
+        else if (zones is not null && zones.TryGetValue(zone, out var known)) offset = known;
         else return false; // ambiguous zone abbreviations (EST, CET, ...) are rejected rather than guessed
         try
         {

@@ -1,7 +1,10 @@
 using System.Net;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using PortfolioOptimizer.Application.Abstractions;
 using PortfolioOptimizer.Application.Dtos;
+using PortfolioOptimizer.Application.News;
+using PortfolioOptimizer.Domain;
 
 namespace PortfolioOptimizer.IntegrationTests;
 
@@ -109,6 +112,40 @@ public sealed class NewsTests(NewsTests.Shared shared) : IClassFixture<NewsTests
     {
         using var anonymous = _factory.CreateSession();
         Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync("/api/v1/news")).StatusCode);
+    }
+
+    [Fact]
+    public async Task ScheduledRun_FetchesAnyUsersWatchedListings_AndClassifiesWithRuleVersion2()
+    {
+        // Another user's watchlist puts SPY into the scheduled set; nobody opens a news page for it.
+        var (other, _) = await _factory.CreateApprovedUserAsync(_admin);
+        using (other)
+            (await other.PostJsonAsync("/api/v1/watchlist", new AddWatchlistEntryRequest { Symbol = "SPY" })).EnsureStatus(HttpStatusCode.Created);
+
+        using var scope = _factory.Services.CreateScope();
+        var run = await scope.ServiceProvider.GetRequiredService<NewsService>().RefreshScheduledAsync(CancellationToken.None);
+        Assert.True(run.Companies >= 1);
+
+        var db = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
+        Assert.True(await db.NewsFetchStates.AnyAsync(s => s.Key == "MockNews:company:SPY" && s.LastSuccessUtc != null));
+        Assert.True(await db.NewsFetchStates.AnyAsync(s => s.Key == "MockNews:macro")); // feeds are part of every run
+
+        var spy = await db.NewsArticles.AsNoTracking().Where(a => a.Assets.Any(x => x.Asset!.Symbol == "SPY")).ToListAsync();
+        Assert.NotEmpty(spy);
+        Assert.All(spy, a =>
+        {
+            Assert.Equal(NewsTaxonomy.RuleVersion, a.RuleVersion);
+            Assert.Equal(NewsScope.Market, a.Scope);                 // tagged only with a catalogue ETF → market-level
+            Assert.Equal(NewsEventType.MarketNews, a.EventType);
+            Assert.Equal(NewsMarketArea.Equities, a.MarketArea);
+            Assert.True(a.ProcessedAtUtc >= a.RetrievedAtUtc.AddSeconds(-1));
+            Assert.True(a.PublishedAtUtc < a.RetrievedAtUtc);       // publication time is the provider's, never the fetch time
+        });
+
+        // A second run inside the company refresh interval fetches nothing again.
+        var before = (await db.NewsFetchStates.AsNoTracking().SingleAsync(s => s.Key == "MockNews:company:SPY")).LastAttemptUtc;
+        await scope.ServiceProvider.GetRequiredService<NewsService>().RefreshScheduledAsync(CancellationToken.None);
+        Assert.Equal(before, (await db.NewsFetchStates.AsNoTracking().SingleAsync(s => s.Key == "MockNews:company:SPY")).LastAttemptUtc);
     }
 }
 

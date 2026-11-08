@@ -1139,6 +1139,14 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<string>("EventType")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("EventTypeBasis")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.Property<string>("Fingerprint")
                         .IsRequired()
                         .HasMaxLength(64)
@@ -1164,6 +1172,13 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                     b.Property<bool>("IsSimulated")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("MarketArea")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime?>("ProcessedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Provider")
                         .IsRequired()
                         .HasMaxLength(40)
@@ -1187,6 +1202,11 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
 
                     b.Property<DateTime>("RetrievedAtUtc")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("RuleVersion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
 
                     b.Property<string>("Scope")
                         .IsRequired()

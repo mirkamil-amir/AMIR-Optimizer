@@ -60,9 +60,17 @@
 ## News
 - Company news comes from Yahoo's unofficial search (personal, non-commercial use) and is linked to stocks only via
   Yahoo's own ticker tags: non-US coverage is sparse and untagged articles are missing. No summaries from that source.
-- Official feeds cover the Fed, ECB, Bank of England and Bank of Japan only; no exchange/issuer disclosure feeds,
-  statistics offices or licensed newswires. Alpha Vantage news is premium for the configured key.
-- Categories are keyword rules (unevaluated); the relevance indicator is unvalidated and never a price prediction.
+- Official feeds: the Fed, ECB, Bank of England and Bank of Japan; statistics releases of BEA, ONS (economic titles only)
+  and Eurostat. Not covered: BLS (blocks automated clients), Japan's statistics bureau (no feed), non-US issuer
+  disclosures, licensed newswires. Alpha Vantage news is premium for the configured key.
+- SEC EDGAR filings are off until the operator's contact is configured and have not been checked against the live
+  service yet. Release figures (actual, previous) are not extracted; no source provides forecasts.
+- Yahoo tags many single-stock articles with an index as well; such articles count as company news, so the Market-wide
+  supply depends on articles tagged only with market instruments.
+- The scheduled company set covers held, watched and curated listings only (curated list empty until chosen); Wire
+  still uses the page-view queries until the feed contracts (Wire plan, PR 2) replace them.
+- Categories and event types from keywords are unevaluated; the relevance indicator is unvalidated and never a price
+  prediction. Articles stored before 2026-11-08 keep rules version 1 (no event type).
 - Images are off by default (rights unverified). No notifications.
 - Event comparisons use daily closes, regular session hours and no holiday calendar; they cannot show causation.
 
