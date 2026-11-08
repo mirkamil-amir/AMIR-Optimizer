@@ -9,7 +9,7 @@
 | `db` | `postgres:17-alpine` | Data in volume `pgdata`; port bound to `127.0.0.1` only. `deploy/postgres/init/01-app-role.sh` creates the least-privilege application role on first initialization. |
 | `migrate` | API image, command `migrate` | Applies EF Core migrations as the **owner** role, then exits. |
 | `api` | `src/PortfolioOptimizer.Api/Dockerfile` | Runs as non-root user `app`, connects as the **application** role, `Database__MigrateOnStartup=false`. Model artifacts in volume `model-artifacts` (`/app/artifacts`). |
-| `web` | `frontend/portfolio-dashboard/Dockerfile` | nginx serving the SPA with security headers and CSP; proxies `/api`, `/health`, `/swagger` to the API. |
+| `web` | `frontend/portfolio-dashboard/Dockerfile` | nginx serving the SPA with security headers and CSP; proxies `/api`, `/health`, `/swagger` to the API, resolving `api` per request through the container DNS (`nginx.conf` is a template; `NGINX_LOCAL_RESOLVERS`), so an API restart with a new address needs no web restart. |
 
 ```bash
 cp .env.example .env    # replace every placeholder; use long random passwords
