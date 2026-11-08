@@ -1445,6 +1445,32 @@ export interface WireQuery {
   eventType?: string
 }
 
+/** A fact from the current valuation: a holding's weight or the portfolio's share in a currency (fraction; null if not valued). */
+export interface WireExposure {
+  kind: 'Holding' | 'Currency'
+  label: string
+  weight: number | null
+  basis: string
+}
+
+export interface PortfolioNewsItem {
+  story: WireStory
+  exposure: WireExposure[]
+}
+
+export interface PortfolioNews {
+  portfolioId: string
+  currency: string
+  items: PortfolioNewsItem[]
+  nextCursor: string | null
+  asOfUtc: string
+  windowHours: number
+  sources: WireSourceStatus[]
+  notes: string[]
+  problems: string[]
+  refreshing: boolean
+}
+
 /** Response type of each Wire feed. */
 export interface WireResponses {
   latest: WireFeed

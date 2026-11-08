@@ -7,7 +7,7 @@ import type {
   Transaction, UserAccountStatus, UserSummary, MlCatalog, MlExperiment, MlExperimentRequest, MlExperimentSummary, MlBacktest,
   MlPredictionSet, StrategyComparison, StrategyComparisonRequest, StrategyComparisonSummary, Market, QuoteRefreshRun, QuoteRefreshResult,
   AdminOverview, HistoryRange, PriceHistory, Watchlist, WatchlistAddResult, NewsFeed, NewsFilters, EventComparison, RealityCheck, CompanyProfile,
-  WireFeedName, WireQuery, WireResponses, NewsSourceStatus,
+  WireFeedName, WireQuery, WireResponses, NewsSourceStatus, PortfolioNews,
   FxInfo, FxRate, FxHistory, FxBoard, ResearchSession, ResearchSessionSummary, UpdateBriefRequest, HypothesisComparison, CompanyContext, RefinementChange,
   PortfolioOverview, PortfolioTransaction, RecordTransactionRequest, MarketDataSummary, DataCheck, DataCheckRequest, DataDownload,
   PortfolioStrategy, StrategyBacktestRequest,
@@ -891,6 +891,18 @@ export const useWireFeed = <F extends WireFeedName>(feed: F, query: WireQuery = 
     enabled,
   })
 }
+
+/** News about one portfolio's holdings and currencies, with each holding's weight from the current valuation. */
+export const usePortfolioNews = (portfolioId: string | undefined, hours: number, cursor?: string) =>
+  useQuery({
+    queryKey: ['portfolio-news', portfolioId ?? '', hours, cursor ?? ''] as const,
+    queryFn: ({ signal }) =>
+      api.get<PortfolioNews>(`${V1}/portfolios/${portfolioId}/news?hours=${hours}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`, signal),
+    enabled: !!portfolioId,
+    placeholderData: keepPreviousData,
+    staleTime: 2 * 60_000,
+    refetchInterval: (q) => (q.state.data?.refreshing ? 5000 : false),
+  })
 
 /** Configured news sources with provider names, terms and fetch status – shown to administrators only. */
 export const useNewsSources = (enabled: boolean) =>

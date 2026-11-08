@@ -105,6 +105,13 @@ test('two independent portfolios: create, optimize, record, switch, reload, isol
   await expect(page.getByRole('row', { name: /AAPL/ }).first()).toBeVisible()
   expect(await held(a)).toEqual(['AAPL'])
 
+  // News about the holdings, after them: each story states the holding's weight (simulated articles are 12 and 40 days old).
+  const holdingNews = page.getByRole('region', { name: 'News about your holdings', exact: true })
+  await expect(holdingNews).toBeVisible()
+  await holdingNews.getByRole('button', { name: '90 days' }).click()
+  await expect(holdingNews.getByRole('article', { name: /SIMULATED: Apple/ }).first()).toBeVisible({ timeout: 30_000 })
+  await expect(holdingNews.getByText(/AAPL is \d+\.\d% of this portfolio/).first()).toBeVisible()
+
   // Invalid bookings are explained and change nothing.
   await page.getByRole('button', { name: 'Record transaction' }).click()
   await dialog.getByRole('combobox', { name: 'Transaction type' }).click()
@@ -128,6 +135,7 @@ test('two independent portfolios: create, optimize, record, switch, reload, isol
   await expect(page.getByRole('region', { name: 'Holdings', exact: true })).toBeVisible()
   await expect(page.getByRole('row', { name: /AAPL/ })).toHaveCount(0)
   expect(await held(b)).toEqual([])
+  await expect(page.getByRole('region', { name: 'News about your holdings', exact: true })).toHaveCount(0) // nothing held, nothing shown
   await sections(page).getByRole('link', { name: 'Solver', exact: true }).click()
   await expect(page.getByText('No optimization yet')).toBeVisible()
 

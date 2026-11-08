@@ -72,6 +72,28 @@ public sealed record WireCompaniesDto(
     IReadOnlyList<string> Notes,
     bool Refreshing);
 
+/// <summary>
+/// What a story concerns in one portfolio, as a fact from the current valuation: a holding's weight (market value ÷ total
+/// value, cash included) or the portfolio's share in a currency (positions and cash in it ÷ total value). Weight is a
+/// fraction; null when the portfolio cannot be valued (see the response's Problems). Never a predicted effect.
+/// </summary>
+public sealed record WireExposureDto(string Kind, string Label, double? Weight, string Basis);
+
+public sealed record PortfolioNewsItemDto(WireStoryDto Story, IReadOnlyList<WireExposureDto> Exposure);
+
+/// <summary>News about one portfolio's holdings and currencies, newest first, with the exposure of each story.</summary>
+public sealed record PortfolioNewsDto(
+    Guid PortfolioId,
+    string Currency,
+    IReadOnlyList<PortfolioNewsItemDto> Items,
+    string? NextCursor,
+    DateTime AsOfUtc,
+    int WindowHours,
+    IReadOnlyList<WireSourceStatusDto> Sources,
+    IReadOnlyList<string> Notes,
+    IReadOnlyList<string> Problems,
+    bool Refreshing);
+
 /// <summary>One market area of Market-wide (Equities, Rates, Fx, Commodities, Volatility).</summary>
 public sealed record WireMarketSectionDto(string Area, string Label, int StoryCount, IReadOnlyList<WireStoryDto> Stories, string? NextCursor);
 

@@ -94,7 +94,24 @@ public sealed class NewsController(NewsService news, WireFeedService wire) : Con
         [FromQuery] string? eventType, [FromQuery] string? cursor, [FromQuery] int? pageSize, CancellationToken ct) =>
         wire.MacroAsync(new WireQuery(hours, region, attention, search, cursor, pageSize, EventType: eventType), ct);
 
-    // ------------------------------------------------------------------ article feed (Wire page until the story feeds replace it)
+    /// <summary>
+    /// News about one of the caller's portfolios: stories linked to its holdings and official rate decisions for the
+    /// currencies it holds, each with the holding's weight or the currency's share from the current valuation. Another
+    /// user's portfolio → 404.
+    /// </summary>
+    /// <param name="id">Portfolio id.</param>
+    /// <param name="hours">Time window (default 168).</param>
+    /// <param name="cursor">NextCursor of the previous page.</param>
+    /// <param name="pageSize">Stories per page (1–50, default 10).</param>
+    /// <param name="ct">Cancellation token.</param>
+    [HttpGet("portfolios/{id:guid}/news")]
+    [EnableRateLimiting(RateLimitPolicies.Quotes)]
+    [ProducesResponseType<PortfolioNewsDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public Task<PortfolioNewsDto> PortfolioNews(Guid id, [FromQuery] int? hours, [FromQuery] string? cursor, [FromQuery] int? pageSize, CancellationToken ct) =>
+        wire.PortfolioAsync(id, new WireQuery(hours, Cursor: cursor, PageSize: pageSize), ct);
+
+    // ------------------------------------------------------------------ article feed (stock pages)
 
     /// <summary>
     /// News feed, newest first, one row per story. Stale sources are re-fetched (at most once per refresh window, shared by

@@ -164,6 +164,16 @@ the event comparison for linked listings. Company news shows one block per compa
 with a link to the paged area. Side panels: freshness per source group and five benchmarks with their stored last close,
 change, kind and date (`useStocksBySymbols`; never called live). Text only, no icons; dense lists on `.map-surface`.
 
+**News about your holdings** (portfolio Overview, `GET /api/v1/portfolios/{id}/news`, AMIR-17): the portfolio is loaded
+owner-scoped (another user's portfolio → 404). Stories linked to a listing the portfolio holds, and official rate
+decisions of the central bank of a currency it holds, newest first (default 7 days; 30 and 90 on the page). Each story
+carries its **exposure** as facts from `PortfolioValuationService` – the holding's weight (market value ÷ total value
+including cash, the Overview's basis, with the price date) or the portfolio's share in the currency (positions and cash
+in it ÷ total value) – and a story linked to a holding is High attention. Missing prices or rates leave the weight
+`null` and list the valuation problems; nothing is estimated. No predicted effect is shown; Compare opens the event and
+price-movement comparison with its "not evidence of causation" note. The section appears once the portfolio holds a
+position; it requests the held companies' due news like the feeds.
+
 **Visibility (privacy):** with `News:Feeds:HideOthersInterests` (default true) a story is shown only when it has no
 listing, or one of its listings is curated, an index or benchmark, or held or watched by the caller – otherwise stories
 fetched because another user watches a stock would reveal what they follow. Watchlist and holdings are read for the

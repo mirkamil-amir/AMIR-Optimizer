@@ -196,6 +196,55 @@ public sealed class WireFeedTests(WireFeedTests.Shared shared) : IClassFixture<W
     }
 
     [Fact]
+    public async Task PortfolioNews_IsItsHoldingsAndCurrencies_WithWeightsFromTheValuation()
+    {
+        // A USD portfolio holding AAPL: the five AAPL stories, each with AAPL's weight; no ECB decision (no EUR exposure).
+        var usd = await (await Alice.PostJsonAsync("/api/v1/portfolios", new CreatePortfolioRequest
+            { Name = "News USD", BaseCurrency = "USD", InitialInvestment = 10_000m, Universe = ["AAPL", "MSFT"] })).ReadAsync<PortfolioDto>();
+        await Book(usd.Id, "AAPL");
+        var news = await Get<PortfolioNewsDto>(Alice, $"/api/v1/portfolios/{usd.Id}/news");
+        Assert.Equal(5, news.Items.Count);
+        Assert.All(news.Items, i =>
+        {
+            Assert.Contains(i.Story.Assets, a => a.Symbol == "AAPL" && a.Held);
+            var holding = Assert.Single(i.Exposure);
+            Assert.Equal(("Holding", "AAPL"), (holding.Kind, holding.Label));
+            Assert.InRange(holding.Weight!.Value, 0.0001, 0.9999);          // part of a portfolio that still holds cash
+            Assert.Contains("÷ total value incl. cash", holding.Basis);
+            Assert.StartsWith("AAPL is ", Assert.Single(i.Story.Why));
+            Assert.Equal("High", i.Story.Attention.Level);
+        });
+        Assert.DoesNotContain(news.Items, i => i.Story.Headline.StartsWith("ECB"));
+        Assert.DoesNotContain(news.Items, i => i.Story.Assets.Any(a => a.Symbol == "MSFT")); // in the universe, not held
+
+        // A EUR portfolio holding SAP.DE: no SAP stories, but the ECB rate decision with the EUR share.
+        var eur = await (await Alice.PostJsonAsync("/api/v1/portfolios", new CreatePortfolioRequest
+            { Name = "News EUR", BaseCurrency = "EUR", InitialInvestment = 10_000m, Universe = ["SAP.DE"] })).ReadAsync<PortfolioDto>();
+        await Book(eur.Id, "SAP.DE");
+        var euro = Assert.Single((await Get<PortfolioNewsDto>(Alice, $"/api/v1/portfolios/{eur.Id}/news")).Items);
+        Assert.Equal("ECB decides on key interest rates", euro.Story.Headline);
+        var share = Assert.Single(euro.Exposure);
+        Assert.Equal(("Currency", "EUR", 1.0), (share.Kind, share.Label, Math.Round(share.Weight!.Value, 6))); // SAP.DE and cash are all EUR
+
+        // Bob cannot read Alice's portfolio news; nobody signed out can.
+        Assert.Equal(HttpStatusCode.NotFound, (await Bob.GetAsync($"/api/v1/portfolios/{usd.Id}/news")).StatusCode);
+        using var anonymous = shared.Factory.CreateSession();
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync($"/api/v1/portfolios/{usd.Id}/news")).StatusCode);
+
+        async Task Book(Guid portfolioId, string symbol)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/portfolios/{portfolioId}/journal")
+            {
+                Content = new StringContent(System.Text.Json.JsonSerializer.Serialize(
+                    new RecordTransactionRequest { Type = PortfolioTransactionType.Buy, Symbol = symbol, Quantity = 5, Price = 100m }, ApiFactory.Json),
+                    System.Text.Encoding.UTF8, "application/json"),
+            };
+            request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString());
+            (await Alice.SendAsync(request)).EnsureStatus(HttpStatusCode.Created);
+        }
+    }
+
+    [Fact]
     public async Task Feeds_RequireAnApprovedAccount_AndReportSourceFreshness()
     {
         using var anonymous = shared.Factory.CreateSession();

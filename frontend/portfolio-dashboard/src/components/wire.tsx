@@ -2,12 +2,13 @@ import { useState } from 'react'
 import { Link } from 'react-router'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { InfoTip } from '@/components/common'
+import { EmptyState, ErrorState, InfoTip, LoadingBlock, ResultSection, Warnings } from '@/components/common'
+import { MatrixLoader } from '@/components/matrix-loader'
 import { EventComparisonDialog } from '@/components/news'
 import { QuoteCell } from '@/components/stock-selection'
 import { dateTime } from '@/lib/format'
 import { publishedLabel, safeExternalUrl } from '@/lib/news'
-import { useNewsSources, useStocksBySymbols } from '@/lib/queries'
+import { useNewsSources, usePortfolioNews, useStocksBySymbols } from '@/lib/queries'
 import type { WireCompany, WireMarketSection, WireSourceStatus, WireStory } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { regionLabel, sourcesLabel, utcTime, wireBenchmarks } from '@/lib/wire'
@@ -159,6 +160,51 @@ export function MarketSection({ section, onMore }: { section: WireMarketSection;
         ? <p className="map-surface rounded-xl border px-3 py-2 text-xs text-muted-foreground">No {section.label.toLowerCase()} stories in this window.</p>
         : <StoryList stories={section.stories} label={`${section.label} stories`} />}
     </section>
+  )
+}
+
+/**
+ * Overview: news about this portfolio's holdings and currencies. "Why you see this" states each holding's weight (or the
+ * currency's share) from the current valuation – a fact, never a predicted effect.
+ */
+export function PortfolioNewsSection({ portfolioId }: { portfolioId: string }) {
+  const [hours, setHours] = useState(168)
+  const [cursors, setCursors] = useState<string[]>([])
+  const cursor = cursors.at(-1)
+  const news = usePortfolioNews(portfolioId, hours, cursor)
+  const data = news.data
+  const choose = (h: number) => { setHours(h); setCursors([]) }
+  return (
+    <ResultSection title="News about your holdings"
+      hint="Stories linked to the stocks this portfolio holds, and rate decisions for the currencies it holds. The weight next to each is from the current valuation; Compare shows the price movement around a story, which is not evidence that the news caused it.">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-1 rounded-lg border bg-background p-0.5" role="group" aria-label="News window">
+          {[[168, '7 days'], [720, '30 days'], [2160, '90 days']].map(([h, label]) => (
+            <Button key={h} size="sm" variant={hours === h ? 'secondary' : 'ghost'} aria-pressed={hours === h} onClick={() => choose(h as number)}>{label}</Button>
+          ))}
+        </div>
+        <Button variant="link" size="sm" render={<Link to="/news?view=watchlist" />}>Open Wire</Button>
+      </div>
+      {news.error ? <ErrorState error={news.error} onRetry={() => news.refetch()} /> : !data ? <LoadingBlock height="h-32" /> : (
+        <div className="space-y-2">
+          {data.refreshing && (
+            <p role="status" className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <MatrixLoader className="size-3.5" aria-hidden /> Updating news sources… stored stories are shown meanwhile.
+            </p>
+          )}
+          {data.problems.length > 0 && <Warnings items={data.problems} title="Weights not available for every holding" />}
+          {data.items.length === 0
+            ? <EmptyState title="No news about your holdings in this window" description={data.notes[0]} />
+            : <StoryList stories={data.items.map((i) => i.story)} label="News about your holdings" showWhy />}
+          {(cursors.length > 0 || data.nextCursor) && (
+            <div className="flex justify-between pt-1">
+              <Button size="sm" variant="outline" disabled={cursors.length === 0} onClick={() => setCursors([])}>Newest stories</Button>
+              <Button size="sm" variant="outline" disabled={!data.nextCursor} onClick={() => data.nextCursor && setCursors([...cursors, data.nextCursor])}>Older stories</Button>
+            </div>
+          )}
+        </div>
+      )}
+    </ResultSection>
   )
 }
 
