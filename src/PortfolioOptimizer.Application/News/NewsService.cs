@@ -234,18 +234,18 @@ public sealed class NewsService(
         var states = (await db.NewsFetchStates.AsNoTracking().ToListAsync(ct)).ToDictionary(s => s.Key);
         var feedKeys = feedProviders.Where(p => p.Descriptor.IsConfigured).SelectMany(p => p.Feeds.Select(f => FeedKey(p, f))).ToList();
         var configuredCompanyProviders = companyProviders.Where(p => p.Descriptor.IsConfigured).ToList();
-        string CompanyKey(ICompanyNewsProvider p, string symbol) => $"{p.Descriptor.Name}:company:{symbol}";
-        DateTime LastAttempt(string symbol) => configuredCompanyProviders.Select(p => states.GetValueOrDefault(CompanyKey(p, symbol))?.LastAttemptUtc ?? DateTime.MinValue)
+        IEnumerable<ICompanyNewsProvider> For(string symbol) => configuredCompanyProviders.Where(p => p.Supports(symbol));
+        DateTime LastAttempt(string symbol) => For(symbol).Select(p => states.GetValueOrDefault(CompanyKey(p, symbol))?.LastAttemptUtc ?? DateTime.MinValue)
             .DefaultIfEmpty(DateTime.MinValue).Min();
         // A large watchlist refreshes only its stalest few per request, so it never causes request bursts.
         var chosen = stalestOnly ? companies.OrderBy(c => LastAttempt(c.Symbol)).Take(Options.WatchlistRefreshLimit).ToList() : companies.ToList();
 
         if (feedKeys.Any(k => !states.ContainsKey(k))) await RefreshFeedsAsync(ct);
-        foreach (var c in chosen.Where(c => configuredCompanyProviders.Any(p => !states.ContainsKey(CompanyKey(p, c.Symbol)))))
-            await RefreshCompanyAsync(c.Symbol, c.Name, ct);
+        foreach (var c in chosen.Where(c => For(c.Symbol).Any(p => !states.ContainsKey(CompanyKey(p, c.Symbol)))))
+            await RefreshCompanyAsync(c.Symbol, c.Name, Options.RefreshMinutes, ct);
 
         var feedsDue = feedKeys.Any(k => states.TryGetValue(k, out var s) && IsDue(s));
-        var companiesDue = chosen.Where(c => configuredCompanyProviders.Any(p => states.TryGetValue(CompanyKey(p, c.Symbol), out var s) && IsDue(s))).ToList();
+        var companiesDue = chosen.Where(c => For(c.Symbol).Any(p => states.TryGetValue(CompanyKey(p, c.Symbol), out var s) && IsDue(s))).ToList();
         if (feedsDue || companiesDue.Count > 0) refresher.Schedule(new NewsRefreshRequest(feedsDue, companiesDue));
         return refresher.IsBusy;
     }
@@ -255,31 +255,67 @@ public sealed class NewsService(
     {
         if (!Options.Enabled) return;
         if (request.Feeds) await RefreshFeedsAsync(ct);
-        foreach (var (symbol, name) in request.Companies) await RefreshCompanyAsync(symbol, name, ct);
+        foreach (var (symbol, name) in request.Companies) await RefreshCompanyAsync(symbol, name, Options.RefreshMinutes, ct);
     }
+
+    /// <summary>
+    /// Scheduled run (background, no user context): every due feed, then the due companies of the scheduled set – held in
+    /// any portfolio, on any watchlist, curated – in that priority, stalest first, at most <c>Schedule.CompaniesPerRun</c>.
+    /// Fetching is shared; what a user sees stays scoped by the feed queries.
+    /// </summary>
+    public async Task<NewsScheduleRun> RefreshScheduledAsync(CancellationToken ct)
+    {
+        if (!Options.Enabled) return new NewsScheduleRun(0, 0);
+        await RefreshFeedsAsync(ct);
+
+        var held = await db.Holdings.AsNoTracking().Where(h => h.Quantity > 0 && h.Asset!.IsEnabled)
+            .Select(h => new { h.Asset!.Symbol, h.Asset.Name }).Distinct().ToListAsync(ct);
+        var watched = await db.WatchlistEntries.AsNoTracking().Where(e => e.Asset!.IsEnabled)
+            .Select(e => new { e.Asset!.Symbol, e.Asset.Name }).Distinct().ToListAsync(ct);
+        var curatedSymbols = Options.Schedule.CuratedSymbols.Select(Asset.NormalizeSymbol).Distinct().ToList();
+        var curated = await db.Assets.AsNoTracking().Where(a => a.IsEnabled && curatedSymbols.Contains(a.Symbol))
+            .Select(a => new { a.Symbol, a.Name }).ToListAsync(ct);
+        var merged = NewsSchedule.Merge(
+            held.Select(x => new ScheduledCompany(x.Symbol, x.Name, ScheduledCompanySource.Held))
+                .Concat(watched.Select(x => new ScheduledCompany(x.Symbol, x.Name, ScheduledCompanySource.Watched)))
+                .Concat(curated.Select(x => new ScheduledCompany(x.Symbol, x.Name, ScheduledCompanySource.Curated))));
+
+        var states = (await db.NewsFetchStates.AsNoTracking().ToListAsync(ct)).ToDictionary(s => s.Key);
+        var providers = companyProviders.Where(p => p.Descriptor.IsConfigured).ToList();
+        var interval = Options.Schedule.CompanyRefreshMinutes;
+        var due = NewsSchedule.SelectDue(merged,
+            symbol => providers.Where(p => p.Supports(symbol)).Any(p => IsDue(states.GetValueOrDefault(CompanyKey(p, symbol)), interval)),
+            symbol => providers.Where(p => p.Supports(symbol)).Select(p => states.GetValueOrDefault(CompanyKey(p, symbol))?.LastAttemptUtc).Min(),
+            Options.Schedule.CompaniesPerRun);
+        foreach (var c in due) await RefreshCompanyAsync(c.Symbol, c.Name, interval, ct);
+        return new NewsScheduleRun(merged.Count, due.Count);
+    }
+
+    private static string CompanyKey(ICompanyNewsProvider p, string symbol) => $"{p.Descriptor.Name}:company:{symbol}";
 
     private async Task RefreshFeedsAsync(CancellationToken ct)
     {
         foreach (var p in feedProviders.Where(p => p.Descriptor.IsConfigured))
             foreach (var feed in p.Feeds)
-                await RefreshKeyAsync(FeedKey(p, feed), p.Descriptor.Name, t => p.GetFeedAsync(feed, t), ct);
+                await RefreshKeyAsync(FeedKey(p, feed), p.Descriptor.Name, t => p.GetFeedAsync(feed, t), Options.RefreshMinutes, ct);
     }
 
-    private async Task RefreshCompanyAsync(string symbol, string? name, CancellationToken ct)
+    private async Task RefreshCompanyAsync(string symbol, string? name, int intervalMinutes, CancellationToken ct)
     {
-        foreach (var p in companyProviders.Where(p => p.Descriptor.IsConfigured))
-            await RefreshKeyAsync($"{p.Descriptor.Name}:company:{symbol}", p.Descriptor.Name, t => p.GetCompanyNewsAsync(symbol, name, t), ct);
+        foreach (var p in companyProviders.Where(p => p.Descriptor.IsConfigured && p.Supports(symbol)))
+            await RefreshKeyAsync(CompanyKey(p, symbol), p.Descriptor.Name, t => p.GetCompanyNewsAsync(symbol, name, t), intervalMinutes, ct);
     }
 
-    private async Task RefreshKeyAsync(string key, string provider, Func<CancellationToken, Task<IReadOnlyList<ProviderArticle>>> fetch, CancellationToken ct)
+    private async Task RefreshKeyAsync(string key, string provider, Func<CancellationToken, Task<IReadOnlyList<ProviderArticle>>> fetch,
+        int intervalMinutes, CancellationToken ct)
     {
-        if (!IsDue(await db.NewsFetchStates.AsNoTracking().SingleOrDefaultAsync(s => s.Key == key, ct))) return;
+        if (!IsDue(await db.NewsFetchStates.AsNoTracking().SingleOrDefaultAsync(s => s.Key == key, ct), intervalMinutes)) return;
         var gate = Locks.GetOrAdd(key, _ => new SemaphoreSlim(1, 1));
         if (!await gate.WaitAsync(0, ct)) return; // another request is fetching this source right now; serve stored articles
         try
         {
             var state = await db.NewsFetchStates.SingleOrDefaultAsync(s => s.Key == key, ct);
-            if (!IsDue(state)) return;
+            if (!IsDue(state, intervalMinutes)) return;
             if (state is null)
             {
                 state = new NewsFetchState { Key = key, Provider = provider };
@@ -313,11 +349,13 @@ public sealed class NewsService(
         }
     }
 
-    private bool IsDue(NewsFetchState? state)
+    private bool IsDue(NewsFetchState? state) => IsDue(state, Options.RefreshMinutes);
+
+    private bool IsDue(NewsFetchState? state, int intervalMinutes)
     {
         if (state?.LastAttemptUtc is not { } last) return true;
         var failed = state.LastError is not null;
-        return Now - last >= TimeSpan.FromMinutes(failed ? Options.FailureBackoffMinutes : Options.RefreshMinutes);
+        return Now - last >= TimeSpan.FromMinutes(failed ? Options.FailureBackoffMinutes : intervalMinutes);
     }
 
     /// <summary>Normalizes and stores new articles; returns how many of the delivered articles were valid.</summary>
@@ -340,17 +378,21 @@ public sealed class NewsService(
         foreach (var (fingerprint, a) in valid)
         {
             var linked = a.RelatedSymbols.Select(Asset.NormalizeSymbol).Distinct().Where(assets.ContainsKey).Select(s => assets[s]).ToList();
+            var matchMethod = Truncate(a.MatchMethod ?? $"{a.Provider} ticker tag", 60);
             if (existing.TryGetValue(fingerprint, out var stored))
             {
                 foreach (var asset in linked.Where(x => stored.Assets.All(l => l.AssetId != x.Id)))
-                    stored.Assets.Add(new NewsArticleAsset { ArticleId = stored.Id, AssetId = asset.Id, MatchMethod = $"{a.Provider} ticker tag" });
+                    stored.Assets.Add(new NewsArticleAsset { ArticleId = stored.Id, AssetId = asset.Id, MatchMethod = matchMethod });
                 continue;
             }
             var headline = NewsNormalizer.Clean(a.Headline);
             var summary = NewsNormalizer.Teaser(a.Summary);
             var classification = NewsClassifier.Classify(headline, summary, a.SourceCategory);
-            var companies = linked.Count(x => x.AssetType == AssetType.Equity);
-            var scope = companies == 0 && linked.Count > 0 ? NewsScope.Market : NewsClassifier.Scope(classification.Category, companies);
+            var equities = linked.Count(x => x.AssetType == AssetType.Equity);
+            var fundTags = a.RelatedSymbols.Where(t => assets.TryGetValue(Asset.NormalizeSymbol(t), out var x) && x.AssetType != AssetType.Equity)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var scope = NewsTaxonomy.Scope(a.RelatedSymbols, equities, linked.Count - equities, classification.Category, fundTags);
+            var eventType = NewsTaxonomy.Classify(headline, summary, scope, a.IsOfficial, a.SourceEventType, a.SourceEventBasis);
             var article = new NewsArticle
             {
                 Id = Guid.NewGuid(),
@@ -371,8 +413,13 @@ public sealed class NewsService(
                 Region = a.Region ?? linked.Select(x => x.Country).FirstOrDefault(c => c is not null),
                 IsOfficialSource = a.IsOfficial,
                 IsSimulated = a.IsSimulated,
+                EventType = eventType.EventType,
+                EventTypeBasis = Truncate(eventType.Basis, 200),
+                MarketArea = scope == NewsScope.Market ? NewsTaxonomy.MarketArea(a.RelatedSymbols) ?? NewsMarketArea.Equities : null,
+                RuleVersion = NewsTaxonomy.RuleVersion,
+                ProcessedAtUtc = Now,
             };
-            article.Assets.AddRange(linked.Select(x => new NewsArticleAsset { ArticleId = article.Id, AssetId = x.Id, MatchMethod = $"{a.Provider} ticker tag" }));
+            article.Assets.AddRange(linked.Select(x => new NewsArticleAsset { ArticleId = article.Id, AssetId = x.Id, MatchMethod = matchMethod }));
             db.NewsArticles.Add(article);
             existing[fingerprint] = article;
         }

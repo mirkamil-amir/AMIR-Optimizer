@@ -1,5 +1,17 @@
 # Implementation status
 
+## 2026-11-08: Wire news sources and scheduled fetching (AMIR-14, D-51)
+
+* Root cause of identical Latest / My Watchlist / Company News: company news was fetched only for the viewer's
+  watchlist (1,216 of 1,226 company stories were about the 11 watched stocks; page 1 of Latest was 20 of 20).
+* New sources: BEA, ONS (economic releases) and Eurostat statistics releases; Yahoo news for 16 market instruments;
+  SEC EDGAR filings (off until the operator's contact is set; not yet checked live).
+* `NewsScheduleWorker` fetches all feeds and the scheduled company set (held, watched by anyone, curated) every 10 min,
+  companies every 2 h, at most 60 per run.
+* Classification rules version 2 (`NewsTaxonomy`): instrument kinds of tags, scope, market area, event type; stored
+  with `RuleVersion` and `ProcessedAtUtc` (migration `NewsTaxonomyV2`, additive).
+* Not yet: the five feed contracts, story layer and new Wire page (plan PR 2–3); curated company list (owner's choice).
+
 ## 2026-11-06: faster integration tests (AMIR-11)
 
 * Test databases are copies of one template that the API start-up migrates and seeds once per run, instead of migrating

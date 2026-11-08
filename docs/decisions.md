@@ -2,6 +2,17 @@
 
 Short records of decisions that are not obvious from the code. Newest first. Format: context → decision → consequences.
 
+## D-51 Wire gets its own sources, fetched on a schedule (2026-11-08)
+**Context:** Latest, My Watchlist and Company News showed the same stories: the only company-news source was asked
+only about the viewer's watched stocks, and Market-wide had no source. The owner chose four additions (official
+statistics, SEC EDGAR, Yahoo for more companies and for market instruments) and a plan document first.
+**Decision:** a background schedule fetches all feeds and the companies held or watched by anyone plus a curated list,
+independent of page views; providers declare which listings they support; classification gets a stored rule version.
+BLS (403 to automated clients) and Japan's statistics bureau (no feed) are left out; SEC requests carry the operator's
+contact or are not made. **Consequences:** more outbound requests to Yahoo's unofficial endpoint (16 market queries per
+30 min, each scheduled company every 2 h); company news of other users' stocks is stored (shared) – the Company News
+feed must not show it outside the curated set (plan PR 2), or it would reveal what others watch.
+
 ## D-50 Türkiye from an older Wikipedia list; the BIST 30 as a benchmark only (2026-11-03)
 **Context:** the owner asked for Türkiye (BIST 100 and BIST 30). D-42 had left it out for lack of a Wikipedia constituent
 table. The only one found is on Turkish Wikipedia (96 tickers, section last changed 2025-08-21); no language lists the BIST

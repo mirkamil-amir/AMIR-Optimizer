@@ -114,6 +114,21 @@ public static class DependencyInjection
         services.Configure<YahooNewsOptions>(configuration.GetSection(YahooNewsOptions.Section));
         services.Configure<OfficialFeedOptions>(configuration.GetSection(OfficialFeedOptions.Section));
         services.Configure<MockNewsOptions>(configuration.GetSection(MockNewsOptions.Section));
+        services.Configure<StatisticsFeedOptions>(configuration.GetSection(StatisticsFeedOptions.Section));
+        services.Configure<SecEdgarOptions>(configuration.GetSection(SecEdgarOptions.Section));
+        AddProviderClient<StatisticsFeedProvider, StatisticsFeedOptions>(services, (o, c) =>
+        {
+            c.Timeout = Timeout.InfiniteTimeSpan;
+            c.DefaultRequestHeaders.UserAgent.ParseAdd("PortfolioOptimizer/1.0 (educational research; RSS reader)");
+        }, o => o.MinRequestIntervalMs, o => o.TimeoutSeconds);
+        AddProviderClient<SecEdgarProvider, SecEdgarOptions>(services, (o, c) =>
+        {
+            c.BaseAddress = new Uri(o.BaseUrl);
+            c.Timeout = Timeout.InfiniteTimeSpan;
+            // SEC fair access: the User-Agent names the operator. Without a contact the provider reports itself unconfigured
+            // and is never called.
+            if (!string.IsNullOrWhiteSpace(o.Contact)) c.DefaultRequestHeaders.UserAgent.TryParseAdd($"Matrix-educational-research {o.Contact.Trim()}");
+        }, o => o.MinRequestIntervalMs, o => o.TimeoutSeconds);
         AddProviderClient<YahooNewsProvider, YahooNewsOptions>(services, (o, c) =>
         {
             c.BaseAddress = new Uri(o.BaseUrl);
@@ -127,7 +142,10 @@ public static class DependencyInjection
         }, o => o.MinRequestIntervalMs, o => o.TimeoutSeconds);
         services.AddSingleton<MockNewsProvider>();
         services.AddTransient<ICompanyNewsProvider>(sp => sp.GetRequiredService<YahooNewsProvider>());
+        services.AddTransient<ICompanyNewsProvider>(sp => sp.GetRequiredService<SecEdgarProvider>());
         services.AddTransient<INewsFeedProvider>(sp => sp.GetRequiredService<OfficialFeedProvider>());
+        services.AddTransient<INewsFeedProvider>(sp => sp.GetRequiredService<StatisticsFeedProvider>());
+        services.AddTransient<INewsFeedProvider>(sp => sp.GetRequiredService<YahooNewsProvider>());
         services.AddTransient<ICompanyNewsProvider>(sp => sp.GetRequiredService<MockNewsProvider>());
         services.AddTransient<INewsFeedProvider>(sp => sp.GetRequiredService<MockNewsProvider>());
 
@@ -136,6 +154,7 @@ public static class DependencyInjection
         services.AddSingleton<NewsRefreshWorker>();
         services.AddSingleton<PortfolioOptimizer.Application.News.INewsRefreshScheduler>(sp => sp.GetRequiredService<NewsRefreshWorker>());
         services.AddHostedService(sp => sp.GetRequiredService<NewsRefreshWorker>());
+        services.AddHostedService<NewsScheduleWorker>();
         services.AddHostedService<ScheduledMarketDataRefresh>();
 
         services.AddHealthChecks().AddDbContextCheck<AppDbContext>("database", tags: ["ready"]);

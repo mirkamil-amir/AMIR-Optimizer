@@ -18,4 +18,20 @@ public sealed class NewsOptions
     public bool ShowImages { get; set; }
     /// <summary>At most this many watchlist companies are re-fetched per feed request (the stalest first).</summary>
     public int WatchlistRefreshLimit { get; set; } = 5;
+    /// <summary>Scheduled fetching of all feeds and of the company set, independent of page views (<c>News:Schedule</c>).</summary>
+    public NewsScheduleOptions Schedule { get; set; } = new();
+}
+
+public sealed class NewsScheduleOptions
+{
+    public bool Enabled { get; set; } = true;
+    /// <summary>Minutes between scheduler runs; each run fetches only what is due.</summary>
+    public int TickMinutes { get; set; } = 10;
+    public int InitialDelayMinutes { get; set; } = 2;
+    /// <summary>A company in the scheduled set is fetched again after this many minutes (owner's open question, default 2 h).</summary>
+    public int CompanyRefreshMinutes { get; set; } = 120;
+    /// <summary>At most this many company queries per run (bounds a run at ~1 request/s per provider).</summary>
+    public int CompaniesPerRun { get; set; } = 60;
+    /// <summary>Curated listings fetched on schedule besides held and watched stocks (canonical symbols, e.g. "SAP.DE"). Empty until chosen.</summary>
+    public List<string> CuratedSymbols { get; set; } = [];
 }
