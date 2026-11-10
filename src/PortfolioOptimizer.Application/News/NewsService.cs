@@ -380,6 +380,12 @@ public sealed class NewsService(
     public const string TagsNotStoredNote =
         "Provider tags were not stored before 2026-11-08; scope and market area follow from the linked listings and the category only.";
 
+    /// <summary>
+    /// When provider tags began to be stored (migration NewsProviderTags, 2026-11-08 21:50 UTC). An article retrieved later
+    /// without tags simply had none (official feeds deliver none), so only earlier ones get <see cref="TagsNotStoredNote"/>.
+    /// </summary>
+    public static readonly DateTime ProviderTagsStoredSinceUtc = new(2026, 11, 8, 21, 50, 15, DateTimeKind.Utc);
+
     /// <summary>A history row with the article's current classification.</summary>
     private static NewsArticleClassification HistoryRow(NewsArticle a, ClassificationTrigger trigger, string? note) => new()
     {
@@ -412,7 +418,7 @@ public sealed class NewsService(
             var equities = a.Assets.Count(x => x.Asset!.AssetType == AssetType.Equity);
             var fundTags = own.Where(t => nonEquityTags.Contains(Asset.NormalizeSymbol(t))).ToHashSet(StringComparer.OrdinalIgnoreCase);
             var c = NewsTaxonomy.ClassifyArticle(new ArticleClassificationInput(a.Headline, a.Summary, own, equities, a.Assets.Count - equities, fundTags,
-                a.IsOfficialSource, a.SourceCategory, a.SourceEventType, a.SourceEventTypeBasis));
+                a.IsOfficialSource, a.SourceCategory, a.SourceEventType, a.SourceEventTypeBasis, a.Region));
             a.Category = c.Category;
             a.CategoryBasis = Truncate(c.CategoryBasis, 200);
             a.Scope = c.Scope;
@@ -421,7 +427,8 @@ public sealed class NewsService(
             a.MarketArea = c.MarketArea;
             a.RuleVersion = NewsTaxonomy.RuleVersion;
             a.ProcessedAtUtc = now;
-            db.NewsArticleClassifications.Add(HistoryRow(a, ClassificationTrigger.Reclassification, a.ProviderTags is null ? TagsNotStoredNote : null));
+            db.NewsArticleClassifications.Add(HistoryRow(a, ClassificationTrigger.Reclassification,
+                a.ProviderTags is null && a.RetrievedAtUtc < ProviderTagsStoredSinceUtc ? TagsNotStoredNote : null));
         }
 
         // Stories copy their lead report's classification for indexed feed queries; refresh those that contain one of these reports.
@@ -657,7 +664,7 @@ public sealed class NewsService(
             var fundTags = a.RelatedSymbols.Where(t => assets.TryGetValue(Asset.NormalizeSymbol(t), out var x) && x.AssetType != AssetType.Equity)
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
             var c = NewsTaxonomy.ClassifyArticle(new ArticleClassificationInput(headline, summary, a.RelatedSymbols, equities, linked.Count - equities, fundTags,
-                a.IsOfficial, a.SourceCategory, a.SourceEventType, a.SourceEventBasis));
+                a.IsOfficial, a.SourceCategory, a.SourceEventType, a.SourceEventBasis, a.Region));
             var article = new NewsArticle
             {
                 Id = Guid.NewGuid(),

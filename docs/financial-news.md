@@ -91,10 +91,11 @@ security – even one outside the catalogue – other than a catalogue ETF or in
 instrument or only index/ETF listings are linked; otherwise by category as before: **Macro** (central bank, macro,
 geopolitics, commodities, currencies), else Market.
 
-## Taxonomy (classification rules version 2, 2026-11-08)
+## Taxonomy (classification rules version 3, 2026-11-10)
 
-`NewsTaxonomy` (pure, unit-tested in `WireSourcesTests`). Every article stores `RuleVersion` (1 = before 2026-11-08,
-2 = these rules) and `ProcessedAtUtc`; publication and retrieval times are never replaced. A rule change means a new
+`NewsTaxonomy` (pure, unit-tested in `WireSourcesTests`, `ArticleClassificationTests`, `CentralBankDecisionTests`). Every
+article stores `RuleVersion` (1 = before 2026-11-08, 2 = from 2026-11-08, 3 = these rules, adding central-bank decision
+titles) and `ProcessedAtUtc`; publication and retrieval times are never replaced. A rule change means a new
 version, so stored classifications stay attributable.
 
 * **Instrument kind of a provider tag** (Yahoo symbol syntax): `^…` index (`^TNX`, `^TYX`, `^FVX`, `^IRX` → rates;
@@ -105,7 +106,13 @@ version, so stored classifications stay attributable.
   `EURUSD=X`) → equities.
 * **Event type** (`EventType` + `EventTypeBasis`): the source's own structure when it has one – SEC form (10-Q, 10-K,
   20-F, 40-F → periodic report; 6-K → other filing) and 8-K item (1.03 bankruptcy, 2.01 merger or acquisition, 2.02
-  results, 5.02 management change, 1.01 material agreement, 3.02/2.03 capital raise, else other filing). Otherwise
+  results, 5.02 management change, 1.01 material agreement, 3.02/2.03 capital raise, else other filing) and, since rules
+  version 3 (AMIR-20, D-55), the title of a central bank's rate-decision release, as it appears in its own press feed:
+  Federal Reserve "Federal Reserve issues FOMC statement", ECB "Monetary policy decisions", Bank of England "Bank Rate
+  maintained / increased / reduced / cut … at|to N%", Bank of Japan "Statement on Monetary Policy" (whole titles; only
+  for official items whose source states the central-bank category and whose region is that bank's; basis "<bank>
+  decision-release title"). Under version 2 none of the real decision releases was a rate decision (keywords matched only
+  made-up headlines such as "decides on key interest rates"), so they never reached My Watchlist or portfolio news. Otherwise
   keyword rules, first match wins: company articles → bankruptcy, merger or acquisition, guidance, results, dividend or
   buyback, management change, capital raise, legal or regulatory; macro articles → rate decision, inflation, labour,
   growth (GDP), activity, trade or fiscal release, policy statement; market articles → market news. Unmatched: official
@@ -125,7 +132,8 @@ so the feed queries are unchanged.
 * **Reclassification:** every scheduled run classifies up to 10 × 500 articles of an older rules version again
   (`NewsService.ReclassifyPendingAsync`) and adds a history row; earlier rows stay. Articles stored before 2026-11-08 have
   no stored provider tags, so their scope and market area follow from the linked listings and the category only – noted
-  on the row. Re-running changes nothing.
+  on the row (only for articles retrieved before tags were stored, 2026-11-08 21:50 UTC; later articles without tags,
+  such as official releases, simply had none). Re-running changes nothing.
 * **Stories** containing a reclassified report take their lead (earliest) report's scope, category, event type, market
   area and base attention points again; their reports are never regrouped and join times stay.
 * **Backfill:** the migration `NewsClassificationHistory` copied every stored article's classification into the history

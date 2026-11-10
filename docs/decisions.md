@@ -2,6 +2,15 @@
 
 Short records of decisions that are not obvious from the code. Newest first. Format: context → decision → consequences.
 
+## D-55 Central-bank rate decisions are read from the banks' own release titles (2026-11-10)
+**Context:** the keyword rules (version 2) recognised a rate decision only in made-up headlines; the real releases ("Monetary
+policy decisions", "Federal Reserve issues FOMC statement", "Bank Rate increased to 4% …", "Statement on Monetary Policy")
+became other releases or policy statements, so no story was a rate decision and none reached My Watchlist or portfolio
+news. **Decision:** rules version 3 reads the event type from each bank's decision-release title, like SEC forms – whole
+titles, only from that bank's official feed – before the keyword rules; stored articles are reclassified by the scheduled
+run (D-53). **Consequences:** a renamed release title is missed until the list is updated (new version); decisions only
+announced in another release (e.g. an unscheduled statement under a different title) stay unrecognised.
+
 ## D-54 Stories link to indexes, rates, currencies, commodities and institutions from a reviewed list (2026-11-10)
 **Context:** stories could link only to catalogue listings; most market tags (^GSPC 49 articles, CL=F 47, ^IXIC, ^DJI,
 GC=F, currency pairs, yields) and every central-bank item stayed unlinked, and rate decisions reached personal feeds

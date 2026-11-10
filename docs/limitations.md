@@ -81,6 +81,8 @@
   prediction. Articles stored before 2026-11-08 are reclassified under rules version 2 without their provider tags (not
   stored then), so their scope and market area rest on linked listings and category only; each history row says so.
   Stories are not regrouped after a reclassification.
+- Central-bank rate decisions are recognised by each bank's usual decision-release title (rules version 3, checked against
+  the feed items of 2026-07 to 2026-11): a renamed title or a decision announced under another title is missed.
 - Entity links (indexes, rates, currencies, commodities, central banks, statistics offices) come from a reviewed list:
   provider tags not on it stay unlinked, articles stored before 2026-11-08 have only source links (no stored tags), and
   simulated items are never linked to real institutions.

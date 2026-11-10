@@ -21,6 +21,8 @@ public sealed class NewsClassificationHistoryTests(NewsClassificationHistoryTest
         public HttpClient Bob { get; private set; } = null!;
         public Guid OldEarnings { get; } = Guid.NewGuid();
         public Guid OldEcb { get; } = Guid.NewGuid();
+        public Guid FedDecision { get; } = Guid.NewGuid();
+        private static readonly DateTime StoredBeforeTags = NewsService.ProviderTagsStoredSinceUtc.AddDays(-3);
 
         protected override Task<ApiFactory> CreateFactoryAsync() =>
             ApiFactory.CreateAsync(testServices: s => s.PostConfigure<PortfolioOptimizer.Infrastructure.News.MockNewsOptions>(o => o.Enabled = false));
@@ -51,7 +53,8 @@ public sealed class NewsClassificationHistoryTests(NewsClassificationHistoryTest
             NewsArticle Old(Guid id, string headline, string publisher, NewsCategory category, string basis, NewsScope scope, bool official, string? region) => new()
             {
                 Id = id, Provider = "TestWire", Url = $"https://news.example.test/{id}", Fingerprint = id.ToString("N"), HeadlineKey = id.ToString("N"),
-                Headline = headline, Publisher = publisher, PublishedAtUtc = now.AddDays(-20), RetrievedAtUtc = now.AddDays(-20), Category = category,
+                // A fixed date before provider tags were stored, so the "tags not stored" note applies whenever the test runs.
+                Headline = headline, Publisher = publisher, PublishedAtUtc = StoredBeforeTags, RetrievedAtUtc = StoredBeforeTags, Category = category,
                 CategoryBasis = basis, Scope = scope, IsOfficialSource = official, Region = region, RuleVersion = 1,
                 SourceCategory = official ? category : null,
             };
@@ -60,11 +63,19 @@ public sealed class NewsClassificationHistoryTests(NewsClassificationHistoryTest
             earnings.Assets.Add(new NewsArticleAsset { ArticleId = OldEarnings, AssetId = msft.Id, MatchMethod = "TestWire ticker tag" });
             var ecb = Old(OldEcb, "Monetary policy decision of the Governing Council", "European Central Bank", NewsCategory.CentralBank, "category of the official source feed",
                 NewsScope.Macro, true, "EU");
-            foreach (var a in new[] { earnings, ecb })
+            // The Fed's real decision release as rules version 2 classified it (a policy statement), before entity links.
+            var fed = Old(FedDecision, "Federal Reserve issues FOMC statement", "Federal Reserve Board", NewsCategory.CentralBank,
+                "category of the official source feed", NewsScope.Macro, true, "US");
+            fed.RuleVersion = 2;
+            fed.EventType = NewsEventType.PolicyStatement;
+            fed.EventTypeBasis = "headline mentions “statement”";
+            fed.PublishedAtUtc = fed.RetrievedAtUtc = now.AddHours(-1); // after tags were stored, inside the watchlist window
+            foreach (var a in new[] { earnings, ecb, fed })
             {
                 a.Classifications.Add(new NewsArticleClassification
                 {
-                    ArticleId = a.Id, RuleVersion = 1, Category = a.Category, CategoryBasis = a.CategoryBasis, Scope = a.Scope, ProcessedAtUtc = a.RetrievedAtUtc,
+                    ArticleId = a.Id, RuleVersion = a.RuleVersion, Category = a.Category, CategoryBasis = a.CategoryBasis, Scope = a.Scope,
+                    EventType = a.EventType, EventTypeBasis = a.EventTypeBasis, ProcessedAtUtc = a.RetrievedAtUtc,
                     Trigger = ClassificationTrigger.Backfill,
                 });
                 db.NewsArticles.Add(a);
@@ -169,5 +180,31 @@ public sealed class NewsClassificationHistoryTests(NewsClassificationHistoryTest
         Assert.Equal(HttpStatusCode.NotFound, (await shared.Alice.GetAsync($"/api/v1/news/stories/{Guid.NewGuid()}/classifications")).StatusCode);
         using var anonymous = shared.Factory.CreateSession();
         Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync($"/api/v1/news/stories/{apple}/classifications")).StatusCode);
+    }
+
+    [Fact]
+    public async Task RulesVersion3_TurnsTheFedsDecisionRelease_IntoARateDecision_ThatReachesUsdWatchers()
+    {
+        await InScope(async sp =>
+        {
+            var news = sp.GetRequiredService<NewsService>();
+            while (await news.ReclassifyPendingAsync(CancellationToken.None) > 0) { }
+            while (await news.LinkEntitiesPendingAsync(CancellationToken.None) > 0) { }
+            var db = sp.GetRequiredService<IApplicationDbContext>();
+            var fed = await db.NewsArticles.AsNoTracking().SingleAsync(a => a.Id == shared.FedDecision);
+            Assert.Equal((NewsEventType.RateDecision, "Federal Reserve decision-release title"), (fed.EventType, fed.EventTypeBasis));
+            var history = await db.NewsArticleClassifications.AsNoTracking().Where(c => c.ArticleId == shared.FedDecision).OrderBy(c => c.RuleVersion).ToListAsync();
+            Assert.Equal([(2, NewsEventType.PolicyStatement), (NewsTaxonomy.RuleVersion, NewsEventType.RateDecision)],
+                history.Select(h => (h.RuleVersion, h.EventType!.Value)));
+            Assert.Null(history[1].Note);                                         // retrieved after tags were stored: official feeds simply have none
+            return 0;
+        });
+
+        // Alice watches AAPL (USD): the Fed's decision is in her watchlist, with the bank and currency as the reason.
+        var watch = await Get<WireFeedDto>(shared.Alice, "/api/v1/news/watchlist");
+        var story = Assert.Single(watch.Stories, s => s.Headline == "Federal Reserve issues FOMC statement");
+        Assert.Equal(("RateDecision", "FED"), (story.EventType, story.Entities.Single().Key));
+        Assert.Equal("Federal Reserve rate decision for the USD; 1 of your watched listings trade in USD", story.Why.Single());
+        Assert.Contains("rate decision is a material event type (+2)", story.Attention.Reasons);
     }
 }

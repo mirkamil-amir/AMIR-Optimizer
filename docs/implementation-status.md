@@ -1,5 +1,16 @@
 # Implementation status
 
+## 2026-11-10: central-bank rate decisions from their release titles (AMIR-20, D-55)
+
+* Classification rules version 3: the Fed, ECB, Bank of England and Bank of Japan decision releases are rate decisions
+  by their own release titles (whole-title patterns, only from that bank's official feed); under version 2 none of the
+  real ones was, so My Watchlist and portfolio news never showed a rate decision. Stored articles are reclassified by
+  the scheduled run and keep their version 2 row in the history.
+* Fix (AMIR-18): the "provider tags were not stored" note is written only for articles retrieved before tags were stored
+  (2026-11-08 21:50 UTC), not for later official releases that never have tags.
+* Tested: `CentralBankDecisionTests` (16: the real titles in the stored data, near misses, wrong feed), the reclassified
+  Fed decision reaching a USD watcher's My Watchlist (`NewsClassificationHistoryTests`).
+
 ## 2026-11-10: links to indexes, rates, currencies, commodities and institutions (AMIR-19, D-54; Wire plan PR 5, part B)
 
 * `NewsEntities`: reviewed list of 40 entities (14 indexes, 4 Treasury yields, 6 currency entities, 8 commodities, the VIX,
