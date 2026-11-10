@@ -84,3 +84,54 @@ public sealed class ArticleClassificationTests
         Assert.Equal(["^STOXX", "EURUSD=X"], NewsTaxonomy.SplitTags("^STOXX, EURUSD=X,"));
     }
 }
+
+/// <summary>
+/// Rules version 3 (AMIR-20): the four central banks' rate-decision releases, recognised by their own release titles as they
+/// appear in the official feeds – none of which the keyword rules matched.
+/// </summary>
+public sealed class CentralBankDecisionTests
+{
+    private static ArticleClassification Official(string headline, string region, string? summary = null, NewsCategory? category = NewsCategory.CentralBank) =>
+        NewsTaxonomy.ClassifyArticle(new ArticleClassificationInput(headline, summary, [], 0, 0, new HashSet<string>(), true, category, Region: region));
+
+    [Theory]
+    [InlineData("Federal Reserve issues FOMC statement", "US", "Federal Reserve")]
+    [InlineData("Monetary policy decisions", "EU", "ECB")]
+    [InlineData("Bank rate increased to 4% - November 2026 Monetary Policy Summary and Minutes", "GB", "Bank of England")]
+    [InlineData("Bank Rate maintained at 3.75% - July 2026 Monetary Policy Summary and Minutes", "GB", "Bank of England")]
+    [InlineData("Bank Rate reduced to 3.5% - December 2026 Monetary Policy Summary", "GB", "Bank of England")]
+    [InlineData("Statement on Monetary Policy", "JP", "Bank of Japan")]
+    public void RealDecisionReleases_AreRateDecisions(string headline, string region, string bank)
+    {
+        var c = Official(headline, region,
+            region == "GB" ? "The Bank of England’s Monetary Policy Committee is responsible for making decisions about Bank Rate." : null);
+        Assert.Equal((NewsScope.Macro, NewsEventType.RateDecision, $"{bank} decision-release title"), (c.Scope, c.EventType, c.EventTypeBasis));
+    }
+
+    [Theory]
+    [InlineData("Minutes of the Federal Open Market Committee, October 27-28, 2026", "US")]
+    [InlineData("Federal Reserve issues FOMC statement of longer-run goals and monetary policy strategy", "US")]
+    [InlineData("Decisions taken by the Governing Council of the ECB (in addition to decisions setting interest rates)", "EU")]
+    [InlineData("Christine Lagarde, Boris Vujčić: Monetary policy statement (with Q&A)", "EU")]
+    [InlineData("Summary of Opinions at the Monetary Policy Meeting on October 29 and 30, 2026", "JP")]
+    [InlineData("(Reference) Decisions regarding a Change in the Pace of Sales of ETFs (October 2026)", "JP")]
+    [InlineData("Remit for the Monetary Policy Committee - October 2026", "GB")]
+    [InlineData("Appointment of members of the Enforcement Decision Making Committee (EDMC)", "GB")]
+    public void OtherCentralBankReleases_AreNotRateDecisions(string headline, string region) =>
+        Assert.NotEqual(NewsEventType.RateDecision, Official(headline, region).EventType);
+
+    [Fact]
+    public void ATitleOnlyCounts_FromThatBanksOfficialFeed()
+    {
+        Assert.NotEqual(NewsEventType.RateDecision, Official("Monetary policy decisions", "US").EventType);                // not the ECB's region
+        Assert.NotEqual(NewsEventType.RateDecision, Official("Monetary policy decisions", "EU", category: null).EventType);  // source did not state central bank
+        var press = NewsTaxonomy.ClassifyArticle(new ArticleClassificationInput("Federal Reserve issues FOMC statement", null, [], 0, 0, new HashSet<string>(),
+            false, null, Region: "US"));
+        Assert.NotEqual("Federal Reserve decision-release title", press.EventTypeBasis);                                      // a newswire, not the Fed
+    }
+
+    [Fact]
+    public void KeywordRules_StillApplyToOtherHeadlines() =>
+        Assert.Equal((NewsEventType.RateDecision, "headline mentions “key interest rates”"),
+            (Official("ECB decides on key interest rates", "EU").EventType, Official("ECB decides on key interest rates", "EU").EventTypeBasis));
+}

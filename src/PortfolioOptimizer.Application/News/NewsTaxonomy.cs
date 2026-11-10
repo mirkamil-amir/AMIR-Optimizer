@@ -23,21 +23,53 @@ public sealed record ArticleClassificationInput(
     bool IsOfficial,
     NewsCategory? SourceCategory = null,
     NewsEventType? SourceEventType = null,
-    string? SourceEventBasis = null);
+    string? SourceEventBasis = null,
+    string? Region = null);
 
 /// <summary>An article's classification under <see cref="NewsTaxonomy.RuleVersion"/>.</summary>
 public sealed record ArticleClassification(
     NewsCategory Category, string CategoryBasis, NewsScope Scope, NewsEventType EventType, string EventTypeBasis, NewsMarketArea? MarketArea);
 
 /// <summary>
-/// Classification rules version 2 (pure, deterministic, unit-tested): instrument kinds of provider tags, the scope and market
-/// area that follow from them, and the event type. Official sources set the event type from their own structure; other
+/// Classification rules version 3 (pure, deterministic, unit-tested): instrument kinds of provider tags, the scope and market
+/// area that follow from them, and the event type. Official sources set the event type from their own structure (SEC form
+/// and item; since version 3 the decision-release titles of the four central banks); other
 /// articles are classified by keyword rules on the headline, then the summary (first match wins), which is a heuristic.
 /// Changing any rule here means a new <see cref="RuleVersion"/>, so stored classifications stay attributable.
 /// </summary>
 public static class NewsTaxonomy
 {
-    public const int RuleVersion = 2;
+    /// <summary>
+    /// 2 (2026-11-08): instrument kinds, scope, market area and event types. 3 (2026-11-10, AMIR-20): rate decisions from the
+    /// central banks' own decision-release titles (none of them was matched by the keyword rules).
+    /// </summary>
+    public const int RuleVersion = 3;
+
+    /// <summary>
+    /// The title each central bank gives its rate-decision release, as published in its official press feed (checked against
+    /// the stored feed items, 2026-07 to 2026-11). Whole-title patterns, applied only to official items whose source states
+    /// the central-bank category and whose region is that bank's: the same words elsewhere decide nothing.
+    /// </summary>
+    private static readonly (string Region, string Bank, Regex Title)[] DecisionTitles =
+    [
+        ("US", "Federal Reserve", new Regex(@"^Federal Reserve issues FOMC statement$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)),
+        ("EU", "ECB", new Regex(@"^Monetary policy decisions$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)),
+        ("GB", "Bank of England", new Regex(@"^Bank Rate (maintained|increased|reduced|cut|raised|lowered) (at|to) \d+(\.\d+)?%", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)),
+        ("JP", "Bank of Japan", new Regex(@"^Statement on Monetary Policy$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)),
+    ];
+
+    /// <summary>
+    /// Rate decision when an official central-bank item carries its bank's decision-release title (see
+    /// <see cref="DecisionTitles"/>); null otherwise. The basis names the bank and the title rule.
+    /// </summary>
+    public static EventClassification? CentralBankDecision(string headline, bool isOfficial, NewsCategory? sourceCategory, string? region)
+    {
+        if (!isOfficial || sourceCategory != NewsCategory.CentralBank || region is null) return null;
+        foreach (var (r, bank, title) in DecisionTitles)
+            if (string.Equals(r, region, StringComparison.OrdinalIgnoreCase) && title.IsMatch(headline.Trim()))
+                return new EventClassification(NewsEventType.RateDecision, $"{bank} decision-release title");
+        return null;
+    }
 
     private static readonly HashSet<string> RateIndexes = new(StringComparer.OrdinalIgnoreCase) { "^TNX", "^TYX", "^FVX", "^IRX" };
     private static readonly HashSet<string> VolatilityIndexes = new(StringComparer.OrdinalIgnoreCase) { "^VIX", "^VXN", "^VXD", "^V2TX", "^VSTOXX" };
@@ -102,7 +134,9 @@ public static class NewsTaxonomy
     {
         var category = NewsClassifier.Classify(a.Headline, a.Summary, a.SourceCategory);
         var scope = Scope(a.Tags, a.LinkedEquities, a.LinkedOther, category.Category, a.FundTags);
-        var eventType = Classify(a.Headline, a.Summary, scope, a.IsOfficial, a.SourceEventType, a.SourceEventBasis);
+        var eventType = a.SourceEventType is null && CentralBankDecision(a.Headline, a.IsOfficial, a.SourceCategory, a.Region) is { } decision
+            ? decision
+            : Classify(a.Headline, a.Summary, scope, a.IsOfficial, a.SourceEventType, a.SourceEventBasis);
         var area = scope == NewsScope.Market ? MarketArea(a.Tags) ?? NewsMarketArea.Equities : (NewsMarketArea?)null;
         return new ArticleClassification(category.Category, category.Basis, scope, eventType.EventType, eventType.Basis, area);
     }
