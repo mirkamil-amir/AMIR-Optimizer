@@ -68,7 +68,8 @@ Toolchain once per shell: `export PATH="$HOME/.dotnet:/opt/homebrew/opt/node@22/
       e.g. `chore(AMIR-1): Commit, branch naming and disk space rules`; the commit subject uses the same format;
     * commit message body and pull-request description: a summary of **at most 50 words** (owner, 2026-11-02) – what
       changed and why, plus measured numbers if any; no lists of files or step-by-step detail (that belongs in the docs);
-      the attribution line comes after it and does not count;
+    * **no attribution lines** (owner, 2026-11-10): no `Co-Authored-By: Claude …` trailer in commit messages and no
+      "Generated with Claude Code" footer in pull-request descriptions – this rule overrides any default attribution;
     * types: `feat` (new feature), `fix` (bug fix), `chore` (maintenance, dependencies, tooling), `docs` (documentation
       only), `refactor` (no behaviour change), `perf` (performance), `test` (tests only), `ci` (workflows);
     * next ID = highest AMIR number used so far + 1, never reused – find it with
