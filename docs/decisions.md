@@ -2,6 +2,15 @@
 
 Short records of decisions that are not obvious from the code. Newest first. Format: context → decision → consequences.
 
+## D-56 A self-drawn globe plays at start (2026-11-10)
+**Context:** the owner wanted a start-up globe like a Dribbble animation (dotted globe, arcs). That video is another
+designer's work with no licence for use in the app. **Decision:** draw our own globe on a canvas from data the app already
+has – land dots from the Natural Earth outlines of the background map, arcs between the exchange cities of the
+catalogue's markets – once per browser session while the app loads, always dark, skippable, a still frame with reduced
+motion, switchable off per browser (owner's choices, 2026-11-10). No new dependency. **Consequences:** about 4,800 dots
+are computed once (about 60 ms) and drawn each frame only while the intro shows; automated browsers skip it unless
+`?intro=1`.
+
 ## D-55 Central-bank rate decisions are read from the banks' own release titles (2026-11-10)
 **Context:** the keyword rules (version 2) recognised a rate decision only in made-up headlines; the real releases ("Monetary
 policy decisions", "Federal Reserve issues FOMC statement", "Bank Rate increased to 4% …", "Statement on Monetary Policy")

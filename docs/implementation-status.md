@@ -1,5 +1,13 @@
 # Implementation status
 
+## 2026-11-10: start-up globe (AMIR-22, D-56)
+
+* A dotted globe turning with arcs between exchange cities plays once per browser session while the app loads, then
+  grows and fades into the app (about 2.6 s, at most 6 s while the sign-in check runs). Skippable; still frame with
+  reduced motion; Settings › Appearance › "Globe intro at start". Own canvas drawing (`lib/globe.ts`), no new dependency.
+* Tested: Vitest `globe.test.ts` (6: outline sampling, every exchange city on land, projection, arcs), `intro.test.ts` (4),
+  `globe-intro.test.tsx` (4); e2e `intro.spec.ts`; screenshots at 1440 and 390 px and with reduced motion.
+
 ## 2026-11-10: central-bank rate decisions from their release titles (AMIR-20, D-55)
 
 * Classification rules version 3: the Fed, ECB, Bank of England and Bank of Japan decision releases are rate decisions
