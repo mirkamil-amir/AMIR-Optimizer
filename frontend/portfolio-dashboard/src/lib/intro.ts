@@ -6,8 +6,8 @@
 export const INTRO_SETTING_KEY = 'matrix-intro'
 export const INTRO_SEEN_KEY = 'matrix-intro-seen'
 
-/** How long the intro plays at least (the app loads underneath meanwhile), at most, and its exit. */
-export const INTRO_TIMING = { minMs: 2600, reducedMinMs: 1200, maxMs: 6000, exitMs: 700, reducedExitMs: 200 } as const
+/** How long the exit into the app takes (the intro itself plays until the user chooses Enter). */
+export const INTRO_TIMING = { exitMs: 700, reducedExitMs: 200 } as const
 
 export function introEnabled(storage: Pick<Storage, 'getItem'> | null = safeLocal()): boolean {
   try {

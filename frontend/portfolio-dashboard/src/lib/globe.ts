@@ -115,3 +115,15 @@ export function arcPairs<T extends LatLon>(cities: readonly T[], count: number, 
   }
   return pairs
 }
+
+export type GlobeLayout = 'center' | 'login'
+
+/**
+ * Where the globe sits: centred above the name and Enter button (intro), or – on the sign-in screen – left of the sign-in
+ * panel on wide screens and above it on narrow ones.
+ */
+export function placeGlobe(layout: GlobeLayout, w: number, h: number): { cx: number; cy: number; r: number } {
+  if (layout === 'center') return { cx: w / 2, cy: h * 0.44, r: Math.min(w, h) * (w < 640 ? 0.4 : 0.34) }
+  if (w >= 1024) return { cx: w * 0.36, cy: h * 0.5, r: Math.min(w * 0.26, h * 0.4) }
+  return { cx: w / 2, cy: Math.min(h * 0.23, w * 0.48), r: Math.min(w * 0.4, h * 0.19) }
+}

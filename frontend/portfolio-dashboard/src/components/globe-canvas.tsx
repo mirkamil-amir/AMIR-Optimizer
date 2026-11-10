@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { COUNTRY_PATHS, MAP_HEIGHT, MAP_TOP } from '@/components/world-map-geo'
-import { arcPairs, arcPoints, landDots, rotate, toVec, type Vec3 } from '@/lib/globe'
+import { arcPairs, arcPoints, landDots, placeGlobe, rotate, toVec, type GlobeLayout, type Vec3 } from '@/lib/globe'
 import { venues } from '@/lib/markets'
 
 // Loaded on demand by the start-up intro (globe-intro.tsx): the country outlines stay out of the initial bundle.
@@ -24,11 +24,9 @@ const ARC_GROW_MS = 900
 const ARC_LIFE_MS = 2000
 
 /** Draws one frame of the globe at time `t` (ms since start) on a canvas sized in CSS pixels. */
-function drawGlobe(ctx: CanvasRenderingContext2D, w: number, h: number, t: number) {
+function drawGlobe(ctx: CanvasRenderingContext2D, w: number, h: number, t: number, layout: GlobeLayout) {
   const { dots, cities, arcs } = globeScene()
-  const r = Math.min(w, h) * (w < 640 ? 0.4 : 0.34)
-  const cx = w / 2
-  const cy = h * 0.44
+  const { cx, cy, r } = placeGlobe(layout, w, h)
   const spin = SPIN_START + t * SPIN_PER_MS
   ctx.clearRect(0, 0, w, h)
 
@@ -113,7 +111,7 @@ function drawGlobe(ctx: CanvasRenderingContext2D, w: number, h: number, t: numbe
 }
 
 /** The globe on a full-window canvas: animated, or one still frame with reduced motion. Decorative (aria-hidden). */
-export default function GlobeCanvas({ still }: { still: boolean }) {
+export default function GlobeCanvas({ still, layout = 'center' }: { still: boolean; layout?: GlobeLayout }) {
   const ref = useRef<HTMLCanvasElement>(null)
   useEffect(() => {
     const canvas = ref.current
@@ -127,7 +125,7 @@ export default function GlobeCanvas({ still }: { still: boolean }) {
       canvas.height = Math.round(canvas.clientHeight * dpr)
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     }
-    const paint = (now: number) => drawGlobe(ctx, canvas.clientWidth, canvas.clientHeight, still ? 1500 : now - start)
+    const paint = (now: number) => drawGlobe(ctx, canvas.clientWidth, canvas.clientHeight, still ? 1500 : now - start, layout)
     const loop = (now: number) => {
       paint(now)
       frame = requestAnimationFrame(loop)
@@ -144,6 +142,6 @@ export default function GlobeCanvas({ still }: { still: boolean }) {
       cancelAnimationFrame(frame)
       window.removeEventListener('resize', onResize)
     }
-  }, [still])
-  return <canvas ref={ref} aria-hidden className="absolute inset-0 size-full" data-testid="globe-canvas" />
+  }, [still, layout])
+  return <canvas ref={ref} aria-hidden className="fixed inset-0 size-full" data-testid="globe-canvas" />
 }

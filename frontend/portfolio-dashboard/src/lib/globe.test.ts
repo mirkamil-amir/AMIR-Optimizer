@@ -64,3 +64,15 @@ describe('globe geometry', () => {
     expect(arcPairs(venues, 12).map(([a, b]) => a.city + b.city)).toEqual(pairs.map(([a, b]) => a.city + b.city))
   })
 })
+
+describe('globe placement', () => {
+  it('centres the intro globe and keeps the sign-in globe clear of the panel', async () => {
+    const { placeGlobe } = await import('./globe')
+    const intro = placeGlobe('center', 1440, 900)
+    expect(intro.cx).toBe(720)
+    const wide = placeGlobe('login', 1440, 900)
+    expect(wide.cx + wide.r).toBeLessThan(1440 * 0.64) // left of the panel on the right
+    const phone = placeGlobe('login', 390, 844)
+    expect(phone.cy + phone.r).toBeLessThan(Math.min(844 * 0.46, 390 * 0.96)) // above the panel
+  })
+})

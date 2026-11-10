@@ -2,11 +2,13 @@
 
 ## 2026-11-10: start-up globe (AMIR-22, D-56)
 
-* A dotted globe turning with arcs between exchange cities plays once per browser session while the app loads, then
-  grows and fades into the app (about 2.6 s, at most 6 s while the sign-in check runs). Skippable; still frame with
-  reduced motion; Settings › Appearance › "Globe intro at start". Own canvas drawing (`lib/globe.ts`), no new dependency.
+* A dotted globe turning with arcs between exchange cities. The sign-in page is the globe screen (sign-in panel beside
+  the globe, below it on narrow screens); after sign-in it grows and fades into the app. Signed-in users see it once per
+  browser session until they choose Enter (owner, 2026-11-10: no time limit). Still frame with reduced motion; Settings › Appearance › "Globe intro at start". Own canvas drawing (`lib/globe.ts`), no new dependency.
 * Tested: Vitest `globe.test.ts` (6: outline sampling, every exchange city on land, projection, arcs), `intro.test.ts` (4),
-  `globe-intro.test.tsx` (4); e2e `intro.spec.ts`; screenshots at 1440 and 390 px and with reduced motion.
+  `globe-intro.test.tsx` (4); e2e `intro.spec.ts` (sign in on the globe, then the Enter intro); screenshots of the sign-in
+  globe at 1440, 1280, 820, 390 and 360 px (no horizontal overflow) and of the intro with reduced motion.
+* Not changed: the registration and account-status pages keep the light card layout.
 
 ## 2026-11-10: central-bank rate decisions from their release titles (AMIR-20, D-55)
 

@@ -69,7 +69,7 @@ export function AppearanceCard() {
           <label htmlFor="globe-intro" className="text-sm">
             Globe intro at start
             <span className="block text-xs text-muted-foreground">
-              A turning globe with the exchange cities of the catalogue, once per browser session while the app loads. Click or press Enter to skip it.
+              A turning globe with the exchange cities of the catalogue, once per browser session; Enter goes into the app.
             </span>
           </label>
         </div>
