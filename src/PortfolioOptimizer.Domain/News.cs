@@ -104,6 +104,29 @@ public class NewsArticle
     public List<NewsArticleAsset> Assets { get; set; } = [];
     /// <summary>Every classification the article has had, one per rules version (the current one is also on the article).</summary>
     public List<NewsArticleClassification> Classifications { get; set; } = [];
+    /// <summary>Non-company entities (indexes, rates, currencies, commodities, central banks, statistics offices) linked to the article.</summary>
+    public List<NewsArticleEntity> Entities { get; set; } = [];
+    /// <summary>Version of the entity list and link rules the links were made with (0 = not linked yet).</summary>
+    public int EntityRuleVersion { get; set; }
+}
+
+/// <summary>
+/// Link between an article and a non-company entity of the reviewed list (<c>NewsEntities</c> in the application layer), by
+/// the provider's own tag or the official source that published it – never by headline text.
+/// </summary>
+public class NewsArticleEntity
+{
+    public Guid ArticleId { get; set; }
+    /// <summary>Stable key of the entity (e.g. "^GSPC", "EURUSD", "ECB").</summary>
+    public required string EntityKey { get; set; }
+    public required string MatchMethod { get; set; }
+}
+
+/// <summary>Entity linked to a story (union of its articles' links), for indexed feed filters.</summary>
+public class NewsStoryEntity
+{
+    public Guid StoryId { get; set; }
+    public required string EntityKey { get; set; }
 }
 
 /// <summary>What wrote a classification-history row.</summary>
@@ -172,6 +195,7 @@ public class NewsStory
     public DateTime UpdatedAtUtc { get; set; }
     public List<NewsStoryArticle> Articles { get; set; } = [];
     public List<NewsStoryAsset> Assets { get; set; } = [];
+    public List<NewsStoryEntity> Entities { get; set; } = [];
 }
 
 /// <summary>An article's membership in a story (each article belongs to exactly one story).</summary>

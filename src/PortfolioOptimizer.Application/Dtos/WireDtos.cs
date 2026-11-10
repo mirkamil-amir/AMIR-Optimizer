@@ -6,6 +6,12 @@ public sealed record WireSourceItemDto(Guid ArticleId, string Publisher, string 
 /// <summary>A listing linked to a story by its provider tag or an official identifier, with what it means to the viewer.</summary>
 public sealed record WireAssetDto(string Symbol, string? Name, string AssetType, string Currency, bool OnWatchlist, bool Held);
 
+/// <summary>
+/// Something other than a company a story concerns (index, rates, currency, commodity, volatility, central bank, statistics
+/// office), linked by the provider's tag or the official source that published it.
+/// </summary>
+public sealed record WireEntityDto(string Key, string Name, string Kind, string KindLabel, string? Region, string? Currency);
+
 /// <summary>Rule-based attention (High / Medium / Low) with every reason; never a prediction of a price move.</summary>
 public sealed record WireAttentionDto(string Level, int Points, IReadOnlyList<string> Reasons, string Note);
 
@@ -34,7 +40,8 @@ public sealed record WireStoryDto(
     IReadOnlyList<WireAssetDto> Assets,
     WireAttentionDto Attention,
     IReadOnlyList<string> Why,
-    int RuleVersion);
+    int RuleVersion,
+    IReadOnlyList<WireEntityDto> Entities);
 
 /// <summary>Freshness of one group of sources: Fresh, Delayed (no success for twice its interval) or Unavailable (never succeeded).</summary>
 public sealed record WireSourceStatusDto(string Group, string Status, DateTime? LastSuccessUtc, string? Problem);

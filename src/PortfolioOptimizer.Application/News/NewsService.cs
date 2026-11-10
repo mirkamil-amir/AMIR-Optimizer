@@ -305,7 +305,73 @@ public sealed class NewsService(
             reclassified += n;
             if (n == 0) break;
         }
-        return new NewsScheduleRun(merged.Count, due.Count, reclassified);
+        // Articles linked by an older entity list (or before entity links existed) are linked again, a few batches per run.
+        var linked = 0;
+        for (var batch = 0; batch < 10; batch++)
+        {
+            var n = await LinkEntitiesPendingAsync(ct);
+            linked += n;
+            if (n == 0) break;
+        }
+        return new NewsScheduleRun(merged.Count, due.Count, reclassified, linked);
+    }
+
+    private const int EntityLinkBatch = 500;
+
+    /// <summary>
+    /// Links stored articles of an older <see cref="NewsEntities.RuleVersion"/> (0 = before entity links) again, at most
+    /// <see cref="EntityLinkBatch"/> per call, from their stored provider tags (none before 2026-11-08), official flag, the
+    /// category the source stated, region and publisher. Links that the current list no longer gives are removed; the
+    /// stories containing these articles get the union of their reports' links again. Returns how many articles were
+    /// linked; safe to re-run.
+    /// </summary>
+    public async Task<int> LinkEntitiesPendingAsync(CancellationToken ct)
+    {
+        var pending = await db.NewsArticles.Include(a => a.Entities)
+            .Where(a => a.EntityRuleVersion < NewsEntities.RuleVersion)
+            .OrderBy(a => a.PublishedAtUtc).ThenBy(a => a.Id).Take(EntityLinkBatch).ToListAsync(ct);
+        if (pending.Count == 0) return 0;
+
+        var keysByArticle = new Dictionary<Guid, List<string>>();
+        foreach (var a in pending)
+        {
+            var matches = NewsEntities.Match(NewsTaxonomy.SplitTags(a.ProviderTags), a.IsOfficialSource, a.SourceCategory, a.Region, a.Publisher, a.IsSimulated);
+            foreach (var stale in a.Entities.Where(x => matches.All(m => !string.Equals(m.Key, x.EntityKey, StringComparison.OrdinalIgnoreCase))).ToList())
+                a.Entities.Remove(stale);
+            foreach (var m in matches.Where(m => a.Entities.All(x => !string.Equals(x.EntityKey, m.Key, StringComparison.OrdinalIgnoreCase))))
+                a.Entities.Add(new NewsArticleEntity { ArticleId = a.Id, EntityKey = m.Key, MatchMethod = Truncate(m.MatchMethod, 60) });
+            a.EntityRuleVersion = NewsEntities.RuleVersion;
+            keysByArticle[a.Id] = matches.Select(m => m.Key).ToList();
+        }
+
+        // Stories hold the union of their reports' links: recompute it for every story containing one of these articles.
+        var ids = pending.Select(a => a.Id).ToList();
+        var stories = await db.NewsStories.Include(s => s.Entities)
+            .Where(s => db.NewsStoryArticles.Any(m => m.StoryId == s.Id && ids.Contains(m.ArticleId))).ToListAsync(ct);
+        var storyIds = stories.Select(s => s.Id).ToList();
+        var members = await db.NewsStoryArticles.AsNoTracking().Where(m => storyIds.Contains(m.StoryId)).Select(m => new { m.StoryId, m.ArticleId }).ToListAsync(ct);
+        var others = members.Select(m => m.ArticleId).Where(id => !keysByArticle.ContainsKey(id)).Distinct().ToList();
+        foreach (var row in await db.NewsArticleEntities.AsNoTracking().Where(x => others.Contains(x.ArticleId)).Select(x => new { x.ArticleId, x.EntityKey }).ToListAsync(ct))
+            (keysByArticle.TryGetValue(row.ArticleId, out var list) ? list : keysByArticle[row.ArticleId] = []).Add(row.EntityKey);
+        foreach (var story in stories)
+        {
+            var keys = members.Where(m => m.StoryId == story.Id).SelectMany(m => keysByArticle.GetValueOrDefault(m.ArticleId) ?? [])
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            foreach (var stale in story.Entities.Where(x => !keys.Contains(x.EntityKey)).ToList()) story.Entities.Remove(stale);
+            foreach (var key in keys.Where(k => story.Entities.All(x => !string.Equals(x.EntityKey, k, StringComparison.OrdinalIgnoreCase))))
+                story.Entities.Add(new NewsStoryEntity { StoryId = story.Id, EntityKey = key });
+        }
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex) when (db.IsUniqueConstraintViolation(ex))
+        {
+            db.ChangeTracker.Clear(); // another instance linked the same articles first; nothing of this batch was written
+            logger.LogInformation("News entity linking: another instance linked the same articles first; retried on the next run.");
+            return 0;
+        }
+        return pending.Count;
     }
 
     private const int ReclassificationBatch = 500;
@@ -403,14 +469,14 @@ public sealed class NewsService(
         await GroupingGate.WaitAsync(ct);
         try
         {
-            var pending = await db.NewsArticles.Include(a => a.Assets)
+            var pending = await db.NewsArticles.Include(a => a.Assets).Include(a => a.Entities)
                 .Where(a => !db.NewsStoryArticles.Any(s => s.ArticleId == a.Id))
                 .OrderBy(a => a.PublishedAtUtc).ThenBy(a => a.Id).Take(GroupingBatch).ToListAsync(ct);
             if (pending.Count == 0) return 0;
 
             var from = pending[0].PublishedAtUtc - StoryRules.Window;
             var to = pending[^1].PublishedAtUtc + StoryRules.Window;
-            var stories = await db.NewsStories.Include(s => s.Assets)
+            var stories = await db.NewsStories.Include(s => s.Assets).Include(s => s.Entities)
                 .Where(s => s.LastPublishedAtUtc >= from && s.FirstPublishedAtUtc <= to).ToListAsync(ct);
             var storyIds = stories.Select(s => s.Id).ToList();
             var members = await db.NewsStoryArticles.AsNoTracking().Where(m => storyIds.Contains(m.StoryId))
@@ -449,6 +515,8 @@ public sealed class NewsService(
                 story.Articles.Add(new NewsStoryArticle { StoryId = story.Id, ArticleId = a.Id, JoinedAtUtc = now });
                 foreach (var assetId in facts.AssetIds.Where(id => story.Assets.All(x => x.AssetId != id)))
                     story.Assets.Add(new NewsStoryAsset { StoryId = story.Id, AssetId = assetId });
+                foreach (var key in a.Entities.Select(x => x.EntityKey).Where(k => story.Entities.All(x => x.EntityKey != k)))
+                    story.Entities.Add(new NewsStoryEntity { StoryId = story.Id, EntityKey = key });
                 keys[story.Id].Add(a.HeadlineKey);
                 publishers[story.Id].Add(a.Publisher);
                 story.FirstPublishedAtUtc = story.ArticleCount == 0 ? a.PublishedAtUtc : Min(story.FirstPublishedAtUtc, a.PublishedAtUtc);
@@ -621,6 +689,9 @@ public sealed class NewsService(
                 SourceEventTypeBasis = a.SourceEventBasis is null ? null : Truncate(a.SourceEventBasis, 200),
             };
             article.Classifications.Add(HistoryRow(article, ClassificationTrigger.Ingest, null));
+            article.Entities.AddRange(NewsEntities.Match(a.RelatedSymbols, a.IsOfficial, a.SourceCategory, article.Region, article.Publisher, a.IsSimulated)
+                .Select(m => new NewsArticleEntity { ArticleId = article.Id, EntityKey = m.Key, MatchMethod = Truncate(m.MatchMethod, 60) }));
+            article.EntityRuleVersion = NewsEntities.RuleVersion;
             article.Assets.AddRange(linked.Select(x => new NewsArticleAsset { ArticleId = article.Id, AssetId = x.Id, MatchMethod = matchMethod }));
             db.NewsArticles.Add(article);
             existing[fingerprint] = article;

@@ -50,6 +50,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<NewsArticle> NewsArticles => Set<NewsArticle>();
     public DbSet<NewsArticleAsset> NewsArticleAssets => Set<NewsArticleAsset>();
     public DbSet<NewsArticleClassification> NewsArticleClassifications => Set<NewsArticleClassification>();
+    public DbSet<NewsArticleEntity> NewsArticleEntities => Set<NewsArticleEntity>();
+    public DbSet<NewsStoryEntity> NewsStoryEntities => Set<NewsStoryEntity>();
     public DbSet<NewsFetchState> NewsFetchStates => Set<NewsFetchState>();
     public DbSet<NewsStory> NewsStories => Set<NewsStory>();
     public DbSet<NewsStoryArticle> NewsStoryArticles => Set<NewsStoryArticle>();
@@ -219,12 +221,29 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             e.Property(x => x.SourceEventType).HasConversion<string>().HasMaxLength(30);
             e.Property(x => x.SourceEventTypeBasis).HasMaxLength(200);
             e.HasIndex(x => x.Fingerprint).IsUnique();
-            // Reclassification finds articles of an older rules version.
+            // Reclassification and entity linking find articles of an older rules version.
             e.HasIndex(x => x.RuleVersion);
+            e.HasIndex(x => x.EntityRuleVersion);
             e.HasIndex(x => x.HeadlineKey);
             e.HasIndex(x => x.PublishedAtUtc);
             e.HasMany(x => x.Assets).WithOne().HasForeignKey(x => x.ArticleId).OnDelete(DeleteBehavior.Cascade);
             e.HasMany(x => x.Classifications).WithOne().HasForeignKey(x => x.ArticleId).OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(x => x.Entities).WithOne().HasForeignKey(x => x.ArticleId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<NewsArticleEntity>(e =>
+        {
+            e.HasKey(x => new { x.ArticleId, x.EntityKey });
+            e.Property(x => x.EntityKey).HasMaxLength(20);
+            e.Property(x => x.MatchMethod).HasMaxLength(60);
+        });
+
+        b.Entity<NewsStoryEntity>(e =>
+        {
+            e.HasKey(x => new { x.StoryId, x.EntityKey });
+            e.Property(x => x.EntityKey).HasMaxLength(20);
+            // Feeds filter stories by entity (Market-wide, Macroeconomic; personal rate decisions).
+            e.HasIndex(x => new { x.EntityKey, x.StoryId });
         });
 
         // Append-only: one row per article and rules version; leaves with the article at the retention limit.
@@ -256,6 +275,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             e.HasIndex(x => new { x.LastPublishedAtUtc, x.Id });
             e.HasMany(x => x.Articles).WithOne().HasForeignKey(x => x.StoryId).OnDelete(DeleteBehavior.Cascade);
             e.HasMany(x => x.Assets).WithOne().HasForeignKey(x => x.StoryId).OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(x => x.Entities).WithOne().HasForeignKey(x => x.StoryId).OnDelete(DeleteBehavior.Cascade);
         });
 
         b.Entity<NewsStoryArticle>(e =>

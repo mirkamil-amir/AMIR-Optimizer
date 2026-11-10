@@ -15,7 +15,7 @@ const story: WireStory = {
   eventTypeLabel: 'results', eventTypeBasis: 'headline mentions “quarterly results”', marketArea: null, region: 'US', isOfficial: false,
   isSimulated: false, summary: null, articleCount: 1,
   sources: [{ articleId: 'a-1', publisher: 'Wire One', url: 'https://news.example.test/msft', publishedAtUtc: '2026-10-21T10:00:00Z', isOfficial: false }],
-  assets: [], attention: { level: 'Medium', points: 2, reasons: ['results is a material event type (+2)'], note: 'Not a prediction.' }, why: [], ruleVersion: 2,
+  assets: [], attention: { level: 'Medium', points: 2, reasons: ['results is a material event type (+2)'], note: 'Not a prediction.' }, why: [], ruleVersion: 2, entities: [],
 }
 
 const history: WireClassificationHistory = {
@@ -65,5 +65,21 @@ describe('StoryRow classification history', () => {
     expect(screen.getByText('Each rules version is kept.')).toBeInTheDocument()
     expect(calls.filter((c) => c.includes('/classifications'))).toHaveLength(1)
     expect(screen.getByRole('button', { name: 'Hide classification history' })).toHaveAttribute('aria-expanded', 'true')
+  })
+})
+
+describe('StoryRow entities', () => {
+  it('shows each linked entity by name and kind, linking to the feed that lists its stories', () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={qc}><MemoryRouter>
+        <StoryRow story={{ ...story, entities: [
+          { key: '^GSPC', name: 'S&P 500', kind: 'Index', kindLabel: 'index', region: 'US', currency: 'USD' },
+          { key: 'ECB', name: 'European Central Bank', kind: 'CentralBank', kindLabel: 'central bank', region: 'EU', currency: 'EUR' },
+        ] }} />
+      </MemoryRouter></QueryClientProvider>,
+    )
+    expect(screen.getByRole('link', { name: 'S&P 500 · index' })).toHaveAttribute('href', '/news?view=markets&entity=%5EGSPC')
+    expect(screen.getByRole('link', { name: 'European Central Bank · central bank' })).toHaveAttribute('href', '/news?view=macro&entity=ECB')
   })
 })

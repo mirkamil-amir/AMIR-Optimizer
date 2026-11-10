@@ -9,7 +9,7 @@ import { AdminSourceTable, BenchmarksPanel, CompanyBlock, MarketSection, Sources
 import { useAuth } from '@/lib/auth'
 import { regionLabels } from '@/lib/news'
 import { useWireFeed } from '@/lib/queries'
-import type { AttentionLevel, MarketArea, WireFeedName, WireQuery, WireSourceStatus } from '@/lib/types'
+import type { AttentionLevel, MarketArea, WireFeedName, WireQuery, WireSourceStatus, WireStory } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { areaLabels, attentionOptions, defaultWindowHours, freshnessLine, windowLabel, windowOptions, wireTabs } from '@/lib/wire'
 
@@ -37,6 +37,7 @@ export function NewsPage() {
   const search = useDeferredValue(searchInput.trim())
   const cursor = params.get('cursor') ?? undefined
   const area = (params.get('area') as MarketArea | null) ?? undefined
+  const entity = params.get('entity') ?? undefined
 
   const set = (changes: Record<string, string | null>) => {
     const next = new URLSearchParams(params)
@@ -49,7 +50,10 @@ export function NewsPage() {
     setParams(next, { replace: !('cursor' in changes) })
   }
 
-  const query: WireQuery = { hours, region, attention, search: search || undefined, cursor, area: view === 'markets' ? area : undefined }
+  const query: WireQuery = {
+    hours, region, attention, search: search || undefined, cursor, area: view === 'markets' ? area : undefined,
+    entity: view === 'markets' || view === 'macro' ? entity : undefined,
+  }
   const tab = wireTabs.find((t) => t.value === view)!
 
   return (
@@ -83,7 +87,7 @@ export function NewsPage() {
           <FilterSelect label="Attention" value={attention ?? DEFAULT} onChange={(v) => set({ attention: v })}
             items={attentionOptions(view).map((o) => ({ value: o.value || DEFAULT, label: o.label }))} />
         )}
-        {(hours || region || attention || searchInput || area) && (
+        {(hours || region || attention || searchInput || area || entity) && (
           <Button size="sm" variant="ghost" onClick={() => setParams(view === 'latest' ? {} : { view }, { replace: true })}>Clear filters</Button>
         )}
       </div>
@@ -149,6 +153,18 @@ function Pager({ cursor, next, set, noun = 'stories' }: { cursor: string | undef
   )
 }
 
+/** The entity filter in words: its name from the stories shown, otherwise the key from the link. */
+function EntityFilter({ entityKey, stories, set }: { entityKey: string | undefined; stories: WireStory[]; set: Setter }) {
+  if (!entityKey) return null
+  const name = stories.flatMap((s) => s.entities).find((e) => e.key.toLowerCase() === entityKey.toLowerCase())
+  return (
+    <p className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+      Only stories linked to <span className="font-medium">{name ? `${name.name} (${name.kindLabel})` : entityKey}</span>
+      <Button size="sm" variant="ghost" onClick={() => set({ entity: null })}>Show all</Button>
+    </p>
+  )
+}
+
 function StoriesView({ feed, query, set, empty, showWhy = false }: {
   feed: 'latest' | 'watchlist' | 'macro'; query: WireQuery; set: Setter; empty: string; showWhy?: boolean
 }) {
@@ -158,6 +174,7 @@ function StoriesView({ feed, query, set, empty, showWhy = false }: {
   if (!data) return <LoadingBlock />
   return (
     <Layout sources={data.sources} notes={data.notes} refreshing={data.refreshing} fetching={result.isFetching}>
+      <EntityFilter entityKey={query.entity} stories={data.stories} set={set} />
       {data.stories.length === 0
         ? <EmptyState title={empty} description={data.notes[0]} />
         : <StoryList stories={data.stories} label={`${wireTabs.find((t) => t.value === feed)!.label} stories`} showWhy={showWhy} />}
@@ -189,6 +206,7 @@ function MarketsView({ query, set }: { query: WireQuery; set: Setter }) {
   const single = query.area ? data.sections[0] : undefined
   return (
     <Layout sources={data.sources} notes={data.notes} refreshing={data.refreshing} fetching={result.isFetching}>
+      <EntityFilter entityKey={query.entity} stories={data.sections.flatMap((s) => s.stories)} set={set} />
       {single ? (
         <>
           <Button size="sm" variant="ghost" onClick={() => set({ area: null })}>All market areas</Button>

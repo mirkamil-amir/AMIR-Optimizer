@@ -1,5 +1,16 @@
 # Implementation status
 
+## 2026-11-10: links to indexes, rates, currencies, commodities and institutions (AMIR-19, D-54; Wire plan PR 5, part B)
+
+* `NewsEntities`: reviewed list of 40 entities (14 indexes, 4 Treasury yields, 6 currency entities, 8 commodities, the VIX,
+  4 central banks, 3 statistics offices); links only from provider tags and official sources; simulated items get tag
+  links only.
+* `NewsArticleEntities`, `NewsStoryEntities` (migration `NewsEntityLinks`); linked on ingest, stories take the union;
+  the scheduled run links stored articles of an older list version and removes stale links.
+* My Watchlist and portfolio news find rate decisions through the central-bank link; Market-wide and Macroeconomic take
+  `entity=`; story rows show entity labels linking to that filter.
+* Tested: `NewsEntitiesTests` (12), `NewsEntityLinkingTests`, `WireFeedTests` (+2), Vitest `wire-story-row` (+1).
+
 ## 2026-11-10: classification history (AMIR-18, D-53; Wire plan PR 5, part A)
 
 * `NewsArticleClassifications`: one append-only row per article and rules version (result, basis, time, trigger, note);

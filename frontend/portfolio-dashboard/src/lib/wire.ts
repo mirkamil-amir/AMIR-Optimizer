@@ -1,5 +1,5 @@
 import { regionLabels } from './news'
-import type { AttentionLevel, MarketArea, WireFeedName, WireSourceStatus, WireStory } from './types'
+import type { AttentionLevel, MarketArea, WireEntity, WireFeedName, WireSourceStatus, WireStory } from './types'
 
 /** The five Wire tabs, in order; the value is the API feed name. */
 export const wireTabs: { value: WireFeedName; label: string; question: string }[] = [
@@ -77,3 +77,9 @@ export function sourcesLabel(story: Pick<WireStory, 'publisher' | 'sources' | 'a
 
 /** Benchmarks shown in the side panel (stored closes with provenance; seeded in every catalogue). */
 export const wireBenchmarks = ['SPY', '^GDAXI', '^FTSE', '^N225', '^FCHI']
+
+/** The feed that lists an entity's stories: central banks and statistics offices in Macroeconomic, market instruments in Market-wide. */
+export function entityHref(entity: Pick<WireEntity, 'key' | 'kind'>): string {
+  const view = entity.kind === 'CentralBank' || entity.kind === 'StatisticsOffice' ? 'macro' : 'markets'
+  return `/news?view=${view}&entity=${encodeURIComponent(entity.key)}`
+}

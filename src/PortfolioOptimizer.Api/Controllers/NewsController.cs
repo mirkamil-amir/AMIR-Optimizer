@@ -70,13 +70,14 @@ public sealed class NewsController(NewsService news, WireFeedService wire) : Con
     /// <param name="search">Headline text.</param>
     /// <param name="cursor">NextCursor of the area's previous page (needs area).</param>
     /// <param name="pageSize">Stories per area (default 5; 20 with area).</param>
+    /// <param name="entity">Only stories linked to this entity (key, e.g. ^GSPC, EURUSD, CL=F).</param>
     /// <param name="ct">Cancellation token.</param>
     [HttpGet("news/markets")]
     [EnableRateLimiting(RateLimitPolicies.Quotes)]
     [ProducesResponseType<WireMarketsDto>(StatusCodes.Status200OK)]
     public Task<WireMarketsDto> Markets([FromQuery] string? area, [FromQuery] int? hours, [FromQuery] string? region, [FromQuery] string? attention,
-        [FromQuery] string? search, [FromQuery] string? cursor, [FromQuery] int? pageSize, CancellationToken ct) =>
-        wire.MarketsAsync(new WireQuery(hours, region, attention, search, cursor, pageSize, Area: area), ct);
+        [FromQuery] string? search, [FromQuery] string? cursor, [FromQuery] int? pageSize, [FromQuery] string? entity, CancellationToken ct) =>
+        wire.MarketsAsync(new WireQuery(hours, region, attention, search, cursor, pageSize, Area: area, Entity: entity), ct);
 
     /// <summary>Macroeconomic: central-bank and statistics releases and macro news, newest first.</summary>
     /// <param name="hours">Time window (default 720).</param>
@@ -86,13 +87,14 @@ public sealed class NewsController(NewsService news, WireFeedService wire) : Con
     /// <param name="eventType">Event type (RateDecision, InflationRelease, …).</param>
     /// <param name="cursor">NextCursor of the previous page.</param>
     /// <param name="pageSize">Stories per page (1–50, default 20).</param>
+    /// <param name="entity">Only stories linked to this entity (key, e.g. ECB, EUROSTAT).</param>
     /// <param name="ct">Cancellation token.</param>
     [HttpGet("news/macro")]
     [EnableRateLimiting(RateLimitPolicies.Quotes)]
     [ProducesResponseType<WireFeedDto>(StatusCodes.Status200OK)]
     public Task<WireFeedDto> Macro([FromQuery] int? hours, [FromQuery] string? region, [FromQuery] string? attention, [FromQuery] string? search,
-        [FromQuery] string? eventType, [FromQuery] string? cursor, [FromQuery] int? pageSize, CancellationToken ct) =>
-        wire.MacroAsync(new WireQuery(hours, region, attention, search, cursor, pageSize, EventType: eventType), ct);
+        [FromQuery] string? eventType, [FromQuery] string? cursor, [FromQuery] int? pageSize, [FromQuery] string? entity, CancellationToken ct) =>
+        wire.MacroAsync(new WireQuery(hours, region, attention, search, cursor, pageSize, EventType: eventType, Entity: entity), ct);
 
     /// <summary>Classification history of a story's reports: every rules version with its result, reason and time.</summary>
     /// <param name="id">Story id from a Wire feed.</param>

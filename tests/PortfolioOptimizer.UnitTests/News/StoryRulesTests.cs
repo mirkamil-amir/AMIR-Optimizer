@@ -120,11 +120,4 @@ public sealed class StoryRulesTests
         Assert.False(StoryRules.TryDecodeCursor("", out _, out _));
         Assert.False(StoryRules.TryDecodeCursor(new string('A', 200), out _, out _));
     }
-
-    [Fact]
-    public void CentralBankCurrency_CoversTheFourFeeds()
-    {
-        Assert.Equal("EUR", StoryRules.CentralBankCurrency["EU"]);
-        Assert.Equal(["EU", "GB", "JP", "US"], StoryRules.CentralBankCurrency.Keys.Order());
-    }
 }

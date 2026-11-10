@@ -1341,6 +1341,16 @@ export interface WireAsset {
   held: boolean
 }
 
+/** Something other than a company a story concerns, linked by the provider's tag or the official source that published it. */
+export interface WireEntity {
+  key: string
+  name: string
+  kind: 'Index' | 'Rates' | 'Currency' | 'Commodity' | 'Volatility' | 'CentralBank' | 'StatisticsOffice'
+  kindLabel: string
+  region: string | null
+  currency: string | null
+}
+
 /** Rule-based attention with every reason; never a prediction of a price move. */
 export interface WireAttention {
   level: AttentionLevel
@@ -1373,6 +1383,8 @@ export interface WireStory {
   /** Why a personal feed shows the story (My Watchlist); empty elsewhere. */
   why: string[]
   ruleVersion: number
+  /** Indexes, rates, currencies, commodities, central banks and statistics offices the story is linked to. */
+  entities: WireEntity[]
 }
 
 /** One classification of a report under one rules version (append-only history; the current one is what the feeds use). */
@@ -1476,6 +1488,8 @@ export interface WireQuery {
   pageSize?: number
   area?: MarketArea
   eventType?: string
+  /** Only stories linked to this entity key (Market-wide and Macroeconomic). */
+  entity?: string
 }
 
 /** A fact from the current valuation: a holding's weight or the portfolio's share in a currency (fraction; null if not valued). */
