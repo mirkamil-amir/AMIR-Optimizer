@@ -110,6 +110,29 @@ version, so stored classifications stay attributable.
   growth (GDP), activity, trade or fiscal release, policy statement; market articles → market news. Unmatched: official
   macro items → other release, everything else general. Keyword types are a heuristic (no accuracy evaluation yet).
 
+## Classification history (2026-11-10, AMIR-18, D-53)
+
+Every classification an article has had is kept in `NewsArticleClassifications`, one append-only row per article and
+rules version: category with its basis, scope, event type with its basis, market area, processing time, what triggered it
+(`Ingest` when stored, `Reclassification`, `Backfill`) and a note on its limits. The article row carries the current one,
+so the feed queries are unchanged.
+
+* **One function for both paths:** `NewsTaxonomy.ClassifyArticle` (pure) classifies from headline, summary, provider
+  tags, linked listings (equities vs. index/ETF listings) and what the source itself stated. What the source stated is
+  stored per article since this change (`SourceCategory`, `SourceEventType`, `SourceEventTypeBasis`; for articles stored
+  before, the migration recovered it: official feeds by their category basis, SEC filings by provider).
+* **Reclassification:** every scheduled run classifies up to 10 × 500 articles of an older rules version again
+  (`NewsService.ReclassifyPendingAsync`) and adds a history row; earlier rows stay. Articles stored before 2026-11-08 have
+  no stored provider tags, so their scope and market area follow from the linked listings and the category only – noted
+  on the row. Re-running changes nothing.
+* **Stories** containing a reclassified report take their lead (earliest) report's scope, category, event type, market
+  area and base attention points again; their reports are never regrouped and join times stay.
+* **Backfill:** the migration `NewsClassificationHistory` copied every stored article's classification into the history
+  (rules version 1 rows with the retrieval time, since version 1 stored no processing time).
+* **Where it is shown:** on the Wire page, a story's reports → "Classification history" (`GET
+  /api/v1/news/stories/{id}/classifications`; the story must be visible to the caller like in the feeds, otherwise 404;
+  it never fetches news). Each report lists its rules versions, newest first, with result, basis, time and trigger.
+
 `NewsRelevance` – points, each with a stated reason: provider-tagged company +2; material event type (earnings,
 corporate transaction, regulatory/legal, central bank) +2, other market types +1; official issuer +1; published within
 24 h +1; reported by ≥ 2 publishers +1. High ≥ 5, Medium 3–4, Low ≤ 2. **It does not predict the direction or size of
@@ -231,6 +254,8 @@ input and time zones, event comparison timing/benchmark gaps), `NewsTests` (dedu
 watchlist filter, event comparison end-to-end, auth, scheduled run over another user's watchlist with rules version 2),
 `NewsProviderFailureTests`, `StoryRulesTests` (grouping, attention thresholds incl. the SQL filter for every combination,
 cursor), `WireFeedTests` (the five feed contracts on one data set for two users, privacy, paging, validation, auth),
+`NewsClassificationHistoryTests` (history row on ingest, reclassification of version 1 articles with their stories,
+idempotence, endpoint visibility), `ArticleClassificationTests` (the shared classification function),
 `WireBenchmarkTests` (`PERF_BENCH=1`), `WireSourcesTests` (taxonomy, schedule selection, BEA/ONS/Eurostat/EDGAR/Yahoo-market parsing
 on payloads in the live shape), live smoke tests (`PO_LIVE_SMOKE=1`; SEC also needs `PO_SEC_CONTACT`), Vitest
 `news.test.ts`, e2e journey E.

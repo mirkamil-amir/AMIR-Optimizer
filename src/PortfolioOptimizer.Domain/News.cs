@@ -95,7 +95,48 @@ public class NewsArticle
     public DateTime? ProcessedAtUtc { get; set; }
     /// <summary>The provider's own tags as delivered (comma-separated, e.g. "^STOXX,EURUSD=X"); null for articles stored before 2026-11-08.</summary>
     public string? ProviderTags { get; set; }
+    /// <summary>Category the source itself stated (official feeds), kept so a later rules version can reclassify exactly; null → keyword rules.</summary>
+    public NewsCategory? SourceCategory { get; set; }
+    /// <summary>Event type the source itself stated (SEC form and 8-K item); null → keyword rules.</summary>
+    public NewsEventType? SourceEventType { get; set; }
+    /// <summary>What in the source set <see cref="SourceEventType"/> (e.g. "8-K item 2.02").</summary>
+    public string? SourceEventTypeBasis { get; set; }
     public List<NewsArticleAsset> Assets { get; set; } = [];
+    /// <summary>Every classification the article has had, one per rules version (the current one is also on the article).</summary>
+    public List<NewsArticleClassification> Classifications { get; set; } = [];
+}
+
+/// <summary>What wrote a classification-history row.</summary>
+public enum ClassificationTrigger
+{
+    /// <summary>Classified when the article was stored.</summary>
+    Ingest,
+    /// <summary>Classified again by a newer rules version from the stored inputs.</summary>
+    Reclassification,
+    /// <summary>Copied from the article when the history was introduced (2026-11-10, AMIR-18).</summary>
+    Backfill,
+}
+
+/// <summary>
+/// One classification of an article under one rules version (append-only; docs/financial-news.md › Classification history).
+/// The article row carries the current one for fast feed queries; this keeps every earlier one, so a change of category,
+/// scope or event type stays attributable to a rules version and a time.
+/// </summary>
+public class NewsArticleClassification
+{
+    public Guid ArticleId { get; set; }
+    public int RuleVersion { get; set; }
+    public NewsCategory Category { get; set; }
+    public required string CategoryBasis { get; set; }
+    public NewsScope Scope { get; set; }
+    /// <summary>Null for rules version 1, which had no event types.</summary>
+    public NewsEventType? EventType { get; set; }
+    public string? EventTypeBasis { get; set; }
+    public NewsMarketArea? MarketArea { get; set; }
+    public DateTime ProcessedAtUtc { get; set; }
+    public ClassificationTrigger Trigger { get; set; }
+    /// <summary>A limitation of this classification, e.g. inputs that were not stored at the time.</summary>
+    public string? Note { get; set; }
 }
 
 /// <summary>

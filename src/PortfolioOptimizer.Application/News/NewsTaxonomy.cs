@@ -9,6 +9,27 @@ public enum InstrumentKind { Security, Index, Rates, Fx, Commodity, Volatility }
 public sealed record EventClassification(NewsEventType EventType, string Basis);
 
 /// <summary>
+/// Everything the classification rules read about one article: text, the provider's tags, the catalogue listings linked
+/// to it (equities vs. index/ETF listings, and which tags name an index or ETF listing) and what the source itself stated.
+/// Ingest and reclassification build it from the same facts, so both classify alike.
+/// </summary>
+public sealed record ArticleClassificationInput(
+    string Headline,
+    string? Summary,
+    IReadOnlyCollection<string> Tags,
+    int LinkedEquities,
+    int LinkedOther,
+    IReadOnlySet<string> FundTags,
+    bool IsOfficial,
+    NewsCategory? SourceCategory = null,
+    NewsEventType? SourceEventType = null,
+    string? SourceEventBasis = null);
+
+/// <summary>An article's classification under <see cref="NewsTaxonomy.RuleVersion"/>.</summary>
+public sealed record ArticleClassification(
+    NewsCategory Category, string CategoryBasis, NewsScope Scope, NewsEventType EventType, string EventTypeBasis, NewsMarketArea? MarketArea);
+
+/// <summary>
 /// Classification rules version 2 (pure, deterministic, unit-tested): instrument kinds of provider tags, the scope and market
 /// area that follow from them, and the event type. Official sources set the event type from their own structure; other
 /// articles are classified by keyword rules on the headline, then the summary (first match wins), which is a heuristic.
@@ -71,6 +92,24 @@ public static class NewsTaxonomy
         if (tags.Count > 0 || linkedOther > 0) return NewsScope.Market;
         return NewsClassifier.Scope(category, 0);
     }
+
+    /// <summary>
+    /// The whole classification of one article: category (version 1 keyword rules or the source's own), scope, event type
+    /// and – for market articles – market area (equities when no tag decides it). Pure; used when an article is stored and
+    /// when stored articles are classified again under a newer rules version.
+    /// </summary>
+    public static ArticleClassification ClassifyArticle(ArticleClassificationInput a)
+    {
+        var category = NewsClassifier.Classify(a.Headline, a.Summary, a.SourceCategory);
+        var scope = Scope(a.Tags, a.LinkedEquities, a.LinkedOther, category.Category, a.FundTags);
+        var eventType = Classify(a.Headline, a.Summary, scope, a.IsOfficial, a.SourceEventType, a.SourceEventBasis);
+        var area = scope == NewsScope.Market ? MarketArea(a.Tags) ?? NewsMarketArea.Equities : (NewsMarketArea?)null;
+        return new ArticleClassification(category.Category, category.Basis, scope, eventType.EventType, eventType.Basis, area);
+    }
+
+    /// <summary>Provider tags as stored on an article (comma-separated); empty when none were delivered or stored.</summary>
+    public static IReadOnlyList<string> SplitTags(string? stored) =>
+        (stored ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
     // Terms match whole words (case-insensitive); a trailing * matches a word prefix.
     private static readonly (NewsEventType Type, string[] Terms)[] CompanyRules =

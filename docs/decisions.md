@@ -2,6 +2,17 @@
 
 Short records of decisions that are not obvious from the code. Newest first. Format: context → decision → consequences.
 
+## D-53 Classifications keep their history; old articles are reclassified (2026-11-10)
+**Context:** an article was classified once when stored and overwritten by nothing; 1,470 of 2,369 stored articles were
+still on rules version 1 (no event type, no market area), so Market-wide and the event-type filters missed them, and a
+future rules change could not be traced. **Decision:** an append-only history row per article and rules version
+(`NewsArticleClassifications`); one pure function classifies at ingest and on reclassification; the scheduled run
+reclassifies older versions from stored inputs and records what was missing (provider tags before 2026-11-08); stories
+follow their lead report without regrouping. The history is shown to every user who can see the story (owner's choice,
+2026-11-10: it shows our rules, not provider names), and the old articles are reclassified now rather than left to age
+out (owner's choice). **Consequences:** version 1 stories get event types and market areas, so some change feed or
+attention level; their scope is less precise than for articles with stored tags, as noted on each row.
+
 ## D-52 Wire feeds are separate queries over stories; others' interests stay hidden (2026-11-08)
 **Context:** the five Wire tabs were one article query with a label. Shared storage meant news fetched for one user's
 watched stock appeared in everyone's Latest and Company News. The owner's answer on visibility is still open.

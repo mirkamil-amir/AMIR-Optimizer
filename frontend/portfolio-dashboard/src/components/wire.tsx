@@ -8,8 +8,8 @@ import { EventComparisonDialog } from '@/components/news'
 import { QuoteCell } from '@/components/stock-selection'
 import { dateTime } from '@/lib/format'
 import { publishedLabel, safeExternalUrl } from '@/lib/news'
-import { useNewsSources, usePortfolioNews, useStocksBySymbols } from '@/lib/queries'
-import type { WireCompany, WireMarketSection, WireSourceStatus, WireStory } from '@/lib/types'
+import { useNewsSources, usePortfolioNews, useStocksBySymbols, useStoryClassifications } from '@/lib/queries'
+import type { WireClassification, WireCompany, WireMarketSection, WireSourceStatus, WireStory } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { regionLabel, sourcesLabel, utcTime, wireBenchmarks } from '@/lib/wire'
 
@@ -91,6 +91,7 @@ export function StoryRow({ story, showWhy = false }: { story: WireStory; showWhy
               )
             })}
             {story.articleCount > story.sources.length && <li className="text-muted-foreground">{story.articleCount - story.sources.length} more reports not listed</li>}
+            <li><ClassificationHistory storyId={story.id} /></li>
           </ul>
         )}
       </div>
@@ -105,6 +106,61 @@ export function StoryRow({ story, showWhy = false }: { story: WireStory; showWhy
       </div>
       {compare && leadId && <EventComparisonDialog article={{ id: leadId, headline: story.headline }} symbol={compare} onClose={() => setCompare(null)} />}
     </article>
+  )
+}
+
+const triggerLabels: Record<WireClassification['trigger'], string> = {
+  Ingest: 'when stored',
+  Reclassification: 'reclassified',
+  Backfill: 'recorded when the history began',
+}
+
+/** One classification as a line of text: rules version, result, reason, time and what triggered it. */
+function ClassificationLine({ c }: { c: WireClassification }) {
+  const what = [c.eventTypeLabel ?? c.categoryLabel, c.scope.toLowerCase(), c.marketArea && (c.marketArea === 'Fx' ? 'currencies' : c.marketArea.toLowerCase())]
+    .filter(Boolean).join(' · ')
+  const basis = c.eventTypeBasis ?? c.categoryBasis
+  return (
+    <li className={cn(!c.isCurrent && 'text-muted-foreground')}>
+      <span className="font-medium">Rules v{c.ruleVersion}{c.isCurrent ? ' (current)' : ''}:</span> {what}
+      <span className="text-muted-foreground"> – {basis}; {triggerLabels[c.trigger]} {dateTime(c.processedAtUtc)}</span>
+      {c.note && <span className="block text-muted-foreground">{c.note}</span>}
+    </li>
+  )
+}
+
+/**
+ * Every rules version each report of a story was classified under, loaded on demand: when the rules change, stored
+ * reports are classified again and the earlier result stays listed.
+ */
+function ClassificationHistory({ storyId }: { storyId: string }) {
+  const [show, setShow] = useState(false)
+  const history = useStoryClassifications(storyId, show)
+  const id = `classifications-${storyId}`
+  return (
+    <div className="pt-0.5">
+      <button type="button" className="text-muted-foreground hover:text-foreground hover:underline" aria-expanded={show} aria-controls={id}
+        onClick={() => setShow(!show)}>
+        {show ? 'Hide classification history' : 'Classification history'}
+      </button>
+      {show && (
+        <div id={id} className="mt-1 space-y-1.5">
+          {history.isPending && <p className="flex items-center gap-1.5 text-muted-foreground"><MatrixLoader className="size-3.5" /> Loading classification history…</p>}
+          {history.isError && <p className="text-destructive">The classification history could not be loaded.</p>}
+          {history.data && (
+            <>
+              {history.data.reports.map((r) => (
+                <div key={r.articleId}>
+                  <p className="text-muted-foreground tabular">{r.publisher} · {dateTime(r.publishedAtUtc)}</p>
+                  <ul className="pl-2">{r.classifications.map((c) => <ClassificationLine key={c.ruleVersion} c={c} />)}</ul>
+                </div>
+              ))}
+              {history.data.notes.map((n) => <p key={n} className="text-muted-foreground">{n}</p>)}
+            </>
+          )}
+        </div>
+      )}
+    </div>
   )
 }
 

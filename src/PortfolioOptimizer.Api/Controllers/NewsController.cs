@@ -94,6 +94,16 @@ public sealed class NewsController(NewsService news, WireFeedService wire) : Con
         [FromQuery] string? eventType, [FromQuery] string? cursor, [FromQuery] int? pageSize, CancellationToken ct) =>
         wire.MacroAsync(new WireQuery(hours, region, attention, search, cursor, pageSize, EventType: eventType), ct);
 
+    /// <summary>Classification history of a story's reports: every rules version with its result, reason and time.</summary>
+    /// <param name="id">Story id from a Wire feed.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="404">The story does not exist or is not visible to the caller.</response>
+    [HttpGet("news/stories/{id:guid}/classifications")]
+    [EnableRateLimiting(RateLimitPolicies.Quotes)]
+    [ProducesResponseType<WireClassificationHistoryDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public Task<WireClassificationHistoryDto> StoryClassifications(Guid id, CancellationToken ct) => wire.ClassificationHistoryAsync(id, ct);
+
     /// <summary>
     /// News about one of the caller's portfolios: stories linked to its holdings and official rate decisions for the
     /// currencies it holds, each with the holding's weight or the currency's share from the current valuation. Another

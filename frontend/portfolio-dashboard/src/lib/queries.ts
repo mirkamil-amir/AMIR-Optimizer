@@ -7,7 +7,7 @@ import type {
   Transaction, UserAccountStatus, UserSummary, MlCatalog, MlExperiment, MlExperimentRequest, MlExperimentSummary, MlBacktest,
   MlPredictionSet, StrategyComparison, StrategyComparisonRequest, StrategyComparisonSummary, Market, QuoteRefreshRun, QuoteRefreshResult,
   AdminOverview, HistoryRange, PriceHistory, Watchlist, WatchlistAddResult, NewsFeed, NewsFilters, EventComparison, RealityCheck, CompanyProfile,
-  WireFeedName, WireQuery, WireResponses, NewsSourceStatus, PortfolioNews,
+  WireFeedName, WireQuery, WireResponses, NewsSourceStatus, PortfolioNews, WireClassificationHistory,
   FxInfo, FxRate, FxHistory, FxBoard, ResearchSession, ResearchSessionSummary, UpdateBriefRequest, HypothesisComparison, CompanyContext, RefinementChange,
   PortfolioOverview, PortfolioTransaction, RecordTransactionRequest, MarketDataSummary, DataCheck, DataCheckRequest, DataDownload,
   PortfolioStrategy, StrategyBacktestRequest,
@@ -891,6 +891,15 @@ export const useWireFeed = <F extends WireFeedName>(feed: F, query: WireQuery = 
     enabled,
   })
 }
+
+/** Classification history of a story's reports, loaded only when the reader asks for it (it does not change often). */
+export const useStoryClassifications = (storyId: string, enabled: boolean) =>
+  useQuery({
+    queryKey: ['wire-classifications', storyId] as const,
+    queryFn: ({ signal }) => api.get<WireClassificationHistory>(`${V1}/news/stories/${storyId}/classifications`, signal),
+    staleTime: 10 * 60_000,
+    enabled,
+  })
 
 /** News about one portfolio's holdings and currencies, with each holding's weight from the current valuation. */
 export const usePortfolioNews = (portfolioId: string | undefined, hours: number, cursor?: string) =>

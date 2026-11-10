@@ -49,6 +49,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<ResearchEvent> ResearchEvents => Set<ResearchEvent>();
     public DbSet<NewsArticle> NewsArticles => Set<NewsArticle>();
     public DbSet<NewsArticleAsset> NewsArticleAssets => Set<NewsArticleAsset>();
+    public DbSet<NewsArticleClassification> NewsArticleClassifications => Set<NewsArticleClassification>();
     public DbSet<NewsFetchState> NewsFetchStates => Set<NewsFetchState>();
     public DbSet<NewsStory> NewsStories => Set<NewsStory>();
     public DbSet<NewsStoryArticle> NewsStoryArticles => Set<NewsStoryArticle>();
@@ -214,10 +215,30 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             e.Property(x => x.MarketArea).HasConversion<string>().HasMaxLength(20);
             e.Property(x => x.RuleVersion).HasDefaultValue(1);
             e.Property(x => x.ProviderTags).HasMaxLength(500);
+            e.Property(x => x.SourceCategory).HasConversion<string>().HasMaxLength(30);
+            e.Property(x => x.SourceEventType).HasConversion<string>().HasMaxLength(30);
+            e.Property(x => x.SourceEventTypeBasis).HasMaxLength(200);
             e.HasIndex(x => x.Fingerprint).IsUnique();
+            // Reclassification finds articles of an older rules version.
+            e.HasIndex(x => x.RuleVersion);
             e.HasIndex(x => x.HeadlineKey);
             e.HasIndex(x => x.PublishedAtUtc);
             e.HasMany(x => x.Assets).WithOne().HasForeignKey(x => x.ArticleId).OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(x => x.Classifications).WithOne().HasForeignKey(x => x.ArticleId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Append-only: one row per article and rules version; leaves with the article at the retention limit.
+        b.Entity<NewsArticleClassification>(e =>
+        {
+            e.HasKey(x => new { x.ArticleId, x.RuleVersion });
+            e.Property(x => x.Category).HasConversion<string>().HasMaxLength(30);
+            e.Property(x => x.CategoryBasis).HasMaxLength(200);
+            e.Property(x => x.Scope).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.EventType).HasConversion<string>().HasMaxLength(30);
+            e.Property(x => x.EventTypeBasis).HasMaxLength(200);
+            e.Property(x => x.MarketArea).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.Trigger).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.Note).HasMaxLength(200);
         });
 
         b.Entity<NewsStory>(e =>
