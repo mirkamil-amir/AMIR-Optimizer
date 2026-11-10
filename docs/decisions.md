@@ -2,6 +2,16 @@
 
 Short records of decisions that are not obvious from the code. Newest first. Format: context → decision → consequences.
 
+## D-54 Stories link to indexes, rates, currencies, commodities and institutions from a reviewed list (2026-11-10)
+**Context:** stories could link only to catalogue listings; most market tags (^GSPC 49 articles, CL=F 47, ^IXIC, ^DJI,
+GC=F, currency pairs, yields) and every central-bank item stayed unlinked, and rate decisions reached personal feeds
+through the story's region. **Decision:** a reviewed list of entities in code (`NewsEntities`, versioned) instead of every
+tag a provider delivers (owner's choice, 2026-11-10); links only from the provider's tag or the official source, never
+headline text; personal rate-decision feeds use the central-bank link; simulated items are never linked to real
+institutions. **Consequences:** unknown tags stay unlinked until the list is extended (new version, relinked by the
+scheduled run); articles stored before 2026-11-08 get source links only; simulated rate decisions no longer appear in
+My Watchlist or portfolio news on the test stack.
+
 ## D-53 Classifications keep their history; old articles are reclassified (2026-11-10)
 **Context:** an article was classified once when stored and overwritten by nothing; 1,470 of 2,369 stored articles were
 still on rules version 1 (no event type, no market area), so Market-wide and the event-type filters missed them, and a

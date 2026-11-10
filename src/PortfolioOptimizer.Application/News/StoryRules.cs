@@ -130,18 +130,6 @@ public static partial class StoryRules
         _ => (0, 0),
     };
 
-    /// <summary>
-    /// Currency whose central bank publishes from a region (the four central-bank feeds). My Watchlist shows a rate decision
-    /// of that bank when a watched listing trades in its currency.
-    /// </summary>
-    public static readonly IReadOnlyDictionary<string, string> CentralBankCurrency = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-    {
-        ["US"] = "USD",
-        ["EU"] = "EUR",
-        ["GB"] = "GBP",
-        ["JP"] = "JPY",
-    };
-
     /// <summary>Opaque keyset cursor: the time and id of the last story of a page.</summary>
     public static string EncodeCursor(DateTime atUtc, Guid id) =>
         Convert.ToBase64String(Encoding.UTF8.GetBytes($"{atUtc.Ticks}:{id:N}")).TrimEnd('=').Replace('+', '-').Replace('/', '_');

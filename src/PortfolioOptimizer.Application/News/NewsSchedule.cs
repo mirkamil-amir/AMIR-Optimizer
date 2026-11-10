@@ -6,7 +6,7 @@ public enum ScheduledCompanySource { Held = 0, Watched = 1, Curated = 2 }
 public sealed record ScheduledCompany(string Symbol, string? Name, ScheduledCompanySource Source);
 
 /// <summary>Result of one scheduler run (logged; no user data).</summary>
-public sealed record NewsScheduleRun(int Companies, int Due, int Reclassified = 0);
+public sealed record NewsScheduleRun(int Companies, int Due, int Reclassified = 0, int Linked = 0);
 
 /// <summary>
 /// Which companies a scheduled run fetches (pure, unit-tested): every listing held in any portfolio, on any watchlist or in

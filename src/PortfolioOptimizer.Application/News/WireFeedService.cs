@@ -17,7 +17,8 @@ public sealed record WireQuery(
     string? Cursor = null,
     int? PageSize = null,
     string? Area = null,
-    string? EventType = null);
+    string? EventType = null,
+    string? Entity = null);
 
 /// <summary>
 /// The five Wire feeds, each its own query over the story layer with written rules (docs/financial-news.md › Wire feeds):
@@ -108,11 +109,10 @@ public sealed class WireFeedService(
         var (since, hours) = Window(query, 24 * 7);
         var size = PageSize(query, 20);
         var watched = viewer.Watched.ToList();
-        var regions = StoryRules.CentralBankCurrency.Where(kv => viewer.WatchedCurrency.Values.Contains(kv.Value, StringComparer.OrdinalIgnoreCase))
-            .Select(kv => kv.Key).ToList();
+        var banks = NewsEntities.CentralBanksFor(viewer.WatchedCurrency.Values);
         var q = db.NewsStories.AsNoTracking().Where(s =>
             s.Assets.Any(x => watched.Contains(x.AssetId)) ||
-            (s.EventType == NewsEventType.RateDecision && s.HasOfficialSource && s.Region != null && regions.Contains(s.Region)));
+            (s.EventType == NewsEventType.RateDecision && s.Entities.Any(e => banks.Contains(e.EntityKey))));
         q = Filter(q, query, since);
         var rows = await After(q, Decode(query.Cursor)).Take(size + 1).ToListAsync(ct);
         var page = rows.Take(size).ToList();
@@ -253,7 +253,7 @@ public sealed class WireFeedService(
         currencyValues[valuation.AccountCurrency] = currencyValues.GetValueOrDefault(valuation.AccountCurrency) + valuation.Cash;
         var currencies = currencyValues.Where(kv => kv.Value > 0).ToDictionary(kv => kv.Key,
             kv => new WireExposureDto("Currency", kv.Key, Share(kv.Value), $"positions and cash in {kv.Key} ÷ total value"), StringComparer.OrdinalIgnoreCase);
-        var regions = StoryRules.CentralBankCurrency.Where(kv => currencies.ContainsKey(kv.Value)).Select(kv => kv.Key).ToList();
+        var banks = NewsEntities.CentralBanksFor(currencies.Keys);
 
         // Like the feeds: never-fetched sources now, the held companies' due news in the background.
         var names = await db.Assets.AsNoTracking().Where(a => heldIds.Contains(a.Id)).Select(a => new { a.Symbol, a.Name }).ToListAsync(ct);
@@ -262,24 +262,25 @@ public sealed class WireFeedService(
 
         var q = db.NewsStories.AsNoTracking().Where(s =>
             s.Assets.Any(x => heldIds.Contains(x.AssetId)) ||
-            (s.EventType == NewsEventType.RateDecision && s.HasOfficialSource && s.Region != null && regions.Contains(s.Region)));
+            (s.EventType == NewsEventType.RateDecision && s.Entities.Any(e => banks.Contains(e.EntityKey))));
         q = Filter(q, query, since);
         var rows = await After(q, Decode(query.Cursor)).Take(size + 1).ToListAsync(ct);
         var page = rows.Take(size).ToList();
 
         static string Percent(double? w) => w is { } x ? x.ToString("0.0%", System.Globalization.CultureInfo.InvariantCulture) : "not available";
-        List<WireExposureDto> Exposure(NewsStory s, IReadOnlyList<WireAssetDto> assets)
+        List<WireExposureDto> Exposure(NewsStory s, IReadOnlyList<WireAssetDto> assets, IReadOnlyList<string> entityKeys)
         {
             var list = assets.Select(a => holdings.GetValueOrDefault(a.Symbol)).OfType<WireExposureDto>().ToList();
-            if (list.Count == 0 && s.EventType == NewsEventType.RateDecision && s.Region is { } r && StoryRules.CentralBankCurrency.TryGetValue(r, out var c) &&
-                currencies.TryGetValue(c, out var share))
-                list.Add(share);
+            if (list.Count == 0 && s.EventType == NewsEventType.RateDecision)
+                list.AddRange(entityKeys.Select(NewsEntities.Find).OfType<NewsEntityDefinition>()
+                    .Where(e => e.Kind == NewsEntityKind.CentralBank && e.Currency is not null)
+                    .Select(e => currencies.GetValueOrDefault(e.Currency!)).OfType<WireExposureDto>());
             return list;
         }
         var exposures = new Dictionary<Guid, List<WireExposureDto>>();
-        var stories = await ToDtosAsync(page, viewer, (s, assets) =>
+        var stories = await ToDtosAsync(page, viewer, (s, assets, entityKeys) =>
         {
-            var e = exposures[s.Id] = Exposure(s, assets);
+            var e = exposures[s.Id] = Exposure(s, assets, entityKeys);
             var why = e.Select(x => x.Kind == "Holding"
                 ? $"{x.Label} is {Percent(x.Weight)} of this portfolio ({x.Basis})"
                 : $"rate decision for the {x.Label}; {Percent(x.Weight)} of this portfolio is in {x.Label}").ToList();
@@ -373,6 +374,11 @@ public sealed class WireFeedService(
             q = q.Where(s => s.BasePoints >= older || (s.BasePoints >= recent && s.LastPublishedAtUtc >= dayAgo));
         }
         if (ParseEventType(query.EventType) is { } type) q = q.Where(s => s.EventType == type);
+        if (!string.IsNullOrWhiteSpace(query.Entity))
+        {
+            var entity = NewsEntities.Find(query.Entity.Trim())?.Key ?? throw new ValidationException("entity", $"Unknown entity '{query.Entity}'.");
+            q = q.Where(s => s.Entities.Any(e => e.EntityKey == entity));
+        }
         return q;
     }
 
@@ -428,14 +434,16 @@ public sealed class WireFeedService(
 
     // ------------------------------------------------------------------ mapping
 
-    private static Func<NewsStory, IReadOnlyList<WireAssetDto>, (Attention?, List<string>)> WatchlistReasons(Viewer viewer) => (s, assets) =>
+    private static Func<NewsStory, IReadOnlyList<WireAssetDto>, IReadOnlyList<string>, (Attention?, List<string>)> WatchlistReasons(Viewer viewer) =>
+        (s, assets, entityKeys) =>
     {
         var why = assets.Where(a => a.OnWatchlist).Select(a => $"{a.Symbol} is on your watchlist").ToList();
-        if (why.Count == 0 && s.EventType == NewsEventType.RateDecision && s.Region is { } r && StoryRules.CentralBankCurrency.TryGetValue(r, out var currency))
-        {
-            var n = viewer.WatchedCurrency.Values.Count(c => string.Equals(c, currency, StringComparison.OrdinalIgnoreCase));
-            why.Add($"rate decision for the {currency}; {n} of your watched listings trade in {currency}");
-        }
+        if (why.Count == 0 && s.EventType == NewsEventType.RateDecision)
+            foreach (var bank in entityKeys.Select(NewsEntities.Find).OfType<NewsEntityDefinition>().Where(e => e.Kind == NewsEntityKind.CentralBank && e.Currency is not null))
+            {
+                var n = viewer.WatchedCurrency.Values.Count(c => string.Equals(c, bank.Currency, StringComparison.OrdinalIgnoreCase));
+                if (n > 0) why.Add($"{bank.Name} rate decision for the {bank.Currency}; {n} of your watched listings trade in {bank.Currency}");
+            }
         Attention? personal = assets.Any(a => a.OnWatchlist)
             ? new Attention(AttentionLevel.High, 0, ["linked to a listing on your watchlist"])
             : null;
@@ -443,7 +451,7 @@ public sealed class WireFeedService(
     };
 
     private async Task<IReadOnlyList<WireStoryDto>> ToDtosAsync(IReadOnlyList<NewsStory> stories, Viewer viewer,
-        Func<NewsStory, IReadOnlyList<WireAssetDto>, (Attention?, List<string>)>? personal, CancellationToken ct)
+        Func<NewsStory, IReadOnlyList<WireAssetDto>, IReadOnlyList<string>, (Attention?, List<string>)>? personal, CancellationToken ct)
     {
         if (stories.Count == 0) return [];
         var ids = stories.Select(s => s.Id).ToList();
@@ -453,6 +461,7 @@ public sealed class WireFeedService(
         var links = await db.NewsStoryAssets.AsNoTracking().Where(x => ids.Contains(x.StoryId))
             .Select(x => new { x.StoryId, x.AssetId, x.Asset!.Symbol, x.Asset.Name, x.Asset.AssetType, x.Asset.Currency })
             .ToListAsync(ct);
+        var entityRows = await db.NewsStoryEntities.AsNoTracking().Where(x => ids.Contains(x.StoryId)).Select(x => new { x.StoryId, x.EntityKey }).ToListAsync(ct);
         var now = Now;
         return stories.Select(s =>
         {
@@ -462,13 +471,19 @@ public sealed class WireFeedService(
                 .Select(l => new WireAssetDto(l.Symbol, l.Name, l.AssetType.ToString(), l.Currency, viewer.Watched.Contains(l.AssetId), viewer.Held.Contains(l.AssetId)))
                 .OrderByDescending(a => a.OnWatchlist || a.Held).ThenBy(a => a.Symbol, StringComparer.Ordinal).ToList();
             var general = StoryRules.Assess(s.EventType, s.Category, s.HasOfficialSource, s.PublisherCount, s.LastPublishedAtUtc, now, s.MarketInstrumentCount);
-            var (own, why) = personal?.Invoke(s, assets) ?? (null, []);
+            var entityKeys = entityRows.Where(x => x.StoryId == s.Id).Select(x => x.EntityKey).ToList();
+            // An index that is also a catalogue listing already shows as that listing; it is not repeated as an entity.
+            var entities = entityKeys.Select(NewsEntities.Find).OfType<NewsEntityDefinition>()
+                .Where(e => !e.Tags.Any(t => assets.Any(a => string.Equals(a.Symbol, t, StringComparison.OrdinalIgnoreCase))))
+                .OrderBy(e => e.Kind).ThenBy(e => e.Name, StringComparer.Ordinal)
+                .Select(e => new WireEntityDto(e.Key, e.Name, e.Kind.ToString(), NewsEntities.KindLabel(e.Kind), e.Region, e.Currency)).ToList();
+            var (own, why) = personal?.Invoke(s, assets, entityKeys) ?? (null, []);
             var attention = own is null ? general : new Attention(AttentionLevel.High, general.Points, [.. own.Reasons, .. general.Reasons]);
             return new WireStoryDto(s.Id, s.Headline, lead?.Url ?? "", lead?.Publisher ?? "", s.FirstPublishedAtUtc, s.LastPublishedAtUtc,
                 s.Scope.ToString(), s.EventType.ToString(), NewsTaxonomy.Label(s.EventType), s.EventTypeBasis, s.MarketArea?.ToString(), s.Region,
                 s.HasOfficialSource, s.IsSimulated, lead?.Summary, s.ArticleCount,
                 reports.Take(20).Select(m => new WireSourceItemDto(m.ArticleId, m.Publisher, m.Url, m.PublishedAtUtc, m.IsOfficialSource)).ToList(),
-                assets, new WireAttentionDto(attention.Level.ToString(), attention.Points, attention.Reasons, AttentionNote), why, s.RuleVersion);
+                assets, new WireAttentionDto(attention.Level.ToString(), attention.Points, attention.Reasons, AttentionNote), why, s.RuleVersion, entities);
         }).ToList();
     }
 

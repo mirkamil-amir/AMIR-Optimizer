@@ -254,4 +254,34 @@ public sealed class WireFeedTests(WireFeedTests.Shared shared) : IClassFixture<W
         Assert.All(latest.Sources, s => Assert.Contains(s.Status, new[] { "Fresh", "Delayed", "Unavailable" }));
         Assert.DoesNotContain(latest.Sources, s => s.Group.Contains("Yahoo") || s.Group.Contains("Mock")); // no provider names (D-30)
     }
+
+    [Fact]
+    public async Task Stories_CarryTheirEntities_FromProviderTagsAndOfficialSources()
+    {
+        var markets = await Get<WireMarketsDto>(Alice, "/api/v1/news/markets");
+        var fx = markets.Sections.SelectMany(s => s.Stories).Single(s => s.Headline == "Dollar slips against euro and pound");
+        Assert.Equal(["EURUSD", "GBPUSD", "DXY"], fx.Entities.Select(e => e.Key));
+        Assert.All(fx.Entities, e => Assert.Equal(("Currency", "currency"), (e.Kind, e.KindLabel)));
+        var equities = markets.Sections.SelectMany(s => s.Stories).Single(s => s.Headline == "Bank stocks lead European markets higher");
+        Assert.Equal([("STOXX Europe 600", "Index"), ("EUR/USD", "Currency")], equities.Entities.Select(e => (e.Name, e.Kind)));
+
+        var macro = await Get<WireFeedDto>(Alice, "/api/v1/news/macro");
+        Assert.Equal(("ECB", "central bank"), macro.Stories.Single(s => s.Headline.StartsWith("ECB")).Entities.Select(e => (e.Key, e.KindLabel)).Single());
+        Assert.Equal("EUROSTAT", macro.Stories.Single(s => s.Headline.StartsWith("Euro")).Entities.Single().Key);
+        // Company stories without such tags have none.
+        Assert.All((await Get<WireFeedDto>(Alice, "/api/v1/news/watchlist")).Stories.Where(s => s.Assets.Any()), s => Assert.Empty(s.Entities));
+    }
+
+    [Fact]
+    public async Task EntityFilter_ShowsOnlyStoriesLinkedToIt_AndRejectsUnknownKeys()
+    {
+        var eur = await Get<WireMarketsDto>(Alice, "/api/v1/news/markets?entity=EURUSD");
+        Assert.Equal(new HashSet<string> { "Bank stocks lead European markets higher", "Dollar slips against euro and pound" },
+            Heads(eur.Sections.SelectMany(s => s.Stories)));
+        var dxy = await Get<WireMarketsDto>(Alice, "/api/v1/news/markets?entity=dxy");                // keys are case-insensitive
+        Assert.Equal(["Dollar slips against euro and pound"], dxy.Sections.SelectMany(s => s.Stories).Select(s => s.Headline));
+        var ecb = await Get<WireFeedDto>(Alice, "/api/v1/news/macro?entity=ECB");
+        Assert.Equal(["ECB decides on key interest rates"], ecb.Stories.Select(s => s.Headline));
+        Assert.Equal(HttpStatusCode.BadRequest, (await Alice.GetAsync("/api/v1/news/markets?entity=NOPE")).StatusCode);
+    }
 }

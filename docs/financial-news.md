@@ -75,6 +75,7 @@ stories (1,216 of 1,226 company stories were about watched stocks; audit of 2026
 * **Entity matching:** an article is linked to a listing only when the provider tagged it with that canonical symbol
   (`NewsArticleAssets.MatchMethod = "YahooNews ticker tag"`). No fuzzy name matching, so untagged articles about a
   company may be missing, but false matches (e.g. the SAP ADR "SAP" vs `SAP.DE`) are avoided.
+* **Entities other than companies** (2026-11-10, AMIR-19, D-54): see [Entities](#entities).
 * Items without title, link or a parseable time are skipped; future timestamps and items older than the retention are
   rejected; RSS dates with ambiguous zone abbreviations (EST, CET) are rejected rather than guessed.
 
@@ -133,6 +134,34 @@ so the feed queries are unchanged.
   /api/v1/news/stories/{id}/classifications`; the story must be visible to the caller like in the feeds, otherwise 404;
   it never fetches news). Each report lists its rules versions, newest first, with result, basis, time and trigger.
 
+## Entities
+
+Since 2026-11-10 (AMIR-19, D-54) stories link to things other than companies from a reviewed list in code (`NewsEntities`, version 1): equity indexes
+(S&P 500, Nasdaq Composite and 100, Dow, PHLX Semiconductor, S&P/TSX, EURO STOXX 50, STOXX Europe 600, DAX, CAC 40,
+IBEX 35, FTSE 100, Nikkei 225, Hang Seng), US Treasury yields (13-week, 5-, 10-, 30-year), currency pairs (EUR/USD and
+USD/EUR – Yahoo's `EUR=X` is euros per dollar –, GBP/USD, USD/GBP, USD/JPY, US Dollar Index), commodities (WTI and Brent
+crude, natural gas, gold, silver, platinum, copper, aluminium), the VIX, the four central banks and the three statistics
+offices. Every market instrument Wire fetches news for is on it (unit test).
+
+* **Links only from the source, never from headline text:** a provider tag on the list ("provider tag ^GSPC"); an official
+  item whose source states the central-bank category → the central bank of its region ("official central-bank feed
+  (EU)"); an official release of a statistics office → that office. Tags not on the list stay unlinked (`CL-LCO1=R`,
+  `XAUUSD=X` – Yahoo writes gold spot like a currency pair, which the taxonomy reads as a currency). Entity kinds agree with
+  the instrument kind the taxonomy reads from the same tag (unit test). **A simulated item is never linked to a real
+  institution** (tag links only), so simulated rate decisions no longer reach My Watchlist or portfolio news.
+* **Storage:** `NewsArticleEntities` (article, entity key, match method) and `NewsStoryEntities` (the union of a story's
+  reports, indexed by entity). Each article records the list version it was linked with (`EntityRuleVersion`); the
+  scheduled run links articles of an older version again (10 × 500 per run) from their stored tags and source, removes
+  links the list no longer gives and recomputes their stories' union. Articles stored before 2026-11-08 have no stored
+  tags, so they get source links only. The migration `NewsEntityLinks` links stored official central-bank items at once
+  (the rate-decision feeds depend on them); everything else follows with the first scheduled run.
+* **Rate decisions** in My Watchlist and portfolio news are found through the central-bank link (before: the region of an
+  official story); "Why you see this" names the bank.
+* **API and page:** stories return `entities` (key, name, kind, region, currency); an index that is also a catalogue
+  listing (e.g. `^FTSE`) shows only as that listing. Market-wide and Macroeconomic take `entity=<key>` (unknown key → 400).
+  On the Wire page each entity is a text label ("S&P 500 · index") linking to the feed that lists its stories
+  (`/news?view=markets&entity=^GSPC`, central banks and statistics offices in Macroeconomic).
+
 `NewsRelevance` – points, each with a stated reason: provider-tagged company +2; material event type (earnings,
 corporate transaction, regulatory/legal, central bank) +2, other market types +1; official issuer +1; published within
 24 h +1; reported by ≥ 2 publishers +1. High ≥ 5, Medium 3–4, Low ≤ 2. **It does not predict the direction or size of
@@ -168,7 +197,7 @@ Five endpoints, each its own query with written rules; a story is in two feeds o
 | Feed | Endpoint | Includes | Excludes | Order | Default window |
 |---|---|---|---|---|---|
 | Latest | `GET /api/v1/news/latest` | every visible story with Medium or High attention | Low attention; a third story about the same company on the same page | newest first | 48 h |
-| My Watchlist | `GET /api/v1/news/watchlist` | stories linked to a listing the caller watches (High, "X is on your watchlist"); official rate decisions of the central bank of a currency a watched listing trades in (US→USD, EU→EUR, GB→GBP, JP→JPY) | general market, sector or country news | newest first | 7 days |
+| My Watchlist | `GET /api/v1/news/watchlist` | stories linked to a listing the caller watches (High, "X is on your watchlist"); rate decisions linked to the central bank of a currency a watched listing trades in (Federal Reserve → USD, ECB → EUR, Bank of England → GBP, Bank of Japan → JPY; see Entities) | general market, sector or country news | newest first | 7 days |
 | Company News | `GET /api/v1/news/companies` | companies (curated, held or watched by the caller) with company stories, each with its 3 newest | companies only other users follow | newest company first | 7 days |
 | Market-wide | `GET /api/v1/news/markets` | market-level stories by area: Equities, Rates, Currencies, Commodities, Volatility (5 each; `area` → one area, paged) | single-company stories | newest first per area | 72 h |
 | Macroeconomic | `GET /api/v1/news/macro` | central-bank, statistics and other economy-wide stories | company and market stories | newest first | 30 days |
@@ -254,7 +283,8 @@ input and time zones, event comparison timing/benchmark gaps), `NewsTests` (dedu
 watchlist filter, event comparison end-to-end, auth, scheduled run over another user's watchlist with rules version 2),
 `NewsProviderFailureTests`, `StoryRulesTests` (grouping, attention thresholds incl. the SQL filter for every combination,
 cursor), `WireFeedTests` (the five feed contracts on one data set for two users, privacy, paging, validation, auth),
-`NewsClassificationHistoryTests` (history row on ingest, reclassification of version 1 articles with their stories,
+`NewsEntitiesTests` (list and link rules), `NewsEntityLinkingTests` (linking stored articles, stale links, story union),
+`WireFeedTests` (entities on stories, entity filter), `NewsClassificationHistoryTests` (history row on ingest, reclassification of version 1 articles with their stories,
 idempotence, endpoint visibility), `ArticleClassificationTests` (the shared classification function),
 `WireBenchmarkTests` (`PERF_BENCH=1`), `WireSourcesTests` (taxonomy, schedule selection, BEA/ONS/Eurostat/EDGAR/Yahoo-market parsing
 on payloads in the live shape), live smoke tests (`PO_LIVE_SMOKE=1`; SEC also needs `PO_SEC_CONTACT`), Vitest

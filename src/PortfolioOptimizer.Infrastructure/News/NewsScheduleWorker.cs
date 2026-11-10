@@ -46,8 +46,8 @@ public sealed class NewsScheduleWorker(IServiceScopeFactory scopes, IOptions<New
         {
             using var scope = scopes.CreateScope();
             var run = await scope.ServiceProvider.GetRequiredService<NewsService>().RefreshScheduledAsync(ct);
-            logger.LogInformation("Scheduled news run: {Due} of {Companies} companies due, {Reclassified} articles reclassified.", run.Due, run.Companies,
-                run.Reclassified);
+            logger.LogInformation("Scheduled news run: {Due} of {Companies} companies due, {Reclassified} articles reclassified, {Linked} linked to entities.",
+                run.Due, run.Companies, run.Reclassified, run.Linked);
         }
         catch (Exception ex) when (ExceptionFilters.IsRecoverable(ex))
         {

@@ -11,7 +11,7 @@ import { publishedLabel, safeExternalUrl } from '@/lib/news'
 import { useNewsSources, usePortfolioNews, useStocksBySymbols, useStoryClassifications } from '@/lib/queries'
 import type { WireClassification, WireCompany, WireMarketSection, WireSourceStatus, WireStory } from '@/lib/types'
 import { cn } from '@/lib/utils'
-import { regionLabel, sourcesLabel, utcTime, wireBenchmarks } from '@/lib/wire'
+import { entityHref, regionLabel, sourcesLabel, utcTime, wireBenchmarks } from '@/lib/wire'
 
 const attentionStyles = {
   High: 'border-foreground/50 font-semibold text-foreground',
@@ -62,6 +62,12 @@ export function StoryRow({ story, showWhy = false }: { story: WireStory; showWhy
               className={cn('rounded border px-1.5 py-0.5 font-medium text-foreground hover:bg-muted', (a.onWatchlist || a.held) && 'border-foreground/40')}
               title={`${a.name ?? a.symbol}${a.onWatchlist ? ' · on your watchlist' : ''}${a.held ? ' · in one of your portfolios' : ''}`}>
               {a.symbol}
+            </Link>
+          ))}
+          {story.entities.map((e) => (
+            <Link key={e.key} to={entityHref(e)} className="rounded border px-1.5 py-0.5 text-foreground hover:bg-muted"
+              title={`${e.name} · ${e.kindLabel} – show its stories`}>
+              {e.name} <span className="text-muted-foreground">· {e.kindLabel}</span>
             </Link>
           ))}
           <InfoTip of={<span className="text-foreground">{story.eventTypeLabel}</span>}>

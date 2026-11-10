@@ -18,7 +18,7 @@ PostgreSQL 17 via EF Core 10 + Npgsql. Context: `src/PortfolioOptimizer.Infrastr
 | Paper trading | `Portfolios`, `Holdings`, `CashLedger`, `Executions`, `TradeProposals` (+ lines), `PaperTradeBatches`, `Orders` | `Portfolio.Version` is the concurrency token; cash, cost basis and P&L in the portfolio currency; executions/orders/lines keep the native price with currency, FX rate (`numeric(20,10)`, > 0), rate date and source |
 | Analyses | `OptimizationRuns` (+ weights), `Backtests`, `MlExperiments`, `MlModelVersions`, `MlPredictionSets`, `StrategyComparisons` | inputs and results stored as `jsonb`; immutable after completion; `Currency` and `FxSource` columns record the analysis currency |
 | Watchlist | `WatchlistEntries` | (owner, asset) unique; `Position` = the owner's order (0 = top; migration `WatchlistOrder` filled it oldest-first); cascade-deleted with the user; asset FK restrict. See [watchlist.md](watchlist.md) |
-| News | `NewsArticles`, `NewsArticleAssets`, `NewsArticleClassifications` (append-only, one row per article and rules version), `NewsFetchStates`, `NewsStories`, `NewsStoryArticles`, `NewsStoryAssets` (stories: reports of one event, keyset index on scope + latest report time) | shared; `Fingerprint` (canonical-URL SHA-256) unique, `HeadlineKey` indexed for syndication; links (article, asset) with match method; fetch state per source/query; event type, market area, classification `RuleVersion` and processing time per article. Retention `News:RetentionDays` (120). See [financial-news.md](financial-news.md) |
+| News | `NewsArticles`, `NewsArticleAssets`, `NewsArticleClassifications` (append-only, one row per article and rules version), `NewsArticleEntities`, `NewsStoryEntities` (links to indexes, rates, currencies, commodities, central banks, statistics offices; story links indexed by entity), `NewsFetchStates`, `NewsStories`, `NewsStoryArticles`, `NewsStoryAssets` (stories: reports of one event, keyset index on scope + latest report time) | shared; `Fingerprint` (canonical-URL SHA-256) unique, `HeadlineKey` indexed for syndication; links (article, asset) with match method; fetch state per source/query; event type, market area, classification `RuleVersion` and processing time per article. Retention `News:RetentionDays` (120). See [financial-news.md](financial-news.md) |
 
 Money and quantities are `numeric` (`decimal`); keys of user-facing records are application-generated GUIDs.
 
@@ -49,7 +49,8 @@ portfolio description and archive date, research portfolio link, `PortfolioTrans
 `NewsStories` (additive: `NewsStories`, `NewsStoryArticles` with a unique article index, `NewsStoryAssets`; existing articles
 are grouped by the next scheduled run), `NewsProviderTags` (additive: `NewsArticles.ProviderTags`, `NewsStories.MarketInstrumentCount`), `NewsClassificationHistory`
 (additive: `NewsArticleClassifications` filled with every stored article's current classification, `NewsArticles.SourceCategory`,
-`SourceEventType`, `SourceEventTypeBasis` recovered from stored rows, index on `NewsArticles.RuleVersion`).
+`SourceEventType`, `SourceEventTypeBasis` recovered from stored rows, index on `NewsArticles.RuleVersion`), `NewsEntityLinks` (additive: `NewsArticleEntities`, `NewsStoryEntities`,
+`NewsArticles.EntityRuleVersion` default 0; links stored official central-bank items, the scheduled run links the rest).
 
 ```bash
 set -a; . ./.env; set +a
