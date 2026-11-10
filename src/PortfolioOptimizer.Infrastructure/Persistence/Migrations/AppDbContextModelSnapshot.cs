@@ -1217,6 +1217,18 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
+                    b.Property<string>("SourceCategory")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("SourceEventType")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("SourceEventTypeBasis")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.Property<string>("Summary")
                         .HasMaxLength(400)
                         .HasColumnType("character varying(400)");
@@ -1234,6 +1246,8 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                     b.HasIndex("HeadlineKey");
 
                     b.HasIndex("PublishedAtUtc");
+
+                    b.HasIndex("RuleVersion");
 
                     b.ToTable("NewsArticles");
                 });
@@ -1256,6 +1270,58 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                     b.HasIndex("AssetId");
 
                     b.ToTable("NewsArticleAssets");
+                });
+
+            modelBuilder.Entity("PortfolioOptimizer.Domain.NewsArticleClassification", b =>
+                {
+                    b.Property<Guid>("ArticleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("RuleVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("CategoryBasis")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("EventType")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("EventTypeBasis")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("MarketArea")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime>("ProcessedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Scope")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Trigger")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("ArticleId", "RuleVersion");
+
+                    b.ToTable("NewsArticleClassifications");
                 });
 
             modelBuilder.Entity("PortfolioOptimizer.Domain.NewsFetchState", b =>
@@ -2664,6 +2730,15 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                     b.Navigation("Asset");
                 });
 
+            modelBuilder.Entity("PortfolioOptimizer.Domain.NewsArticleClassification", b =>
+                {
+                    b.HasOne("PortfolioOptimizer.Domain.NewsArticle", null)
+                        .WithMany("Classifications")
+                        .HasForeignKey("ArticleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("PortfolioOptimizer.Domain.NewsStoryArticle", b =>
                 {
                     b.HasOne("PortfolioOptimizer.Domain.NewsArticle", "Article")
@@ -2902,6 +2977,8 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("PortfolioOptimizer.Domain.NewsArticle", b =>
                 {
                     b.Navigation("Assets");
+
+                    b.Navigation("Classifications");
                 });
 
             modelBuilder.Entity("PortfolioOptimizer.Domain.NewsStory", b =>

@@ -297,7 +297,97 @@ public sealed class NewsService(
         foreach (var c in due) await RefreshCompanyAsync(c.Symbol, c.Name, interval, ct);
         // Articles stored before the story layer existed, or by a run that stopped early, are grouped here in batches.
         for (var batch = 0; batch < 20 && await GroupPendingAsync(ct) > 0; batch++) { }
-        return new NewsScheduleRun(merged.Count, due.Count);
+        // Articles classified by an older rules version are classified again from their stored inputs, a few batches per run.
+        var reclassified = 0;
+        for (var batch = 0; batch < 10; batch++)
+        {
+            var n = await ReclassifyPendingAsync(ct);
+            reclassified += n;
+            if (n == 0) break;
+        }
+        return new NewsScheduleRun(merged.Count, due.Count, reclassified);
+    }
+
+    private const int ReclassificationBatch = 500;
+
+    /// <summary>Why a reclassified article's scope may be less precise than one classified when it was stored.</summary>
+    public const string TagsNotStoredNote =
+        "Provider tags were not stored before 2026-11-08; scope and market area follow from the linked listings and the category only.";
+
+    /// <summary>A history row with the article's current classification.</summary>
+    private static NewsArticleClassification HistoryRow(NewsArticle a, ClassificationTrigger trigger, string? note) => new()
+    {
+        ArticleId = a.Id, RuleVersion = a.RuleVersion, Category = a.Category, CategoryBasis = a.CategoryBasis, Scope = a.Scope,
+        EventType = a.EventType, EventTypeBasis = a.EventTypeBasis, MarketArea = a.MarketArea,
+        ProcessedAtUtc = a.ProcessedAtUtc ?? a.RetrievedAtUtc, Trigger = trigger, Note = note,
+    };
+
+    /// <summary>
+    /// Classifies stored articles of an older rules version again under <see cref="NewsTaxonomy.RuleVersion"/>, at most
+    /// <see cref="ReclassificationBatch"/> per call, from what was stored: headline, summary, provider tags (none before
+    /// 2026-11-08 – noted on the row), linked listings, official flag and what the source stated. Each gets a new history
+    /// row; earlier rows stay. Stories containing a reclassified report take their lead report's classification and
+    /// attention points again; their reports are never regrouped. Returns how many were reclassified; safe to re-run.
+    /// </summary>
+    public async Task<int> ReclassifyPendingAsync(CancellationToken ct)
+    {
+        var pending = await db.NewsArticles.Include(a => a.Assets).ThenInclude(x => x.Asset)
+            .Where(a => a.RuleVersion < NewsTaxonomy.RuleVersion)
+            .OrderBy(a => a.PublishedAtUtc).ThenBy(a => a.Id).Take(ReclassificationBatch).ToListAsync(ct);
+        if (pending.Count == 0) return 0;
+
+        var tags = pending.SelectMany(a => NewsTaxonomy.SplitTags(a.ProviderTags)).Select(Asset.NormalizeSymbol).Distinct().ToList();
+        var nonEquityTags = (await db.Assets.AsNoTracking().Where(x => tags.Contains(x.Symbol) && x.AssetType != AssetType.Equity)
+            .Select(x => x.Symbol).ToListAsync(ct)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var now = Now;
+        foreach (var a in pending)
+        {
+            var own = NewsTaxonomy.SplitTags(a.ProviderTags);
+            var equities = a.Assets.Count(x => x.Asset!.AssetType == AssetType.Equity);
+            var fundTags = own.Where(t => nonEquityTags.Contains(Asset.NormalizeSymbol(t))).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var c = NewsTaxonomy.ClassifyArticle(new ArticleClassificationInput(a.Headline, a.Summary, own, equities, a.Assets.Count - equities, fundTags,
+                a.IsOfficialSource, a.SourceCategory, a.SourceEventType, a.SourceEventTypeBasis));
+            a.Category = c.Category;
+            a.CategoryBasis = Truncate(c.CategoryBasis, 200);
+            a.Scope = c.Scope;
+            a.EventType = c.EventType;
+            a.EventTypeBasis = Truncate(c.EventTypeBasis, 200);
+            a.MarketArea = c.MarketArea;
+            a.RuleVersion = NewsTaxonomy.RuleVersion;
+            a.ProcessedAtUtc = now;
+            db.NewsArticleClassifications.Add(HistoryRow(a, ClassificationTrigger.Reclassification, a.ProviderTags is null ? TagsNotStoredNote : null));
+        }
+
+        // Stories copy their lead report's classification for indexed feed queries; refresh those that contain one of these reports.
+        var ids = pending.Select(a => a.Id).ToList();
+        var stories = await db.NewsStories.Where(s => db.NewsStoryArticles.Any(m => m.StoryId == s.Id && ids.Contains(m.ArticleId))).ToListAsync(ct);
+        var leadIds = stories.Select(s => s.LeadArticleId).ToList();
+        var leads = pending.Where(a => leadIds.Contains(a.Id)).ToDictionary(a => a.Id);
+        foreach (var missing in leadIds.Where(id => !leads.ContainsKey(id)).ToList() is { Count: > 0 } rest
+                     ? await db.NewsArticles.Where(a => rest.Contains(a.Id)).ToListAsync(ct) : [])
+            leads[missing.Id] = missing;
+        foreach (var story in stories)
+        {
+            if (!leads.TryGetValue(story.LeadArticleId, out var lead)) continue;
+            story.Scope = lead.Scope;
+            story.Category = lead.Category;
+            story.EventType = lead.EventType ?? NewsEventType.General;
+            story.EventTypeBasis = lead.EventTypeBasis;
+            story.MarketArea = lead.MarketArea;
+            story.BasePoints = StoryRules.BasePoints(story.EventType, story.Category, story.HasOfficialSource, story.PublisherCount, story.MarketInstrumentCount);
+            story.UpdatedAtUtc = now;
+        }
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex) when (db.IsUniqueConstraintViolation(ex))
+        {
+            db.ChangeTracker.Clear(); // another instance reclassified the same articles first; nothing of this batch was written
+            logger.LogInformation("News reclassification: another instance reclassified the same articles first; retried on the next run.");
+            return 0;
+        }
+        return pending.Count;
     }
 
     private static readonly SemaphoreSlim GroupingGate = new(1, 1);
@@ -495,12 +585,11 @@ public sealed class NewsService(
             }
             var headline = NewsNormalizer.Clean(a.Headline);
             var summary = NewsNormalizer.Teaser(a.Summary);
-            var classification = NewsClassifier.Classify(headline, summary, a.SourceCategory);
             var equities = linked.Count(x => x.AssetType == AssetType.Equity);
             var fundTags = a.RelatedSymbols.Where(t => assets.TryGetValue(Asset.NormalizeSymbol(t), out var x) && x.AssetType != AssetType.Equity)
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
-            var scope = NewsTaxonomy.Scope(a.RelatedSymbols, equities, linked.Count - equities, classification.Category, fundTags);
-            var eventType = NewsTaxonomy.Classify(headline, summary, scope, a.IsOfficial, a.SourceEventType, a.SourceEventBasis);
+            var c = NewsTaxonomy.ClassifyArticle(new ArticleClassificationInput(headline, summary, a.RelatedSymbols, equities, linked.Count - equities, fundTags,
+                a.IsOfficial, a.SourceCategory, a.SourceEventType, a.SourceEventBasis));
             var article = new NewsArticle
             {
                 Id = Guid.NewGuid(),
@@ -515,19 +604,23 @@ public sealed class NewsService(
                 RetrievedAtUtc = now,
                 Summary = summary,
                 ImageUrl = a.ImageUrl is { } img && img.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ? Truncate(img, 2000) : null,
-                Category = classification.Category,
-                CategoryBasis = Truncate(classification.Basis, 200),
-                Scope = scope,
+                Category = c.Category,
+                CategoryBasis = Truncate(c.CategoryBasis, 200),
+                Scope = c.Scope,
                 Region = a.Region ?? linked.Select(x => x.Country).FirstOrDefault(c => c is not null),
                 IsOfficialSource = a.IsOfficial,
                 IsSimulated = a.IsSimulated,
-                EventType = eventType.EventType,
-                EventTypeBasis = Truncate(eventType.Basis, 200),
-                MarketArea = scope == NewsScope.Market ? NewsTaxonomy.MarketArea(a.RelatedSymbols) ?? NewsMarketArea.Equities : null,
+                EventType = c.EventType,
+                EventTypeBasis = Truncate(c.EventTypeBasis, 200),
+                MarketArea = c.MarketArea,
                 RuleVersion = NewsTaxonomy.RuleVersion,
-                ProcessedAtUtc = Now,
+                ProcessedAtUtc = now,
                 ProviderTags = a.RelatedSymbols.Count == 0 ? null : Truncate(string.Join(',', a.RelatedSymbols.Distinct()), 500),
+                SourceCategory = a.SourceCategory,
+                SourceEventType = a.SourceEventType,
+                SourceEventTypeBasis = a.SourceEventBasis is null ? null : Truncate(a.SourceEventBasis, 200),
             };
+            article.Classifications.Add(HistoryRow(article, ClassificationTrigger.Ingest, null));
             article.Assets.AddRange(linked.Select(x => new NewsArticleAsset { ArticleId = article.Id, AssetId = x.Id, MatchMethod = matchMethod }));
             db.NewsArticles.Add(article);
             existing[fingerprint] = article;

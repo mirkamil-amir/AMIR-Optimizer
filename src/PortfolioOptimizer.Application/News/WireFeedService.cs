@@ -299,7 +299,33 @@ public sealed class WireFeedService(
 
     // ------------------------------------------------------------------ query building
 
-    private async Task<Viewer> ViewerAsync(CancellationToken ct)
+    /// <summary>
+    /// Classification history of every report of one story (at most 50, earliest first), each with its rules versions newest
+    /// first. The story must be visible to the caller like in the feeds; otherwise – or when it does not exist – 404. Reads
+    /// only; never fetches news.
+    /// </summary>
+    public async Task<WireClassificationHistoryDto> ClassificationHistoryAsync(Guid storyId, CancellationToken ct)
+    {
+        var viewer = await ViewerAsync(ct, refresh: false);
+        if (!await Visible(viewer).AnyAsync(s => s.Id == storyId, ct)) throw new NotFoundException("Story", storyId);
+        var reports = await db.NewsStoryArticles.AsNoTracking().Where(m => m.StoryId == storyId)
+            .OrderBy(m => m.Article!.PublishedAtUtc).ThenBy(m => m.ArticleId).Take(50)
+            .Select(m => new { m.ArticleId, m.Article!.Publisher, m.Article.PublishedAtUtc, m.Article.RuleVersion }).ToListAsync(ct);
+        var ids = reports.Select(r => r.ArticleId).ToList();
+        var rows = await db.NewsArticleClassifications.AsNoTracking().Where(c => ids.Contains(c.ArticleId)).ToListAsync(ct);
+        return new WireClassificationHistoryDto(storyId, NewsTaxonomy.RuleVersion,
+            reports.Select(r => new WireReportClassificationsDto(r.ArticleId, r.Publisher, r.PublishedAtUtc,
+                rows.Where(c => c.ArticleId == r.ArticleId).OrderByDescending(c => c.RuleVersion)
+                    .Select(c => new WireClassificationDto(c.RuleVersion, c.Category.ToString(), NewsRelevance.Label(c.Category), c.CategoryBasis,
+                        c.Scope.ToString(), c.EventType?.ToString(), c.EventType is { } t ? NewsTaxonomy.Label(t) : null, c.EventTypeBasis,
+                        c.MarketArea?.ToString(), c.ProcessedAtUtc, c.Trigger.ToString(), c.Note, c.RuleVersion == r.RuleVersion)).ToList())).ToList(),
+            [
+                "Each rules version is kept: when the rules change, stored reports are classified again and the earlier result stays listed.",
+                "Classifications are keyword and source rules, not a trained model; they can be wrong.",
+            ]);
+    }
+
+    private async Task<Viewer> ViewerAsync(CancellationToken ct, bool refresh = true)
     {
         var owner = currentUser.RequireUserId();
         var watched = await db.WatchlistEntries.AsNoTracking().Where(e => e.OwnerId == owner).Select(e => new { e.AssetId, e.Asset!.Currency, e.Asset.Symbol, e.Asset.Name }).ToListAsync(ct);
@@ -310,7 +336,7 @@ public sealed class WireFeedService(
         var benchmarks = await db.Assets.AsNoTracking().Where(a => a.AssetType != AssetType.Equity && db.MarketIndices.Any(i => i.BenchmarkSymbol == a.Symbol))
             .Select(a => a.Id).ToListAsync(ct);
         // Like the article feed: never-fetched sources now, due feeds and the stalest watched companies in the background.
-        var refreshing = await news.RefreshForViewerAsync(watched.Select(w => (w.Symbol, w.Name)).ToList(), ct);
+        var refreshing = refresh && await news.RefreshForViewerAsync(watched.Select(w => (w.Symbol, w.Name)).ToList(), ct);
         return new Viewer([.. watched.Select(w => w.AssetId)], [.. held], [.. curated], [.. benchmarks],
             watched.GroupBy(w => w.AssetId).ToDictionary(g => g.Key, g => g.First().Currency), refreshing);
     }

@@ -104,3 +104,28 @@ public sealed record WireMarketsDto(
     IReadOnlyList<WireSourceStatusDto> Sources,
     IReadOnlyList<string> Notes,
     bool Refreshing);
+
+/// <summary>
+/// One classification of a report under one rules version: what the rules decided and why, when, and what triggered it
+/// (Ingest, Reclassification, Backfill). IsCurrent marks the one the feeds use.
+/// </summary>
+public sealed record WireClassificationDto(
+    int RuleVersion,
+    string Category,
+    string CategoryLabel,
+    string CategoryBasis,
+    string Scope,
+    string? EventType,
+    string? EventTypeLabel,
+    string? EventTypeBasis,
+    string? MarketArea,
+    DateTime ProcessedAtUtc,
+    string Trigger,
+    string? Note,
+    bool IsCurrent);
+
+/// <summary>Every classification one report of a story has had, newest rules version first.</summary>
+public sealed record WireReportClassificationsDto(Guid ArticleId, string Publisher, DateTime PublishedAtUtc, IReadOnlyList<WireClassificationDto> Classifications);
+
+/// <summary>Classification history of a story's reports (earliest report first, at most 50).</summary>
+public sealed record WireClassificationHistoryDto(Guid StoryId, int CurrentRuleVersion, IReadOnlyList<WireReportClassificationsDto> Reports, IReadOnlyList<string> Notes);

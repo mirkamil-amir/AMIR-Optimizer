@@ -1,5 +1,18 @@
 # Implementation status
 
+## 2026-11-10: classification history (AMIR-18, D-53; Wire plan PR 5, part A)
+
+* `NewsArticleClassifications`: one append-only row per article and rules version (result, basis, time, trigger, note);
+  written when an article is stored; the migration `NewsClassificationHistory` copied every stored article's
+  classification into it and recovered what official sources and SEC filings stated about themselves.
+* Articles of an older rules version are reclassified by the scheduled run from their stored inputs
+  (`NewsTaxonomy.ClassifyArticle`, shared with ingest); their stories take the lead report's classification again
+  without regrouping. Version 1 articles have no stored tags; each row notes it.
+* Wire: a story's reports → "Classification history" (`GET /api/v1/news/stories/{id}/classifications`, visible stories only).
+* Tested: `NewsClassificationHistoryTests` (4), `ArticleClassificationTests` (11), Vitest `wire-classification-history`.
+* Not yet: links to non-stock entities (indices outside the catalogue, currencies, commodities, central banks; part B,
+  AMIR-19).
+
 ## 2026-11-08: news about your holdings on the portfolio Overview (AMIR-17)
 
 * `GET /api/v1/portfolios/{id}/news` (owner-scoped, 404 for others): stories about the portfolio's holdings and the

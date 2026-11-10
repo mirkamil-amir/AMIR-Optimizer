@@ -1375,6 +1375,39 @@ export interface WireStory {
   ruleVersion: number
 }
 
+/** One classification of a report under one rules version (append-only history; the current one is what the feeds use). */
+export interface WireClassification {
+  ruleVersion: number
+  category: string
+  categoryLabel: string
+  categoryBasis: string
+  scope: NewsScope
+  eventType: string | null
+  eventTypeLabel: string | null
+  eventTypeBasis: string | null
+  marketArea: MarketArea | null
+  processedAtUtc: string
+  trigger: 'Ingest' | 'Reclassification' | 'Backfill'
+  note: string | null
+  isCurrent: boolean
+}
+
+export interface WireReportClassifications {
+  articleId: string
+  publisher: string
+  publishedAtUtc: string
+  /** Newest rules version first. */
+  classifications: WireClassification[]
+}
+
+/** Classification history of a story's reports (`/news/stories/{id}/classifications`). */
+export interface WireClassificationHistory {
+  storyId: string
+  currentRuleVersion: number
+  reports: WireReportClassifications[]
+  notes: string[]
+}
+
 export interface WireSourceStatus {
   group: string
   status: 'Fresh' | 'Delayed' | 'Unavailable'

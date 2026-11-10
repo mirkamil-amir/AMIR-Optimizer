@@ -78,7 +78,9 @@
 - Latest shows at most two stories per company per page; further ones of that page are skipped there (Company News
   shows them).
 - Categories and event types from keywords are unevaluated; the relevance indicator is unvalidated and never a price
-  prediction. Articles stored before 2026-11-08 keep rules version 1 (no event type).
+  prediction. Articles stored before 2026-11-08 are reclassified under rules version 2 without their provider tags (not
+  stored then), so their scope and market area rest on linked listings and category only; each history row says so.
+  Stories are not regrouped after a reclassification.
 - Images are off by default (rights unverified). No notifications.
 - Event comparisons use daily closes, regular session hours and no holiday calendar; they cannot show causation.
 

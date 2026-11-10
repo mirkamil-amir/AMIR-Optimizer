@@ -39,6 +39,7 @@ public interface IApplicationDbContext
     DbSet<ResearchEvent> ResearchEvents { get; }
     DbSet<NewsArticle> NewsArticles { get; }
     DbSet<NewsArticleAsset> NewsArticleAssets { get; }
+    DbSet<NewsArticleClassification> NewsArticleClassifications { get; }
     DbSet<NewsFetchState> NewsFetchStates { get; }
     DbSet<NewsStory> NewsStories { get; }
     DbSet<NewsStoryArticle> NewsStoryArticles { get; }
