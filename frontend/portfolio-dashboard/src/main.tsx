@@ -5,6 +5,7 @@ import { Navigate, createBrowserRouter, RouterProvider } from 'react-router'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AppShell } from '@/components/app-shell'
+import { IntroGate } from '@/components/globe-intro'
 import { RequireAdministrator, RequireApprovedUser } from '@/components/route-guards'
 import { ApiError } from '@/lib/api'
 import { AuthProvider } from '@/lib/auth'
@@ -143,9 +144,11 @@ createRoot(document.getElementById('root')!).render(
     <QueryClientProvider client={queryClient}>
       <TooltipProvider delay={200}>
         <AuthProvider>
-          <SelectionProvider>
-            <RouterProvider router={router} />
-          </SelectionProvider>
+          <IntroGate>
+            <SelectionProvider>
+              <RouterProvider router={router} />
+            </SelectionProvider>
+          </IntroGate>
         </AuthProvider>
       </TooltipProvider>
       <Toaster richColors position="bottom-right" />

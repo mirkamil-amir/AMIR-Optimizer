@@ -24,6 +24,13 @@
   (`PageHeader titleHidden`); the app name is just "Matrix" (no tagline; "MatrixView" until 2026-11-01, D-49). The background world map (`components/world-map.tsx`) is decorative and `aria-hidden` (its text counterpart is the
   header's `MapControl`); pages light markets with `useMapHighlight`, stock interactions use `useMapSignal`. The camera is a
   CSS transform set imperatively (`lib/map-camera.ts`) – never put camera positions into React state or context.
+- Start-up globe (`components/globe-intro.tsx`, `lib/globe.ts`, `lib/intro.ts`, D-56): a dotted globe with arcs between
+  the catalogue's exchange cities, drawn on a canvas from the Natural Earth outlines – never the Dribbble video it was
+  inspired by (no licence). Always dark. **The sign-in page is the globe screen** (`GlobeScreen` in `pages/auth.tsx`: globe
+  left of the sign-in panel, above it on narrow screens; same form, labels and messages as before); after sign-in it grows
+  and fades into the app. Signed-in users get the Enter intro once per browser session: it keeps turning until they
+  choose "Enter" (focused, so the Enter key works; owner, 2026-11-10) while the app stays inert underneath. Still frame
+  with reduced motion; the Enter intro is off in Settings › Appearance and skipped by automated browsers unless `?intro=1`.
 - No decorative icons (the owner finds them childish): buttons, navigation, badges, alerts, empty states and toasts are
   text only. Icons only where they are the control itself (fold/sort/pager arrows, remove ×, phone menu, delete bin).
   Work in progress shows the moving logo (`MatrixLoader`, `WorkingPanel` in `components/matrix-loader.tsx`) – never a

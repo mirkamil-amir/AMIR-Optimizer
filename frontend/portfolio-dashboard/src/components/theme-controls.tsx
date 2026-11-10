@@ -1,6 +1,9 @@
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { MatrixMark } from '@/components/brand'
+import { Switch } from '@/components/ui/switch'
+import { introEnabled, setIntroEnabled } from '@/lib/intro'
 import { skins, useTheme, type ThemeMode } from '@/lib/theme'
 import { cn } from '@/lib/utils'
 
@@ -25,6 +28,7 @@ export function ThemeQuickToggle() {
 /** Settings card: light/dark/system and the colour skin. Saved in this browser only. */
 export function AppearanceCard() {
   const { mode, skin, setMode, setSkin } = useTheme()
+  const [intro, setIntro] = useState(introEnabled)
   return (
     <Card id="appearance">
       <CardHeader>
@@ -59,6 +63,15 @@ export function AppearanceCard() {
             <Button size="sm">Primary action</Button>
             <span className="ml-3 text-muted-foreground">Preview of the current skin</span>
           </div>
+        </div>
+        <div className="flex items-start gap-3">
+          <Switch id="globe-intro" checked={intro} onCheckedChange={(on) => { setIntro(on); setIntroEnabled(on) }} />
+          <label htmlFor="globe-intro" className="text-sm">
+            Globe intro at start
+            <span className="block text-xs text-muted-foreground">
+              A turning globe with the exchange cities of the catalogue, once per browser session; Enter goes into the app.
+            </span>
+          </label>
         </div>
       </CardContent>
     </Card>

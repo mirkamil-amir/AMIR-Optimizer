@@ -14,6 +14,8 @@ import { errorMessage } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { dateTime } from '@/lib/format'
 import { MatrixLoader } from '@/components/matrix-loader'
+import { GlobeName, GlobeScreen } from '@/components/globe-intro'
+import { INTRO_TIMING, markIntroSeen, prefersReducedMotion } from '@/lib/intro'
 
 function AuthLayout({ title, description, children, footer }: { title: string; description: ReactNode; children: ReactNode; footer?: ReactNode }) {
   return (
@@ -61,25 +63,54 @@ export function LoginPage() {
     defaultValues: { email: '', password: '' },
   })
   const from = (location.state as { from?: string } | null)?.from ?? '/'
+  const [entering, setEntering] = useState(false)
 
-  if (user) return <Navigate to={user.status === 'Approved' ? from : '/account'} replace />
+  if (user && !entering) return <Navigate to={user.status === 'Approved' ? from : '/account'} replace />
 
   const onSubmit = handleSubmit(async (v) => {
     setError(null)
     try {
       const me = await login(v.email, v.password)
-      navigate(me.status === 'Approved' ? from : '/account', { replace: true })
+      // Signed in on the globe: no start-up intro this session; the globe grows and fades into the app.
+      markIntroSeen()
+      setEntering(true)
+      window.setTimeout(() => navigate(me.status === 'Approved' ? from : '/account', { replace: true }),
+        prefersReducedMotion() ? INTRO_TIMING.reducedExitMs : INTRO_TIMING.exitMs)
     } catch (e) {
       setError(errorMessage(e))
     }
   })
 
   return (
-    <AuthLayout
-      title="Sign in"
-      description="Use the account an administrator approved for you."
-      footer={<span>No account yet? <Link to="/register" className="font-medium text-foreground underline underline-offset-4">Apply for access</Link></span>}
-    >
+    <GlobeScreen layout="login" leaving={entering} data-testid="sign-in-globe">
+      <main className="relative flex min-h-svh flex-col items-center px-4 pt-[calc(min(46svh,96vw)+0.5rem)] pb-8 lg:items-end lg:justify-center lg:pt-8 lg:pr-[9vw]">
+        <div className="dark w-full max-w-sm space-y-5 text-foreground">
+          <GlobeName className="text-center" />
+          <section aria-labelledby="sign-in-title" className="space-y-4 rounded-2xl border border-white/15 bg-[#070d22]/80 p-5 shadow-2xl backdrop-blur-sm">
+            <div className="space-y-1">
+              <h1 id="sign-in-title" className="text-lg font-semibold">Sign in</h1>
+              <p className="text-sm text-muted-foreground">Use the account an administrator approved for you.</p>
+            </div>
+            <LoginForm onSubmit={onSubmit} error={error} errors={errors} isSubmitting={isSubmitting || entering} register={register} />
+            <p className="border-t border-white/10 pt-3 text-center text-sm text-muted-foreground">
+              No account yet? <Link to="/register" className="font-medium text-foreground underline underline-offset-4">Apply for access</Link>
+            </p>
+          </section>
+          <p className="text-center text-xs text-white/60">Research and simulated trading only. No real orders are placed. Not investment advice.</p>
+        </div>
+      </main>
+    </GlobeScreen>
+  )
+}
+
+function LoginForm({ onSubmit, error, errors, isSubmitting, register }: {
+  onSubmit: () => void
+  error: string | null
+  errors: ReturnType<typeof useForm<z.infer<typeof loginSchema>>>['formState']['errors']
+  isSubmitting: boolean
+  register: ReturnType<typeof useForm<z.infer<typeof loginSchema>>>['register']
+}) {
+  return (
       <form onSubmit={onSubmit} className="space-y-4" noValidate>
         {error && (
           <Alert variant="destructive">
@@ -98,7 +129,6 @@ export function LoginPage() {
           Sign in
         </Button>
       </form>
-    </AuthLayout>
   )
 }
 
