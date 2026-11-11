@@ -26,7 +26,10 @@ public static class Policies
     }
 }
 
-/// <summary>The account must currently be Approved (read from the database on each request, so suspensions apply at once).</summary>
+/// <summary>
+/// The account must currently be Approved and must not be waiting for a new password after an administrator's reset (read
+/// from the database on each request, so suspensions and resets apply at once).
+/// </summary>
 public sealed class ApprovedAccountRequirement : IAuthorizationRequirement;
 
 public sealed class ApprovedAccountHandler(IAccountService accounts) : AuthorizationHandler<ApprovedAccountRequirement>
@@ -34,9 +37,10 @@ public sealed class ApprovedAccountHandler(IAccountService accounts) : Authoriza
     protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context, ApprovedAccountRequirement requirement)
     {
         if (!Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var id)) return;
-        var status = await accounts.GetStatusAsync(id, (context.Resource as HttpContext)?.RequestAborted ?? CancellationToken.None);
-        if (status == UserAccountStatus.Approved) context.Succeed(requirement);
-        else context.Fail(new AuthorizationFailureReason(this, $"Account status is {status?.ToString() ?? "unknown"}."));
+        var access = await accounts.GetAccessAsync(id, (context.Resource as HttpContext)?.RequestAborted ?? CancellationToken.None);
+        if (access is { Status: UserAccountStatus.Approved, CredentialResetPending: false }) context.Succeed(requirement);
+        else if (access?.CredentialResetPending == true) context.Fail(new AuthorizationFailureReason(this, "A new password must be chosen first."));
+        else context.Fail(new AuthorizationFailureReason(this, $"Account status is {access?.Status.ToString() ?? "unknown"}."));
     }
 }
 

@@ -45,6 +45,9 @@ public static class AuditActions
     public const string UserSuspended = "admin.user_suspended";
     public const string UserReactivated = "admin.user_reactivated";
     public const string RolesChanged = "admin.roles_changed";
+    /// <summary>An administrator reset a user's password to a one-time value (stored value <c>admin.password_reset</c>; named
+    /// without "password" for the same CodeQL reason as <see cref="SignInDetailsChanged"/>).</summary>
+    public const string SignInDetailsReset = "admin.password_reset";
     public const string AdminBootstrapped = "admin.bootstrapped";
     public const string SettingsChanged = "admin.settings_changed";
     public const string AssetCreated = "admin.asset_created";

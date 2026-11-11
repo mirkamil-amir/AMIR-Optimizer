@@ -4,7 +4,7 @@ import type {
   AppSettings, Asset, AuditEvent, Backtest, BacktestRequest, BacktestSummary, CashEntry, CatalogueImportResult, HoldingsResponse,
   FxSync, MarketDataStatus, OptimizationRun, OptimizationRunSummary, Order, PagedResult, PaperTradeResult, Performance, Portfolio,
   PortfolioSettings, PortfolioSummary, PriceBar, Risk, RunStatus, Sector, StockDetail, StockListItem, StockTrend, SyncJob, TradeProposal,
-  Transaction, UserAccountStatus, UserSummary, MlCatalog, MlExperiment, MlExperimentRequest, MlExperimentSummary, MlBacktest,
+  Transaction, UserAccountStatus, UserSummary, OneTimeCredential, MlCatalog, MlExperiment, MlExperimentRequest, MlExperimentSummary, MlBacktest,
   MlPredictionSet, StrategyComparison, StrategyComparisonRequest, StrategyComparisonSummary, Market, QuoteRefreshRun, QuoteRefreshResult,
   AdminOverview, HistoryRange, PriceHistory, Watchlist, WatchlistAddResult, NewsFeed, NewsFilters, EventComparison, RealityCheck, CompanyProfile,
   WireFeedName, WireQuery, WireResponses, NewsSourceStatus, PortfolioNews, WireClassificationHistory,
@@ -631,6 +631,18 @@ export function useSetUserStatus() {
   return useMutation({
     mutationFn: ({ id, status, reason }: { id: string; status: UserAccountStatus; reason?: string }) =>
       api.put<UserSummary>(`${V1}/admin/users/${id}/status`, { status, reason }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-users'] })
+      qc.invalidateQueries({ queryKey: ['admin-audit'] })
+    },
+  })
+}
+
+/** Resets a user's forgotten password; the response carries the one-time password, shown to the administrator once. */
+export function useResetUserPassword() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => api.post<OneTimeCredential>(`${V1}/admin/users/${id}/reset-password`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-users'] })
       qc.invalidateQueries({ queryKey: ['admin-audit'] })

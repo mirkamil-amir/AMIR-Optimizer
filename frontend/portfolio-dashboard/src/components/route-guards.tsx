@@ -5,14 +5,16 @@ import { useAuth } from '@/lib/auth'
 import { PortfolioProvider } from '@/lib/portfolio-context'
 
 /**
- * Renders the application only for signed-in, approved accounts. Unauthenticated visitors go to the sign-in page and
- * pending/rejected/suspended accounts to their status page. This is a usability layer; the API enforces access itself.
+ * Renders the application only for signed-in, approved accounts. Unauthenticated visitors go to the sign-in page,
+ * accounts whose password an administrator reset to choosing a new one, and pending/rejected/suspended accounts to their
+ * status page. This is a usability layer; the API enforces access itself.
  */
 export function RequireApprovedUser() {
   const { user, isLoading } = useAuth()
   const location = useLocation()
   if (isLoading) return <div className="p-8"><LoadingBlock height="h-[80svh]" /></div>
   if (!user) return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />
+  if (user.credentialResetPending) return <Navigate to="/choose-password" replace />
   if (user.status !== 'Approved') return <Navigate to="/account" replace />
   return (
     <PortfolioProvider>

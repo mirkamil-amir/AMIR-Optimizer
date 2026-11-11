@@ -32,6 +32,68 @@ public sealed class AuthTests(AuthTests.Shared shared) : IClassFixture<AuthTests
     }
 
     [Fact]
+    public async Task AdminReset_IssuesOneTimePassword_LiftsLockout_AndForcesANewPassword()
+    {
+        var email = $"forgot-{Guid.NewGuid():N}@test.local";
+        var (_, user) = await _factory.CreateApprovedUserAsync(_admin, email);
+
+        // The user forgot the password and locked the account by guessing (five failures lock it for 15 minutes).
+        using var guesser = _factory.CreateSession();
+        for (var i = 0; i < 5; i++)
+            await guesser.PostJsonAsync("/api/v1/auth/login", new LoginRequest { Email = email, Password = "Wrong-Guess-123" });
+        var locked = await (await _admin.GetAsync($"/api/v1/admin/users/{user.Id}")).ReadAsync<UserSummaryDto>();
+        Assert.True(locked.IsLockedOut);
+
+        var issued = await (await _admin.PostJsonAsync($"/api/v1/admin/users/{user.Id}/reset-password", new { }))
+            .EnsureStatus(HttpStatusCode.OK).ReadAsync<OneTimeCredentialDto>();
+        Assert.Matches("^[A-Za-z2-9]{4}(-[A-Za-z2-9]{4}){3}$", issued.OneTimePassword);
+        var listed = await (await _admin.GetAsync($"/api/v1/admin/users/{user.Id}")).ReadAsync<UserSummaryDto>();
+        Assert.False(listed.IsLockedOut);
+        Assert.True(listed.CredentialResetPending);
+
+        // The old password no longer works; the one-time password signs in, but only to choose a new password.
+        using var client = _factory.CreateSession();
+        Assert.Equal(HttpStatusCode.Unauthorized,
+            (await client.PostJsonAsync("/api/v1/auth/login", new LoginRequest { Email = email, Password = ApiFactory.UserPassword })).StatusCode);
+        var me = await client.LoginAsync(email, issued.OneTimePassword);
+        Assert.True(me.CredentialResetPending);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/v1/auth/me")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/v1/portfolios")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/v1/assets")).StatusCode);
+
+        const string chosen = "Fresh-Passw0rd-Chosen";
+        (await client.PostJsonAsync("/api/v1/auth/change-password",
+            new ChangePasswordRequest { CurrentPassword = issued.OneTimePassword, NewPassword = chosen })).EnsureStatus(HttpStatusCode.NoContent);
+        Assert.False((await (await client.GetAsync("/api/v1/auth/me")).ReadAsync<CurrentUserDto>()).CredentialResetPending);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/v1/portfolios")).StatusCode);
+        using var later = _factory.CreateSession();
+        Assert.False((await later.LoginAsync(email, chosen)).CredentialResetPending);
+
+        // Audited with the target, never with the value.
+        var audit = await (await _admin.GetAsync("/api/v1/admin/audit-events?action=admin.password_reset&pageSize=200"))
+            .ReadAsync<PagedResult<AuditEventDto>>();
+        var entry = Assert.Single(audit.Items, e => e.TargetId == user.Id.ToString());
+        Assert.DoesNotContain(issued.OneTimePassword, entry.Details ?? "");
+    }
+
+    [Fact]
+    public async Task AdminReset_IsForAdministratorsOnly_AndNotForTheirOwnAccount()
+    {
+        var (userClient, user) = await _factory.CreateApprovedUserAsync(_admin);
+        var (_, other) = await _factory.CreateApprovedUserAsync(_admin);
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await userClient.PostJsonAsync($"/api/v1/admin/users/{other.Id}/reset-password", new { })).StatusCode);
+
+        var admin = await (await _admin.GetAsync("/api/v1/auth/me")).ReadAsync<CurrentUserDto>();
+        Assert.Equal(HttpStatusCode.Forbidden, (await _admin.PostJsonAsync($"/api/v1/admin/users/{admin.Id}/reset-password", new { })).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await _admin.PostJsonAsync($"/api/v1/admin/users/{Guid.NewGuid()}/reset-password", new { })).StatusCode);
+
+        // Nothing changed for the user who was not reset.
+        Assert.Equal(HttpStatusCode.OK, (await userClient.GetAsync("/api/v1/portfolios")).StatusCode);
+        Assert.False(user.CredentialResetPending);
+    }
+
+    [Fact]
     public async Task Registration_StartsPending_AndPendingUserHasNoAccess()
     {
         using var client = _factory.CreateSession();

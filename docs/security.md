@@ -15,6 +15,14 @@ data. It places no real orders and stores no payment or brokerage credentials.
   changed by configuration.
 - **Passwords:** ASP.NET Core Identity hashing (PBKDF2), at least 10 characters with upper case, lower case and a
   digit. **Lockout** for 15 minutes after 5 failed attempts. Sign-in errors are generic.
+- **Forgotten password** (D-57): the app sends no e-mail, so an administrator resets it
+  (`POST /admin/users/{id}/reset-password`, not for their own account). The server generates a one-time password
+  (16 characters from a cryptographic source, look-alikes left out), returns it once to the administrator and never
+  stores it in plain text or writes it to the audit trail (`admin.password_reset` records who reset whose password).
+  The reset lifts a lockout and ends the user's other sessions. Until the user has chosen a new password
+  (`POST /auth/change-password` with the one-time password), `ApprovedAccountHandler` refuses every data and admin
+  request; only the profile, the password change and sign-out work. The sign-in page's "Forgot your password?"
+  explains this.
 
 ## Sessions
 
@@ -22,7 +30,8 @@ data. It places no real orders and stores no payment or brokerage credentials.
   (`Authentication:SessionHours`).
 - Every request is authorized against the account's **current** status in the database (`ApprovedAccountHandler`),
   so suspension or rejection takes effect immediately, not when the cookie expires. The security stamp is
-  revalidated every minute, so a password change or role change ends other sessions.
+  revalidated every minute, so a password change, a role change or an administrator's password reset ends other
+  sessions.
 - Signing out reloads the browser app, which discards in-memory state (cached data, the stock selection, the
   sign-in redirect target) so nothing carries over to the next person using the browser.
 - Data-protection keys (which protect cookies and antiforgery tokens) are stored in the database, so sessions
@@ -103,6 +112,6 @@ outdated schema instead of migrating with the application role.
 
 - TLS termination: put the stack behind a TLS-terminating reverse proxy for anything beyond localhost
   (see [deployment](deployment.md)). Cookies become `Secure` automatically on HTTPS.
-- No e-mail confirmation, password reset by e-mail, or multi-factor authentication. An administrator can suspend an
-  account; a forgotten password currently needs an administrator to create a new account.
+- No e-mail confirmation, self-service password reset by e-mail, or multi-factor authentication. A forgotten password
+  is reset by an administrator (see Accounts above); the one-time password must reach the user over a trusted channel.
 - Swagger UI is enabled only in Development. Set `ASPNETCORE_ENVIRONMENT=Production` outside local use.

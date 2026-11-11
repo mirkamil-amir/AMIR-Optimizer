@@ -14,7 +14,7 @@ import { DataTable, Pager, type Column } from '@/components/data-table'
 import { EmptyState, ErrorState, LoadingBlock, PageHeader, Warnings } from '@/components/common'
 import { errorMessage } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
-import { useAdminUsers, useAuditEvents, useImportCatalogue, useSetUserRoles, useSetUserStatus } from '@/lib/queries'
+import { useAdminUsers, useAuditEvents, useImportCatalogue, useResetUserPassword, useSetUserRoles, useSetUserStatus } from '@/lib/queries'
 import type { AuditEvent, UserAccountStatus, UserSummary } from '@/lib/types'
 import { dateTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
@@ -36,7 +36,10 @@ const statusStyles: Record<UserAccountStatus, string> = {
   Suspended: 'border-loss/40 text-loss',
 }
 
-type PendingAction = { user: UserSummary; kind: 'status'; status: UserAccountStatus } | { user: UserSummary; kind: 'roles'; makeAdmin: boolean }
+type PendingAction =
+  | { user: UserSummary; kind: 'status'; status: UserAccountStatus }
+  | { user: UserSummary; kind: 'roles'; makeAdmin: boolean }
+  | { user: UserSummary; kind: 'reset' }
 
 export function AdminUsersPage() {
   const { user: me } = useAuth()
@@ -47,13 +50,19 @@ export function AdminUsersPage() {
   const users = useAdminUsers(tab === 'All' ? undefined : tab, search.trim() || undefined, page, showTestAccounts)
   const setStatus = useSetUserStatus()
   const setRoles = useSetUserRoles()
+  const resetPassword = useResetUserPassword()
   const [pending, setPending] = useState<PendingAction | null>(null)
+  // The one-time password of a reset: shown once in its own dialog, forgotten when that closes.
+  const [issued, setIssued] = useState<{ email: string; value: string; message: string } | null>(null)
   const [reason, setReason] = useState('')
 
   const confirm = async () => {
     if (!pending) return
     try {
-      if (pending.kind === 'status') {
+      if (pending.kind === 'reset') {
+        const result = await resetPassword.mutateAsync(pending.user.id)
+        setIssued({ email: pending.user.email, value: result.oneTimePassword, message: result.message })
+      } else if (pending.kind === 'status') {
         await setStatus.mutateAsync({ id: pending.user.id, status: pending.status, reason: reason || undefined })
         toast.success(`${pending.user.email}: ${pending.status}`)
       } else {
@@ -91,6 +100,7 @@ export function AdminUsersPage() {
         <div className="space-y-0.5">
           <Badge variant="outline" className={statusStyles[u.status]}>{u.status}</Badge>
           {u.isLockedOut && <Badge variant="outline" className="ml-1 border-warn/50 text-warn">Locked out</Badge>}
+          {u.credentialResetPending && <Badge variant="outline" className="ml-1 border-warn/50 text-warn" title="Password reset; the user has not chosen a new one yet">Awaiting new password</Badge>}
           {u.statusReason && <div className="max-w-48 truncate text-[11px] text-muted-foreground" title={u.statusReason}>{u.statusReason}</div>}
         </div>
       ),
@@ -126,6 +136,7 @@ export function AdminUsersPage() {
                 {u.status === 'Suspended' ? 'Reactivate' : 'Approve'}
               </Button>
             )}
+            <Button size="xs" variant="ghost" onClick={() => setPending({ user: u, kind: 'reset' })}>Reset password</Button>
           </div>
         )
       },
@@ -134,7 +145,7 @@ export function AdminUsersPage() {
 
   return (
     <>
-      <PageHeader title="User management" info="Review applications, approve or reject accounts, suspend access and assign the administrator role. Every action is audited." />
+      <PageHeader title="User management" info="Review applications, approve or reject accounts, suspend access, assign the administrator role and reset forgotten passwords. Every action is audited." />
       <Card className="py-4">
         <CardContent className="space-y-3 px-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -168,13 +179,14 @@ export function AdminUsersPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {pending?.kind === 'status' ? `Set ${pending.user.email} to ${pending.status}?` : pending?.makeAdmin ? `Make ${pending.user.email} an administrator?` : `Remove administrator role from ${pending?.user.email}?`}
+              {pending?.kind === 'reset' ? `Reset the password of ${pending.user.email}?` : pending?.kind === 'status' ? `Set ${pending.user.email} to ${pending.status}?` : pending?.kind === 'roles' && pending.makeAdmin ? `Make ${pending.user.email} an administrator?` : `Remove administrator role from ${pending?.user.email}?`}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {pending?.kind === 'status' && pending.status === 'Approved' && 'The user gets access to the application immediately.'}
               {pending?.kind === 'status' && pending.status === 'Suspended' && 'All access ends immediately, including open sessions. Data is kept.'}
               {pending?.kind === 'status' && pending.status === 'Rejected' && 'The application is declined; the account cannot use the application.'}
               {pending?.kind === 'roles' && (pending.makeAdmin ? 'Administrators can manage users, settings and the instrument catalogue.' : 'The user keeps normal access.')}
+              {pending?.kind === 'reset' && 'A one-time password replaces the current one. The user\'s open sessions end and a lockout is lifted; at the next sign-in they must choose a new password. Their data stays as it is.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           {pending?.kind === 'status' && pending.status !== 'Approved' && (
@@ -186,8 +198,29 @@ export function AdminUsersPage() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirm} variant={pending?.kind === 'status' && pending.status !== 'Approved' ? 'destructive' : 'default'}>
-              {(setStatus.isPending || setRoles.isPending) && <MatrixLoader />}Confirm
+              {(setStatus.isPending || setRoles.isPending || resetPassword.isPending) && <MatrixLoader />}{pending?.kind === 'reset' ? 'Reset password' : 'Confirm'}
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!issued} onOpenChange={(o) => { if (!o) setIssued(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>One-time password for {issued?.email}</AlertDialogTitle>
+            <AlertDialogDescription>{issued?.message}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 select-all rounded-md border bg-muted px-3 py-2 text-center font-mono text-base tracking-wider" data-testid="one-time-password">
+              {issued?.value}
+            </code>
+            <Button variant="outline" onClick={() => {
+              if (!issued) return
+              navigator.clipboard.writeText(issued.value).then(() => toast.success('Copied'), () => toast.error('Copy failed: select the password and copy it by hand'))
+            }}>Copy</Button>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setIssued(null)}>Done</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -739,6 +739,8 @@ export interface CurrentUser {
   roles: string[]
   isAdministrator: boolean
   createdAtUtc: string
+  /** An administrator reset the password: the user must choose a new one before using the application. */
+  credentialResetPending: boolean
 }
 
 export interface UserSummary {
@@ -754,6 +756,14 @@ export interface UserSummary {
   isLockedOut: boolean
   /** Automated-test account (reserved .test domain). */
   isTestAccount: boolean
+  /** An administrator reset the password; the user has not chosen a new one yet. */
+  credentialResetPending: boolean
+}
+
+/** An administrator's password reset: the one-time password, returned once. */
+export interface OneTimeCredential {
+  oneTimePassword: string
+  message: string
 }
 
 export interface AdminOverview {

@@ -24,9 +24,15 @@ public interface IAccountService
     Task<CurrentUserDto?> GetCurrentAsync(CancellationToken ct);
     Task ChangePasswordAsync(ChangePasswordRequest request, CancellationToken ct);
 
-    /// <summary>Current status of an account (checked on every authorized request so suspensions apply immediately).</summary>
-    Task<UserAccountStatus?> GetStatusAsync(Guid userId, CancellationToken ct);
+    /// <summary>
+    /// Current status of an account and whether a password reset awaits a new password (checked on every authorized
+    /// request, so suspensions and resets apply immediately); null for an unknown account.
+    /// </summary>
+    Task<AccountAccess?> GetAccessAsync(Guid userId, CancellationToken ct);
 }
+
+/// <summary>What an account may do right now: data access needs <see cref="UserAccountStatus.Approved"/> and no pending reset.</summary>
+public sealed record AccountAccess(UserAccountStatus Status, bool CredentialResetPending);
 
 /// <summary>Administrator-only user management.</summary>
 public interface IUserAdministrationService
@@ -35,6 +41,12 @@ public interface IUserAdministrationService
     Task<UserSummaryDto> GetAsync(Guid userId, CancellationToken ct);
     Task<UserSummaryDto> SetStatusAsync(Guid userId, UserAccountStatus status, string? reason, CancellationToken ct);
     Task<UserSummaryDto> SetRolesAsync(Guid userId, IReadOnlyCollection<string> roles, CancellationToken ct);
+
+    /// <summary>
+    /// Resets another user's password to a generated one-time value: other sessions end, a lockout is lifted, and the user
+    /// must choose a new password before using the application. Not for the caller's own account (Settings does that).
+    /// </summary>
+    Task<OneTimeCredentialDto> ResetPasswordAsync(Guid userId, CancellationToken ct);
 }
 
 /// <summary>Administrator dashboard: account counts, analysis activity across users and market-data health.</summary>

@@ -9,8 +9,9 @@ const auth = vi.hoisted(() => ({ current: { user: null as CurrentUser | null, is
 vi.mock('@/lib/auth', () => ({ useAuth: () => auth.current }))
 vi.mock('@/lib/portfolio-context', () => ({ PortfolioProvider: ({ children }: { children: ReactNode }) => <>{children}</> }))
 
-const user = (status: CurrentUser['status'], isAdministrator = false): CurrentUser => ({
+const user = (status: CurrentUser['status'], isAdministrator = false, credentialResetPending = false): CurrentUser => ({
   id: '1', email: 'u@example.com', displayName: 'U', status, roles: isAdministrator ? ['Administrator'] : ['User'], isAdministrator, createdAtUtc: '2026-01-01T00:00:00Z',
+  credentialResetPending,
 })
 
 function renderAt(path: string) {
@@ -19,6 +20,7 @@ function renderAt(path: string) {
       <Routes>
         <Route path="/login" element={<p>login page</p>} />
         <Route path="/account" element={<p>account status page</p>} />
+        <Route path="/choose-password" element={<p>choose password page</p>} />
         <Route element={<RequireApprovedUser />}>
           <Route path="/" element={<p>dashboard</p>} />
           <Route element={<RequireAdministrator />}>
@@ -44,6 +46,13 @@ describe('route guards', () => {
     auth.current = { user: user(status), isLoading: false, isAdministrator: false }
     renderAt('/')
     expect(screen.getByText('account status page')).toBeInTheDocument()
+    expect(screen.queryByText('dashboard')).not.toBeInTheDocument()
+  })
+
+  it.each(['Approved', 'Pending'] as const)('sends %s accounts whose password an administrator reset to choose a new one first', (status) => {
+    auth.current = { user: user(status, false, true), isLoading: false, isAdministrator: false }
+    renderAt('/')
+    expect(screen.getByText('choose password page')).toBeInTheDocument()
     expect(screen.queryByText('dashboard')).not.toBeInTheDocument()
   })
 

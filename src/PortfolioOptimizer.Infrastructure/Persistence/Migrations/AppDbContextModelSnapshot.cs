@@ -2489,6 +2489,9 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<bool>("CredentialResetPending")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("DisplayName")
                         .IsRequired()
                         .HasMaxLength(100)

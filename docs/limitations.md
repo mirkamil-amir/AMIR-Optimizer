@@ -155,7 +155,8 @@
 - One in-process background worker: jobs run sequentially; a crash marks running jobs failed (queued ones resume).
   Multiple API instances would each run a worker; a shared queue is not implemented.
 - Model artifacts are stored on a local volume, not object storage.
-- No e-mail confirmation, password reset by e-mail or multi-factor authentication.
+- No e-mail confirmation, self-service password reset by e-mail or multi-factor authentication; an administrator resets
+  forgotten passwords (one-time password, D-57).
 - The backup/restore procedure in [deployment](deployment.md) is documented but was not rehearsed end to end.
 - Playwright and integration (PostgreSQL) tests are not wired into CI; the `quant-maintenance` workflow (added
   2026-10-28, not yet run on GitHub) runs the knowledge checks and the .NET unit + ML suites only.
