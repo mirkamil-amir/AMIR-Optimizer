@@ -1,69 +1,52 @@
 import { describe, expect, it } from 'vitest'
-import { LOGO_FPS, LogoMotion } from './logo-motion'
+import { LogoMotion } from './logo-motion'
 
-/** Deterministic random numbers (mulberry32) so every run sees the same weather. */
-function seeded(seed: number) {
-  return () => {
-    seed = (seed + 0x6d2b79f5) | 0
-    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+describe('LogoMotion (the one-time arrival)', () => {
+  const motion = new LogoMotion()
+  const dots = motion.dots
+  const frames = (step = 1000 / 60) => {
+    const out: number[] = []
+    for (let t = 0; t < motion.introMs; t += step) out.push(t)
+    return out
   }
-}
 
-/** Runs the motion frame by frame like the ticker and returns the frame at `seconds`. */
-function runTo(motion: LogoMotion, seconds: number) {
-  let frame = motion.frame(0)
-  for (let i = 0; i <= seconds * LOGO_FPS; i++) {
-    const t = i / LOGO_FPS
-    motion.advance(t)
-    frame = motion.frame(t)
-  }
-  return frame
-}
-
-describe('LogoMotion', () => {
-  it('starts as the still mark and fades into the movement', () => {
-    const motion = new LogoMotion(seeded(1))
-    motion.advance(0)
-    const first = motion.frame(0)
-    motion.dots.forEach((dot, i) => expect(first.opacity[i]).toBeCloseTo(dot.opacity, 5))
-    expect(first.foam.every((f) => f === 0)).toBe(true)
+  it('shows nothing before a dot starts, and the finished mark at the end', () => {
+    const start = motion.introFrame(0)
+    dots.forEach((_, i) => expect(start.scale[i]).toBe(0))
+    const done = motion.introFrame(motion.introMs)
+    dots.forEach((d, i) => {
+      expect(done.x[i]).toBeCloseTo(d.x, 3)
+      expect(done.y[i]).toBeCloseTo(d.y, 3)
+      expect(done.scale[i]).toBeCloseTo(1, 3)
+    })
+    expect(motion.introMs).toBeLessThan(2000)
   })
 
-  it('keeps every dot visible and never brighter than full', () => {
-    const motion = new LogoMotion(seeded(2))
-    for (const seconds of [1, 5, 12]) {
-      const frame = runTo(motion, seconds)
-      for (const o of frame.opacity) {
-        expect(o).toBeGreaterThanOrEqual(0.05)
-        expect(o).toBeLessThanOrEqual(1)
+  it('moves every dot along one axis only – straight across or straight up and down', () => {
+    for (const t of frames()) {
+      const f = motion.introFrame(t)
+      dots.forEach((d, i) => expect(Math.abs(f.x[i] - d.x) > 1e-3 && Math.abs(f.y[i] - d.y) > 1e-3).toBe(false))
+    }
+  })
+
+  it('flies the dots individually and in both directions', () => {
+    const axes = dots.map((d, i) => {
+      for (const t of frames(40)) {
+        const f = motion.introFrame(t)
+        if (Math.abs(f.x[i] - d.x) > 1e-3) return 'h'
+        if (Math.abs(f.y[i] - d.y) > 1e-3) return 'v'
       }
-    }
+      return '-'
+    })
+    expect(axes.filter((a) => a === 'h').length).toBeGreaterThanOrEqual(2)
+    expect(axes.filter((a) => a === 'v').length).toBeGreaterThanOrEqual(2)
+    expect(axes).not.toContain('-') // every dot flies
+    // They set off one after another, not together.
+    const starts = dots.map((_, i) => frames(10).find((t) => motion.introFrame(t).scale[i] > 0) ?? 0)
+    expect(new Set(starts).size).toBeGreaterThanOrEqual(6)
   })
 
-  it('brings in surf, stones and at most four tornadoes', () => {
-    const motion = new LogoMotion(seeded(3))
-    let most = { swells: 0, drops: 0, tornadoes: 0 }
-    for (let i = 0; i <= 30 * LOGO_FPS; i++) {
-      motion.advance(i / LOGO_FPS)
-      const c = motion.counts
-      most = { swells: Math.max(most.swells, c.swells), drops: Math.max(most.drops, c.drops), tornadoes: Math.max(most.tornadoes, c.tornadoes) }
-    }
-    expect(most.swells).toBeGreaterThan(0)
-    expect(most.drops).toBeGreaterThan(0)
-    expect(most.tornadoes).toBe(4)
-  })
-
-  it('never repeats: two runs with different random numbers differ', () => {
-    const a = Array.from(runTo(new LogoMotion(seeded(4)), 6).opacity)
-    const b = Array.from(runTo(new LogoMotion(seeded(5)), 6).opacity)
-    expect(a).not.toEqual(b)
-  })
-
-  it('is deterministic for the same random numbers', () => {
-    const a = Array.from(runTo(new LogoMotion(seeded(6)), 4).opacity)
-    const b = Array.from(runTo(new LogoMotion(seeded(6)), 4).opacity)
-    expect(a).toEqual(b)
+  it('is the same every time', () => {
+    expect(Array.from(new LogoMotion().introFrame(1200).x)).toEqual(Array.from(new LogoMotion().introFrame(1200).x))
   })
 })

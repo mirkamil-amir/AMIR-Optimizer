@@ -454,9 +454,23 @@
 /* Toasts carry no status icon (no decorative icons anywhere): the title says what happened. */
 [data-sonner-toast] [data-icon] { display: none !important; }
 
-/* Working state of the logo (MatrixLoader, WorkingPanel, the shell's mark while the app calculates): the dots move in
-   JavaScript (lib/logo-animator.ts). With reduced motion that never runs; the whole mark pulses gently instead. */
+/* The mark's colour (D-58): on light surfaces the skin's brand colour (navy, blue, teal, bronze …), so it belongs to the
+   tinted background instead of sitting on it in black; on dark surfaces – dark mode, and the dark sidebars of Navy & Gold
+   and Midnight in light mode – the light text colour around it. */
+:root { --mark-ink: var(--brand); }
+.dark, [data-skin="navy"] .sidebar-surface, [data-skin="midnight"] .sidebar-surface { --mark-ink: currentColor; }
+
+/* The app is thinking (D-59): the dot wave of MatrixLoader and WorkingPanel – a 3 × 3 grid of dots; a soft wave of light
+   sweeps across it diagonally (each dot's delay is its step along the diagonal, set inline). With reduced motion the dots
+   stand still in a fixed pattern: the corners and the centre lit. */
+.dot-wave circle { opacity: 0.25; transform-box: fill-box; transform-origin: center; }
+@media (prefers-reduced-motion: no-preference) {
+  .dot-wave circle { animation: dot-wave 1.2s ease-in-out infinite; }
+  @keyframes dot-wave {
+    0%, 55%, 100% { opacity: 0.25; transform: scale(0.8); }
+    22% { opacity: 1; transform: scale(1); }
+  }
+}
 @media (prefers-reduced-motion: reduce) {
-  .matrix-working { animation: matrix-pulse 2.4s ease-in-out infinite; }
-  @keyframes matrix-pulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+  .dot-wave circle:nth-child(odd) { opacity: 0.85; }
 }
