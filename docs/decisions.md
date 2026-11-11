@@ -21,8 +21,8 @@ the Navy & Gold and Midnight sidebars). The mark appears in the app's top-left c
 landing pages (sign-in and the Enter intro), white above the name. Wherever it appears its nine dots fly in once
 (`lib/logo-motion.ts`, `useLogoIntro`) – each on its own axis (straight across or up/down), side, start and speed,
 landing with a small pop – then it stays still: no glow, no movement while the app works. Replaces D-49's M and its surf
-animation. **Consequences:** `public/favicon.svg` is the grid on a navy tile (browser tabs may be light or dark), checked
-by `logo-dots.test.ts`.
+animation. **Consequences:** `public/favicon.svg` is the grid without a frame too – navy dots on light tab bars, white on dark
+ones (a `prefers-color-scheme` rule inside the SVG; owner, 2026-11-11) – checked by `logo-dots.test.ts`.
 
 ## D-57 Administrators reset forgotten passwords with a one-time password (2026-11-11)
 **Context:** the sign-in page had no "Forgot password?": the app sends no e-mail, and a user who forgot the password
