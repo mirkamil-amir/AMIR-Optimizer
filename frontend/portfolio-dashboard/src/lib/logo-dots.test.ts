@@ -19,8 +19,10 @@ describe('logoDots', () => {
     expect(dots.map((d) => d.step)).toEqual([0, 1, 2, 1, 2, 3, 2, 3, 4])
   })
 
-  it('matches the favicon', () => {
+  it('matches the favicon: the dots only, no frame, navy on light tab bars and white on dark ones', () => {
     expect(favicon.match(/<circle /g)).toHaveLength(dots.length)
     for (const d of dots) expect(favicon).toContain(`cx="${d.x}" cy="${d.y}" r="${LOGO_DOT_RADIUS}"`)
+    expect(favicon).not.toContain('<rect')
+    expect(favicon).toMatch(/prefers-color-scheme: dark\) \{ circle \{ fill: #ffffff/)
   })
 })

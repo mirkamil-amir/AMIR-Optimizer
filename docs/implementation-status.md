@@ -4,7 +4,8 @@
 
 * The logo is a 3 × 3 grid of equal round dots – the thinking animation's dots at rest (chosen from the logo canvas,
   concept A, after Qarluq-sign variants). It appears in the app's top-left corner only and on the landing pages
-  (sign-in and the Enter intro, white above the name), plus the favicon (on a navy tile). No frame: on light surfaces the
+  (sign-in and the Enter intro, white above the name), plus the favicon (no frame: navy dots on light tab bars, white on
+  dark ones). No frame: on light surfaces the
   skin's brand colour, on dark ones the light text colour (`--mark-ink`). Its nine dots fly in once, each on its own axis,
   then it stays still – no glow, no movement while the app works.
 * Work in progress shows the dot wave (`MatrixLoader`, `WorkingPanel`): the same 3 × 3 dots with light sweeping
