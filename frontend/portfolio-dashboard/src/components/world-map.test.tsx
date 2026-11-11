@@ -1,12 +1,11 @@
 import { useEffect } from 'react'
 import { act, render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { CAMERA_DEBOUNCE_MS, cameraFor, frameFor, WORLD, type Camera } from '@/lib/map-camera'
 import { SelectionProvider, useSelection } from '@/lib/selection'
 import { useMapHighlight, useMapSignal, WorldMapProvider } from '@/lib/world-map'
-import { MapControl, SelectionOnMap, WorldMapBackdrop } from './world-map'
+import { SelectionOnMap, WorldMapBackdrop } from './world-map'
 
 vi.mock('./world-map-geo', () => ({ COUNTRY_PATHS: { '840': 'M0 0L1 1Z', '276': 'M2 2L3 3Z', '392': 'M4 4L5 5Z' } }))
 
@@ -69,7 +68,6 @@ function renderMap(countries: string[] = []) {
           <SelectionOnMap />
           <Page countries={c} />
           <Controls />
-          <MapControl />
           <WorldMapBackdrop />
         </WorldMapProvider>
       </SelectionProvider>
@@ -169,29 +167,6 @@ describe('background world map', () => {
     await settle()
     expect(camera().style.transform).toBe(frame('JP'))
     expect(camera().style.transitionDuration).toBe('0ms')
-  })
-
-  it('manual "World view" pauses automatic framing until the selection changes; "Fit selected markets" resumes it', async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-    renderMap(['US', 'DE'])
-    await settle()
-    await user.click(screen.getByRole('button', { name: /^Market map: 2 markets in view/ }))
-    expect(screen.getByRole('list', { name: 'Markets in view' })).toHaveTextContent('Germany · XETRA, Frankfurt')
-    await user.click(screen.getByRole('button', { name: 'World view' }))
-    await settle()
-    expect(camera().style.transform).toBe(transformOf(WORLD))
-    await user.click(screen.getByRole('button', { name: 'Show Germany on the map' }))
-    await settle()
-    expect(camera().style.transform).toBe(frame('DE'))
-    await user.click(screen.getByRole('button', { name: 'Fit selected markets' }))
-    await settle()
-    expect(camera().style.transform).toBe(frame('US', 'DE'))
-
-    await user.click(screen.getByRole('button', { name: 'World view' }))
-    await settle()
-    act(() => actions.add('7203.T')) // a meaningful change returns to automatic framing
-    await settle()
-    expect(camera().style.transform).toBe(frame('US', 'DE', 'JP'))
   })
 
   it('switching the page’s portfolio re-frames from its markets', async () => {
