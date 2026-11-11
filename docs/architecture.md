@@ -116,7 +116,7 @@ limits, least-privilege database role, audit trail.
   the URL's portfolio the context of everything below it; `components/create-portfolio.tsx` and `transaction-form.tsx`.
   See [portfolios.md](portfolios.md).
 * Background map (D-38): `components/world-map.tsx` (dotted Natural Earth 1:50m countries from the generated
-  `world-map-geo.ts`, exchange markers, header `MapControl`), `lib/world-map.tsx` (highlighted markets, focus, view –
+  `world-map-geo.ts`, exchange markers; no header control – the camera frames automatically), `lib/world-map.tsx` (highlighted markets, focus, view –
   no camera state), `lib/map-camera.ts` (pure framing and camera math), `lib/markets.ts` (venues, exchange cities,
   region frames, symbol → market). The camera is a CSS transform applied imperatively; pages call `useMapHighlight`,
   stock interactions `useMapSignal`.

@@ -1,7 +1,4 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { CAMERA_DEBOUNCE_MS, cameraFor, frameFor, project, sameCamera, targetCountries, transitionMs, WORLD, type Camera } from '@/lib/map-camera'
 import { countriesOf, venueByCountry, venues } from '@/lib/markets'
 import { useSelection } from '@/lib/selection'
@@ -18,8 +15,9 @@ function prefersReducedMotion() {
  * Background of the app: a dotted, cool-toned world map (Natural Earth 1:50m countries) with the catalogue's exchange cities. The
  * markets the current page is about are highlighted and framed by a camera that moves smoothly as stocks are selected or
  * a portfolio changes (one market → its region, several → their combined extent, none → the world). A selected stock's
- * city ripples once, an opened stock's city blinks. Decorative and `aria-hidden`: the same information is in the page and
- * in the "Markets" control (`MapControl`). The camera is applied imperatively (one CSS transform transition), so moving it
+ * city ripples once, an opened stock's city blinks. Decorative and `aria-hidden`: the markets it shows are named on the
+ * pages themselves (the header's map control was removed at the owner's request, 2026-11-11, so the camera always frames
+ * automatically). The camera is applied imperatively (one CSS transform transition), so moving it
  * never re-renders React or touches portfolio data.
  */
 export function WorldMapBackdrop({ className }: { className?: string }) {
@@ -178,53 +176,3 @@ export function SelectionOnMap() {
   return null
 }
 
-/**
- * Header control of the map: the markets in view as text (the accessible counterpart of the decorative map) and the
- * viewing choices. "World view" or a single market pauses automatic framing until the selection changes; "Fit selected
- * markets" resumes it.
- */
-export function MapControl() {
-  const map = useWorldMap()
-  if (!map) return null
-  const { highlighted, focus, view, setView } = map
-  const markets = focus && !highlighted.includes(focus) ? [...highlighted, focus] : highlighted
-  return (
-    <Popover>
-      <PopoverTrigger render={<Button variant="ghost" size="sm" aria-label={`Market map: ${markets.length} market${markets.length === 1 ? '' : 's'} in view`} />}>
-        Map <span className="tabular text-muted-foreground">{markets.length}</span>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-80">
-        <div>
-          <div className="font-medium">Markets on the map</div>
-          <p className="text-xs text-muted-foreground">Where the selected or held securities are listed (exchange), not where the companies are based.</p>
-        </div>
-        {markets.length === 0 ? <p className="text-xs text-muted-foreground">None selected – the map shows the world.</p> : (
-          <ul aria-label="Markets in view" className="space-y-1 text-xs">
-            {markets.map((c) => {
-              const v = venueByCountry.get(c)!
-              return (
-                <li key={c} className="flex items-center justify-between gap-2">
-                  <span>
-                    <span className="font-medium">{v.countryName}</span> · {v.exchange}, {v.city}
-                    {focus === c && <Badge variant="outline" className="ml-1.5 h-4 px-1 text-[10px]">focused</Badge>}
-                  </span>
-                  <Button size="xs" variant="ghost" aria-label={`Show ${v.countryName} on the map`} aria-pressed={view === c} onClick={() => setView(c)}>
-                    Show
-                  </Button>
-                </li>
-              )
-            })}
-          </ul>
-        )}
-        <div className="flex gap-2">
-          <Button size="sm" variant={view === 'auto' ? 'secondary' : 'outline'} aria-pressed={view === 'auto'} onClick={() => setView('auto')} className="flex-1">
-            Fit selected markets
-          </Button>
-          <Button size="sm" variant={view === 'world' ? 'secondary' : 'outline'} aria-pressed={view === 'world'} onClick={() => setView('world')} className="flex-1">
-            World view
-          </Button>
-        </div>
-      </PopoverContent>
-    </Popover>
-  )
-}

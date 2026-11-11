@@ -21,8 +21,8 @@
   deletion, data, account and admin actions stay literal (D-47). Every tab stays under `/portfolios/:id/…` (no
   Performance or Holdings tab: their charts, cards and the positions table are on the Overview, each once; no efficient
   frontier there). A page title that repeats the tab or sidebar entry right above it is screen-reader only
-  (`PageHeader titleHidden`); the app name is just "Matrix" (no tagline; "MatrixView" until 2026-11-01, D-49). The background world map (`components/world-map.tsx`) is decorative and `aria-hidden` (its text counterpart is the
-  header's `MapControl`); pages light markets with `useMapHighlight`, stock interactions use `useMapSignal`. The camera is a
+  (`PageHeader titleHidden`); the app name is just "Matrix" (no tagline; "MatrixView" until 2026-11-01, D-49). The background world map (`components/world-map.tsx`) is decorative and `aria-hidden` (the markets it shows are named
+  on the pages; no header map control since 2026-11-11, owner – it always frames automatically); pages light markets with `useMapHighlight`, stock interactions use `useMapSignal`. The camera is a
   CSS transform set imperatively (`lib/map-camera.ts`) – never put camera positions into React state or context.
 - Start-up globe (`components/globe-intro.tsx`, `components/globe-canvas.tsx`, `lib/globe.ts`, `lib/intro.ts`, D-56):
   Matrix's own dotted globe with arcs between the catalogue's exchanges, gold accents and dot-matrix city markers, drawn

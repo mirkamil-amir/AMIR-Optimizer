@@ -10,7 +10,7 @@ import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { DataBadge, LoadingBlock } from '@/components/common'
 import { BRAND, MatrixWordmark } from '@/components/brand'
 import { ThemeQuickToggle } from '@/components/theme-controls'
-import { MapControl, SelectionOnMap, WorldMapBackdrop } from '@/components/world-map'
+import { SelectionOnMap, WorldMapBackdrop } from '@/components/world-map'
 import { useAuth } from '@/lib/auth'
 import {
   adminSection, optimizerSections, primaryForPath, primaryNav, sidebarEntryForPath, type NavEntry, type NavSection,
@@ -255,9 +255,8 @@ export function AppShell() {
             <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
               <span className="hidden items-center gap-1 2xl:flex">Simulated trading only</span>
               <SelectionIndicator />
-              {/* Text-only controls need room: on phones the map and theme stay off the header (theme: Account › Appearance). */}
+              {/* Text-only controls need room: on phones the theme stays off the header (Account › Appearance). */}
               <div className="hidden items-center gap-2 sm:flex">
-                <MapControl />
                 <ThemeQuickToggle />
               </div>
               <UserMenu />
