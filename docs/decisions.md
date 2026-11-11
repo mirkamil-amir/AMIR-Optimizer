@@ -2,15 +2,18 @@
 
 Short records of decisions that are not obvious from the code. Newest first. Format: context → decision → consequences.
 
-## D-56 A self-drawn globe plays at start (2026-11-10)
-**Context:** the owner wanted a start-up globe like a Dribbble animation (dotted globe, arcs). That video is another
-designer's work with no licence for use in the app. **Decision:** draw our own globe on a canvas from data the app already
-has – land dots from the Natural Earth outlines of the background map, arcs between the exchange cities of the
-catalogue's markets – always dark. Signed-out users sign in on it (the sign-in page is the globe screen); signed-in users
-see it once per browser session, turning until they choose Enter (no time limit), switchable off per browser; a still
-frame with reduced motion (owner's choices, 2026-11-10). No new dependency. **Consequences:** about 4,800 dots
-are computed once (about 60 ms) and drawn each frame only while the intro shows; automated browsers skip it unless
-`?intro=1`.
+## D-56 Matrix's own globe plays at start (2026-11-10, look revised 2026-11-11)
+**Context:** the owner wanted a start-up globe for the sign-in page and the first visit of a session. **Decision:** draw it
+ourselves on a Canvas 2D from data the app already has – land dots from the Natural Earth outlines of the background map,
+arcs between the exchanges of the catalogue's markets – always dark, in Matrix's own design: a lit, glassy sphere whose
+dots fly in and settle, radial spikes fringing its outline, gold packets (the brand accent) running along the arcs, an
+exchange named when an arc lands on it, city markers as small dot matrices like the logo, an orbit ring with two gold
+satellites, a slight tilt towards the pointer and a soft bloom pass. No third-party artwork, footage or code. Signed-out
+users sign in on it (the sign-in page is the globe screen); signed-in users see it once per browser session, turning
+until they choose Enter (no time limit), switchable off per browser; a still frame with reduced motion (owner's choices,
+2026-11-10). No new dependency. **Consequences:** about 14,600 dots (land and a faint sea grid) are computed once (about
+70 ms) and drawn each frame only while the globe shows; the bloom pass needs canvas filters (skipped in older Safari);
+automated browsers skip the Enter intro unless `?intro=1`.
 
 ## D-55 Central-bank rate decisions are read from the banks' own release titles (2026-11-10)
 **Context:** the keyword rules (version 2) recognised a rate decision only in made-up headlines; the real releases ("Monetary
