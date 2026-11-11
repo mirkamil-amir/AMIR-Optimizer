@@ -45,6 +45,7 @@ const GlossaryPage = lazy(() => import('@/pages/learn').then((m) => ({ default: 
 const LoginPage = lazy(() => import('@/pages/auth').then((m) => ({ default: m.LoginPage })))
 const RegisterPage = lazy(() => import('@/pages/auth').then((m) => ({ default: m.RegisterPage })))
 const AccountStatusPage = lazy(() => import('@/pages/auth').then((m) => ({ default: m.AccountStatusPage })))
+const ChoosePasswordPage = lazy(() => import('@/pages/auth').then((m) => ({ default: m.ChoosePasswordPage })))
 const NotFoundPage = lazy(() => import('@/pages/not-found').then((m) => ({ default: m.NotFoundPage })))
 
 const queryClient = new QueryClient({
@@ -61,6 +62,7 @@ const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
   { path: '/register', element: <RegisterPage /> },
   { path: '/account', element: <AccountStatusPage /> },
+  { path: '/choose-password', element: <ChoosePasswordPage /> },
   {
     // Everything below requires an approved account; the server enforces the same rules on every request.
     element: <RequireApprovedUser />,

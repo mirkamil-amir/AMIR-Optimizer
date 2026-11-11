@@ -13,6 +13,13 @@ public sealed class ApplicationUser : IdentityUser<Guid>
     public Guid? StatusChangedBy { get; set; }
     public string? StatusReason { get; set; }
     public DateTime? LastLoginAtUtc { get; set; }
+
+    /// <summary>
+    /// An administrator reset the password to a one-time value: until the user chooses a new one, the account can only
+    /// read its own profile, change the password and sign out (named without "password" for CodeQL, see
+    /// <see cref="Domain.AuditActions.SignInDetailsChanged"/>).
+    /// </summary>
+    public bool CredentialResetPending { get; set; }
 }
 
 /// <summary>Administrator bootstrap configuration (<c>Admin__Email</c>, <c>Admin__Password</c>).</summary>

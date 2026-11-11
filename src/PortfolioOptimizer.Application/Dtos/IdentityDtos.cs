@@ -30,7 +30,10 @@ public sealed record ChangePasswordRequest
     [Required, StringLength(128, MinimumLength = 10)] public string NewPassword { get; init; } = "";
 }
 
-/// <summary>The signed-in user. <see cref="Status"/> other than Approved means no access to application data.</summary>
+/// <summary>
+/// The signed-in user. <see cref="Status"/> other than Approved means no access to application data;
+/// <see cref="CredentialResetPending"/> means an administrator reset the password and the user must choose a new one first.
+/// </summary>
 public sealed record CurrentUserDto(
     Guid Id,
     string Email,
@@ -38,7 +41,8 @@ public sealed record CurrentUserDto(
     UserAccountStatus Status,
     IReadOnlyList<string> Roles,
     bool IsAdministrator,
-    DateTime CreatedAtUtc);
+    DateTime CreatedAtUtc,
+    bool CredentialResetPending = false);
 
 public sealed record UserSummaryDto(
     Guid Id,
@@ -52,7 +56,15 @@ public sealed record UserSummaryDto(
     DateTime? LastLoginAtUtc,
     bool IsLockedOut,
     /// <summary>Automated-test account (reserved .test domain); removed by the purge-test-data command.</summary>
-    bool IsTestAccount);
+    bool IsTestAccount,
+    // An administrator reset the password; the user has not chosen a new one yet.
+    bool CredentialResetPending = false);
+
+/// <summary>
+/// Result of an administrator's password reset: the one-time password, shown to the administrator once and never stored
+/// in plain text or logged. The user must replace it at the next sign-in.
+/// </summary>
+public sealed record OneTimeCredentialDto(string OneTimePassword, string Message);
 
 public sealed record UpdateUserStatusRequest
 {

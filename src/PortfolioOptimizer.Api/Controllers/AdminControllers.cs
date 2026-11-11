@@ -8,7 +8,7 @@ using PortfolioOptimizer.Domain;
 
 namespace PortfolioOptimizer.Api.Controllers;
 
-/// <summary>User management: approve, reject, suspend and reactivate accounts; assign roles. Administrators only.</summary>
+/// <summary>User management: approve, reject, suspend and reactivate accounts; assign roles; reset forgotten passwords. Administrators only.</summary>
 [ApiController]
 [Route("api/v1/admin/users")]
 [Authorize(Policy = Policies.Administrator)]
@@ -47,6 +47,19 @@ public sealed class AdminUsersController(IUserAdministrationService users) : Con
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public Task<UserSummaryDto> SetRoles(Guid id, UpdateUserRolesRequest request, CancellationToken ct) => users.SetRolesAsync(id, request.Roles, ct);
+
+    /// <summary>
+    /// Resets a user's forgotten password to a generated one-time password, returned once. The user's other sessions end,
+    /// a lockout is lifted, and until they choose a new password the account can only change it, read its profile and
+    /// sign out. Not for the caller's own account.
+    /// </summary>
+    /// <response code="403">Attempt to reset the caller's own password.</response>
+    /// <response code="404">Unknown user.</response>
+    [HttpPost("{id:guid}/reset-password")]
+    [ProducesResponseType<OneTimeCredentialDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public Task<OneTimeCredentialDto> ResetPassword(Guid id, CancellationToken ct) => users.ResetPasswordAsync(id, ct);
 }
 
 /// <summary>Administrator dashboard: accounts, analysis activity across users and market-data health. Administrators only.</summary>

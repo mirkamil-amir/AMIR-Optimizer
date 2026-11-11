@@ -14,7 +14,8 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<CurrentUser>
   logout: () => Promise<void>
   register: (body: { email: string; password: string; displayName: string }) => Promise<{ message: string }>
-  refresh: () => void
+  /** Reloads the profile; resolves once it has arrived. */
+  refresh: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -55,8 +56,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return {
       user,
       isLoading: me.isLoading,
-      isApproved: user?.status === 'Approved',
-      isAdministrator: user?.status === 'Approved' && user.isAdministrator,
+      isApproved: user?.status === 'Approved' && !user.credentialResetPending,
+      isAdministrator: user?.status === 'Approved' && !user.credentialResetPending && user.isAdministrator,
       login: (email, password) => loginMutation.mutateAsync({ email, password }),
       // A full page load after signing out discards everything held in memory (query cache, the stock selection, the
       // sign-in redirect target), so nothing of this session carries over to the next person using the browser. The
@@ -71,11 +72,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       },
       register: (body) => api.post<{ message: string }>(`${V1}/auth/register`, body),
-      refresh: () => void qc.invalidateQueries({ queryKey: ME }),
+      refresh: () => qc.invalidateQueries({ queryKey: ME }),
     }
   }, [me.data, me.isLoading, loginMutation, qc])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+}
+
+/**
+ * Where a signed-in user belongs: choosing a new password after an administrator's reset comes first, then the status
+ * page for accounts that are not approved, else `from` (the page they wanted).
+ */
+// eslint-disable-next-line react-refresh/only-export-components
+export function landingFor(user: CurrentUser, from = '/') {
+  if (user.credentialResetPending) return '/choose-password'
+  return user.status === 'Approved' ? from : '/account'
 }
 
 // eslint-disable-next-line react-refresh/only-export-components

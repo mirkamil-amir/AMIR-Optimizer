@@ -11,7 +11,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { LoadingBlock } from '@/components/common'
 import { errorMessage } from '@/lib/api'
-import { useAuth } from '@/lib/auth'
+import { landingFor, useAuth } from '@/lib/auth'
+import { useChangePassword } from '@/lib/queries'
 import { dateTime } from '@/lib/format'
 import { MatrixLoader } from '@/components/matrix-loader'
 import { GlobeName, GlobeScreen } from '@/components/globe-intro'
@@ -65,7 +66,7 @@ export function LoginPage() {
   const from = (location.state as { from?: string } | null)?.from ?? '/'
   const [entering, setEntering] = useState(false)
 
-  if (user && !entering) return <Navigate to={user.status === 'Approved' ? from : '/account'} replace />
+  if (user && !entering) return <Navigate to={landingFor(user, from)} replace />
 
   const onSubmit = handleSubmit(async (v) => {
     setError(null)
@@ -74,7 +75,7 @@ export function LoginPage() {
       // Signed in on the globe: no start-up intro this session; the globe grows and fades into the app.
       markIntroSeen()
       setEntering(true)
-      window.setTimeout(() => navigate(me.status === 'Approved' ? from : '/account', { replace: true }),
+      window.setTimeout(() => navigate(landingFor(me, from), { replace: true }),
         prefersReducedMotion() ? INTRO_TIMING.reducedExitMs : INTRO_TIMING.exitMs)
     } catch (e) {
       setError(errorMessage(e))
@@ -92,6 +93,7 @@ export function LoginPage() {
               <p className="text-sm text-muted-foreground">Use the account an administrator approved for you.</p>
             </div>
             <LoginForm onSubmit={onSubmit} error={error} errors={errors} isSubmitting={isSubmitting || entering} register={register} />
+            <ForgotPassword />
             <p className="border-t border-white/10 pt-3 text-center text-sm text-muted-foreground">
               No account yet? <Link to="/register" className="font-medium text-foreground underline underline-offset-4">Apply for access</Link>
             </p>
@@ -100,6 +102,25 @@ export function LoginPage() {
         </div>
       </main>
     </GlobeScreen>
+  )
+}
+
+/** Matrix sends no e-mail: a forgotten password is reset by an administrator, who hands over a one-time password. */
+function ForgotPassword() {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="text-center text-sm">
+      <button type="button" aria-expanded={open} aria-controls="forgot-password-help" onClick={() => setOpen((o) => !o)}
+        className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:underline focus-visible:outline-none">
+        Forgot your password?
+      </button>
+      {open && (
+        <p id="forgot-password-help" className="mt-2 text-left text-xs leading-relaxed text-muted-foreground">
+          Ask an administrator to reset it. They give you a one-time password: sign in with it and choose a new password
+          straight away. Your portfolios and settings stay as they are.
+        </p>
+      )}
+    </div>
   )
 }
 
@@ -241,6 +262,75 @@ export function AccountStatusPage() {
           </Button>
         </div>
       </div>
+    </AuthLayout>
+  )
+}
+
+const newPasswordSchema = z.object({
+  current: z.string().min(1, 'Enter the one-time password'),
+  password: z.string()
+    .min(10, 'At least 10 characters')
+    .regex(/[a-z]/, 'Include a lower-case letter')
+    .regex(/[A-Z]/, 'Include an upper-case letter')
+    .regex(/[0-9]/, 'Include a digit'),
+  confirm: z.string(),
+}).refine((v) => v.password === v.confirm, { path: ['confirm'], message: 'Passwords do not match' })
+  .refine((v) => v.password !== v.current, { path: ['password'], message: 'Choose a password different from the one-time password' })
+
+/**
+ * After an administrator's reset: the user signed in with the one-time password and chooses their own before anything
+ * else (the server refuses every data request until then).
+ */
+export function ChoosePasswordPage() {
+  const { user, isLoading, logout, refresh } = useAuth()
+  const navigate = useNavigate()
+  const change = useChangePassword()
+  const [error, setError] = useState<string | null>(null)
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<z.infer<typeof newPasswordSchema>>({
+    resolver: zodResolver(newPasswordSchema),
+    defaultValues: { current: '', password: '', confirm: '' },
+  })
+
+  if (isLoading) return <LoadingBlock height="h-svh" />
+  if (!user) return <Navigate to="/login" replace />
+  if (!user.credentialResetPending) return <Navigate to={landingFor(user)} replace />
+
+  const onSubmit = handleSubmit(async (v) => {
+    setError(null)
+    try {
+      await change.mutateAsync({ currentPassword: v.current, newPassword: v.password })
+      await refresh()
+      navigate('/', { replace: true })
+    } catch (e) {
+      setError(errorMessage(e))
+    }
+  })
+
+  return (
+    <AuthLayout title="Choose a new password" description={`An administrator reset the password of ${user.email}. Choose your own to continue.`}>
+      <form onSubmit={onSubmit} className="space-y-4" noValidate>
+        {error && (
+          <Alert variant="destructive">
+            <AlertTitle>Password not changed</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+        <FieldRow id="current" label="One-time password" error={errors.current?.message}>
+          <Input id="current" type="password" autoComplete="current-password" autoFocus {...register('current')} />
+        </FieldRow>
+        <FieldRow id="password" label="New password" error={errors.password?.message}>
+          <Input id="password" type="password" autoComplete="new-password" {...register('password')} aria-describedby="new-password-rules" />
+          <p id="new-password-rules" className="text-xs text-muted-foreground">At least 10 characters with upper- and lower-case letters and a digit.</p>
+        </FieldRow>
+        <FieldRow id="confirm" label="Confirm new password" error={errors.confirm?.message}>
+          <Input id="confirm" type="password" autoComplete="new-password" {...register('confirm')} />
+        </FieldRow>
+        <Button type="submit" className="w-full" disabled={isSubmitting}>
+          {isSubmitting && <MatrixLoader />}
+          Save and continue
+        </Button>
+        <Button type="button" variant="outline" className="w-full" onClick={() => void logout()}>Sign out</Button>
+      </form>
     </AuthLayout>
   )
 }

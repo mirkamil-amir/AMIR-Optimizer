@@ -2,6 +2,17 @@
 
 Short records of decisions that are not obvious from the code. Newest first. Format: context → decision → consequences.
 
+## D-57 Administrators reset forgotten passwords with a one-time password (2026-11-11)
+**Context:** the sign-in page had no "Forgot password?": the app sends no e-mail, and a user who forgot the password
+could only get a new, empty account. **Decision:** an administrator resets the password; the server generates a
+one-time password, shows it to the administrator once, lifts a lockout and ends the user's sessions, and flags the
+account (`CredentialResetPending`) so that it can only choose a new password until it has done so – enforced on every
+request by `ApprovedAccountHandler`, not just by the frontend. The administrator hands the value over outside the app.
+The sign-in page explains the route. Self-service reset by e-mail stays possible later and would need an e-mail
+provider (owner chose this option, 2026-11-11). **Consequences:** a new column `AspNetUsers.CredentialResetPending`
+(migration `AdminPasswordReset`, default false, existing accounts unaffected); names avoid "password" in members, as
+CodeQL treats such values as secrets (see `AuditActions.SignInDetailsChanged`).
+
 ## D-56 Matrix's own globe plays at start (2026-11-10, look revised 2026-11-11)
 **Context:** the owner wanted a start-up globe for the sign-in page and the first visit of a session. **Decision:** draw it
 ourselves on a Canvas 2D from data the app already has – land dots from the Natural Earth outlines of the background map,

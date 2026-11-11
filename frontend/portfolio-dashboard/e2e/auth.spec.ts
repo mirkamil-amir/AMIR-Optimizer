@@ -51,3 +51,48 @@ test('registration requires administrator approval before the app opens', async 
   }
   await expect(page.getByText('Providers', { exact: true })).toHaveCount(0)
 })
+
+test('a forgotten password is reset by an administrator and replaced at the next sign-in', async ({ page }) => {
+  const email = uniqueEmail('forgetful')
+  await register(page, 'E2E Forgetful', email)
+  await signIn(page, admin.email, admin.password)
+  await approve(page, email)
+
+  // The sign-in page explains what to do.
+  await signOut(page)
+  await page.getByRole('button', { name: 'Forgot your password?' }).click()
+  await expect(page.getByText(/Ask an administrator to reset it/)).toBeVisible()
+
+  // The administrator resets it and reads the one-time password, shown once.
+  await signIn(page, admin.email, admin.password)
+  await page.goto('/admin/users')
+  await page.getByRole('tab', { name: 'Approved' }).click()
+  await page.getByRole('switch', { name: 'Show test accounts' }).click()
+  await page.getByLabel('Search users').fill(email)
+  const row = page.getByRole('row').filter({ hasText: email })
+  await row.getByRole('button', { name: 'Reset password' }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Reset password' }).click()
+  const oneTime = (await page.getByTestId('one-time-password').textContent())?.trim() ?? ''
+  expect(oneTime).toMatch(/^[A-Za-z2-9]{4}(-[A-Za-z2-9]{4}){3}$/)
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Done' }).click()
+  await expect(row.getByText('Awaiting new password')).toBeVisible()
+  await signOut(page)
+
+  // The old password is gone; the one-time password leads straight to choosing a new one, and nothing else opens first.
+  expect((await signIn(page, email, strongPassword)).ok()).toBe(false)
+  await signIn(page, email, oneTime)
+  await expect(page).toHaveURL(/\/choose-password/)
+  await page.goto('/stocks')
+  await expect(page).toHaveURL(/\/choose-password/)
+  const chosen = 'Chosen-Again-2026'
+  await page.getByLabel('One-time password').fill(oneTime)
+  await page.getByLabel('New password', { exact: true }).fill(chosen)
+  await page.getByLabel('Confirm new password').fill(chosen)
+  await page.getByRole('button', { name: 'Save and continue' }).click()
+  await expect(page).toHaveURL(/\/$/)
+  await expect(page.getByLabel(/^Signed in as .*, Student investor$/)).toBeVisible()
+
+  await signOut(page)
+  await signIn(page, email, chosen)
+  await expect(page).toHaveURL(/\/$/)
+})

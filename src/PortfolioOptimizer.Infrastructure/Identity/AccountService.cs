@@ -124,19 +124,27 @@ public sealed class AccountService(
                 throw new ValidationException("currentPassword", "The current password is incorrect.");
             throw IdentityValidation(result, "newPassword");
         }
+        // A one-time password from an administrator's reset has now been replaced: full access again.
+        if (user.CredentialResetPending)
+        {
+            user.CredentialResetPending = false;
+            var cleared = await users.UpdateAsync(user);
+            if (!cleared.Succeeded) throw IdentityValidation(cleared, "newPassword");
+        }
         // The security stamp changed: other sessions are invalidated at their next validation; keep this one.
         await signIn.RefreshSignInAsync(user);
         await audit.RecordAsync(AuditActions.SignInDetailsChanged, "User", id.ToString(), ct: ct);
     }
 
-    public async Task<UserAccountStatus?> GetStatusAsync(Guid userId, CancellationToken ct) =>
-        await db.Users.AsNoTracking().Where(u => u.Id == userId).Select(u => (UserAccountStatus?)u.Status).FirstOrDefaultAsync(ct);
+    public async Task<AccountAccess?> GetAccessAsync(Guid userId, CancellationToken ct) =>
+        await db.Users.AsNoTracking().Where(u => u.Id == userId)
+            .Select(u => new AccountAccess(u.Status, u.CredentialResetPending)).FirstOrDefaultAsync(ct);
 
     private async Task<CurrentUserDto> ToDtoAsync(ApplicationUser user)
     {
         var roles = (await users.GetRolesAsync(user)).OrderBy(r => r).ToList();
         return new CurrentUserDto(user.Id, user.Email ?? "", user.DisplayName, user.Status, roles,
-            roles.Contains(Roles.Administrator), user.CreatedAtUtc);
+            roles.Contains(Roles.Administrator), user.CreatedAtUtc, user.CredentialResetPending);
     }
 
     internal static ValidationException IdentityValidation(IdentityResult result, string field) =>

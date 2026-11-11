@@ -15,7 +15,7 @@ vi.mock('@/components/theme-controls', () => ({ ThemeQuickToggle: () => null }))
 
 const user = (isAdministrator: boolean): CurrentUser => ({
   id: '1', email: 'u@example.test', displayName: 'U', status: 'Approved', roles: isAdministrator ? ['Administrator'] : ['User'],
-  isAdministrator, createdAtUtc: '2026-01-01T00:00:00Z',
+  isAdministrator, createdAtUtc: '2026-01-01T00:00:00Z', credentialResetPending: false,
 })
 
 const PAGES = ['/', '/learn', '/learn/glossary', '/learn/:strategyId', '/research', '/news', '/watchlist', '/market-data', '/settings', '/stocks', '/stocks/:symbol', '/backtest', '/optimize', '/admin/settings']

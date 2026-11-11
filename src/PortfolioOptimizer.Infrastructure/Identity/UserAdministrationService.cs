@@ -109,6 +109,31 @@ public sealed class UserAdministrationService(
         return ToDto(user, requested);
     }
 
+    public async Task<OneTimeCredentialDto> ResetPasswordAsync(Guid userId, CancellationToken ct)
+    {
+        var actor = currentUser.RequireUserId();
+        if (actor == userId) throw new ForbiddenException("Change your own password in Settings.");
+        var user = await FindAsync(userId);
+
+        var oneTime = OneTimeCredentials.Generate();
+        // The reset token route replaces the hash and the security stamp in one step: the user's other sessions end at
+        // their next validation.
+        var token = await users.GeneratePasswordResetTokenAsync(user);
+        var reset = await users.ResetPasswordAsync(user, token, oneTime);
+        if (!reset.Succeeded) throw AccountService.IdentityValidation(reset, "password");
+        // A user who forgot the password has often locked the account by guessing: the reset lifts that.
+        await users.SetLockoutEndDateAsync(user, null);
+        await users.ResetAccessFailedCountAsync(user);
+        user.CredentialResetPending = true;
+        var flagged = await users.UpdateAsync(user);
+        if (!flagged.Succeeded) throw AccountService.IdentityValidation(flagged, "password");
+
+        // The audit records who reset whose password, never the value.
+        await audit.RecordAsync(AuditActions.SignInDetailsReset, "User", user.Id.ToString(), $"One-time password issued for {user.Email}.", ct: ct);
+        return new OneTimeCredentialDto(oneTime,
+            "Give this one-time password to the user over a trusted channel. It is shown only now; at the next sign-in they must choose a new password.");
+    }
+
     private async Task<int> ApprovedAdministratorCountAsync(CancellationToken ct) =>
         (await users.GetUsersInRoleAsync(Roles.Administrator)).Count(u => u.Status == UserAccountStatus.Approved);
 
@@ -126,7 +151,7 @@ public sealed class UserAdministrationService(
 
     private UserSummaryDto ToDto(ApplicationUser u, IReadOnlyList<string> roles) => new(
         u.Id, u.Email ?? "", u.DisplayName, u.Status, roles.OrderBy(r => r).ToList(), u.CreatedAtUtc, u.StatusChangedAtUtc, u.StatusReason,
-        u.LastLoginAtUtc, u.LockoutEnd is { } end && end > clock.GetUtcNow(), TestDataPolicy.IsTestEmail(u.Email));
+        u.LastLoginAtUtc, u.LockoutEnd is { } end && end > clock.GetUtcNow(), TestDataPolicy.IsTestEmail(u.Email), u.CredentialResetPending);
 
     private static void EnsureSucceeded(IdentityResult result)
     {

@@ -1,5 +1,17 @@
 # Implementation status
 
+## 2026-11-11: administrator password reset (AMIR-24, D-57)
+
+* Sign-in page: "Forgot your password?" explains that an administrator resets it. Admin › Users: "Reset password" on
+  every other account issues a one-time password, shown once with Copy; the row shows "Awaiting new password" until it
+  is replaced. A user signing in with it lands on "Choose a new password" and reaches nothing else first (server-side
+  check in `ApprovedAccountHandler`). The reset lifts a lockout and ends other sessions; audited without the value.
+* Tested: integration `AuthTests` (2 new: reset with lockout, old password refused, data refused until the new password,
+  audit without the value; only administrators, not for their own account, unknown user 404), unit
+  `OneTimeCredentialsTests` (policy, no look-alikes, no repeats in 500), Vitest route guard (2 new cases), e2e
+  `auth.spec.ts` (the whole journey in the browser, on the disposable stack).
+* Not done: self-service reset by e-mail (needs an e-mail provider).
+
 ## 2026-11-10: start-up globe (AMIR-22, D-56)
 
 * A dotted globe turning with arcs between exchange cities. The sign-in page is the globe screen (sign-in panel beside
