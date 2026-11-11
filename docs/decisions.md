@@ -2,6 +2,28 @@
 
 Short records of decisions that are not obvious from the code. Newest first. Format: context → decision → consequences.
 
+## D-59 The app thinks with a dot wave, not with the logo (2026-11-11)
+**Context:** the owner did not want the logo to move while the app works or to stand in for loading indicators; the logo
+belongs in the top-left corner. **Decision:** work in progress (`MatrixLoader` in buttons, `WorkingPanel` for downloads,
+training, backtests) shows the dot wave – a 3 × 3 grid of dots with a soft wave of light sweeping across it diagonally,
+in pure CSS (`.dot-wave`), in the text colour (the panel's in `--mark-ink`); with reduced motion a fixed pattern. Its
+dots are the mark's (D-58): the mark is the dot wave at rest. Never a spinner. The logo does not move while the app works, and the running-work registry that animated it is gone.
+**Consequences:** `MatrixLoader` and `WorkingPanel` keep their names and props, so every place that shows work is
+unchanged; the Settings skin preview no longer shows the logo.
+
+## D-58 The mark: a 3 × 3 grid of dots, the thinking dots at rest (2026-11-11)
+**Context:** the owner explored a new logo on the logo canvas – the Qarluq tamga in a hexagon, as fine halftone dots –
+and then chose the simplest form: the thinking animation's 3 × 3 dots themselves (concept A). **Decision:** the mark is a
+3 × 3 grid of equal round dots (`lib/logo-dots.ts`); the dot wave (`MatrixLoader`, D-59) uses exactly these dots, so
+logo and loader are one family. No frame and no gold: the dots stand on the app's background, coloured by `--mark-ink` –
+the skin's brand colour on light surfaces (navy, blue, teal, bronze …), the light text colour on dark ones (dark mode,
+the Navy & Gold and Midnight sidebars). The mark appears in the app's top-left corner only (`MatrixWordmark`) and on the
+landing pages (sign-in and the Enter intro), white above the name. Wherever it appears its nine dots fly in once
+(`lib/logo-motion.ts`, `useLogoIntro`) – each on its own axis (straight across or up/down), side, start and speed,
+landing with a small pop – then it stays still: no glow, no movement while the app works. Replaces D-49's M and its surf
+animation. **Consequences:** `public/favicon.svg` is the grid on a navy tile (browser tabs may be light or dark), checked
+by `logo-dots.test.ts`.
+
 ## D-57 Administrators reset forgotten passwords with a one-time password (2026-11-11)
 **Context:** the sign-in page had no "Forgot password?": the app sends no e-mail, and a user who forgot the password
 could only get a new, empty account. **Decision:** an administrator resets the password; the server generates a

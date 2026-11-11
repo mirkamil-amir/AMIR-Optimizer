@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { MatrixMark } from '@/components/brand'
 import { Switch } from '@/components/ui/switch'
 import { introEnabled, setIntroEnabled } from '@/lib/intro'
 import { skins, useTheme, type ThemeMode } from '@/lib/theme'
@@ -58,7 +57,6 @@ export function AppearanceCard() {
           ))}
         </div>
         <div className="flex items-center gap-3 rounded-lg border p-3">
-          <MatrixMark motion="still" className="size-10" />
           <div className="text-sm">
             <Button size="sm">Primary action</Button>
             <span className="ml-3 text-muted-foreground">Preview of the current skin</span>

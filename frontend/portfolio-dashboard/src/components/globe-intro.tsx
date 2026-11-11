@@ -1,4 +1,5 @@
 import { Suspense, lazy, useCallback, useEffect, useRef, useState, type HTMLAttributes, type ReactNode } from 'react'
+import { MatrixMark } from '@/components/brand'
 import { useAuth } from '@/lib/auth'
 import { INTRO_TIMING, markIntroSeen, prefersReducedMotion, shouldShowIntro } from '@/lib/intro'
 import { cn } from '@/lib/utils'
@@ -29,9 +30,17 @@ export function GlobeScreen({ layout, leaving = false, className, children, ...r
   )
 }
 
-/** The name on the globe screens. */
+/**
+ * The mark and the name on the globe screens (D-58): the mark arrives once – every dot flies in – and then stays, white on
+ * the always-dark globe screen, above the letters.
+ */
 export function GlobeName({ className }: { className?: string }) {
-  return <p className={cn('heading-display text-3xl font-semibold tracking-[0.35em] text-white sm:text-4xl', className)}>MATRIX</p>
+  return (
+    <div className={cn('flex flex-col items-center gap-3', className)}>
+      <MatrixMark color="#ffffff" decorative className="size-16 sm:size-20" />
+      <p className="heading-display text-3xl font-semibold tracking-[0.35em] text-white sm:text-4xl">MATRIX</p>
+    </div>
+  )
 }
 
 /**

@@ -1,59 +1,30 @@
-/** Dots per side of the logo's matrix. */
-export const LOGO_GRID = 11
+/**
+ * The Matrix mark (owner's choice, 2026-11-11, D-58): a 3 × 3 grid of round dots – the thinking animation's dots at rest.
+ * The dot wave (`MatrixLoader`) uses exactly this geometry, so the mark and the loader are one family: when the app
+ * thinks, the same dots light up in a diagonal wave.
+ */
 
-/** Twinkle phases: every dot gets one of these fixed, scattered offsets in the twinkle cycle. */
-export const TWINKLE_PHASES = 20
-
-/** The M's four strokes in grid cells: left leg (up), first diagonal (down), second diagonal (up), right leg (down). */
-export function logoStrokes(n = LOGO_GRID): [number, number, number, number][] {
-  const a = 1, b = n - 2, c = (n - 1) / 2
-  return [[a, b, a, a], [a, a, c, c], [c, c, b, a], [b, a, b, b]]
-}
+/** Dots per side. */
+export const LOGO_GRID = 3
+/** Radius of every dot in the 100 × 100 viewBox. */
+export const LOGO_DOT_RADIUS = 11
 
 export interface LogoDot {
   row: number
   col: number
-  /** Centre in the 100 × 100 viewBox of the mark. */
+  /** Centre in the 100 × 100 viewBox. */
   x: number
   y: number
-  /** Glow 0.12–1: strongest on the strokes of the M, fading with the distance from them. */
-  opacity: number
-  /** The glow belongs to one of the two diagonal strokes (drawn in the accent colour). */
-  gold: boolean
-  /** Fixed, scattered phase 0…TWINKLE_PHASES-1 of the twinkle. */
-  phase: number
+  /** Position along the diagonal, 0 (top left) … 4 (bottom right): the dot wave lights the dots in this order. */
+  step: number
 }
 
-/**
- * The Matrix mark (variation 3c, chosen by the owner on 2026-11-01): an M drawn through an 11 × 11 dot matrix – legs on
- * the second and second-to-last column, diagonals meeting in the centre cell. Every dot glows by its distance to the
- * nearest stroke; dots near a diagonal glow gold, all others white.
- */
-export function logoDots(n = LOGO_GRID): LogoDot[] {
-  const strokes = logoStrokes(n)
-  const step = 78 / (n - 1)
-  const scale = (n - 1) / 10
-  const dots: LogoDot[] = []
-  for (let row = 0; row < n; row++) {
-    for (let col = 0; col < n; col++) {
-      let distance = Infinity, stroke = 0
-      strokes.forEach(([x1, y1, x2, y2], i) => {
-        const dx = x2 - x1, dy = y2 - y1, len = dx * dx + dy * dy
-        const t = Math.max(0, Math.min(1, len ? ((col - x1) * dx + (row - y1) * dy) / len : 0))
-        const d = Math.hypot(x1 + t * dx - col, y1 + t * dy - row)
-        if (d < distance) { distance = d; stroke = i }
-      })
-      dots.push({
-        row, col,
-        x: round(11 + col * step),
-        y: round(11 + row * step),
-        opacity: round(Math.max(0.12, 1 - distance / (2.6 * scale))),
-        gold: (stroke === 1 || stroke === 2) && distance < 2 * scale,
-        phase: (row * 7 + col * 13 + row * col * 3) % TWINKLE_PHASES,
-      })
-    }
-  }
-  return dots
-}
+const DOTS: LogoDot[] = Array.from({ length: LOGO_GRID * LOGO_GRID }, (_, k) => {
+  const row = Math.floor(k / LOGO_GRID), col = k % LOGO_GRID
+  return { row, col, x: 20 + col * 30, y: 20 + row * 30, step: row + col }
+})
 
-const round = (v: number) => Math.round(v * 100) / 100
+/** The nine dots, row by row from the top left. */
+export function logoDots(): LogoDot[] {
+  return DOTS
+}

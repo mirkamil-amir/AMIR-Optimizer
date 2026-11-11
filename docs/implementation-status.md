@@ -1,5 +1,21 @@
 # Implementation status
 
+## 2026-11-11: new mark – a 3 × 3 grid of dots; the dot wave for work (AMIR-25, D-58, D-59)
+
+* The logo is a 3 × 3 grid of equal round dots – the thinking animation's dots at rest (chosen from the logo canvas,
+  concept A, after Qarluq-sign variants). It appears in the app's top-left corner only and on the landing pages
+  (sign-in and the Enter intro, white above the name), plus the favicon (on a navy tile). No frame: on light surfaces the
+  skin's brand colour, on dark ones the light text colour (`--mark-ink`). Its nine dots fly in once, each on its own axis,
+  then it stays still – no glow, no movement while the app works.
+* Work in progress shows the dot wave (`MatrixLoader`, `WorkingPanel`): the same 3 × 3 dots with light sweeping
+  diagonally, pure CSS. The Settings skin preview no longer shows the logo.
+* Checked in the browser: the sidebar in Navy & Gold (light), Ocean (light and dark); the sign-in page during the arrival
+  (0.45 s) and after it; the dot wave at 16 and 36 px, light and dark, at four moments of its cycle.
+* Tested: Vitest `logo-dots.test.ts` (3: the grid, the diagonal order, the favicon), `logo-motion.test.ts` (4: nothing
+  before a dot starts and the finished mark at the end, one axis per dot, individual flights in both directions,
+  deterministic), `brand.test.tsx` (6: name, the 3 × 3 grid, no frame and a one-time arrival, still while work runs, the
+  dot wave's diagonal delays, hidden without a label).
+
 ## 2026-11-11: administrator password reset (AMIR-24, D-57)
 
 * Sign-in page: "Forgot your password?" explains that an administrator resets it. Admin › Users: "Reset password" on
@@ -587,7 +603,7 @@
 
 * Converter card (rates board, pair chart, calculator) on the overview and stock-selection pages, backed by
   `/fx/history` and `/fx/board`; labelled reference rates with dates, never "live".
-* Brand: Matrix (formerly MatrixView, AMIR Optimizer); SVG mark (an M glowing through an 11 × 11 dot matrix, gold diagonals; moves while the app calculates) in the sidebar, sign-in pages, favicon, tab title.
+* Brand: Matrix (formerly MatrixView, AMIR Optimizer); SVG mark (a 3 × 3 grid of dots, D-58; work in progress shows the same dots as a wave, D-59) in the sidebar, sign-in pages, favicon, tab title.
 * Light / dark / system mode and five colour skins; header toggle and Settings → Appearance; persisted per browser.
 * Verified by unit, integration, Vitest and e2e tests and by screenshots (light, dark Ocean, Violet).
 
