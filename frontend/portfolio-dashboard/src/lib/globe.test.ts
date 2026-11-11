@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { COUNTRY_PATHS, MAP_HEIGHT, MAP_TOP } from '@/components/world-map-geo'
-import { angularDistance, arcPairs, arcPoints, landDots, parseRings, rotate, toVec } from './globe'
+import { angularDistance, arcPairs, arcPoints, landDots, orbitPoint, parseRings, rotate, seaDots, toVec } from './globe'
 import { venues } from './markets'
 
 const close = (a: number, b: number, d = 1e-9) => expect(Math.abs(a - b)).toBeLessThan(d)
@@ -30,6 +30,18 @@ describe('globe geometry', () => {
     for (const v of venues) expect(Math.min(...dots.map((d) => angularDistance(d, v))), v.city).toBeLessThan(3)
     // The middle of the Atlantic and of the Pacific has none.
     for (const sea of [{ lat: 30, lon: -40 }, { lat: 0, lon: -150 }]) expect(Math.min(...dots.map((d) => angularDistance(d, sea)))).toBeGreaterThan(5)
+  })
+
+  it('marks the ends of each land run as coast and fills the sea around a square, not inside it', () => {
+    const square = ['M170 64L190 64L190 84L170 84Z'] // longitude -10 to 10, latitude 0 to 20
+    const land = landDots(square, 84, 142, 2)
+    const row = land.filter((d) => d.lat === land[0].lat).sort((a, b) => a.lon - b.lon)
+    expect(row[0].coast).toBe(true)
+    expect(row.at(-1)!.coast).toBe(true)
+    expect(row.slice(1, -1).every((d) => !d.coast)).toBe(true)
+    const sea = seaDots(square, 84, 142, 2)
+    expect(sea.some((d) => d.lon > -10 && d.lon < 10 && d.lat > 0 && d.lat < 20)).toBe(false)
+    expect(sea.length).toBeGreaterThan(land.length * 20)
   })
 
   it('turns the chosen longitude towards the viewer and tilts the north pole into view', () => {
@@ -62,6 +74,15 @@ describe('globe geometry', () => {
     expect(pairs).toHaveLength(12)
     for (const [a, b] of pairs) expect(angularDistance(a, b)).toBeGreaterThanOrEqual(25)
     expect(arcPairs(venues, 12).map(([a, b]) => a.city + b.city)).toEqual(pairs.map(([a, b]) => a.city + b.city))
+  })
+})
+
+describe('orbit ring', () => {
+  it('keeps its radius, puts half of it in front of the globe and flattens it by the tilt', () => {
+    for (const a of [0, 1, 2, 4, 5.5]) close(Math.hypot(...Object.values(orbitPoint(a, 1.2, 14, -16))), 1.2)
+    expect(orbitPoint(Math.PI / 2, 1.2, 14, 0).z).toBeGreaterThan(0)
+    expect(orbitPoint(-Math.PI / 2, 1.2, 14, 0).z).toBeLessThan(0)
+    close(Math.abs(orbitPoint(Math.PI / 2, 1.2, 14, 0).y), 1.2 * Math.sin(14 * Math.PI / 180))
   })
 })
 

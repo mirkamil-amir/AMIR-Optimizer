@@ -1,5 +1,5 @@
 /**
- * Geometry of the start-up globe (pure, no DOM; unit-tested in globe.test.ts): land dots sampled from the Natural Earth
+ * Geometry of the start-up globe (pure, no DOM; unit-tested in globe.test.ts): land and sea dots sampled from the Natural Earth
  * country outlines the background map already uses (`components/world-map-geo.ts`, equirectangular: x = longitude + 180,
  * y = MAP_TOP − latitude), an orthographic projection with rotation, and great-circle arcs between exchange cities.
  * Drawn by `components/globe-intro.tsx`; our own drawing, no third-party artwork.
@@ -28,12 +28,24 @@ export function parseRings(path: string): [number, number][][] {
   return rings
 }
 
+/** A grid dot; `coast` marks a land dot whose neighbour east or west in its row is sea. */
+export interface GridDot extends LatLon { coast: boolean }
+
 /**
  * Land dots on an even grid: rows every `spacing` degrees of latitude, and within a row every `spacing / cos(latitude)`
  * degrees of longitude, so dots are about equally far apart on the sphere. A dot is land when it lies inside the
  * outlines (even–odd rule, one scanline per row over all edges).
  */
-export function landDots(paths: Iterable<string>, mapTop: number, mapHeight: number, spacing = 1.6): LatLon[] {
+export function landDots(paths: Iterable<string>, mapTop: number, mapHeight: number, spacing = 1.6): GridDot[] {
+  return gridDots(paths, mapTop, mapHeight, spacing, true)
+}
+
+/** The same grid over the sea (outside the outlines), within the map's latitudes. */
+export function seaDots(paths: Iterable<string>, mapTop: number, mapHeight: number, spacing = 2.2): GridDot[] {
+  return gridDots(paths, mapTop, mapHeight, spacing, false)
+}
+
+function gridDots(paths: Iterable<string>, mapTop: number, mapHeight: number, spacing: number, land: boolean): GridDot[] {
   const edges: [number, number, number, number][] = []
   for (const p of paths)
     for (const r of parseRings(p))
@@ -42,7 +54,7 @@ export function landDots(paths: Iterable<string>, mapTop: number, mapHeight: num
         const [x1, y1] = r[(i + 1) % r.length]
         if (y0 !== y1) edges.push([x0, y0, x1, y1])
       }
-  const dots: LatLon[] = []
+  const dots: GridDot[] = []
   for (let lat = mapTop - spacing / 2; lat > mapTop - mapHeight; lat -= spacing) {
     const y = mapTop - lat
     const xs: number[] = []
@@ -50,8 +62,17 @@ export function landDots(paths: Iterable<string>, mapTop: number, mapHeight: num
       if ((y0 <= y && y < y1) || (y1 <= y && y < y0)) xs.push(x0 + ((y - y0) / (y1 - y0)) * (x1 - x0))
     xs.sort((a, b) => a - b)
     const step = spacing / Math.max(Math.cos(lat * RAD), 0.15)
-    for (let i = 0; i + 1 < xs.length; i += 2)
-      for (let x = Math.ceil(xs[i] / step) * step; x < xs[i + 1]; x += step) dots.push({ lat, lon: x - 180 })
+    // Inside or outside for every grid column of the row (x = 0 … 360), walking the sorted crossings once.
+    const inside: boolean[] = []
+    for (let k = 0, j = 0; k * step < 360; k++) {
+      while (j < xs.length && xs[j] <= k * step) j++
+      inside.push(j % 2 === 1)
+    }
+    for (let k = 0; k < inside.length; k++) {
+      if (inside[k] !== land) continue
+      const coast = land && (k === 0 || !inside[k - 1] || k === inside.length - 1 || !inside[k + 1])
+      dots.push({ lat, lon: k * step - 180, coast })
+    }
   }
   return dots
 }
@@ -126,4 +147,17 @@ export function placeGlobe(layout: GlobeLayout, w: number, h: number): { cx: num
   if (layout === 'center') return { cx: w / 2, cy: h * 0.44, r: Math.min(w, h) * (w < 640 ? 0.4 : 0.34) }
   if (w >= 1024) return { cx: w * 0.36, cy: h * 0.5, r: Math.min(w * 0.26, h * 0.4) }
   return { cx: w / 2, cy: Math.min(h * 0.23, w * 0.48), r: Math.min(w * 0.4, h * 0.19) }
+}
+
+/**
+ * A point of the orbit ring around the globe, in view space: a circle of `radius` (× the globe's radius) at angle `a`
+ * (radians), its plane tipped `tilt` degrees towards the viewer and rolled `roll` degrees in the screen plane. z > 0 is
+ * the half in front of the globe. Independent of the globe's spin.
+ */
+export function orbitPoint(a: number, radius: number, tilt: number, roll: number): Vec3 {
+  const [t, r] = [tilt * RAD, roll * RAD]
+  const x = Math.cos(a) * radius
+  const y = -Math.sin(a) * radius * Math.sin(t)
+  const z = Math.sin(a) * radius * Math.cos(t)
+  return { x: x * Math.cos(r) - y * Math.sin(r), y: x * Math.sin(r) + y * Math.cos(r), z }
 }
