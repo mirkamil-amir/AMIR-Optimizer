@@ -120,6 +120,17 @@ public sealed class PilotToolRunner(IEnumerable<PilotTool> tools, PilotJournal j
             logger.LogInformation("Matrix Pilot tool {Tool} {Status} in cycle {CycleId}: {Code}", name, status, context.Cycle.Id, code);
             return new PilotToolOutcome(step.Sequence, name, false, PilotJson.Serialize(new { error = code, message = ex.Message }));
         }
+        catch (Exception ex) when (ex is not OperationCanceledException && ExceptionFilters.IsRecoverable(ex))
+        {
+            // A defect inside one tool: logged with its stack trace, journaled as a failed call and reported to the model as
+            // unavailable – the cycle continues on the other evidence. (The platform's own steps still stop the cycle.)
+            logger.LogError(ex, "Matrix Pilot tool {Tool} failed unexpectedly in cycle {CycleId}", name, context.Cycle.Id);
+            const string message = "The tool failed with an internal error and is unavailable in this cycle.";
+            var step = journal.Add(context.Cycle, PilotStepKind.ToolCall, name, "error", sw.Elapsed.TotalMilliseconds,
+                $"{message} ({ex.GetType().Name})", PilotText.Clip(argsText, MaxArgumentChars), null, null);
+            context.Cycle.ToolMs += sw.Elapsed.TotalMilliseconds;
+            return new PilotToolOutcome(step.Sequence, name, false, PilotJson.Serialize(new { error = "internal_error", message }));
+        }
     }
 
     public static string Hash(string text) => Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(text)))[..32];

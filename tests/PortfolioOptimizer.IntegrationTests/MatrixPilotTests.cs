@@ -634,6 +634,31 @@ public sealed class MatrixPilotTests(MatrixPilotTests.Shared shared) : IClassFix
     }
 
     [Fact]
+    public async Task EveryAnalysisTool_RunsOnRealData_WithValidArguments()
+    {
+        var p = await ActivePilotAsync(_alice);
+        _model.EnqueueJson("pilot.research", Turn(false,
+            ("run_optimizer", """{"symbols":["AAPL","MSFT","JPM","PG","KO","JNJ","XOM","BAC","CVX","NVDA"],"objective":"MinimumVariance"}"""),
+            ("run_optimizer", """{"symbols":["AAPL","MSFT","JPM","PG","KO","JNJ","XOM","BAC","CVX","NVDA"],"objective":"MaximumSharpe","maxWeight":0.1,"covariance":"Sample","lookbackDays":252}"""),
+            ("get_correlations", """{"symbols":["AAPL","MSFT","JPM"]}"""),
+            ("get_security_metrics", """{"symbols":["AAPL","XOM"]}"""),
+            ("analyze_portfolio", """{"weights":{"AAPL":0.3,"JPM":0.3,"PG":0.3}}"""),
+            ("estimate_trades", """{"weights":{"AAPL":0.3,"JPM":0.3,"PG":0.3}}""")));
+        _model.EnqueueJson("pilot.research", Turn(false,
+            ("screen_universe", """{"sortBy":"low_volatility","limit":5}"""), ("get_investable_universe", "{}"), ("get_past_decisions", "{}"),
+            ("get_existing_optimizations", "{}"), ("get_ml_signals", "{}"), ("get_news_signals", """{"symbols":["AAPL"]}""")));
+        _model.EnqueueJson("pilot.research", Turn(true));
+        _model.EnqueueJson("pilot.decide", Decision("HOLD", [], 0));
+        var cycle = await RunCycleAsync(p.Id);
+
+        Assert.Equal(PilotCycleOutcome.NoTrade, cycle.Outcome);
+        var tools = cycle.Steps.Where(s => s.Kind == PilotStepKind.ToolCall).ToList();
+        Assert.Equal(12, tools.Count);
+        Assert.All(tools, s => Assert.True(s.Status == "ok", $"{s.Name}: {s.Status} – {s.Summary}"));
+        Assert.Contains("\"status\":\"Succeeded\"", tools.First(s => s.Name == "run_optimizer").OutputJson);
+    }
+
+    [Fact]
     public async Task ToolErrorsAreReportedToTheModel_AndJournaled()
     {
         var p = await ActivePilotAsync(_alice);

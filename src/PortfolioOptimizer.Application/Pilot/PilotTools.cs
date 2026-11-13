@@ -407,6 +407,8 @@ public sealed class AnalyzePortfolioTool(PilotAnalytics analytics) : PilotTool
 
 public sealed class OptimizerTool(OptimizationService optimizations, MarketData.PriceQueryService prices) : PilotTool
 {
+    /// <summary>The optimizer always computes a frontier (minimum 2 points); the tool does not use it, so the minimum keeps it fast.</summary>
+    private const int FrontierPoints = 2;
     public override string Name => "run_optimizer";
     public override string Purpose => "Run the platform's long-only mean-variance optimizer on chosen symbols with the mandate's caps (nothing is saved).";
     public override PilotToolCategory Category => PilotToolCategory.Simulate;
@@ -444,7 +446,7 @@ public sealed class OptimizerTool(OptimizationService optimizations, MarketData.
             BenchmarkSymbol = ctx.Benchmark,
             TransactionCostBps = ctx.Portfolio.Settings.TransactionCostBps,
         };
-        var (run, _) = await optimizations.EvaluateAsync(ctx.Portfolio, ctx.OwnerId, settings, 0, ct, asOf: ctx.AsOfDate);
+        var (run, _) = await optimizations.EvaluateAsync(ctx.Portfolio, ctx.OwnerId, settings, FrontierPoints, ct, asOf: ctx.AsOfDate);
         return new
         {
             status = run.Status.ToString(),
