@@ -95,6 +95,19 @@ these files.
   get Playwright specs with role-based locators.
 * Frontend fixtures: build typed objects; cast partial fixtures with `as unknown as T` only in tests.
 
+## Results (2026-11-13, Matrix Pilot)
+
+* `MatrixPilotTests` (integration, 20): scripted model via an injected `ILanguageModel`, shiftable `TimeProvider` for stale
+  and future-dated prices; cycles are started like the scheduler does (`PilotCycles.TryCreateAsync` + `PilotEngine` in its
+  own scope). `ApiFactory` sets `MatrixPilot:SchedulerEnabled=false`.
+* `PilotUnitTests` (37): mandate, schedule, decision validator, metrics, forward moves, argument parsing, background actor.
+* `e2e/pilot.spec.ts` on `./scripts/e2e.sh`, which now starts the stack with `MATRIX_PILOT_PROVIDER=Mock` (deterministic
+  test script, not an AI) and `MATRIX_PILOT_SCHEDULER=false`; the research assistant stays on `None`
+  (`research-agent.spec.ts` passes unchanged).
+* `./scripts/test.sh`: integration 193/194 – `MultiPortfolioTests.Performance_RemovesDepositsAndWithdrawals_ButCountsDividends`
+  fails (0.0105 vs ±0.01) identically on unmodified main: a tolerance that depends on today's simulated prices, not
+  this change.
+
 ## Results (2026-10-25, markets, portfolio tabs, map, typography)
 
 * `./scripts/test.sh`: unit 296 passed (9 skipped), ML 41, integration 136 (adds new-market universes, ETF type, '&' symbols,

@@ -57,7 +57,8 @@ public sealed class AnthropicLanguageModel : ILanguageModel
         _client = new AnthropicClient
         {
             ApiKey = key ?? "",
-            Timeout = TimeSpan.FromSeconds(_options.TimeoutSeconds),
+            // Upper bound only; each call is limited by its own timeout (request.Timeout or TimeoutSeconds) below.
+            Timeout = TimeSpan.FromSeconds(Math.Max(_options.TimeoutSeconds, MaxRequestSeconds)),
             MaxRetries = _options.MaxRetries,
         };
         IsAvailable = !string.IsNullOrWhiteSpace(key);
@@ -65,6 +66,7 @@ public sealed class AnthropicLanguageModel : ILanguageModel
 
     public string Provider => "Anthropic";
     public const string DefaultModel = "claude-opus-5-5";
+    private const int MaxRequestSeconds = 600;
     public string Model => string.IsNullOrWhiteSpace(_options.Model) ? DefaultModel : _options.Model.Trim();
     public bool IsAvailable { get; }
 
@@ -72,6 +74,9 @@ public sealed class AnthropicLanguageModel : ILanguageModel
     {
         if (!IsAvailable) throw new LanguageModelException(LlmFailure.Unavailable, "No Anthropic API key is configured.");
         var sw = Stopwatch.StartNew();
+        using var limit = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        limit.CancelAfter(request.Timeout ?? TimeSpan.FromSeconds(_options.TimeoutSeconds));
+        var effort = request.Effort ?? _options.Effort;
         try
         {
             var response = await _client.Beta.Messages.Create(new MessageCreateParams
@@ -83,12 +88,12 @@ public sealed class AnthropicLanguageModel : ILanguageModel
                 OutputConfig = new BetaOutputConfig
                 {
                     Format = new BetaJsonOutputFormat { Schema = request.Schema.ToDictionary(kv => kv.Key, kv => kv.Value) },
-                    Effort = _options.Effort switch { "high" => Effort.High, "medium" => Effort.Medium, _ => Effort.Low },
+                    Effort = effort switch { "high" => Effort.High, "medium" => Effort.Medium, _ => Effort.Low },
                 },
                 // A policy decline is re-served by a fallback model inside the same call (enabled by default for this model family).
                 Betas = ["server-side-fallback-2026-07-01"],
                 Fallbacks = new Default(),
-            }, cancellationToken: ct);
+            }, cancellationToken: limit.Token);
 
             if (response.StopReason == "refusal")
                 throw new LanguageModelException(LlmFailure.Refused, "The model declined the request.");
@@ -143,9 +148,20 @@ public sealed class MockLanguageModel : ILanguageModel
         }
         if (!IsAvailable) throw new LanguageModelException(LlmFailure.Unavailable, "Mock model disabled.");
         if (next is not null) return Task.FromResult(next(request));
+        // Matrix Pilot in tests and the e2e stack: a deterministic script (labelled as a test model), never an AI.
+        if (MockPilotScript.Respond(request) is { } pilot) return Task.FromResult(Ok(pilot));
         // Default: an empty proposal (forces validation paths; never fabricates content).
         return Task.FromResult(Ok(JsonSerializer.SerializeToElement(new { })));
     }
 
     private LlmResponse Ok(JsonElement json) => new(json, Model, 100, 50, 1);
+}
+
+/// <summary>Matrix Pilot's model (see <see cref="IPilotLanguageModel"/>): forwards to the configured instance.</summary>
+public sealed class PilotLanguageModel(ILanguageModel inner) : IPilotLanguageModel
+{
+    public string Provider => inner.Provider;
+    public string Model => inner.Model;
+    public bool IsAvailable => inner.IsAvailable;
+    public Task<LlmResponse> GenerateAsync(LlmRequest request, CancellationToken ct) => inner.GenerateAsync(request, ct);
 }

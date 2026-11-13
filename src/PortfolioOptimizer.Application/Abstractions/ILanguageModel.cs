@@ -12,7 +12,9 @@ public sealed record LlmRequest(
     string Instructions,
     string UserContent,
     IReadOnlyDictionary<string, JsonElement> Schema,
-    int MaxOutputTokens = 4000);
+    int MaxOutputTokens = 4000,
+    string? Effort = null,
+    TimeSpan? Timeout = null);
 
 public sealed record LlmResponse(JsonElement Output, string Model, int InputTokens, int OutputTokens, double LatencyMs);
 
@@ -35,3 +37,9 @@ public interface ILanguageModel
     bool IsAvailable { get; }
     Task<LlmResponse> GenerateAsync(LlmRequest request, CancellationToken ct);
 }
+
+/// <summary>
+/// The language model Matrix Pilot decides with: its own provider and model when <c>MatrixPilot:Provider</c> is set (so a
+/// pilot can run on a different model than the research assistant), otherwise the shared <see cref="ILanguageModel"/>.
+/// </summary>
+public interface IPilotLanguageModel : ILanguageModel;

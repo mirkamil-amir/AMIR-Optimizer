@@ -985,6 +985,78 @@ data; every figure is labelled "Sample data – not market data".
 
 ---
 
+## Matrix Pilot
+
+Figures the platform computes for Matrix Pilot (docs/matrix-pilot.md). Every series ends at the cycle's decision date and
+is converted to the portfolio currency first (F-FX-003); the model receives these values and never computes its own.
+
+### F-PILOT-001 · Trailing metrics of a listing
+
+| Field | Value |
+|---|---|
+| Status | Correct under documented assumptions |
+| Code | `src/PortfolioOptimizer.Application/Pilot/PilotAnalytics.cs#Compute` |
+| Tests | `PilotMetricsAndArgsTests.TrailingMetrics_UseTheRightWindows`; `MatrixPilotTests.ToolSeries_EndAtTheDecisionDate` |
+| Skills | quant-formulas |
+| Verified | 2026-11-13 |
+
+Trailing return over $n$ observations $R_n = P_T/P_{T-n}-1$ for $n = 21, 63, 126, 252$ (≈ 1, 3, 6, 12 months; null when
+fewer than $n+1$ prices); 12-month volatility = annualized sample volatility of the last 252 daily simple returns
+(F-PERF-003), 12-month maximum drawdown over the last 253 prices; return per volatility $R_{252}/\sigma_{12m}$
+(null when $\sigma = 0$). Adjusted closes in the portfolio currency, ≥ 61 prices for volatility and drawdown.
+Backward-looking descriptions, labelled as such to the model.
+
+### F-PILOT-002 · Risk of a candidate allocation
+
+| Field | Value |
+|---|---|
+| Status | Correct under documented assumptions |
+| Code | `src/PortfolioOptimizer.Application/Pilot/PilotAnalytics.cs#AnalyzeAsync`; `src/PortfolioOptimizer.Application/Pilot/PilotAnalytics.cs#Exposures` |
+| Tests | `MatrixPilotTests.ToolSeries_EndAtTheDecisionDate`; `MatrixPilotTests.EndToEnd_ConfirmedActivation_AiDecides_ValidatorPasses_TradesBooked_JournalAndLiveRecord` |
+| Skills | quant-formulas, optimization-backtesting |
+| Verified | 2026-11-13 |
+
+Weights $w$ are fractions of the whole portfolio (the rest is cash at 0 %). Returns aligned on common dates
+(`ReturnMatrix`), Ledoit–Wolf covariance (F-COV-002), ex-ante volatility (F-OPT-001), risk shares and diversification ratio
+(`DiversificationMath.Risk`), effective holdings (F-RISK-005), historical profile of the fixed weights (F-RISK-007:
+VaR/ES 95 %, maximum drawdown, worst day, worst 20 days), stress correlation (F-RISK-006), beta (F-PERF-009) of the daily portfolio
+returns to the benchmark's on matching dates (≥ 30 pairs). Sector/currency/country exposure = sums of weights by the
+listing's attribute. In-sample, over the stated window; not a forecast.
+
+### F-PILOT-003 · Trade estimate and turnover of a decision
+
+| Field | Value |
+|---|---|
+| Status | Correct under documented assumptions |
+| Code | `src/PortfolioOptimizer.Application/Pilot/PilotAnalytics.cs#EstimateTradesAsync`; `src/PortfolioOptimizer.Application/Trading/TradingService.cs#PreviewAsync`; `src/PortfolioOptimizer.Application/Pilot/PilotDecisionValidator.cs#Validate` |
+| Tests | `PilotDecisionValidatorTests.TurnoverRiskAndMinimumTrade_AreEnforced`; `MatrixPilotTests.MandateViolation_IsBlocked_AiProposalKeptNextToTheLimit_NothingTraded` |
+| Skills | portfolio-accounting |
+| Verified | 2026-11-13 |
+
+Orders from the same calculator as a real proposal (F-TRD-001, fees F-TRD-002). Estimated turnover of the orders
+$\tau = (\sum \text{buys} + \sum \text{sells}) / (2V)$; the mandate's turnover limit is checked by `AllocationValidator` on
+weights, $\tfrac12\sum_i |w_i - w_{0,i}|$ over targets ∪ current holdings, once the portfolio holds positions (as for the
+optimizer). Minimum trade: every non-zero order value ≥ the mandate's minimum, else the decision is blocked.
+
+### F-PILOT-004 · Live-record evaluation measures
+
+| Field | Value |
+|---|---|
+| Status | Correct under documented assumptions |
+| Code | `src/PortfolioOptimizer.Application/Pilot/PilotService.cs#EvaluateAsync`; `src/PortfolioOptimizer.Application/Pilot/PilotService.cs#HitRateAsync`; `src/PortfolioOptimizer.Application/Pilot/PilotService.cs#Forward`; `src/PortfolioOptimizer.Application/Pilot/PilotService.cs#LiveForward` |
+| Tests | `PilotMetricsAndArgsTests.ForwardMoves_StartAtTheDecisionClose_AndStayBlankUntilThePeriodHasPassed`; `PilotMetricsAndArgsTests.LiveForward_IsTheChangeOfTheWealthIndex_NotADifferenceOfReturns`; `MatrixPilotTests.EndToEnd_ConfirmedActivation_AiDecides_ValidatorPasses_TradesBooked_JournalAndLiveRecord` |
+| Skills | quant-formulas |
+| Verified | 2026-11-13 |
+
+Cost drag = Σ fees of the pilot's bookings / baseline portfolio value. Turnover sum = Σ estimated turnover (F-PILOT-003)
+of executed rebalances. Forward move of a holding after $n$ trading days $P_{i+n}/P_i - 1$ from the last close on or
+before the decision date; of the live portfolio $(1+R_{i+n})/(1+R_i)-1$ on the time-weighted wealth index (F-PERF-011).
+Hit rate (1 month) = share of target holdings of executed decisions with a positive 21-day move, counted only when the
+period has passed (sample size shown). Measured after each decision and never fed back into it; a short record says
+little (sample size is shown next to every rate).
+
+---
+
 ## Categories audited and not implemented
 
 | Category | State |

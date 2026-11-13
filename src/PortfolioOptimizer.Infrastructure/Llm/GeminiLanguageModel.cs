@@ -41,12 +41,12 @@ public sealed class GeminiLanguageModel : ILanguageModel
     public async Task<LlmResponse> GenerateAsync(LlmRequest request, CancellationToken ct)
     {
         if (_key is null) throw new LanguageModelException(LlmFailure.Unavailable, "No Gemini API key is configured.");
-        var body = BuildRequest(request, _options.Effort);
+        var body = BuildRequest(request, request.Effort ?? _options.Effort);
         var sw = Stopwatch.StartNew();
         for (var attempt = 0; ; attempt++)
         {
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            timeout.CancelAfter(TimeSpan.FromSeconds(_options.TimeoutSeconds));
+            timeout.CancelAfter(request.Timeout ?? TimeSpan.FromSeconds(_options.TimeoutSeconds));
             HttpResponseMessage response;
             try
             {

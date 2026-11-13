@@ -1970,3 +1970,169 @@ export interface DataCheck {
   notes: string[]
 }
 export interface DataDownload { syncJobIds: string[]; priceSymbols: string[]; currencies: string[] }
+
+// ================================================================ Matrix Pilot (AI Probe › Matrix Pilot, docs/matrix-pilot.md)
+
+export type PilotStatus = 'Disabled' | 'Active' | 'Paused' | 'KillSwitched'
+export type PilotFrequency = 'Daily' | 'Weekly' | 'Monthly'
+export type PilotPhase = 'Queued' | 'Observe' | 'Research' | 'Construct' | 'Critique' | 'Finalize' | 'Validate' | 'Execute' | 'Journal' | 'Complete'
+export type PilotOutcome = 'Pending' | 'Rebalanced' | 'NoTrade' | 'Skipped' | 'Blocked' | 'Failed' | 'PausedByDrawdown'
+export type PilotStepKind = 'Observation' | 'AiDecision' | 'ToolCall' | 'Calculation' | 'Validation' | 'Execution' | 'Outcome'
+
+export interface PilotMandate {
+  universe: string[]
+  indexes: string[]
+  excludedSymbols: string[]
+  maxPositionWeight: number
+  minPositionWeight: number
+  minHoldings: number
+  maxHoldings: number
+  minCashWeight: number
+  maxCashWeight: number
+  maxTurnover: number
+  minTradeValue: number
+  sectorLimits: Record<string, number>
+  currencyLimits: Record<string, number>
+  countryLimits: Record<string, number>
+  maxVolatility?: number | null
+  drawdownPauseThreshold: number
+  benchmark?: string | null
+}
+
+export interface PilotModel { provider: string; model: string; available: boolean; isTestModel: boolean }
+
+export interface PilotPortfolioRow {
+  portfolioId: string; name: string; baseCurrency: string; status: string; pilotStatus: PilotStatus | null; running: boolean
+  lastDecisionAtUtc: string | null; nextDecisionAtUtc: string | null
+}
+
+export interface PilotHome { configuredModel: PilotModel; portfolios: PilotPortfolioRow[] }
+
+export interface PilotPositionSnapshot { symbol: string; quantity: number; value?: number | null; weight?: number | null; priceDate?: string | null }
+
+export interface PilotBaseline {
+  atUtc: string; asOfDate: string; currency: string; portfolioValue: number; cash: number; positions: PilotPositionSnapshot[]
+  benchmark: string; benchmarkLevel?: number | null; benchmarkDate?: string | null; note: string
+}
+
+export interface PilotEvaluation {
+  cycles: number; rebalanced: number; noTrade: number; skipped: number; blocked: number; failed: number; pausedByDrawdown: number
+  tradesBooked: number; fees: number; costDragPct: number | null; turnoverSum: number; averageTurnoverPerRebalance: number | null
+  toolCalls: number; toolFailures: number; deniedToolRequests: number; inputTokens: number; outputTokens: number
+  averageDaysBetweenDecisions: number | null; hitRate1M: number | null; hitRateSample: number
+}
+
+export interface PilotCycleSummary {
+  id: string; cycleKey: string; trigger: string; asOfUtc: string; createdAtUtc: string; completedAtUtc: string | null
+  phase: PilotPhase; outcome: PilotOutcome; outcomeLabel: string; outcomeReason: string | null
+  action: string | null; approach: string | null; confidence: string | null; targets: number; tradesBooked: number
+  modelCalls: number; toolCalls: number; totalMs: number; provider: string; model: string; mandateVersion: number
+}
+
+export interface Pilot {
+  id: string; portfolioId: string; portfolioName: string; baseCurrency: string; status: PilotStatus; displayStatus: string
+  runningPhase: PilotPhase | null; frequency: PilotFrequency; mandateVersion: number; mandate: PilotMandate
+  provider: string; model: string; effort: string; modelMatchesConfiguration: boolean
+  createdAtUtc: string; enabledAtUtc: string | null; lastDecisionAtUtc: string | null; lastSuccessfulDecisionAtUtc: string | null
+  nextDecisionAtUtc: string | null; pausedAtUtc: string | null; pauseReason: string | null; consecutiveFailures: number
+  baseline: PilotBaseline | null; evaluation: PilotEvaluation; latestCycle: PilotCycleSummary | null; latestDecision: PilotCycleSummary | null
+}
+
+export interface PilotOverview {
+  portfolioId: string; portfolioName: string; baseCurrency: string; portfolioActive: boolean; configuredModel: PilotModel
+  pilot: Pilot | null; suggestedMandate: PilotMandate; label: string
+}
+
+export interface PilotFreshness { item: string; fresh: boolean; asOf?: string | null; detail: string }
+
+export interface PilotObservation {
+  asOfUtc: string; asOfDate: string; currency: string; portfolioValue: number | null; cash: number; holdings: PilotPositionSnapshot[]
+  investableCount: number; freshness: PilotFreshness[]; liveDrawdown: number | null; liveReturn: number | null; pricesSimulated: boolean; notes: string[]
+}
+
+export interface PilotTarget { symbol: string; weight: number; role: string; thesis: string; whyNow: string; risks: string; invalidation: string }
+
+export interface PilotDecision {
+  action: string
+  strategy: { approach: string; components: string[]; reason: string }
+  targets: PilotTarget[]
+  cashWeight: number
+  rejected: { symbol: string; reason: string }[]
+  rationale: string[]
+  keyRisks: string[]
+  invalidationConditions: string[]
+  expectedHoldingDays: number
+  confidence: string
+  evidenceSteps: number[]
+  critiqueResponse?: string | null
+  mandateRequests: string[]
+}
+
+export interface PilotCritique { concerns: { area: string; severity: string; detail: string }[]; recommendation: string; summary: string }
+
+export interface PilotCheck { name: string; passed: boolean; detail: string }
+export interface PilotViolation { rule: string; detail: string; symbol?: string | null; proposed?: number | null; allowed?: number | null }
+
+export interface PilotRiskSummary {
+  volatility: number | null; effectiveHoldings: number | null; largestWeight: number | null; largestSymbol: string | null
+  sectors: Record<string, number>; currencies: Record<string, number>; countries: Record<string, number>
+  valueAtRisk95: number | null; maxDrawdown: number | null; observations: number; window: string
+}
+
+export interface PilotTradeLine { symbol: string; action: string; quantity: number; value: number; currentWeight: number; targetWeight: number; note?: string | null }
+
+export interface PilotTradeEstimate {
+  buys: number; sells: number; buyValue: number; sellValue: number; costs: number; turnover: number; lines: PilotTradeLine[]; notes: string[]
+}
+
+export interface PilotValidation { passed: boolean; checks: PilotCheck[]; violations: PilotViolation[]; risk: PilotRiskSummary | null; trades: PilotTradeEstimate | null }
+
+export interface PilotExecuted {
+  weights: { symbol: string; proposedWeight: number; executedWeight: number; quantity: number }[]
+  cashWeight: number; portfolioValue: number; notes: string[]
+}
+
+export interface PilotStep {
+  sequence: number; atUtc: string; kind: PilotStepKind; category: string; name: string; status: string; durationMs: number
+  summary: string; inputJson: string | null; outputJson: string | null; outputHash: string | null
+}
+
+export interface PilotCycleDetail {
+  summary: PilotCycleSummary; correlationId: string; modelReported: string | null; effort: string
+  promptVersion: string; toolsVersion: string; schemaVersion: string; inputTokens: number; outputTokens: number
+  dataMs: number; toolMs: number; modelMs: number; validationMs: number; executionMs: number
+  observation: PilotObservation | null; decision: PilotDecision | null; critique: PilotCritique | null; validation: PilotValidation | null
+  executed: PilotExecuted | null; proposalId: string | null; tradeBatchId: string | null; fees: number
+  narrative: { key: string; title: string; paragraphs: string[] }[]; narrativeSource: string | null; steps: PilotStep[]
+}
+
+export interface PilotEvent {
+  id: number; atUtc: string; actor: 'Owner' | 'MatrixPilot' | 'System'; action: string; previousStatus: PilotStatus | null
+  newStatus: PilotStatus | null; reason: string | null; cycleId: string | null; correlationId: string | null
+}
+
+export interface PilotMandateVersion { version: number; createdAtUtc: string; reason: string | null; changes: { field: string; before: string; after: string }[]; mandate: PilotMandate }
+
+export interface PilotComparisonSeries {
+  key: string; label: string; portfolioId: string | null; from: string | null; to: string | null
+  points: { date: string; cumulativeReturn: number; drawdown: number }[]
+  totalReturn: Metric; annualizedReturn: Metric; volatility: Metric; sharpe: Metric; sortino: Metric; maxDrawdown: Metric
+  trades: number; fees: number; cashWeight: number | null; holdings: number; largestWeight: number | null; warnings: string[]
+}
+
+export interface PilotComparison {
+  pilotPortfolioId: string; currency: string; baselineAtUtc: string | null; start: string | null
+  pilot: PilotComparisonSeries; other: PilotComparisonSeries | null; benchmark: PilotComparisonSeries | null
+  monthly: { month: string; pilot: number | null; other: number | null; benchmark: number | null }[]
+  evaluation: PilotEvaluation; timeline: { atUtc: string; kind: string; text: string; cycleId: string | null }[]
+  methodology: string; warnings: string[]
+}
+
+export interface PilotScorecard {
+  rows: {
+    cycleId: string; decidedAtUtc: string; action: string; outcome: string; approach: string; confidence: string; expectedHoldingDays: number
+    targets: { symbol: string; weight: number; thesis: string; entryPrice: number | null; after1D: number | null; after1W: number | null; after1M: number | null }[]
+    portfolioAfter1D: number | null; portfolioAfter1W: number | null; portfolioAfter1M: number | null; benchmarkAfter1M: number | null
+  }[]
+  methodology: string
+}

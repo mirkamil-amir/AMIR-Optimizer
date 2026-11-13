@@ -69,6 +69,26 @@ public static class DependencyInjection
         services.AddScoped<WatchlistService>();
         services.AddScoped<NewsService>();
         services.AddScoped<WireFeedService>();
+        // Matrix Pilot (docs/matrix-pilot.md): the model may use only the tools registered here (READ, ANALYZE, SIMULATE).
+        services.AddScoped<Common.BackgroundActor>();
+        services.AddScoped<Pilot.PilotJournal>();
+        services.AddScoped<Pilot.PilotAnalytics>();
+        services.AddScoped<Pilot.PilotToolRunner>();
+        services.AddScoped<Pilot.PilotTool, Pilot.PortfolioStateTool>();
+        services.AddScoped<Pilot.PilotTool, Pilot.MandateTool>();
+        services.AddScoped<Pilot.PilotTool, Pilot.InvestableUniverseTool>();
+        services.AddScoped<Pilot.PilotTool, Pilot.PastDecisionsTool>();
+        services.AddScoped<Pilot.PilotTool, Pilot.NewsSignalsTool>();
+        services.AddScoped<Pilot.PilotTool, Pilot.ExistingOptimizationsTool>();
+        services.AddScoped<Pilot.PilotTool, Pilot.MlSignalsTool>();
+        services.AddScoped<Pilot.PilotTool, Pilot.ScreenUniverseTool>();
+        services.AddScoped<Pilot.PilotTool, Pilot.SecurityMetricsTool>();
+        services.AddScoped<Pilot.PilotTool, Pilot.CorrelationTool>();
+        services.AddScoped<Pilot.PilotTool, Pilot.AnalyzePortfolioTool>();
+        services.AddScoped<Pilot.PilotTool, Pilot.OptimizerTool>();
+        services.AddScoped<Pilot.PilotTool, Pilot.EstimateTradesTool>();
+        services.AddScoped<Pilot.PilotEngine>();
+        services.AddScoped<Pilot.PilotService>();
         return services;
     }
 }

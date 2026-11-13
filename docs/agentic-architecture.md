@@ -9,7 +9,9 @@ number; a language model (optional) only proposes structured interpretations of 
 explanations that are checked against the computed results. With no model configured the whole workflow still works.
 
 Related: [threat model](threat-model.md) · [evaluation](agent-evaluation.md) · decisions D-21–D-24 in
-[decisions.md](decisions.md).
+[decisions.md](decisions.md). Matrix Pilot (AI Probe's second part) is a different, autonomous workflow in which the
+model does decide a paper portfolio within hard controls – see [matrix-pilot.md](matrix-pilot.md) (D-60); nothing in
+this document changes for the research assistant.
 
 ## 1. Audit and ADR answers (2026-10-15)
 

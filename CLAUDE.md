@@ -8,6 +8,10 @@
   (run ML Optimizations through the API, backtest/compare them within a portfolio, report honestly); subsystem skills
   `/quant-formulas`, `/optimization-backtesting`, `/market-data-fx`, `/ml-pipeline`, `/portfolio-accounting`,
   `/platform-architecture`, `/maintain-knowledge` (see AGENTS.md › Skills).
+- AI Probe has two parts (text links under the top bar): "Research assistant" (`/research`) and "Matrix Pilot"
+  (`/research/pilot`, control room `/research/pilot/:portfolioId`; its live record also in the portfolio's Arena tab).
+  Matrix Pilot is the only place a model decides a portfolio (D-60, docs/matrix-pilot.md); label it "AI-managed
+  experimental portfolio", never claim results, and show test-model decisions as "test script – not an AI".
 - UI names: "Math Optimization" (`/portfolios/:id/optimize`, an `OptimizationRun`) and "ML Optimization"
   (`/portfolios/:id/ml-optimize`, an `MlExperiment` linked to that portfolio) – two tabs of a portfolio with one shared
   layout (results in `ResultSection`s, never tabs; "What your result means" last). Keep both pages alike when changing

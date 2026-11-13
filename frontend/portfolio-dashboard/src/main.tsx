@@ -16,6 +16,8 @@ import './index.css'
 // Route-level code splitting keeps the initial bundle small.
 const ResearchHomePage = lazy(() => import('@/pages/research').then((m) => ({ default: m.ResearchHomePage })))
 const ResearchWorkspacePage = lazy(() => import('@/pages/research').then((m) => ({ default: m.ResearchWorkspacePage })))
+const PilotHomePage = lazy(() => import('@/pages/pilot').then((m) => ({ default: m.PilotHomePage })))
+const PilotControlRoomPage = lazy(() => import('@/pages/pilot').then((m) => ({ default: m.PilotControlRoomPage })))
 const OverviewPage = lazy(() => import('@/pages/overview').then((m) => ({ default: m.OverviewPage })))
 const PortfoliosPage = lazy(() => import('@/pages/portfolios').then((m) => ({ default: m.PortfoliosPage })))
 const PortfolioWorkspace = lazy(() => import('@/pages/portfolio-workspace').then((m) => ({ default: m.PortfolioWorkspace })))
@@ -97,6 +99,8 @@ const router = createBrowserRouter([
             ],
           },
           { path: '/research', element: <ResearchHomePage /> },
+          { path: '/research/pilot', element: <PilotHomePage /> },
+          { path: '/research/pilot/:portfolioId', element: <PilotControlRoomPage /> },
           { path: '/research/:sessionId', element: <ResearchWorkspacePage /> },
           { path: '/stocks', element: <StocksPage /> },
           { path: '/stocks/:symbol', element: <StockPage /> },

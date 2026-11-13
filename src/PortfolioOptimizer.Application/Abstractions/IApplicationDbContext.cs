@@ -46,6 +46,11 @@ public interface IApplicationDbContext
     DbSet<NewsStory> NewsStories { get; }
     DbSet<NewsStoryArticle> NewsStoryArticles { get; }
     DbSet<NewsStoryAsset> NewsStoryAssets { get; }
+    DbSet<MatrixPilot> MatrixPilots { get; }
+    DbSet<MatrixPilotMandateVersion> MatrixPilotMandates { get; }
+    DbSet<MatrixPilotCycle> MatrixPilotCycles { get; }
+    DbSet<MatrixPilotStep> MatrixPilotSteps { get; }
+    DbSet<MatrixPilotEvent> MatrixPilotEvents { get; }
 
     DatabaseFacade Database { get; }
 
@@ -53,6 +58,9 @@ public interface IApplicationDbContext
     Microsoft.EntityFrameworkCore.ChangeTracking.ChangeTracker ChangeTracker { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Change-tracking entry of an entity (e.g. to reload it after a concurrent change).</summary>
+    Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry<TEntity> Entry<TEntity>(TEntity entity) where TEntity : class;
 
     /// <summary>True when the save failed because a unique index/constraint was violated (provider-specific error code).</summary>
     bool IsUniqueConstraintViolation(DbUpdateException exception);

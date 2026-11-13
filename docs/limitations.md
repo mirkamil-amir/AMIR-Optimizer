@@ -131,6 +131,33 @@
 * Requests run synchronously (seconds); there is no background continuation or monitoring/alerting step yet.
 * Explanation quality was not evaluated with users.
 
+## Matrix Pilot
+
+* **No real model has run a cycle yet.** All automated tests use a scripted model; the e2e stack uses a deterministic
+  test script (labelled "test script – not an AI"). The quality of real model decisions, cost per cycle and latency are
+  unmeasured until a provider key is configured (`MatrixPilot:Provider`/`Model` or `Agent:Llm`).
+* **Data the AI does not have:** fundamentals, valuation ratios, earnings, factor exposures, macro series and transaction
+  cost models beyond the portfolio's bps + minimum fee do not exist in the platform; the tools say so rather than
+  approximate. News reaches the model only as counts by event type (no text, by design).
+* **Tool errors do not end a cycle:** a tool the model called with bad arguments returns its error to the model, which
+  may decide on the remaining evidence (journaled). Failures of the platform's own steps (observation, the decision's
+  risk and trade calculation, validation, booking) end the cycle without a trade.
+* **Execution differences:** the portfolio's drift threshold and whole-share setting apply as for any proposal, so held
+  weights can differ from the AI's proposal by rounding; both are stored and shown.
+* **Drawdown pause** is checked at the start of each cycle (not intraday) and was not exercised end-to-end (needs a real
+  loss in the live record); the check itself is a single comparison with the mandate threshold.
+* **Point in time:** prices and news are filtered by date; fundamentals and revised macro data do not exist, so their
+  revisions are not an issue yet. Provider history revisions (a corrected past close) are stored over the old value, so a
+  decision's inputs are reproducible from the journal (results as given to the model, hash of the full result), not by
+  re-querying the price table.
+* **No notifications:** the platform has no notification channel; status changes, failures and pauses are visible in AI
+  Probe › Matrix Pilot (status, timeline, audit trail) only.
+* **No model comparison view yet:** two pilots on two portfolios with different models are recorded apart (model per
+  cycle) and can be compared through the live record, but there is no side-by-side "Model A vs Model B" page.
+* **Redis / caching:** none (by design, see performance.md); a cycle reads at most ~500 listings × 253 prices per screen.
+* A cycle holds one worker; cycles of different pilots run one after another (fine for a few pilots; a busy multi-user
+  deployment would need parallel workers with the same lease rules).
+
 ## Quant & ML
 - Open quantitative risks are tracked in the [quant audit's risk register](quant/audit-2026-10-28.md#remaining-risk-register),
   notably: annualization assumes 252 observations a year, which a union calendar with Sunday sessions (Tel Aviv before

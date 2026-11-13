@@ -13,6 +13,7 @@ import { Switch } from '@/components/ui/switch'
 import { ChartCard, TimeSeriesChart, seriesColor, timeSeriesTable } from '@/components/charts'
 import { GroupedBarChart, RiskReturnScatter, SignedBarChart, groupedBarTable } from '@/components/analysis-charts'
 import { Collapsible, DataBadge, EmptyState, ErrorState, InfoTip, LoadingBlock, PageHeader, SectionTitle, Warnings } from '@/components/common'
+import { PilotInArena } from '@/pages/pilot'
 import { PerformanceTable } from '@/components/performance-table'
 import { Pager } from '@/components/data-table'
 import { StrategyInsights } from '@/components/strategy-insights'
@@ -65,6 +66,7 @@ export function StrategyComparisonPage() {
         info={description}
         actions={<Badge variant="outline" className="gap-1">Shared evaluation engine</Badge>}
       />
+      {scoped && <PilotInArena portfolioId={scoped} />}
       <div className="grid gap-6 xl:grid-cols-[380px_minmax(0,1fr)]">
         <div className="space-y-4">
           <NewComparisonCard fixedPortfolioId={scoped} />
