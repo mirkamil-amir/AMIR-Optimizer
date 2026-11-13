@@ -958,6 +958,9 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("AsOfUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("ComparisonJson")
+                        .HasColumnType("jsonb");
+
                     b.Property<DateTime?>("CompletedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -999,6 +1002,12 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                     b.Property<decimal>("Fees")
                         .HasPrecision(28, 6)
                         .HasColumnType("numeric(28,6)");
+
+                    b.Property<int>("FitRevisions")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("InitialDecisionJson")
+                        .HasColumnType("jsonb");
 
                     b.Property<int>("InputTokens")
                         .HasColumnType("integer");
@@ -1071,6 +1080,9 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)");
+
+                    b.Property<string>("ShadowJson")
+                        .HasColumnType("jsonb");
 
                     b.Property<DateTime?>("StartedAtUtc")
                         .HasColumnType("timestamp with time zone");

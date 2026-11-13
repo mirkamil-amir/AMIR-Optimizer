@@ -646,7 +646,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             e.Property(x => x.NarrativeSource).HasMaxLength(20);
             e.Property(x => x.Fees).HasPrecision(28, 6);
             foreach (var json in new[] { nameof(MatrixPilotCycle.ContextJson), nameof(MatrixPilotCycle.DecisionJson), nameof(MatrixPilotCycle.CritiqueJson),
-                         nameof(MatrixPilotCycle.ValidationJson), nameof(MatrixPilotCycle.ExecutedJson), nameof(MatrixPilotCycle.NarrativeJson) })
+                         nameof(MatrixPilotCycle.ValidationJson), nameof(MatrixPilotCycle.ExecutedJson), nameof(MatrixPilotCycle.NarrativeJson),
+                         nameof(MatrixPilotCycle.InitialDecisionJson), nameof(MatrixPilotCycle.ShadowJson), nameof(MatrixPilotCycle.ComparisonJson) })
                 e.Property(json).HasColumnType("jsonb");
             // Idempotency: one decision per pilot and period, whatever the scheduler or a user does.
             e.HasIndex(x => new { x.PilotId, x.CycleKey }).IsUnique();

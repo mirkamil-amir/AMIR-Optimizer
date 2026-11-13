@@ -216,6 +216,21 @@ public sealed class PilotMetricsAndArgsTests
     }
 
     [Fact]
+    public void Hypothetical_IsTheWeightedMoveOfFixedWeights_CashEarnsNothing_AndBlankUntilEveryHoldingHasData()
+    {
+        var d0 = new DateOnly(2026, 11, 2);
+        PortfolioOptimizer.Application.MarketData.PriceSeries S(string sym, params double[] p) => new(sym, 1, p.Select((x, i) => new PricePoint(d0.AddDays(i), x)).ToList(), true, false);
+        var series = new Dictionary<string, PortfolioOptimizer.Application.MarketData.PriceSeries>
+        {
+            ["A"] = S("A", 100, 110, 121), ["B"] = S("B", 50, 45, 40), ["C"] = S("C", 10),
+        };
+        // 60 % A (+10 %), 30 % B (−10 %), 10 % cash: 0.6 · 0.10 + 0.3 · (−0.10) = +3 %.
+        Assert.Equal(0.03, PilotService.Hypothetical(series, [("A", 0.6), ("B", 0.3)], d0, 1));
+        Assert.Null(PilotService.Hypothetical(series, [("A", 0.5), ("C", 0.5)], d0, 1)); // C has no later price yet
+        Assert.Null(PilotService.Hypothetical(series, [], d0, 1));
+    }
+
+    [Fact]
     public void LiveForward_IsTheChangeOfTheWealthIndex_NotADifferenceOfReturns()
     {
         var d0 = new DateOnly(2026, 11, 2);

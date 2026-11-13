@@ -1055,6 +1055,23 @@ Hit rate (1 month) = share of target holdings of executed decisions with a posit
 period has passed (sample size shown). Measured after each decision and never fed back into it; a short record says
 little (sample size is shown next to every rate).
 
+### F-PILOT-005 · Hypothetical move of fixed weights (mandate targets vs unconstrained portfolio)
+
+| Field | Value |
+|---|---|
+| Status | Correct under documented assumptions |
+| Code | `src/PortfolioOptimizer.Application/Pilot/PilotService.cs#Hypothetical`; `src/PortfolioOptimizer.Application/Pilot/PilotEngine.cs#CompareAsync` |
+| Tests | `PilotMetricsAndArgsTests.Hypothetical_IsTheWeightedMoveOfFixedWeights_CashEarnsNothing_AndBlankUntilEveryHoldingHasData`; `MatrixPilotTests.UnconstrainedPortfolio_MayIgnoreEveryLimit_IsComparedAndNeverTraded` |
+| Skills | quant-formulas |
+| Verified | 2026-11-13 |
+
+$R_n = \sum_i w_i\,(P_{i,t+n}/P_{i,t} - 1)$ with $t$ the last close of listing $i$ on or before the decision date, $n$ trading
+days of that listing, cash at 0 % (buy-and-hold of the weights, no costs, no rebalancing); null until the period has
+passed for every holding. Used identically for the AI's mandate targets and its unconstrained portfolio, so the two are
+comparable; it is hypothetical (the unconstrained portfolio is never traded, and the live portfolio differs from its
+targets by rounding, drift threshold and costs). Comparison at decision time: both portfolios' risk with F-PILOT-002 on
+the same window, trailing 12-month return $\sum_i w_i R_{252,i}$ (F-PILOT-001), overlap $\sum_s \min(w_s, v_s)$.
+
 ---
 
 ## Categories audited and not implemented

@@ -21,8 +21,8 @@ public static class PilotJson
 /// <summary>Versions recorded on every cycle, so a later change never makes an old decision look like the new setup's.</summary>
 public static class PilotVersions
 {
-    public const string Prompt = "pilot-prompt-1";
-    public const string Tools = "pilot-tools-1";
+    public const string Prompt = "pilot-prompt-2";
+    public const string Tools = "pilot-tools-2";
     public const string Schema = "pilot-decision-1";
 }
 
@@ -296,3 +296,63 @@ public static class PilotText
     /// <summary>Caps model-written text before it is stored (the model's text is data, shown to the owner, never executed).</summary>
     public static string Clip(string? s, int max) => string.IsNullOrEmpty(s) ? "" : s.Length <= max ? s.Trim() : s[..max].Trim() + "…";
 }
+
+// ---------------------------------------------------------------------------------------------- rules first, fit, unconstrained portfolio
+
+/// <summary>The model's restatement of the mandate before it researches (stage RULES): what each rule means for the portfolio.</summary>
+public sealed record PilotRulesCheck
+{
+    public List<PilotRuleNote> Constraints { get; init; } = [];
+    /// <summary>Where the rules pull against each other or against the current portfolio (e.g. a position above its cap).</summary>
+    public List<string> Tensions { get; init; } = [];
+}
+
+public sealed record PilotRuleNote(string Rule, string Limit, string Implication);
+
+/// <summary>
+/// The model's own portfolio without any mandate limit (stage UNCONSTRAINED) – any listing of the catalogue, any weight,
+/// long-only. Never traded; recorded next to the mandate portfolio for comparison.
+/// </summary>
+public sealed record PilotShadow
+{
+    public string Approach { get; init; } = "";
+    public List<PilotTarget> Targets { get; init; } = [];
+    public double CashWeight { get; init; }
+    /// <summary>Why this portfolio, in the model's words.</summary>
+    public List<string> Justification { get; init; } = [];
+    /// <summary>What it does differently from the mandate portfolio, and why.</summary>
+    public List<string> DifferencesFromMandate { get; init; } = [];
+    public List<string> KeyRisks { get; init; } = [];
+    public string Confidence { get; init; } = "";
+    /// <summary>Structural problems found by the platform (symbols not in the catalogue, weights …); empty when usable.</summary>
+    public List<string> Problems { get; init; } = [];
+}
+
+/// <summary>One side of the comparison: the platform's figures for a portfolio (historical estimates, same window and method).</summary>
+public sealed record PilotPortfolioFigures(
+    string Label,
+    int Holdings,
+    double CashWeight,
+    PilotRiskSummary? Risk,
+    double? DiversificationRatio,
+    double? AverageCorrelation,
+    double? ExpectedShortfall95,
+    double? Worst20Days,
+    double? BetaToBenchmark,
+    double? TrailingReturn12M,
+    IReadOnlyList<PilotTargetWeight> Weights);
+
+public sealed record PilotTargetWeight(string Symbol, double Weight, string? Sector, string? Currency, string? Country);
+
+/// <summary>The mandate portfolio next to the unconstrained one, computed by the platform; the model's comparison text is validated against it.</summary>
+public sealed record PilotPortfolioComparison(
+    PilotPortfolioFigures Mandate,
+    PilotPortfolioFigures Unconstrained,
+    // Mandate rules the unconstrained portfolio would break (what the limits cost or protect against).
+    IReadOnlyList<PilotViolation> RulesUnconstrainedBreaks,
+    IReadOnlyList<string> SharedSymbols,
+    // WeightOverlap: Σ min(wᵢ, vᵢ) over all symbols – 1 = identical portfolios, 0 = nothing in common.
+    double WeightOverlap,
+    IReadOnlyList<Research.InterpretationSection> Narrative,
+    string NarrativeSource,
+    string Basis);

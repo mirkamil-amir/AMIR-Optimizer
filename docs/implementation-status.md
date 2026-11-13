@@ -1,5 +1,16 @@
 # Implementation status
 
+## 2026-11-13: Matrix Pilot – rules first, fit loop, unconstrained portfolio (AMIR-28, D-61)
+
+* Each cycle: the AI restates the mandate first (RULES), researches the market, tests candidates with `check_allocation`,
+  decides; breaches go back to it with proposed and allowed values until the portfolio fits (≤ 5 revisions, else BLOCKED).
+  Holding a portfolio that breaks the mandate counts as a breach.
+* The AI also builds its own unconstrained portfolio (any listing, weight, country; justified; never traded); the platform
+  compares both (risk, drawdown, concentration, country/sector mix, rules broken) and the scorecard tracks both
+  hypothetically 1 week / 1 month later.
+* Fixed on the way: the optimizer tool passed an invalid frontier size; model check before activation; retries of failed
+  periods; Gemini's invalid-key answer.
+
 ## 2026-11-13: Matrix Pilot – AI-managed experimental portfolio (AMIR-28, D-60)
 
 * AI Probe has two parts: Research assistant and **Matrix Pilot** (`/research/pilot`, control room per portfolio). A

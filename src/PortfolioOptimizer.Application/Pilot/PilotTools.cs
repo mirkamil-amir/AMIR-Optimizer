@@ -263,25 +263,39 @@ public sealed class MlSignalsTool(IApplicationDbContext db) : PilotTool
 
 // ====================================================================================================== ANALYZE
 
-public sealed class ScreenUniverseTool(PilotAnalytics analytics) : PilotTool
+public sealed class ScreenUniverseTool(PilotAnalytics analytics, IApplicationDbContext db) : PilotTool
 {
-    public const int MaxScreened = 500;
+    public const int MaxScreened = 600;
     public override string Name => "screen_universe";
-    public override string Purpose => "Rank the investable universe by a backward-looking metric (trailing return, volatility, return per volatility, drawdown) from stored prices.";
+    public override string Purpose =>
+        "Rank listings by a backward-looking metric (trailing return, volatility, return per volatility, drawdown) from stored prices. scope \"mandate\" (default) " +
+        "= the mandate's investable universe; scope \"catalogue\" = every listing with recent prices, for your unconstrained portfolio (narrow it with indexes, " +
+        "countries, sectors or currencies; at most 600 are screened).";
     public override PilotToolCategory Category => PilotToolCategory.Analyze;
-    public override string Arguments => """{"sortBy": "momentum_12m"|"momentum_6m"|"momentum_3m"|"low_volatility"|"return_per_volatility"|"shallow_drawdown", "sectors"?: [..], "currencies"?: [..], "limit"?: 5..50}""";
-    public override TimeSpan Timeout => TimeSpan.FromSeconds(90);
+    public override string Arguments => """{"sortBy": "momentum_12m"|"momentum_6m"|"momentum_3m"|"low_volatility"|"return_per_volatility"|"shallow_drawdown", "scope"?: "mandate"|"catalogue", "indexes"?: [..], "countries"?: [..], "sectors"?: [..], "currencies"?: [..], "limit"?: 5..50}""";
+    public override TimeSpan Timeout => TimeSpan.FromSeconds(120);
 
     public override async Task<object> RunAsync(PilotToolContext ctx, JsonElement args, CancellationToken ct)
     {
         var sortBy = PilotArgs.Choice(args, "sortBy", null, "momentum_12m", "momentum_6m", "momentum_3m", "low_volatility", "return_per_volatility", "shallow_drawdown");
+        var scope = PilotArgs.Choice(args, "scope", "mandate", "mandate", "catalogue");
+        var indexes = PilotArgs.Strings(args, "indexes", 10);
+        var countries = PilotArgs.Strings(args, "countries", 20);
         var sectors = PilotArgs.Strings(args, "sectors", 20);
         var currencies = PilotArgs.Strings(args, "currencies", 10);
         var limit = PilotArgs.Int(args, "limit", 25, 5, 50);
-        var pool = ctx.Universe.Values.Where(a => a.Priced && !ctx.Mandate.ExcludedSymbols.Contains(a.Symbol))
+        if (scope == "catalogue" || indexes.Count > 0) await PilotCatalogue.EnsureLoadedAsync(ctx, db, ct);
+        var source = scope == "catalogue" ? ctx.Catalogue!.Values : ctx.Universe.Values.Where(a => !ctx.Mandate.ExcludedSymbols.Contains(a.Symbol));
+        var candidates = source.Where(a => a.Priced)
+            .Where(a => indexes.Count == 0 || (ctx.Memberships!.GetValueOrDefault(a.Symbol) ?? []).Intersect(indexes, StringComparer.OrdinalIgnoreCase).Any())
+            .Where(a => countries.Count == 0 || countries.Contains(a.Country ?? "", StringComparer.OrdinalIgnoreCase))
             .Where(a => sectors.Count == 0 || sectors.Contains(a.Sector ?? "", StringComparer.OrdinalIgnoreCase))
             .Where(a => currencies.Count == 0 || currencies.Contains(a.Currency, StringComparer.OrdinalIgnoreCase))
-            .Select(a => a.Symbol).Order(StringComparer.Ordinal).Take(MaxScreened).ToList();
+            .Select(a => a.Symbol).Order(StringComparer.Ordinal).ToList();
+        if (candidates.Count > MaxScreened)
+            throw new PilotToolException("invalid_arguments",
+                $"{candidates.Count} listings match; at most {MaxScreened} can be screened at once. Narrow it with indexes, countries, sectors or currencies.");
+        var pool = candidates;
         var metrics = await analytics.MetricsAsync(ctx, pool, ct);
         Func<PilotAssetMetrics, double?> key = sortBy switch
         {
@@ -296,6 +310,7 @@ public sealed class ScreenUniverseTool(PilotAnalytics analytics) : PilotTool
         return new
         {
             sortBy,
+            scope,
             screened = pool.Count,
             withMetric = ranked.Count,
             withoutEnoughHistory = pool.Count - ranked.Count,
@@ -316,17 +331,20 @@ public sealed class ScreenUniverseTool(PilotAnalytics analytics) : PilotTool
     public override string Summarize(object result) => "Universe screened.";
 }
 
-public sealed class SecurityMetricsTool(PilotAnalytics analytics, MarketData.PriceQueryService prices) : PilotTool
+public sealed class SecurityMetricsTool(PilotAnalytics analytics, MarketData.PriceQueryService prices, IApplicationDbContext db) : PilotTool
 {
     public override string Name => "get_security_metrics";
-    public override string Purpose => "Trailing returns, volatility, drawdown, beta to the benchmark and average traded volume for specific symbols.";
+    public override string Purpose =>
+        "Trailing returns, volatility, drawdown, beta to the benchmark and average traded volume for specific symbols (any listing of the catalogue; " +
+        "inMandateUniverse says whether the mandate portfolio may hold it).";
     public override PilotToolCategory Category => PilotToolCategory.Analyze;
     public override string Arguments => """{"symbols": [1..30 symbols]}""";
 
     public override async Task<object> RunAsync(PilotToolContext ctx, JsonElement args, CancellationToken ct)
     {
         var symbols = PilotArgs.Symbols(args, "symbols", 1, 30);
-        var outside = symbols.Where(s => !ctx.Universe.ContainsKey(s)).ToList();
+        if (symbols.Any(s => !ctx.Universe.ContainsKey(s))) await PilotCatalogue.EnsureLoadedAsync(ctx, db, ct);
+        var outside = symbols.Where(s => ctx.Info(s) is null).ToList();
         var inside = symbols.Except(outside).ToList();
         var metrics = await analytics.MetricsAsync(ctx, inside, ct);
         var betas = new Dictionary<string, double?>();
@@ -339,10 +357,11 @@ public sealed class SecurityMetricsTool(PilotAnalytics analytics, MarketData.Pri
         return new
         {
             benchmark = ctx.Benchmark,
-            outsideUniverse = outside,
+            unknownOrWithoutRecentPrices = outside,
             securities = inside.Where(metrics.ContainsKey).Select(s => new
             {
                 metrics = ScreenUniverseTool.Row(metrics[s]),
+                inMandateUniverse = ctx.Universe.ContainsKey(s),
                 betaToBenchmark12m = betas.GetValueOrDefault(s),
                 averageDailyVolume20d = volumes.TryGetValue(s, out var v) && v.Bars.Any(b => b.Volume is not null)
                     ? (long?)v.Bars.TakeLast(20).Where(b => b.Volume is not null).Average(b => (double)b.Volume!.Value) : null,
@@ -384,7 +403,7 @@ public sealed class CorrelationTool(PilotAnalytics analytics) : PilotTool
     public override string Summarize(object result) => "Correlations computed.";
 }
 
-public sealed class AnalyzePortfolioTool(PilotAnalytics analytics) : PilotTool
+public sealed class AnalyzePortfolioTool(PilotAnalytics analytics, IApplicationDbContext db) : PilotTool
 {
     public override string Name => "analyze_portfolio";
     public override string Purpose => "Risk of a candidate allocation: ex-ante volatility, risk shares, diversification, VaR/ES, drawdown, worst periods, beta, sector/currency/country exposure.";
@@ -396,6 +415,7 @@ public sealed class AnalyzePortfolioTool(PilotAnalytics analytics) : PilotTool
     {
         var weights = PilotArgs.Weights(args, "weights", 60);
         var lookback = PilotArgs.Int(args, "lookbackDays", 504, 126, 756);
+        if (weights.Keys.Any(s => !ctx.Universe.ContainsKey(s))) await PilotCatalogue.EnsureLoadedAsync(ctx, db, ct);
         return await analytics.AnalyzeAsync(ctx, weights, lookback, ct);
     }
 
@@ -480,4 +500,44 @@ public sealed class EstimateTradesTool(PilotAnalytics analytics) : PilotTool
 
     public override string Summarize(object result) => result is PilotTradeEstimate t
         ? $"{t.Buys} buy(s), {t.Sells} sell(s), turnover {t.Turnover:P1}, costs {t.Costs:N2}." : "Trades estimated.";
+}
+
+/// <summary>
+/// The mandate check, available during research: the same validator that decides whether a proposal may be booked, run on a
+/// candidate. Returns every breach with the proposed and the allowed value, so the model can fix its portfolio before deciding.
+/// </summary>
+public sealed class CheckAllocationTool(PilotFitChecker fit) : PilotTool
+{
+    public override string Name => "check_allocation";
+    public override string Purpose =>
+        "Check a candidate mandate portfolio against every mandate rule with the platform's validator (positions, holdings, cash, sectors, countries, " +
+        "currencies, turnover, volatility, minimum trade). Returns passed or each breach with proposed and allowed values. Use it until your candidate passes.";
+    public override PilotToolCategory Category => PilotToolCategory.Simulate;
+    public override string Arguments => """{"weights": {"SYMBOL": fraction, ...} (1..60), "cashWeight"?: fraction (default 1 − sum)}""";
+    public override TimeSpan Timeout => TimeSpan.FromSeconds(90);
+
+    public override async Task<object> RunAsync(PilotToolContext ctx, JsonElement args, CancellationToken ct)
+    {
+        var weights = PilotArgs.Weights(args, "weights", 60);
+        var cash = PilotArgs.Number(args, "cashWeight", Math.Round(1 - weights.Values.Sum(), 6), 0, 1);
+        var candidate = new PilotDecision
+        {
+            Action = "REBALANCE", CashWeight = cash,
+            Targets = weights.Select(kv => new PilotTarget { Symbol = kv.Key, Weight = kv.Value }).ToList(),
+        };
+        var r = await fit.CheckAsync(ctx, candidate, requireTexts: false, ct);
+        return new
+        {
+            passed = r.Fits,
+            violations = r.Validation.Violations.Select(v => new { v.Rule, v.Detail, v.Symbol, v.Proposed, v.Allowed }),
+            checks = r.Validation.Checks.Select(c => new { c.Name, c.Passed, c.Detail }),
+            volatility = r.Risk?.Summary.Volatility,
+            turnover = r.Validation.Trades?.Turnover,
+            note = r.Fits ? "This candidate fits every mandate rule." : "Fix every violation before deciding; the final decision is checked the same way.",
+        };
+    }
+
+    public override string Summarize(object result) =>
+        JsonSerializer.SerializeToElement(result, PilotJson.Options) is var e && e.GetProperty("passed").GetBoolean()
+            ? "Candidate fits the mandate." : $"Candidate breaks {e.GetProperty("violations").GetArrayLength()} rule(s).";
 }

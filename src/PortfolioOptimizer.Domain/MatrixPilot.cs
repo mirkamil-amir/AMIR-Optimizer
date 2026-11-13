@@ -19,7 +19,7 @@ public enum PilotStatus
 public enum PilotDecisionFrequency { Daily, Weekly, Monthly }
 
 /// <summary>Step of a decision cycle (explicit state machine, docs/matrix-pilot.md#state-machine).</summary>
-public enum PilotCyclePhase { Queued, Observe, Research, Construct, Critique, Finalize, Validate, Execute, Journal, Complete }
+public enum PilotCyclePhase { Queued, Observe, Rules, Research, Construct, Fit, Critique, Finalize, Validate, Unconstrained, Compare, Execute, Journal, Complete }
 
 /// <summary>What a cycle ended with. Each value means something different and is never shown as another.</summary>
 public enum PilotCycleOutcome
@@ -164,6 +164,14 @@ public class MatrixPilotCycle
     public string? DecisionJson { get; set; }
     /// <summary>The critic's structured review (JSON, <c>PilotCritique</c>).</summary>
     public string? CritiqueJson { get; set; }
+    /// <summary>The model's first proposal, before any fit revision (JSON, <c>PilotDecision</c>) – kept to measure how often it needed correcting.</summary>
+    public string? InitialDecisionJson { get; set; }
+    /// <summary>Proposals the validator sent back to the model before one fitted the mandate (0 = the first one fitted).</summary>
+    public int FitRevisions { get; set; }
+    /// <summary>The model's own unconstrained portfolio – never traded (JSON, <c>PilotShadow</c>).</summary>
+    public string? ShadowJson { get; set; }
+    /// <summary>Platform comparison of the mandate portfolio with the unconstrained one, plus the model's text (JSON, <c>PilotPortfolioComparison</c>).</summary>
+    public string? ComparisonJson { get; set; }
     /// <summary>Checks run and violations found (JSON, <c>PilotValidationResult</c>).</summary>
     public string? ValidationJson { get; set; }
     /// <summary>Weights actually held after the booking (JSON); null without a booking.</summary>

@@ -150,6 +150,16 @@ public sealed class MatrixPilotTests(MatrixPilotTests.Shared shared) : IClassFix
         critiqueResponse = "",
     };
 
+    /// <summary>Ten holdings of 9.8 % and 2 % cash – fits the test mandate.</summary>
+    private static object ValidDecision() => Decision("REBALANCE", Stocks.Select(s => (s, 0.098)).ToArray(), 0.02);
+
+    /// <summary>A model that keeps proposing the same thing through every fit revision.</summary>
+    private void EnqueueStubborn(object decision)
+    {
+        _model.EnqueueJson("pilot.decide", decision);
+        for (var i = 0; i < 5; i++) _model.EnqueueJson("pilot.revise", decision);
+    }
+
     // ====================================================================================================== end to end
 
     [Fact]
@@ -179,12 +189,17 @@ public sealed class MatrixPilotTests(MatrixPilotTests.Shared shared) : IClassFix
         Assert.NotNull(cycle.TradeBatchId);
 
         // Journal: AI decisions, tool calls (real tools), deterministic calculations, validation, execution, outcome – in order.
-        var kinds = cycle.Steps.OrderBy(s => s.Sequence).Select(s => s.Kind).ToList();
+        var ordered = cycle.Steps.OrderBy(s => s.Sequence).ToList();
+        var kinds = ordered.Select(s => s.Kind).ToList();
         Assert.Equal(PilotStepKind.Observation, kinds[0]);
+        Assert.Equal("Rules first", ordered[1].Name); // the mandate is read before any market data
         Assert.Contains(cycle.Steps, s => s is { Kind: PilotStepKind.ToolCall, Name: "screen_universe", Status: "ok" });
         Assert.Contains(cycle.Steps, s => s is { Kind: PilotStepKind.AiDecision, Name: "Decision", Status: "ok" });
-        Assert.Contains(cycle.Steps, s => s is { Kind: PilotStepKind.Calculation, Name: "Risk of the decision" });
-        Assert.Contains(cycle.Steps, s => s is { Kind: PilotStepKind.Validation, Status: "ok" });
+        Assert.Contains(cycle.Steps, s => s is { Kind: PilotStepKind.Validation, Name: "Fit check 1", Status: "ok" });
+        Assert.Contains(cycle.Steps, s => s is { Kind: PilotStepKind.Validation, Name: "Validation", Status: "ok" });
+        // The AI's own portfolio without limits is recorded and compared – and never booked.
+        Assert.NotNull(cycle.ShadowJson);
+        Assert.Contains(cycle.Steps, s => s is { Kind: PilotStepKind.Calculation, Name: "Portfolio comparison", Status: "ok" });
         Assert.Contains(cycle.Steps, s => s is { Kind: PilotStepKind.Execution, Name: "Simulated booking", Status: "ok" });
         Assert.Equal(PilotStepKind.Outcome, kinds[^1]);
         Assert.True(kinds.IndexOf(PilotStepKind.Validation) < kinds.IndexOf(PilotStepKind.Execution));
@@ -221,17 +236,121 @@ public sealed class MatrixPilotTests(MatrixPilotTests.Shared shared) : IClassFix
     }
 
     [Fact]
-    public async Task HoldDecision_IsANoTrade_NotASkipOrFailure()
+    public async Task HoldDecision_OfAFittingPortfolio_IsANoTrade()
     {
         var p = await ActivePilotAsync(_alice);
         _model.EnqueueJson("pilot.research", Turn(true));
+        _model.EnqueueJson("pilot.decide", ValidDecision());
+        Assert.Equal(PilotCycleOutcome.Rebalanced, (await RunCycleAsync(p.Id)).Outcome);
+        var executions = await ExecutionsAsync(p.Id);
+
+        _model.EnqueueJson("pilot.research", Turn(true));
         _model.EnqueueJson("pilot.decide", Decision("HOLD", [], 0));
+        var hold = await RunCycleAsync(p.Id, "SECOND");
+        Assert.Equal(PilotCycleOutcome.NoTrade, hold.Outcome);
+        Assert.Equal(0, hold.FitRevisions);
+        Assert.Equal(executions, await ExecutionsAsync(p.Id));
+    }
+
+    [Fact]
+    public async Task HoldingAPortfolioThatBreaksTheMandate_IsSentBack_AndTheAiFixesIt()
+    {
+        var p = await ActivePilotAsync(_alice); // 100 % cash, no holdings: breaks the cash maximum and the minimum holdings
+        _model.EnqueueJson("pilot.research", Turn(true));
+        _model.EnqueueJson("pilot.decide", Decision("HOLD", [], 0));
+        _model.EnqueueJson("pilot.revise", ValidDecision());
         var cycle = await RunCycleAsync(p.Id);
-        Assert.Equal(PilotCycleOutcome.NoTrade, cycle.Outcome);
-        Assert.Equal(0, await ExecutionsAsync(p.Id));
-        // A hold that leaves the portfolio in cash outside the mandate is recorded as a failed check, not blocked (it changes nothing).
+
+        Assert.Equal(PilotCycleOutcome.Rebalanced, cycle.Outcome);
+        Assert.Equal(1, cycle.FitRevisions);
+        Assert.Contains("HOLD", cycle.InitialDecisionJson);
+        Assert.Contains(cycle.Steps, s => s is { Name: "Fit check 1", Status: "rejected" } && s.Summary.Contains("100.00 % cash") && s.Summary.Contains("0 holdings"));
+        var revise = Assert.Single(_model.Requests, r => r.Purpose == "pilot.revise");
+        Assert.Contains("breaches", revise.UserContent);
+    }
+
+    [Fact]
+    public async Task ABreach_GoesBackToTheAi_WithProposedAndAllowed_UntilItFits()
+    {
+        var p = await ActivePilotAsync(_alice);
+        _model.EnqueueJson("pilot.research", Turn(true));
+        _model.EnqueueJson("pilot.decide", Decision("REBALANCE",
+            [("AAPL", 0.20), ("MSFT", 0.10), ("JPM", 0.10), ("PG", 0.10), ("KO", 0.10), ("JNJ", 0.10), ("XOM", 0.10), ("BAC", 0.10)], 0.10));
+        _model.EnqueueJson("pilot.revise", Decision("REBALANCE",
+            [("AAPL", 0.10), ("MSFT", 0.10), ("JPM", 0.10), ("PG", 0.10), ("KO", 0.10), ("JNJ", 0.10), ("XOM", 0.10), ("BAC", 0.10), ("CVX", 0.10)], 0.10));
+        var cycle = await RunCycleAsync(p.Id);
+
+        Assert.Equal(PilotCycleOutcome.Rebalanced, cycle.Outcome);
+        Assert.Equal(1, cycle.FitRevisions);
+        // The first proposal stays on record next to the fitted one.
+        Assert.Equal(0.20, PilotJson.Deserialize<PilotDecision>(cycle.InitialDecisionJson)!.Targets.Single(t => t.Symbol == "AAPL").Weight);
+        Assert.Equal(0.10, PilotJson.Deserialize<PilotDecision>(cycle.DecisionJson)!.Targets.Single(t => t.Symbol == "AAPL").Weight);
+        var names = cycle.Steps.OrderBy(s => s.Sequence).Select(s => $"{s.Name}:{s.Status}").ToList();
+        Assert.True(names.IndexOf("Fit check 1:rejected") < names.IndexOf("Revision 1:ok") && names.IndexOf("Revision 1:ok") < names.IndexOf("Fit check 2:ok"));
+        var revise = Assert.Single(_model.Requests, r => r.Purpose == "pilot.revise");
+        Assert.Contains("max_position", revise.UserContent);
+        Assert.Contains("AAPL: proposed 20", revise.UserContent); // proposed and allowed values go back to the model
+    }
+
+    [Fact]
+    public async Task RulesComeFirst_AndCheckAllocationGivesTheValidatorsVerdict()
+    {
+        var p = await ActivePilotAsync(_alice);
+        _model.EnqueueJson("pilot.research", Turn(false,
+            ("check_allocation", """{"weights":{"AAPL":0.5,"MSFT":0.48}}"""),
+            ("check_allocation", """{"weights":{"AAPL":0.098,"MSFT":0.098,"NVDA":0.098,"JPM":0.098,"BAC":0.098,"PG":0.098,"KO":0.098,"JNJ":0.098,"XOM":0.098,"CVX":0.098}}""")));
+        _model.EnqueueJson("pilot.research", Turn(true));
+        _model.EnqueueJson("pilot.decide", ValidDecision());
+        var cycle = await RunCycleAsync(p.Id);
+
+        var pilotCalls = _model.Requests.Where(r => r.Purpose != "pilot.check").ToList();
+        Assert.Equal("pilot.rules", pilotCalls[0].Purpose);
+        Assert.Contains("\"countries\"", pilotCalls[0].UserContent); // the universe's composition is given with the rules
+        var checks = cycle.Steps.Where(s => s.Name == "check_allocation").OrderBy(s => s.Sequence).ToList();
+        Assert.Equal(2, checks.Count);
+        Assert.Contains("\"passed\":false", checks[0].OutputJson);
+        Assert.Contains("max_position", checks[0].OutputJson);
+        Assert.Contains("\"passed\":true", checks[1].OutputJson);
+        Assert.Equal(PilotCycleOutcome.Rebalanced, cycle.Outcome);
+    }
+
+    [Fact]
+    public async Task UnconstrainedPortfolio_MayIgnoreEveryLimit_IsComparedAndNeverTraded()
+    {
+        var p = await ActivePilotAsync(_alice);
+        _model.EnqueueJson("pilot.research", Turn(true));
+        _model.EnqueueJson("pilot.decide", ValidDecision());
+        // Its own idea: 70 % in one stock, an ETF outside the mandate's universe, no cash.
+        _model.EnqueueJson("pilot.unconstrained", new
+        {
+            approach = "concentrated conviction",
+            targets = new[]
+            {
+                new { symbol = "NVDA", weight = 0.7, role = "core", thesis = "highest conviction", whyNow = "w", risks = "concentration", invalidation = "i" },
+                new { symbol = "SPY", weight = 0.3, role = "market", thesis = "broad market", whyNow = "w", risks = "market", invalidation = "i" },
+            },
+            cashWeight = 0.0,
+            justification = new[] { "One idea, sized by conviction." },
+            differencesFromMandate = new[] { "No 10 % cap, an index ETF outside the universe, no cash." },
+            keyRisks = new[] { "Single-stock risk." },
+            confidence = "low",
+        });
+        var cycle = await RunCycleAsync(p.Id);
+
+        Assert.Equal(PilotCycleOutcome.Rebalanced, cycle.Outcome);
         var detail = await (await _alice.GetAsync($"/api/v1/portfolios/{p.Id}/pilot/cycles/{cycle.Id}")).ReadAsync<PilotCycleDetailDto>();
-        Assert.Contains(detail.Validation!.Checks, c => c.Name == "cash (current portfolio)" && !c.Passed);
+        Assert.Empty(detail.Unconstrained!.Problems);
+        Assert.Equal(["NVDA", "SPY"], detail.Unconstrained.Targets.Select(t => t.Symbol));
+        var cmp = detail.Comparison!;
+        Assert.Equal(2, cmp.Unconstrained.Holdings);
+        Assert.Contains(cmp.RulesUnconstrainedBreaks, v => v.Rule == "max_position" && v.Symbol == "NVDA");
+        Assert.Contains(cmp.RulesUnconstrainedBreaks, v => v.Rule == "universe" && v.Detail.Contains("SPY"));
+        Assert.NotNull(cmp.Mandate.Risk?.Volatility);
+        Assert.NotNull(cmp.Unconstrained.Risk?.Volatility);
+        // Never traded: nothing of SPY was bought, the 70 % position does not exist.
+        using var scope = _factory.Services.CreateScope();
+        var symbols = await scope.ServiceProvider.GetRequiredService<IApplicationDbContext>().Executions.Where(e => e.PortfolioId == p.Id).Select(e => e.Symbol).ToListAsync();
+        Assert.DoesNotContain("SPY", symbols);
     }
 
     // ====================================================================================================== fail closed
@@ -241,11 +360,13 @@ public sealed class MatrixPilotTests(MatrixPilotTests.Shared shared) : IClassFix
     {
         var p = await ActivePilotAsync(_alice);
         _model.EnqueueJson("pilot.research", Turn(true));
-        _model.EnqueueJson("pilot.decide", Decision("REBALANCE",
+        EnqueueStubborn(Decision("REBALANCE",
             [("AAPL", 0.20), ("MSFT", 0.10), ("JPM", 0.10), ("PG", 0.10), ("KO", 0.10), ("JNJ", 0.10), ("XOM", 0.10), ("BAC", 0.10)], 0.10));
         var cycle = await RunCycleAsync(p.Id);
 
         Assert.Equal(PilotCycleOutcome.Blocked, cycle.Outcome);
+        Assert.Equal(5, cycle.FitRevisions); // sent back five times, never fixed
+        Assert.Contains("After 5 revision(s)", cycle.OutcomeReason);
         Assert.Equal(0, await ExecutionsAsync(p.Id));
         Assert.Null(cycle.ProposalId);
         var detail = await (await _alice.GetAsync($"/api/v1/portfolios/{p.Id}/pilot/cycles/{cycle.Id}")).ReadAsync<PilotCycleDetailDto>();
@@ -441,7 +562,7 @@ public sealed class MatrixPilotTests(MatrixPilotTests.Shared shared) : IClassFix
     {
         var blockedPilot = await ActivePilotAsync(_alice);
         _model.EnqueueJson("pilot.research", Turn(true));
-        _model.EnqueueJson("pilot.decide", Decision("REBALANCE", [("AAPL", 0.5), ("MSFT", 0.4)], 0.1));
+        EnqueueStubborn(Decision("REBALANCE", [("AAPL", 0.5), ("MSFT", 0.4)], 0.1));
         Assert.Equal(PilotCycleOutcome.Blocked, (await RunCycleAsync(blockedPilot.Id)).Outcome);
         (await _alice.PostJsonAsync($"/api/v1/portfolios/{blockedPilot.Id}/pilot/run", new RunPilotNowRequest { Confirm = true })).EnsureStatus(HttpStatusCode.Conflict);
 
@@ -517,36 +638,18 @@ public sealed class MatrixPilotTests(MatrixPilotTests.Shared shared) : IClassFix
     {
         var p = await ActivePilotAsync(_alice);
         _model.EnqueueJson("pilot.research", Turn(true));
-        // The owner presses the kill switch while the model is deciding.
-        _model.Enqueue(r =>
+        // The owner presses the kill switch while the model is deciding; the decision itself fits the mandate.
+        _model.Enqueue("pilot.decide", _ =>
         {
-            if (r.Purpose != "pilot.decide") throw new LanguageModelException(LlmFailure.InvalidOutput, "unexpected");
             using var scope = _factory.Services.CreateScope();
             scope.ServiceProvider.GetRequiredService<IApplicationDbContext>().MatrixPilots.Where(x => x.PortfolioId == p.Id)
                 .ExecuteUpdate(s => s.SetProperty(x => x.Status, PilotStatus.KillSwitched));
-            return new LlmResponse(System.Text.Json.JsonSerializer.SerializeToElement(Decision("REBALANCE",
-                [("AAPL", 0.09), ("MSFT", 0.09), ("JPM", 0.09), ("PG", 0.09), ("KO", 0.09), ("JNJ", 0.09)], 0.46)), "mock-model", 1, 1, 1);
+            return new LlmResponse(System.Text.Json.JsonSerializer.SerializeToElement(ValidDecision()), "mock-model", 1, 1, 1);
         });
         var cycle = await RunCycleAsync(p.Id);
-        Assert.Equal(PilotCycleOutcome.Blocked, cycle.Outcome); // cash 46 % > 30 %: blocked by the validator first
-        Assert.Equal(0, await ExecutionsAsync(p.Id));
-
-        // Same with a valid decision: it passes validation but is not booked.
-        await (await _alice.PostJsonAsync($"/api/v1/portfolios/{p.Id}/pilot/resume", new EnablePilotRequest { Confirm = true })).ReadAsync<PilotDto>();
-        _model.EnqueueJson("pilot.research", Turn(true));
-        _model.Enqueue(r =>
-        {
-            using var scope = _factory.Services.CreateScope();
-            scope.ServiceProvider.GetRequiredService<IApplicationDbContext>().MatrixPilots.Where(x => x.PortfolioId == p.Id)
-                .ExecuteUpdate(s => s.SetProperty(x => x.Status, PilotStatus.KillSwitched));
-            return new LlmResponse(System.Text.Json.JsonSerializer.SerializeToElement(Decision("REBALANCE",
-                [("AAPL", 0.098), ("MSFT", 0.098), ("JPM", 0.098), ("PG", 0.098), ("KO", 0.098), ("JNJ", 0.098), ("XOM", 0.098), ("BAC", 0.098), ("CVX", 0.098), ("NVDA", 0.098)], 0.02)),
-                "mock-model", 1, 1, 1);
-        });
-        var second = await RunCycleAsync(p.Id, "AFTER-RESUME");
-        Assert.Equal(PilotCycleOutcome.Skipped, second.Outcome);
-        Assert.Contains("before execution", second.OutcomeReason);
-        Assert.Contains(second.Steps, s => s is { Kind: PilotStepKind.Validation, Status: "ok" });
+        Assert.Equal(PilotCycleOutcome.Skipped, cycle.Outcome);
+        Assert.Contains("before execution", cycle.OutcomeReason);
+        Assert.Contains(cycle.Steps, s => s is { Kind: PilotStepKind.Validation, Name: "Validation", Status: "ok" });
         Assert.Equal(0, await ExecutionsAsync(p.Id));
     }
 
@@ -585,17 +688,16 @@ public sealed class MatrixPilotTests(MatrixPilotTests.Shared shared) : IClassFix
             ("update_mandate", """{"maxPositionWeight":1}"""), ("execute_trades", """{"AAPL":1}"""), ("disable_validator", "{}"),
             ("set_permissions", """{"category":"EXECUTE"}"""), ("delete_audit_events", "{}"), ("get_portfolio_state", """{"portfolioId":"00000000-0000-0000-0000-000000000000"}""")));
         _model.EnqueueJson("pilot.research", Turn(true));
-        _model.EnqueueJson("pilot.decide", Decision("HOLD", [], 0));
+        _model.EnqueueJson("pilot.decide", ValidDecision());
         var cycle = await RunCycleAsync(p.Id);
 
-        Assert.Equal(PilotCycleOutcome.NoTrade, cycle.Outcome);
+        Assert.Equal(PilotCycleOutcome.Rebalanced, cycle.Outcome);
         foreach (var name in new[] { "update_mandate", "execute_trades", "disable_validator", "set_permissions", "delete_audit_events" })
             Assert.Contains(cycle.Steps, s => s.Kind == PilotStepKind.ToolCall && s.Name == name && s.Status == "denied");
         // A portfolio id in the arguments is ignored: the tool reads the cycle's own portfolio.
         Assert.Contains(cycle.Steps, s => s is { Name: "get_portfolio_state", Status: "ok" });
         var versions = await (await _alice.GetAsync($"/api/v1/portfolios/{p.Id}/pilot/mandates")).ReadAsync<List<PilotMandateVersionDto>>();
         Assert.Single(versions);
-        Assert.Equal(0, await ExecutionsAsync(p.Id));
         // The denial is given back to the model as data (so it can continue), not as an authority change.
         Assert.Contains(_model.Requests, r => r.Purpose == "pilot.research" && r.UserContent.Contains("not_permitted"));
     }
@@ -621,16 +723,15 @@ public sealed class MatrixPilotTests(MatrixPilotTests.Shared shared) : IClassFix
         var p = await ActivePilotAsync(_alice);
         _model.EnqueueJson("pilot.research", Turn(false, ("get_news_signals", """{"symbols":["AAPL"],"days":7}""")));
         _model.EnqueueJson("pilot.research", Turn(true));
-        _model.EnqueueJson("pilot.decide", Decision("HOLD", [], 0));
+        _model.EnqueueJson("pilot.decide", ValidDecision());
         var cycle = await RunCycleAsync(p.Id);
 
-        Assert.Equal(PilotCycleOutcome.NoTrade, cycle.Outcome);
+        Assert.Equal(PilotCycleOutcome.Rebalanced, cycle.Outcome);
         var news = Assert.Single(cycle.Steps, s => s.Name == "get_news_signals");
         Assert.Equal("ok", news.Status);
         Assert.Contains("\"articles\":1", news.OutputJson);
         Assert.DoesNotContain("IGNORE", news.OutputJson);
         Assert.All(_model.Requests, r => Assert.DoesNotContain("IGNORE ALL PREVIOUS", r.UserContent + r.Instructions));
-        Assert.Equal(0, await ExecutionsAsync(p.Id));
     }
 
     [Fact]
@@ -648,10 +749,10 @@ public sealed class MatrixPilotTests(MatrixPilotTests.Shared shared) : IClassFix
             ("screen_universe", """{"sortBy":"low_volatility","limit":5}"""), ("get_investable_universe", "{}"), ("get_past_decisions", "{}"),
             ("get_existing_optimizations", "{}"), ("get_ml_signals", "{}"), ("get_news_signals", """{"symbols":["AAPL"]}""")));
         _model.EnqueueJson("pilot.research", Turn(true));
-        _model.EnqueueJson("pilot.decide", Decision("HOLD", [], 0));
+        _model.EnqueueJson("pilot.decide", ValidDecision());
         var cycle = await RunCycleAsync(p.Id);
 
-        Assert.Equal(PilotCycleOutcome.NoTrade, cycle.Outcome);
+        Assert.Equal(PilotCycleOutcome.Rebalanced, cycle.Outcome);
         var tools = cycle.Steps.Where(s => s.Kind == PilotStepKind.ToolCall).ToList();
         Assert.Equal(12, tools.Count);
         Assert.All(tools, s => Assert.True(s.Status == "ok", $"{s.Name}: {s.Status} – {s.Summary}"));
@@ -665,11 +766,11 @@ public sealed class MatrixPilotTests(MatrixPilotTests.Shared shared) : IClassFix
         _model.EnqueueJson("pilot.research", Turn(false, ("run_optimizer", """{"symbols":["AAPL","TSLA"],"objective":"MinimumVariance"}"""),
             ("analyze_portfolio", """{"weights":{"AAPL":0.6,"MSFT":0.6}}""")));
         _model.EnqueueJson("pilot.research", Turn(true));
-        _model.EnqueueJson("pilot.decide", Decision("HOLD", [], 0));
+        _model.EnqueueJson("pilot.decide", ValidDecision());
         var cycle = await RunCycleAsync(p.Id);
         Assert.Contains(cycle.Steps, s => s is { Name: "run_optimizer", Status: "error" } && s.Summary.Contains("Outside the mandate"));
         Assert.Contains(cycle.Steps, s => s is { Name: "analyze_portfolio", Status: "error" } && s.Summary.Contains("more than 100"));
-        Assert.Equal(PilotCycleOutcome.NoTrade, cycle.Outcome);
+        Assert.Equal(PilotCycleOutcome.Rebalanced, cycle.Outcome);
     }
 
     // ====================================================================================================== isolation

@@ -142,6 +142,11 @@
 * **Tool errors do not end a cycle:** a tool the model called with bad arguments returns its error to the model, which
   may decide on the remaining evidence (journaled). Failures of the platform's own steps (observation, the decision's
   risk and trade calculation, validation, booking) end the cycle without a trade.
+* **Fit loop:** a proposal is sent back at most five times; the model may still not find a fitting portfolio (BLOCKED,
+  nothing traded). Revisions cost model calls (about 6–20 per cycle).
+* **Unconstrained portfolio:** hypothetical only – never traded, compared with fixed weights and no costs (F-PILOT-005);
+  its catalogue is every listing with stored prices in the last 10 days (no FX check in the screen; series without a rate
+  are left out of its risk figures).
 * **Execution differences:** the portfolio's drift threshold and whole-share setting apply as for any proposal, so held
   weights can differ from the AI's proposal by rounding; both are stored and shown.
 * **Drawdown pause** is checked at the start of each cycle (not intraday) and was not exercised end-to-end (needs a real

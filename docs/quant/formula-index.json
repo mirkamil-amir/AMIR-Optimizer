@@ -1288,6 +1288,24 @@
         "quant-formulas"
       ],
       "verified": "2026-11-13"
+    },
+    {
+      "id": "F-PILOT-005",
+      "name": "Hypothetical move of fixed weights (mandate targets vs unconstrained portfolio)",
+      "status": "Correct under documented assumptions",
+      "severity": null,
+      "code": [
+        "src/PortfolioOptimizer.Application/Pilot/PilotService.cs#Hypothetical",
+        "src/PortfolioOptimizer.Application/Pilot/PilotEngine.cs#CompareAsync"
+      ],
+      "tests": [
+        "PilotMetricsAndArgsTests.Hypothetical_IsTheWeightedMoveOfFixedWeights_CashEarnsNothing_AndBlankUntilEveryHoldingHasData",
+        "MatrixPilotTests.UnconstrainedPortfolio_MayIgnoreEveryLimit_IsComparedAndNeverTraded"
+      ],
+      "skills": [
+        "quant-formulas"
+      ],
+      "verified": "2026-11-13"
     }
   ]
 }

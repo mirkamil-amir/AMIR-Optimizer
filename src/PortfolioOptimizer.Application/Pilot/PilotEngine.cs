@@ -29,6 +29,8 @@ public sealed class PilotOptions
     public int ModelTimeoutSeconds { get; set; } = 300;
     public int MaxInputTokensPerCycle { get; set; } = 600_000;
     public int MaxConsecutiveFailures { get; set; } = 3;
+    /// <summary>How often a proposal that breaks the mandate is sent back to the model before the cycle is BLOCKED.</summary>
+    public int MaxFitRevisions { get; set; } = 5;
     /// <summary>After a FAILED or SKIPPED attempt (nothing decided or traded) the scheduler tries the same period again after this.</summary>
     public int RetryAfterMinutes { get; set; } = 60;
     /// <summary>Characters of research log sent back to the model; older tool results are reduced to their summary beyond it.</summary>
@@ -54,6 +56,7 @@ public sealed class PilotEngine(
     PilotToolRunner tools,
     PilotAnalytics analytics,
     PilotJournal journal,
+    PilotFitChecker fitChecker,
     BackgroundActor actor,
     ICurrentUser currentUser,
     IAuditLog audit,
@@ -156,9 +159,21 @@ public sealed class PilotEngine(
         var mandate = await MandateAsync(pilot, ct);
         var ctx = await ObserveAsync(cycle, pilot, mandate, ct);
 
-        // ------------------------------------------------------------------------------------------------ RESEARCH
-        await PhaseAsync(cycle, PilotCyclePhase.Research, ct);
+        // ------------------------------------------------------------------------------------------------ RULES (first)
+        await PhaseAsync(cycle, PilotCyclePhase.Rules, ct);
         var log = new List<object>();
+        var rules = await CallAsync<PilotRulesCheck>(cycle, "pilot.rules", PilotPrompts.Rules,
+            Data(new { stage = "rules", mandate, portfolio = ctx.Observation, universe = UniverseMix(ctx) }), PilotPrompts.RulesSchema, 4000, "Rules first", ct);
+        rules = new PilotRulesCheck
+        {
+            Constraints = (rules.Constraints ?? []).Where(c => c is not null).Take(30)
+                .Select(c => new PilotRuleNote(PilotText.Clip(c.Rule, 120), PilotText.Clip(c.Limit, 120), PilotText.Clip(c.Implication, 400))).ToList(),
+            Tensions = (rules.Tensions ?? []).Take(15).Select(t => PilotText.Clip(t, 400)).ToList(),
+        };
+        log.Add(new { stage = "rules", constraints = rules.Constraints, tensions = rules.Tensions });
+
+        // ------------------------------------------------------------------------------------------------ RESEARCH (market)
+        await PhaseAsync(cycle, PilotCyclePhase.Research, ct);
         for (var round = 1; round <= _o.MaxResearchRounds; round++)
         {
             if (cycle.InputTokens > _o.MaxInputTokensPerCycle) break;
@@ -188,14 +203,21 @@ public sealed class PilotEngine(
 
         // ------------------------------------------------------------------------------------------------ CONSTRUCT
         await PhaseAsync(cycle, PilotCyclePhase.Construct, ct);
-        var decision = await DecideAsync(cycle, PilotPrompts.Decide, Data(new { stage = "decide", portfolio = ctx.Observation, mandate, research = TrimLog(log) }),
-            "Decision", ct);
-        var (risk, trades) = await CalculateAsync(cycle, ctx, decision, ct);
+        var decision = await DecideAsync(cycle, "pilot.decide", PilotPrompts.Decide,
+            Data(new { stage = "decide", portfolio = ctx.Observation, mandate, research = TrimLog(log) }), "Decision", ct);
+        cycle.InitialDecisionJson = PilotJson.Serialize(decision);
+
+        // ------------------------------------------------------------------------------------------------ FIT (until it fits the mandate)
+        PilotFitResult fitted;
+        (decision, fitted) = await FitAsync(cycle, ctx, decision, log, ct);
 
         // ------------------------------------------------------------------------------------------------ CRITIQUE
         await PhaseAsync(cycle, PilotCyclePhase.Critique, ct);
+        var risk = fitted.Risk;
+        var trades = fitted.Validation.Trades;
         var critique = await CallAsync<PilotCritique>(cycle, "pilot.critique", PilotPrompts.Critique,
-            Data(new { decision, risk, trades, mandate, portfolio = ctx.Observation }), PilotPrompts.CritiqueSchema, 3000, "Risk review", ct);
+            Data(new { decision, fitsMandate = fitted.Fits, violations = fitted.Validation.Violations, risk, trades, mandate, portfolio = ctx.Observation }),
+            PilotPrompts.CritiqueSchema, 3000, "Risk review", ct);
         critique = critique with { Concerns = (critique.Concerns ?? []).Where(c => c is not null).ToList(), Summary = critique.Summary ?? "" };
         critique = critique with
         {
@@ -209,37 +231,37 @@ public sealed class PilotEngine(
         await PhaseAsync(cycle, PilotCyclePhase.Finalize, ct);
         if (critique.Recommendation != "keep")
         {
-            decision = await DecideAsync(cycle, PilotPrompts.Finalize,
+            decision = await DecideAsync(cycle, "pilot.finalize", PilotPrompts.Finalize,
                 Data(new { stage = "finalize", proposed = decision, critique, risk, trades, mandate, portfolio = ctx.Observation, research = TrimLog(log) }), "Final decision", ct);
-            (risk, trades) = await CalculateAsync(cycle, ctx, decision, ct);
+            (decision, fitted) = await FitAsync(cycle, ctx, decision, log, ct);
         }
         else journal.Add(cycle, PilotStepKind.AiDecision, "Final decision", "ok", 0, "The reviewer recommended keeping the decision; it stands as proposed.");
         cycle.DecisionJson = PilotJson.Serialize(decision);
         await SaveAsync(ct);
 
-        // ------------------------------------------------------------------------------------------------ VALIDATE
+        // ------------------------------------------------------------------------------------------------ VALIDATE (final, independent)
         await PhaseAsync(cycle, PilotCyclePhase.Validate, ct);
         var sw = Stopwatch.StartNew();
-        var current = CurrentWeights(ctx);
-        var validation = PilotDecisionValidator.Validate(decision, mandate, ctx.Universe, current, risk?.Summary, trades);
-        if (decision.IsHold && ctx.Observation.PortfolioValue is > 0 && ctx.Observation.Cash / ctx.Observation.PortfolioValue.Value is var cashShare
-            && ((double)cashShare > mandate.MaxCashWeight + PilotDecisionValidator.SumTolerance || (double)cashShare < mandate.MinCashWeight - PilotDecisionValidator.SumTolerance))
-            validation = validation with { Checks = [.. validation.Checks, new PilotCheck("cash (current portfolio)", false,
-                $"Holding keeps cash at {cashShare:P1}, outside the mandate's {mandate.MinCashWeight:P0}–{mandate.MaxCashWeight:P0}. A hold changes nothing, so it is not blocked.")] };
+        var final = await fitChecker.CheckAsync(ctx, decision, requireTexts: true, ct);
+        var validation = final.Validation;
+        trades = validation.Trades;
         cycle.ValidationMs = sw.Elapsed.TotalMilliseconds;
         cycle.ValidationJson = PilotJson.Serialize(validation);
         journal.Add(cycle, PilotStepKind.Validation, "Validation", validation.Passed ? "ok" : "rejected", sw.Elapsed.TotalMilliseconds,
-            validation.Passed ? $"Passed {validation.Checks.Count} check(s)." : $"Blocked: {string.Join(" ", validation.Violations.Take(4).Select(v => v.Detail))}",
+            validation.Passed ? $"Passed {validation.Checks.Count} check(s) after {cycle.FitRevisions} revision(s)." : $"Blocked: {string.Join(" ", validation.Violations.Take(4).Select(v => v.Detail))}",
             null, PilotJson.Serialize(validation));
         await SaveAsync(ct);
-        if (!validation.Passed)
-            return (PilotCycleOutcome.Blocked, $"The decision violated {validation.Violations.Count} rule(s); nothing was traded. " +
-                                               string.Join(" ", validation.Violations.Take(3).Select(v => v.Detail)));
 
+        // ------------------------------------------------------------------------------------------------ UNCONSTRAINED + COMPARE (never traded)
+        await ShadowAsync(cycle, ctx, decision, log, ct);
+
+        if (!validation.Passed)
+            return (PilotCycleOutcome.Blocked, $"After {cycle.FitRevisions} revision(s) the decision still broke {validation.Violations.Count} rule(s); nothing was traded. " +
+                                               string.Join(" ", validation.Violations.Take(3).Select(v => v.Detail)));
         if (decision.IsHold)
         {
             await NarrateAsync(cycle, ctx, decision, validation, null, PilotCycleOutcome.NoTrade, ct);
-            return (PilotCycleOutcome.NoTrade, "Matrix Pilot decided to hold the current portfolio.");
+            return (PilotCycleOutcome.NoTrade, "Matrix Pilot decided to hold the current portfolio, which fits the mandate.");
         }
         if (trades is { Buys: 0, Sells: 0 })
         {
@@ -387,9 +409,9 @@ public sealed class PilotEngine(
 
     // ==================================================================================================== model calls
 
-    private async Task<PilotDecision> DecideAsync(MatrixPilotCycle cycle, string instructions, string content, string label, CancellationToken ct)
+    private async Task<PilotDecision> DecideAsync(MatrixPilotCycle cycle, string purpose, string instructions, string content, string label, CancellationToken ct)
     {
-        var d = await CallAsync<PilotDecision>(cycle, instructions == PilotPrompts.Decide ? "pilot.decide" : "pilot.finalize", instructions, content,
+        var d = await CallAsync<PilotDecision>(cycle, purpose, instructions, content,
             PilotPrompts.DecisionSchema, 8000, label, ct);
         // Missing lists become empty (the structure check then reports what is missing); nothing is invented.
         d = d with
@@ -468,22 +490,226 @@ public sealed class PilotEngine(
         _ => "Answer received.",
     };
 
-    private async Task<(PilotRiskAnalysis? Risk, PilotTradeEstimate? Trades)> CalculateAsync(MatrixPilotCycle cycle, PilotToolContext ctx, PilotDecision d, CancellationToken ct)
+    /// <summary>
+    /// The fit loop: the validator checks the proposal; every breach goes back to the model with the proposed and the allowed
+    /// value until a proposal fits, at most <see cref="PilotOptions.MaxFitRevisions"/> times. Each check and each revision is
+    /// journaled, and the first proposal stays on record (<see cref="MatrixPilotCycle.InitialDecisionJson"/>).
+    /// </summary>
+    private async Task<(PilotDecision Decision, PilotFitResult Fit)> FitAsync(MatrixPilotCycle cycle, PilotToolContext ctx, PilotDecision decision,
+        List<object> log, CancellationToken ct)
     {
-        if (d.IsHold || d.Targets.Count == 0 || d.Targets.Any(t => !double.IsFinite(t.Weight) || t.Weight < 0 || !ctx.Universe.ContainsKey(t.Symbol))
-            || d.Targets.Select(t => t.Symbol).Distinct().Count() != d.Targets.Count || d.Targets.Sum(t => t.Weight) > 1 + 1e-6)
-            return (null, null); // structurally unusable: the validator reports why
-        var weights = d.Targets.ToDictionary(t => t.Symbol, t => t.Weight);
-        var sw = Stopwatch.StartNew();
-        var risk = await analytics.AnalyzeAsync(ctx, weights, 504, ct);
-        journal.Add(cycle, PilotStepKind.Calculation, "Risk of the decision", "ok", sw.Elapsed.TotalMilliseconds,
-            risk.Summary.Volatility is { } v ? $"Ex-ante volatility {v:P1}, effective holdings {risk.Summary.EffectiveHoldings:0.0}." : risk.Basis, null, PilotJson.Serialize(risk));
-        sw.Restart();
-        var trades = await analytics.EstimateTradesAsync(ctx, weights, ct);
-        journal.Add(cycle, PilotStepKind.Calculation, "Trade estimate", "ok", sw.Elapsed.TotalMilliseconds,
-            $"{trades.Buys} buy(s), {trades.Sells} sell(s), turnover {trades.Turnover:P1}, costs {trades.Costs:N2}.", null, PilotJson.Serialize(trades));
-        return (risk, trades);
+        await PhaseAsync(cycle, PilotCyclePhase.Fit, ct);
+        for (var attempt = 1; ; attempt++)
+        {
+            var sw = Stopwatch.StartNew();
+            var fit = await fitChecker.CheckAsync(ctx, decision, requireTexts: true, ct);
+            var v = fit.Validation;
+            var figures = $"{(fit.Risk?.Summary.Volatility is { } vol ? $" Ex-ante volatility {vol:P1}." : "")}{(v.Trades is { } t ? $" {t.Buys} buy(s), {t.Sells} sell(s), turnover {t.Turnover:P1}, costs {t.Costs:N2}." : "")}";
+            journal.Add(cycle, PilotStepKind.Validation, $"Fit check {attempt}", fit.Fits ? "ok" : "rejected", sw.Elapsed.TotalMilliseconds,
+                fit.Fits ? $"Fits every mandate rule.{figures}"
+                    : $"{v.Violations.Count} breach(es): {string.Join(" ", v.Violations.Take(4).Select(x => x.Detail))}{figures}",
+                null, PilotJson.Serialize(new { validation = v, risk = fit.Risk }));
+            await SaveAsync(ct);
+            if (fit.Fits || attempt > _o.MaxFitRevisions) return (decision, fit);
+
+            cycle.FitRevisions++;
+            decision = await DecideAsync(cycle, "pilot.revise", PilotPrompts.Revise, Data(new
+            {
+                stage = "fit",
+                revision = attempt,
+                revisionsLeft = _o.MaxFitRevisions - attempt,
+                yourDecision = decision,
+                breaches = v.Violations.Select(x => new { x.Rule, x.Detail, x.Symbol, x.Proposed, x.Allowed }),
+                checks = v.Checks,
+                mandate = ctx.Mandate,
+                portfolio = ctx.Observation,
+                universe = UniverseMix(ctx),
+                research = TrimLog(log),
+            }), $"Revision {attempt}", ct);
+        }
     }
+
+    /// <summary>Composition of the mandate universe (counts by country, sector, currency) – lets the model see limits the universe makes hard.</summary>
+    private static object UniverseMix(PilotToolContext ctx)
+    {
+        var priced = ctx.Universe.Values.Where(a => a.Priced).ToList();
+        Dictionary<string, int> By(Func<PilotAssetInfo, string?> key) =>
+            priced.GroupBy(a => key(a) ?? "Unknown").OrderByDescending(g => g.Count()).ToDictionary(g => g.Key, g => g.Count());
+        return new { listings = ctx.Universe.Count, priced = priced.Count, countries = By(a => a.Country), sectors = By(a => a.Sector), currencies = By(a => a.Currency) };
+    }
+
+    /// <summary>
+    /// The model's own portfolio without mandate limits, and the platform's comparison with the mandate portfolio. Never traded;
+    /// a failure here is journaled and does not affect the mandate decision.
+    /// </summary>
+    private async Task ShadowAsync(MatrixPilotCycle cycle, PilotToolContext ctx, PilotDecision decision, List<object> log, CancellationToken ct)
+    {
+        try
+        {
+            await PhaseAsync(cycle, PilotCyclePhase.Unconstrained, ct);
+            await PilotCatalogue.EnsureLoadedAsync(ctx, db, ct);
+            var mandatePortfolio = decision.IsHold ? PilotFitChecker.CurrentAsDecision(ctx, decision) : decision;
+            PilotShadow? shadow = null;
+            List<string> problems = [];
+            for (var attempt = 1; attempt <= 2; attempt++)
+            {
+                shadow = NormalizeShadow(await CallAsync<PilotShadow>(cycle, "pilot.unconstrained", PilotPrompts.Unconstrained, Data(new
+                {
+                    stage = "unconstrained",
+                    mandatePortfolio = mandatePortfolio.Targets.Select(t => new { t.Symbol, t.Weight }),
+                    mandateCash = mandatePortfolio.CashWeight,
+                    catalogue = new { listings = ctx.Catalogue!.Count, note = "Any listing of the catalogue with recent prices may be used." },
+                    problemsOfYourPreviousAnswer = attempt > 1 ? problems : null,
+                    research = TrimLog(log),
+                }), PilotPrompts.UnconstrainedSchema, 8000, attempt == 1 ? "Unconstrained portfolio" : "Unconstrained portfolio (corrected)", ct));
+                problems = ShadowProblems(ctx, shadow);
+                if (problems.Count == 0) break;
+            }
+            shadow = shadow! with { Problems = problems };
+            cycle.ShadowJson = PilotJson.Serialize(shadow);
+            if (problems.Count > 0)
+            {
+                journal.Add(cycle, PilotStepKind.Validation, "Unconstrained portfolio check", "rejected", 0,
+                    $"The unconstrained portfolio is not usable: {string.Join(" ", problems.Take(3))} It is recorded but not compared.");
+                return;
+            }
+
+            await PhaseAsync(cycle, PilotCyclePhase.Compare, ct);
+            var sw = Stopwatch.StartNew();
+            var comparison = await CompareAsync(ctx, mandatePortfolio, shadow, ct);
+            journal.Add(cycle, PilotStepKind.Calculation, "Portfolio comparison", "ok", sw.Elapsed.TotalMilliseconds,
+                $"Mandate portfolio volatility {comparison.Mandate.Risk?.Volatility:P1} vs unconstrained {comparison.Unconstrained.Risk?.Volatility:P1}; " +
+                $"overlap {comparison.WeightOverlap:P0}; the unconstrained portfolio would break {comparison.RulesUnconstrainedBreaks.Count} mandate rule(s).",
+                null, PilotJson.Serialize(comparison));
+
+            var evidence = ComparisonEvidence(comparison);
+            var sections = DeterministicComparison(comparison);
+            var source = "deterministic";
+            try
+            {
+                var csw = Stopwatch.StartNew();
+                cycle.ModelCalls++;
+                var r = await model.GenerateAsync(new LlmRequest("pilot.compare", PilotPrompts.Compare, $"<evidence>{evidence}</evidence>", PilotPrompts.CompareSchema,
+                    2500, "low", TimeSpan.FromSeconds(_o.ModelTimeoutSeconds)), ct);
+                cycle.ModelMs += csw.Elapsed.TotalMilliseconds;
+                cycle.InputTokens += r.InputTokens;
+                cycle.OutputTokens += r.OutputTokens;
+                var proposed = r.Output.TryGetProperty("sections", out var s) ? s.Deserialize<List<InterpretationSection>>(PilotJson.Options) ?? [] : [];
+                var allowed = comparison.Mandate.Weights.Select(w => w.Symbol).Concat(comparison.Unconstrained.Weights.Select(w => w.Symbol)).ToHashSet();
+                var (ok, reason) = proposed.Count == 0 ? (false, "empty") : NarrativeValidator.Validate(proposed, evidence, allowed, ctx.Catalogue.Keys.ToHashSet());
+                journal.Add(cycle, PilotStepKind.AiDecision, "Comparison", ok ? "ok" : "rejected", csw.Elapsed.TotalMilliseconds,
+                    ok ? "The model's comparison passed the evidence check." : $"The model's comparison was rejected ({reason}); the platform's own summary is shown.");
+                if (ok) { sections = proposed; source = "model"; }
+            }
+            catch (LanguageModelException ex)
+            {
+                journal.Add(cycle, PilotStepKind.AiDecision, "Comparison", "error", 0, $"Comparison not written by the model ({ex.Failure}); the platform's own summary is shown.");
+            }
+            cycle.ComparisonJson = PilotJson.Serialize(comparison with { Narrative = sections, NarrativeSource = source });
+        }
+        catch (Exception ex) when (ex is LanguageModelException or CycleStop)
+        {
+            // Secondary result: the mandate decision stands; the gap is visible in the journal.
+            journal.Add(cycle, PilotStepKind.AiDecision, "Unconstrained portfolio", "error", 0,
+                $"No unconstrained portfolio this cycle: {ex.Message} The mandate decision is not affected.");
+        }
+        finally
+        {
+            await SaveAsync(ct);
+        }
+    }
+
+    private static PilotShadow NormalizeShadow(PilotShadow s) => s with
+    {
+        Approach = PilotText.Clip(s.Approach, 80),
+        Targets = (s.Targets ?? []).Where(t => t is not null).Take(80).Select(t => t with
+        {
+            Symbol = Asset.NormalizeSymbol(t.Symbol ?? ""), Role = PilotText.Clip(t.Role, 200), Thesis = PilotText.Clip(t.Thesis, 800),
+            WhyNow = PilotText.Clip(t.WhyNow, 500), Risks = PilotText.Clip(t.Risks, 500), Invalidation = PilotText.Clip(t.Invalidation, 500),
+        }).ToList(),
+        Justification = (s.Justification ?? []).Take(10).Select(x => PilotText.Clip(x, 600)).ToList(),
+        DifferencesFromMandate = (s.DifferencesFromMandate ?? []).Take(10).Select(x => PilotText.Clip(x, 600)).ToList(),
+        KeyRisks = (s.KeyRisks ?? []).Take(10).Select(x => PilotText.Clip(x, 400)).ToList(),
+        Confidence = s.Confidence ?? "",
+        Problems = [],
+    };
+
+    /// <summary>Structure only (no mandate limits): known listings with recent prices, positive weights, no duplicates, sum with cash = 1, reasons given.</summary>
+    public static List<string> ShadowProblems(PilotToolContext ctx, PilotShadow s)
+    {
+        var p = new List<string>();
+        if (s.Targets.Count == 0) p.Add("It has no holdings.");
+        foreach (var t in s.Targets)
+        {
+            if (ctx.Info(t.Symbol) is not { Priced: true }) p.Add($"{t.Symbol} is not a listing with recent stored prices.");
+            if (!double.IsFinite(t.Weight) || t.Weight <= 0) p.Add($"{t.Symbol}: weight must be positive.");
+            if (string.IsNullOrWhiteSpace(t.Thesis)) p.Add($"{t.Symbol}: no thesis.");
+        }
+        if (s.Targets.Select(t => t.Symbol).Distinct().Count() != s.Targets.Count) p.Add("A symbol appears more than once.");
+        var sum = s.Targets.Where(t => double.IsFinite(t.Weight)).Sum(t => t.Weight) + (double.IsFinite(s.CashWeight) ? s.CashWeight : double.NaN);
+        if (!double.IsFinite(sum) || s.CashWeight < 0 || Math.Abs(sum - 1) > PilotDecisionValidator.SumTolerance) p.Add($"Holdings plus cash sum to {sum:P2}, not 100 %.");
+        if (s.Justification.Count == 0) p.Add("No justification given.");
+        return p;
+    }
+
+    private async Task<PilotPortfolioComparison> CompareAsync(PilotToolContext ctx, PilotDecision mandatePortfolio, PilotShadow shadow, CancellationToken ct)
+    {
+        async Task<PilotPortfolioFigures> Figures(string label, IReadOnlyList<PilotTarget> targets, double cash)
+        {
+            var w = targets.Where(t => t.Weight > 0).ToDictionary(t => t.Symbol, t => t.Weight);
+            var risk = w.Count == 0 ? null : await analytics.AnalyzeAsync(ctx, w, 504, ct);
+            var metrics = await analytics.MetricsAsync(ctx, w.Keys.ToList(), ct);
+            double? r12 = w.Count > 0 && w.Keys.All(s => metrics.GetValueOrDefault(s)?.Return12M is not null)
+                ? Math.Round(w.Sum(kv => kv.Value * metrics[kv.Key].Return12M!.Value), 4) : null;
+            return new PilotPortfolioFigures(label, w.Count, Math.Round(cash, 4), risk?.Summary, risk?.DiversificationRatio, risk?.AverageCorrelation,
+                risk?.ExpectedShortfall95, risk?.Worst20Days, risk?.BetaToBenchmark, r12,
+                w.OrderByDescending(kv => kv.Value).Select(kv => new PilotTargetWeight(kv.Key, Math.Round(kv.Value, 4), ctx.Info(kv.Key)?.Sector,
+                    ctx.Info(kv.Key)?.Currency, ctx.Info(kv.Key)?.Country)).ToList());
+        }
+
+        var mandate = await Figures("Mandate portfolio", mandatePortfolio.Targets, mandatePortfolio.CashWeight);
+        var free = await Figures("Unconstrained portfolio", shadow.Targets, shadow.CashWeight);
+        var asDecision = new PilotDecision { Action = "REBALANCE", CashWeight = shadow.CashWeight, Targets = shadow.Targets };
+        var breaks = PilotDecisionValidator.Validate(asDecision, ctx.Mandate, ctx.Catalogue!, PilotFitChecker.CurrentWeights(ctx), free.Risk, null, requireTexts: false)
+            .Violations.Where(v => v.Rule != "allocation" || !v.Detail.StartsWith("Turnover", StringComparison.Ordinal)).ToList();
+        var outside = shadow.Targets.Where(t => !ctx.Universe.ContainsKey(t.Symbol)).Select(t => t.Symbol).ToList();
+        if (outside.Count > 0) breaks.Insert(0, new PilotViolation("universe", $"{outside.Count} holding(s) outside the mandate's universe: {string.Join(", ", outside.Take(10))}."));
+        var a = mandate.Weights.ToDictionary(x => x.Symbol, x => x.Weight);
+        var b = free.Weights.ToDictionary(x => x.Symbol, x => x.Weight);
+        var shared = a.Keys.Intersect(b.Keys).Order(StringComparer.Ordinal).ToList();
+        return new PilotPortfolioComparison(mandate, free, breaks, shared, Math.Round(shared.Sum(s => Math.Min(a[s], b[s])), 4), [], "deterministic",
+            "Historical estimates over the same window and method for both (Ledoit–Wolf covariance, cash at 0 %, portfolio currency); trailing 12-month " +
+            "return = weighted 12-month returns of the holdings. Backward-looking, not forecasts. The unconstrained portfolio is never traded.");
+    }
+
+    private static string ComparisonEvidence(PilotPortfolioComparison c)
+    {
+        static object Side(PilotPortfolioFigures f) => new
+        {
+            f.Label, holdings = f.Holdings, cashPct = Math.Round(f.CashWeight * 100, 1),
+            volatilityPct = f.Risk?.Volatility is { } v ? Math.Round(v * 100, 1) : (double?)null,
+            maxDrawdownPct = f.Risk?.MaxDrawdown is { } d ? Math.Round(Math.Abs(d) * 100, 1) : (double?)null,
+            largestPct = f.Risk?.LargestWeight is { } l ? Math.Round(l * 100, 1) : (double?)null, largest = f.Risk?.LargestSymbol,
+            effectiveHoldings = f.Risk?.EffectiveHoldings is { } e ? Math.Round(e, 1) : (double?)null,
+            trailing12mReturnPct = f.TrailingReturn12M is { } r ? Math.Round(r * 100, 1) : (double?)null,
+            countriesPct = f.Risk?.Countries.ToDictionary(kv => kv.Key, kv => Math.Round(kv.Value * 100, 1)),
+            sectorsPct = f.Risk?.Sectors.ToDictionary(kv => kv.Key, kv => Math.Round(kv.Value * 100, 1)),
+            symbols = f.Weights.Select(w => w.Symbol),
+        };
+        return JsonSerializer.Serialize(new
+        {
+            mandate = Side(c.Mandate), unconstrained = Side(c.Unconstrained), sharedSymbols = c.SharedSymbols,
+            overlapPct = Math.Round(c.WeightOverlap * 100, 1), rulesTheUnconstrainedPortfolioBreaks = c.RulesUnconstrainedBreaks.Select(v => v.Detail),
+        }, PilotJson.Options);
+    }
+
+    private static List<InterpretationSection> DeterministicComparison(PilotPortfolioComparison c) =>
+    [
+        new("differences", "Differences", [$"{c.Mandate.Holdings} holdings within the mandate vs {c.Unconstrained.Holdings} without limits; {c.SharedSymbols.Count} in common ({c.WeightOverlap:P0} of the weight)."]),
+        new("risk", "Risk", [$"Ex-ante volatility {c.Mandate.Risk?.Volatility:P1} vs {c.Unconstrained.Risk?.Volatility:P1} (historical estimate)."]),
+        new("rules", "Rules", [c.RulesUnconstrainedBreaks.Count == 0 ? "The unconstrained portfolio happens to fit the mandate too."
+            : $"The unconstrained portfolio would break {c.RulesUnconstrainedBreaks.Count} mandate rule(s)."]),
+    ];
 
     // ==================================================================================================== journal / narrative
 
@@ -554,9 +780,6 @@ public sealed class PilotEngine(
     }
 
     // ==================================================================================================== helpers
-
-    private static Dictionary<string, double> CurrentWeights(PilotToolContext ctx) =>
-        ctx.Observation.Holdings.Where(h => h.Weight is > 0).ToDictionary(h => h.Symbol, h => h.Weight!.Value, StringComparer.Ordinal);
 
     private async Task<PilotExecuted> ExecutedAsync(Guid portfolioId, PilotDecision d, CancellationToken ct)
     {

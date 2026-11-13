@@ -2020,6 +2020,7 @@ export interface PilotEvaluation {
   tradesBooked: number; fees: number; costDragPct: number | null; turnoverSum: number; averageTurnoverPerRebalance: number | null
   toolCalls: number; toolFailures: number; deniedToolRequests: number; inputTokens: number; outputTokens: number
   averageDaysBetweenDecisions: number | null; hitRate1M: number | null; hitRateSample: number
+  fitRevisions: number; decisionsThatFittedFirstTime: number; unconstrainedPortfolios: number
 }
 
 export interface PilotCycleSummary {
@@ -2104,6 +2105,23 @@ export interface PilotCycleDetail {
   observation: PilotObservation | null; decision: PilotDecision | null; critique: PilotCritique | null; validation: PilotValidation | null
   executed: PilotExecuted | null; proposalId: string | null; tradeBatchId: string | null; fees: number
   narrative: { key: string; title: string; paragraphs: string[] }[]; narrativeSource: string | null; steps: PilotStep[]
+  initialDecision: PilotDecision | null; fitRevisions: number; unconstrained: PilotShadow | null; comparison: PilotPortfolioComparison | null
+}
+
+export interface PilotShadow {
+  approach: string; targets: PilotTarget[]; cashWeight: number; justification: string[]; differencesFromMandate: string[]; keyRisks: string[]
+  confidence: string; problems: string[]
+}
+
+export interface PilotPortfolioFigures {
+  label: string; holdings: number; cashWeight: number; risk: PilotRiskSummary | null; diversificationRatio: number | null
+  averageCorrelation: number | null; expectedShortfall95: number | null; worst20Days: number | null; betaToBenchmark: number | null
+  trailingReturn12M: number | null; weights: { symbol: string; weight: number; sector: string | null; currency: string | null; country: string | null }[]
+}
+
+export interface PilotPortfolioComparison {
+  mandate: PilotPortfolioFigures; unconstrained: PilotPortfolioFigures; rulesUnconstrainedBreaks: PilotViolation[]; sharedSymbols: string[]
+  weightOverlap: number; narrative: { key: string; title: string; paragraphs: string[] }[]; narrativeSource: string; basis: string
 }
 
 export interface PilotEvent {
@@ -2133,6 +2151,8 @@ export interface PilotScorecard {
     cycleId: string; decidedAtUtc: string; action: string; outcome: string; approach: string; confidence: string; expectedHoldingDays: number
     targets: { symbol: string; weight: number; thesis: string; entryPrice: number | null; after1D: number | null; after1W: number | null; after1M: number | null }[]
     portfolioAfter1D: number | null; portfolioAfter1W: number | null; portfolioAfter1M: number | null; benchmarkAfter1M: number | null
+    fitRevisions: number; mandateTargetsAfter1W: number | null; mandateTargetsAfter1M: number | null
+    unconstrainedAfter1W: number | null; unconstrainedAfter1M: number | null
   }[]
   methodology: string
 }

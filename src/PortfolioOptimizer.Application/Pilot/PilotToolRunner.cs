@@ -43,6 +43,16 @@ public sealed class PilotToolContext
     public DateOnly AsOfDate => DateOnly.FromDateTime(Cycle.AsOfUtc);
     /// <summary>Per-cycle cache of computed asset metrics (shared by screening and metric tools).</summary>
     public Dictionary<string, PilotAssetMetrics> MetricsCache { get; } = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>
+    /// Every enabled listing with recent stored prices up to the decision date (loaded on first use) – the investable set of the
+    /// unconstrained portfolio. The mandate portfolio is limited to <see cref="Universe"/>.
+    /// </summary>
+    public IReadOnlyDictionary<string, PilotAssetInfo>? Catalogue { get; set; }
+    /// <summary>Index codes per symbol (loaded with the catalogue).</summary>
+    public IReadOnlyDictionary<string, IReadOnlyList<string>>? Memberships { get; set; }
+
+    /// <summary>What the platform knows about a symbol: the mandate universe first, then the catalogue (if loaded).</summary>
+    public PilotAssetInfo? Info(string symbol) => Universe.TryGetValue(symbol, out var a) ? a : Catalogue?.GetValueOrDefault(symbol);
 }
 
 /// <summary>A tool the model may request. Implementations call real platform services and contain no prompts.</summary>

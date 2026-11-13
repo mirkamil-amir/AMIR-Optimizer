@@ -85,24 +85,33 @@ and never applied.
 ## 5. Decision cycle (state machine)
 
 ```text
-QUEUED → OBSERVE → RESEARCH (≤ 6 rounds, ≤ 6 tools/round, ≤ 30 tools) → CONSTRUCT → CRITIQUE → FINALIZE
-       → VALIDATE → EXECUTE → JOURNAL → COMPLETE
+QUEUED → OBSERVE → RULES → RESEARCH (≤ 6 rounds, ≤ 6 tools/round, ≤ 30 tools) → CONSTRUCT → FIT (≤ 5 revisions)
+       → CRITIQUE → FINALIZE (→ FIT) → VALIDATE → UNCONSTRAINED → COMPARE → EXECUTE → JOURNAL → COMPLETE
 ```
 
 | Phase | Who | What |
 |---|---|---|
 | OBSERVE | code | lease; model configured and equal to the pilot's model; mandate; owner-scoped portfolio; universe; prices and FX of holdings and universe at the decision time; **no price dated after the decision date** (else SKIPPED – clock); live-record drawdown (≥ threshold → PAUSED) |
-| RESEARCH | model ↔ code | the model gets the observation, mandate and tool catalogue as data, asks for tools; the runner executes them and returns results (trimmed beyond 160k characters) |
-| CONSTRUCT | model | structured `PilotDecision` (schema below); the platform then computes its risk and trade estimate |
-| CRITIQUE | model (reviewer role) | concerns + `keep` / `revise` / `hold`; sees the decision and the deterministic figures |
-| FINALIZE | model | only when the reviewer did not say keep: a final decision with `critiqueResponse` |
-| VALIDATE | code | `PilotDecisionValidator` (structure, `AllocationValidator`, holdings, cash, currency/country, volatility, minimum trade, data) |
+| RULES | model | **first**, before any market data: the model restates every mandate rule (limit, implication) and lists the tensions with the current holdings and the universe's composition (countries, sectors, currencies are given) – `PilotRulesCheck`, first entry of the research log |
+| RESEARCH | model ↔ code | the market: the model asks for tools (universe, metrics, correlations, risk, optimizer, ML rankings, earlier decisions …) and tests candidates with `check_allocation` – the same validator as the final check; the runner executes and returns results (trimmed beyond 160k characters) |
+| CONSTRUCT | model | structured `PilotDecision` (schema below), stored as the first proposal (`InitialDecisionJson`) |
+| FIT | code ↔ model | `PilotFitChecker` validates the proposal (with its risk and trade estimate); every breach goes back to the model with the proposed and the allowed value ("Revision n", `pilot.revise`) until it fits, at most `MaxFitRevisions` (5). A HOLD is checked as "the current portfolio stays" – holding a portfolio that breaks the mandate (e.g. a position above its cap, or all cash) is a breach too |
+| CRITIQUE | model (reviewer role) | concerns + `keep` / `revise` / `hold`; sees the fitted decision and the deterministic figures |
+| FINALIZE | model | only when the reviewer did not say keep: a final decision with `critiqueResponse` (a named mandate breach must be fixed), then FIT again |
+| VALIDATE | code | the final, independent check (same validator): BLOCKED if it still breaks a rule after every revision |
+| UNCONSTRAINED | model | the model's own portfolio **without any mandate limit** – any listing of the catalogue, any weight, country, volatility or cash; long-only. Justified per holding and as a whole, with what it does differently. Structure-checked (known listings with prices, weights sum to 1); never traded. A failure here is journaled and does not affect the mandate decision |
+| COMPARE | code (+ model text) | both portfolios on the same window and method: volatility, drawdown, VaR/ES, worst 20 days, concentration, beta, trailing 12-month return, country/sector mix, overlap, and which mandate rules the unconstrained one breaks; the model's comparison text passes `NarrativeValidator` or the platform's summary is shown |
 | EXECUTE | code | status re-check (kill switch) → `TradingService.CreateForTargetsAsync` → `ExecuteAsync` (idempotency key `pilot:<cycle>`) |
 | JOURNAL | code (+ model text) | executed weights next to the proposal; report written by the model only if `NarrativeValidator` accepts it, else the platform's own summary |
 
-Limits enforced outside the model: rounds, tool calls per round and cycle, 300 s per model call, 600 000 input tokens per
-cycle, 20 minutes per cycle, three failed cycles in a row → pause. No `while(true)`: every phase runs once (FINALIZE at
-most once).
+Limits enforced outside the model: rounds, tool calls per round and cycle, revisions per decision, 300 s per model call,
+600 000 input tokens per cycle, 20 minutes per cycle, three failed cycles in a row → pause. No `while(true)`: every loop
+is bounded. A cycle makes about 6–20 model calls (rules, research rounds, decision, revisions, review, final decision,
+unconstrained portfolio, comparison, report).
+
+The fit loop changes what is measured (D-61): the first proposal, every breach and every revision stay in the journal
+(`InitialDecisionJson`, `FitRevisions`), and the evaluation counts how often the first proposal already fitted – the
+model's raw behaviour remains visible although only a fitting portfolio can be booked.
 
 **Decision schema** (`pilot-decision-1`, `PilotPrompts.DecisionSchema`): `action` REBALANCE|HOLD, `strategy` {approach,
 components, reason}, `targets` [{symbol, weight, role, thesis, whyNow, risks, invalidation}], `cashWeight`, `rejected`,
@@ -140,12 +149,13 @@ rates (`FxService`).
 | `get_news_signals` | READ | counts of provider-tagged articles by event type/category, published **and retrieved** before the decision – no text |
 | `get_existing_optimizations` | READ | this portfolio's Math Optimizations created before the decision |
 | `get_ml_signals` | READ | latest rankings of completed ML Optimizations linked to the portfolio, made before the decision |
-| `screen_universe` | ANALYZE | trailing returns, volatility, drawdown, return/volatility over the universe (≤ 500) |
+| `screen_universe` | ANALYZE | trailing returns, volatility, drawdown, return/volatility; scope `mandate` (the universe) or `catalogue` (every listing with recent prices, for the unconstrained portfolio); filters by index, country, sector, currency (≤ 600 screened) |
 | `get_security_metrics` | ANALYZE | metrics, beta to the benchmark, 20-day average volume |
 | `get_correlations` | ANALYZE | sample correlation matrix (`CovarianceEstimator`) |
 | `analyze_portfolio` | ANALYZE | ex-ante volatility, risk shares, diversification, VaR/ES, drawdown, worst periods, beta, exposures (`DiversificationMath`) |
 | `run_optimizer` | SIMULATE | `OptimizationService.EvaluateAsync(..., asOf)` with the mandate's caps – not saved |
 | `estimate_trades` | SIMULATE | `TradingService.PreviewAsync` – the same calculator as a real proposal, nothing stored |
+| `check_allocation` | SIMULATE | `PilotFitChecker` – the mandate validator on a candidate: passed, or every breach with proposed and allowed values |
 
 Not available (and not invented): fundamentals, valuation ratios, earnings, factor exposures, macro series, transaction
 cost models beyond the portfolio's bps + minimum fee. See [limitations](limitations.md#matrix-pilot).

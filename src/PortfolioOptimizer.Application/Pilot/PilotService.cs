@@ -100,7 +100,9 @@ public sealed class PilotService(
             c.ProposalId, c.TradeBatchId, c.Fees,
             PilotJson.Deserialize<List<InterpretationSection>>(c.NarrativeJson) ?? [], c.NarrativeSource,
             c.Steps.OrderBy(s => s.Sequence).Select(s => new PilotStepDto(s.Sequence, s.AtUtc, s.Kind, Category(s.Kind), s.Name, s.Status, s.DurationMs,
-                s.Summary, s.InputJson, s.OutputJson, s.OutputHash)).ToList());
+                s.Summary, s.InputJson, s.OutputJson, s.OutputHash)).ToList(),
+            PilotJson.Deserialize<PilotDecision>(c.InitialDecisionJson), c.FitRevisions, PilotJson.Deserialize<PilotShadow>(c.ShadowJson),
+            PilotJson.Deserialize<PilotPortfolioComparison>(c.ComparisonJson));
     }
 
     public async Task<PagedResult<PilotEventDto>> EventsAsync(Guid portfolioId, int page, int pageSize, CancellationToken ct)
@@ -383,8 +385,10 @@ public sealed class PilotService(
             .Where(c => c.PilotId == pilot.Id && (c.Outcome == PilotCycleOutcome.Rebalanced || c.Outcome == PilotCycleOutcome.NoTrade || c.Outcome == PilotCycleOutcome.Blocked))
             .OrderByDescending(c => c.AsOfUtc).Take(60).ToListAsync(ct);
         var app = await prices.SettingsAsync(ct);
-        var decisions = cycles.Select(c => (Cycle: c, Decision: PilotJson.Deserialize<PilotDecision>(c.DecisionJson))).Where(x => x.Decision is not null).ToList();
-        var symbols = decisions.SelectMany(d => d.Decision!.Targets.Select(t => t.Symbol)).Append(portfolio.Settings.BenchmarkSymbol).Distinct().ToList();
+        var decisions = cycles.Select(c => (Cycle: c, Decision: PilotJson.Deserialize<PilotDecision>(c.DecisionJson), Shadow: PilotJson.Deserialize<PilotShadow>(c.ShadowJson)))
+            .Where(x => x.Decision is not null).ToList();
+        var symbols = decisions.SelectMany(d => d.Decision!.Targets.Select(t => t.Symbol).Concat(d.Shadow?.Targets.Select(t => t.Symbol) ?? []))
+            .Append(portfolio.Settings.BenchmarkSymbol).Distinct().ToList();
         var earliest = decisions.Count == 0 ? DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime) : DateOnly.FromDateTime(decisions.Min(d => d.Cycle.AsOfUtc));
         var conversion = symbols.Count == 0 ? null : await fx.GetSeriesInCurrencyAsync(symbols, app.ActiveProvider, earliest.AddDays(-7), null, portfolio.BaseCurrency, ct);
         var series = conversion?.PriceSeries() ?? [];
@@ -396,12 +400,18 @@ public sealed class PilotService(
             return new PilotScoreRowDto(x.Cycle.Id, x.Cycle.AsOfUtc, d.Action, PilotEngine.OutcomeLabel(x.Cycle.Outcome), d.Strategy.Approach, d.Confidence, d.ExpectedHoldingDays,
                 d.Targets.Select(t => new PilotScoreTargetDto(t.Symbol, t.Weight, t.Thesis, Entry(series, t.Symbol, day),
                     Forward(series, t.Symbol, day, 1), Forward(series, t.Symbol, day, 5), Forward(series, t.Symbol, day, 21))).ToList(),
-                LiveForward(live, day, 1), LiveForward(live, day, 5), LiveForward(live, day, 21), Forward(series, portfolio.Settings.BenchmarkSymbol, day, 1 * 21));
+                LiveForward(live, day, 1), LiveForward(live, day, 5), LiveForward(live, day, 21), Forward(series, portfolio.Settings.BenchmarkSymbol, day, 1 * 21),
+                x.Cycle.FitRevisions,
+                Hypothetical(series, d.Targets.Select(t => (t.Symbol, t.Weight)), day, 5), Hypothetical(series, d.Targets.Select(t => (t.Symbol, t.Weight)), day, 21),
+                x.Shadow is { Problems.Count: 0 } sh ? Hypothetical(series, sh.Targets.Select(t => (t.Symbol, t.Weight)), day, 5) : null,
+                x.Shadow is { Problems.Count: 0 } sh2 ? Hypothetical(series, sh2.Targets.Select(t => (t.Symbol, t.Weight)), day, 21) : null);
         }).ToList();
         return new PilotScorecardDto(rows,
             "Each decision as it was recorded at the time (never edited afterwards). Outcomes are measured afterwards from stored prices in the portfolio " +
             "currency: the change of each target's price and of the live portfolio 1, 5 and 21 trading days after the decision date. A blank means that " +
             "period has not passed yet. Blocked decisions were not executed; their figures show what the proposal's holdings did, not the portfolio. " +
+            "The mandate targets and the unconstrained portfolio are compared the same way: fixed weights bought on the decision date, cash at 0 %, " +
+            "hypothetical (the unconstrained portfolio is never traded; the live portfolio can differ from the targets by rounding and costs). " +
             "Price moves after a decision are not proof that the decision caused them.");
     }
 
@@ -423,6 +433,23 @@ public sealed class PilotService(
     }
 
     /// <summary>Change of the live record's time-weighted wealth index over <paramref name="n"/> valued days after <paramref name="day"/> (F-PILOT-004).</summary>
+    /// <summary>
+    /// Hypothetical move of fixed weights bought on <paramref name="day"/> over <paramref name="n"/> trading days of each listing:
+    /// Σ wᵢ · rᵢ with cash at 0 % (F-PILOT-005); null until the period has passed for every holding.
+    /// </summary>
+    public static double? Hypothetical(Dictionary<string, PriceSeries> series, IEnumerable<(string Symbol, double Weight)> weights, DateOnly day, int n)
+    {
+        var total = 0.0;
+        var any = false;
+        foreach (var (symbol, weight) in weights.Where(w => w.Weight > 0))
+        {
+            if (Forward(series, symbol, day, n) is not { } r) return null;
+            total += weight * r;
+            any = true;
+        }
+        return any ? Math.Round(total, 4) : null;
+    }
+
     public static double? LiveForward(PerformanceDto? live, DateOnly day, int n)
     {
         if (live is null || live.Series.Count == 0) return null;
@@ -477,7 +504,10 @@ public sealed class PilotService(
             finished.Sum(c => c.TradesBooked), fees, baseline is { PortfolioValue: > 0 } ? Math.Round((double)(fees / baseline.PortfolioValue), 6) : null,
             Math.Round(turnovers.Sum(), 4), turnovers.Count == 0 ? null : Math.Round(turnovers.Average(), 4),
             finished.Sum(c => c.ToolCalls), toolSteps.Where(s => s.Key == "error").Sum(s => s.Count), toolSteps.Where(s => s.Key == "denied").Sum(s => s.Count),
-            finished.Sum(c => c.InputTokens), finished.Sum(c => c.OutputTokens), interval, hit, sample);
+            finished.Sum(c => c.InputTokens), finished.Sum(c => c.OutputTokens), interval, hit, sample,
+            finished.Sum(c => c.FitRevisions),
+            finished.Count(c => c.InitialDecisionJson is not null && c.FitRevisions == 0 && c.Outcome is PilotCycleOutcome.Rebalanced or PilotCycleOutcome.NoTrade),
+            finished.Count(c => c.ShadowJson is not null));
     }
 
     /// <summary>Share of target holdings of executed decisions whose price rose over the 21 trading days after the decision (only periods that have passed).</summary>

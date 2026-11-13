@@ -68,9 +68,8 @@ public sealed class PilotAnalytics(IApplicationDbContext db, FxService fx, Tradi
             var (series, _) = await SeriesAsync(ctx, missing, 253, ct);
             foreach (var s in missing)
             {
-                ctx.Universe.TryGetValue(s, out var info);
                 var pts = series.TryGetValue(s, out var ps) ? ps.Points : [];
-                ctx.MetricsCache[s] = Compute(s, info, pts);
+                ctx.MetricsCache[s] = Compute(s, ctx.Info(s), pts);
             }
         }
         return symbols.Where(ctx.MetricsCache.ContainsKey).ToDictionary(s => s, s => ctx.MetricsCache[s], StringComparer.OrdinalIgnoreCase);
@@ -119,7 +118,7 @@ public sealed class PilotAnalytics(IApplicationDbContext db, FxService fx, Tradi
 
         var est = CovarianceEstimator.Estimate(matrix.Returns, CovarianceMethod.LedoitWolf, AnalyticsConventions.Default);
         var risk = DiversificationMath.Risk(symbols, w, est.Covariance);
-        var sectors = symbols.Where(s => ctx.Universe.GetValueOrDefault(s)?.Sector is not null).ToDictionary(s => s, s => ctx.Universe[s].Sector!, StringComparer.OrdinalIgnoreCase);
+        var sectors = symbols.Where(s => ctx.Info(s)?.Sector is not null).ToDictionary(s => s, s => ctx.Info(s)!.Sector!, StringComparer.OrdinalIgnoreCase);
         var conc = DiversificationMath.Concentration(symbols, w, sectors);
         var daily = DiversificationMath.PortfolioReturns(matrix.Returns, w);
         var hist = DiversificationMath.History(daily, AnalyticsConventions.Default);
@@ -151,7 +150,7 @@ public sealed class PilotAnalytics(IApplicationDbContext db, FxService fx, Tradi
         PilotToolContext ctx, IReadOnlyDictionary<string, double> weights)
     {
         Dictionary<string, double> By(Func<PilotAssetInfo?, string?> key) => weights.Where(kv => kv.Value > 0)
-            .GroupBy(kv => key(ctx.Universe.GetValueOrDefault(kv.Key)) ?? "Unknown", StringComparer.OrdinalIgnoreCase)
+            .GroupBy(kv => key(ctx.Info(kv.Key)) ?? "Unknown", StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => Math.Round(g.Sum(kv => kv.Value), 4), StringComparer.OrdinalIgnoreCase);
         return (By(a => a?.Sector), By(a => a?.Currency), By(a => a?.Country));
     }

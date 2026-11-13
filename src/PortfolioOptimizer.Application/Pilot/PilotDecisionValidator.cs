@@ -22,14 +22,18 @@ public static class PilotDecisionValidator
     public static readonly string[] Confidences = ["low", "medium", "high"];
 
     /// <summary>Structural checks that make a decision usable at all (types, ranges, symbols, sums, required explanations).</summary>
-    public static List<PilotViolation> CheckStructure(PilotDecision d, IReadOnlyDictionary<string, PilotAssetInfo> universe)
+    /// <param name="requireTexts">false for a candidate the model checks during research (numbers and rules only, no explanations needed).</param>
+    public static List<PilotViolation> CheckStructure(PilotDecision d, IReadOnlyDictionary<string, PilotAssetInfo> universe, bool requireTexts = true)
     {
         var v = new List<PilotViolation>();
         if (d.Action is not ("REBALANCE" or "HOLD")) v.Add(new("schema", $"Action must be REBALANCE or HOLD, not “{PilotText.Clip(d.Action, 30)}”."));
-        if (!Approaches.Contains(d.Strategy.Approach)) v.Add(new("schema", $"Unknown strategy approach “{PilotText.Clip(d.Strategy.Approach, 40)}”."));
-        if (!Confidences.Contains(d.Confidence)) v.Add(new("schema", "Confidence must be low, medium or high."));
-        if (d.Rationale.Count == 0 || d.Rationale.All(string.IsNullOrWhiteSpace)) v.Add(new("schema", "The decision has no rationale."));
-        if (d.ExpectedHoldingDays is < 1 or > 1500) v.Add(new("schema", "Expected holding period must be 1–1500 days."));
+        if (requireTexts)
+        {
+            if (!Approaches.Contains(d.Strategy.Approach)) v.Add(new("schema", $"Unknown strategy approach “{PilotText.Clip(d.Strategy.Approach, 40)}”."));
+            if (!Confidences.Contains(d.Confidence)) v.Add(new("schema", "Confidence must be low, medium or high."));
+            if (d.Rationale.Count == 0 || d.Rationale.All(string.IsNullOrWhiteSpace)) v.Add(new("schema", "The decision has no rationale."));
+            if (d.ExpectedHoldingDays is < 1 or > 1500) v.Add(new("schema", "Expected holding period must be 1–1500 days."));
+        }
         if (d.IsHold) return v;
 
         if (d.Targets.Count == 0) v.Add(new("schema", "A rebalance needs at least one target holding."));
@@ -42,7 +46,7 @@ public static class PilotDecisionValidator
             if (!double.IsFinite(t.Weight)) v.Add(new("schema", $"{s}: weight is not a finite number.", s));
             else if (t.Weight <= 0) v.Add(new("negative_weight", $"{s}: weight {t.Weight:P2} – targets must be positive (long-only; leave a symbol out to sell it).", s, t.Weight, 0));
             if (!universe.ContainsKey(s)) v.Add(new("universe", $"{s} is not in the investable universe of the mandate.", s));
-            if (string.IsNullOrWhiteSpace(t.Thesis)) v.Add(new("schema", $"{s}: no thesis given.", s));
+            if (requireTexts && string.IsNullOrWhiteSpace(t.Thesis)) v.Add(new("schema", $"{s}: no thesis given.", s));
         }
         var sum = d.Targets.Where(t => double.IsFinite(t.Weight)).Sum(t => t.Weight) + (double.IsFinite(d.CashWeight) ? d.CashWeight : 0);
         if (Math.Abs(sum - 1) > SumTolerance) v.Add(new("sum", $"Targets plus cash sum to {sum:P2}, not 100 %.", null, sum, 1));
@@ -51,10 +55,10 @@ public static class PilotDecisionValidator
 
     /// <summary>Mandate and data checks of a structurally valid rebalance (a HOLD keeps the current portfolio and is not checked here).</summary>
     public static PilotValidationResult Validate(PilotDecision d, PilotMandate m, IReadOnlyDictionary<string, PilotAssetInfo> universe,
-        IReadOnlyDictionary<string, double> currentWeights, PilotRiskSummary? risk, PilotTradeEstimate? trades)
+        IReadOnlyDictionary<string, double> currentWeights, PilotRiskSummary? risk, PilotTradeEstimate? trades, bool requireTexts = true)
     {
         var checks = new List<PilotCheck>();
-        var v = CheckStructure(d, universe);
+        var v = CheckStructure(d, universe, requireTexts);
         checks.Add(new("structure", v.Count == 0, v.Count == 0 ? "Schema, symbols, uniqueness and sum are valid." : $"{v.Count} problem(s)."));
         if (d.IsHold || v.Count > 0) return new PilotValidationResult(v.Count == 0, checks, v, risk, trades);
 

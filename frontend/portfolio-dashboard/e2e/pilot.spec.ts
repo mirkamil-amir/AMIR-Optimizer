@@ -79,6 +79,10 @@ test('Matrix Pilot: set up, confirm, decide, book, inspect, kill switch, live re
   await expect(decision.getByRole('columnheader', { name: 'AI proposed' })).toBeVisible()
   await expect(decision.getByRole('columnheader', { name: 'Held after booking' })).toBeVisible()
   await expect(decision).toContainText('Validation by the platform: passed')
+  await expect(decision).toContainText('Fit to the mandate: the first proposal fitted every rule')
+  const free = page.getByRole('region', { name: 'Unconstrained portfolio' })
+  await expect(free).toContainText('not traded')
+  await expect(free.getByText('Mandate portfolio vs unconstrained portfolio')).toBeVisible()
 
   const activity = page.getByRole('region', { name: 'AI activity' })
   await expect(activity.getByRole('cell', { name: 'screen_universe', exact: true })).toBeVisible()

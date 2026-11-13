@@ -65,7 +65,10 @@ public sealed record PilotEvaluationDto(
     int OutputTokens,
     double? AverageDaysBetweenDecisions,
     double? HitRate1M,
-    int HitRateSample);
+    int HitRateSample,
+    int FitRevisions = 0,
+    int DecisionsThatFittedFirstTime = 0,
+    int UnconstrainedPortfolios = 0);
 
 public sealed record PilotCycleSummaryDto(
     Guid Id,
@@ -118,7 +121,11 @@ public sealed record PilotCycleDetailDto(
     decimal Fees,
     IReadOnlyList<InterpretationSection> Narrative,
     string? NarrativeSource,
-    IReadOnlyList<PilotStepDto> Steps);
+    IReadOnlyList<PilotStepDto> Steps,
+    PilotDecision? InitialDecision = null,
+    int FitRevisions = 0,
+    PilotShadow? Unconstrained = null,
+    PilotPortfolioComparison? Comparison = null);
 
 public sealed record PilotEventDto(long Id, DateTime AtUtc, PilotActor Actor, string Action, PilotStatus? PreviousStatus, PilotStatus? NewStatus,
     string? Reason, Guid? CycleId, Guid? CorrelationId);
@@ -220,7 +227,12 @@ public sealed record PilotScoreRowDto(
     double? PortfolioAfter1D,
     double? PortfolioAfter1W,
     double? PortfolioAfter1M,
-    double? BenchmarkAfter1M);
+    double? BenchmarkAfter1M,
+    int FitRevisions = 0,
+    double? MandateTargetsAfter1W = null,
+    double? MandateTargetsAfter1M = null,
+    double? UnconstrainedAfter1W = null,
+    double? UnconstrainedAfter1M = null);
 
 public sealed record PilotScoreTargetDto(string Symbol, double Weight, string Thesis, decimal? EntryPrice, double? After1D, double? After1W, double? After1M);
 

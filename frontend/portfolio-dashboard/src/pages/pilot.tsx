@@ -210,6 +210,7 @@ function ControlRoom({ overview, pilot, selected, onSelect }: { overview: PilotO
       <ModelCheck />
       <StatusSection pilot={pilot} />
       <DecisionSection pilot={pilot} detail={detail.data} loading={detail.isLoading} />
+      <UnconstrainedSection detail={detail.data} />
       <ActivitySection detail={detail.data} />
       <ResultSection title="Decision timeline" hint="Every cycle with what it ended in. NO TRADE is a decision; SKIPPED, BLOCKED and FAILED are not, and say why. Select a row to inspect it above.">
         {cycles.error ? <ErrorState error={cycles.error} /> : !cycles.data ? <LoadingBlock height="h-32" /> : (
@@ -275,6 +276,12 @@ function StatusSection({ pilot }: { pilot: Pilot }) {
           hint="One-way turnover ½Σ|w − w₀| of the executed rebalances, added up." />
         <MetricCard label="Costs" value={money(e.fees, ccy)} sub={e.costDragPct == null ? undefined : `${pct(e.costDragPct, 3)} of the starting value`} />
       </MetricGroup>
+      <MetricGroup title="Fit to the mandate" hint="How often the AI's first proposal already fitted every rule, and how often the validator had to send a proposal back.">
+        <MetricCard label="Fitted first time" value={`${e.decisionsThatFittedFirstTime} of ${e.rebalanced + e.noTrade}`} sub="decisions that needed no revision" />
+        <MetricCard label="Revisions" value={e.fitRevisions} sub="proposals sent back with their breaches" />
+        <MetricCard label="Blocked" value={e.blocked} sub="still breaking a rule after every revision" />
+        <MetricCard label="Unconstrained portfolios" value={e.unconstrainedPortfolios} sub="the AI's own idea, recorded – never traded" />
+      </MetricGroup>
     </ResultSection>
   )
 }
@@ -309,6 +316,7 @@ function DecisionSection({ pilot, detail, loading }: { pilot: Pilot; detail?: Pi
         </CardHeader>
         <CardContent className="space-y-4 text-sm">
           {s.outcomeReason && <p className={cn(s.outcome === 'Blocked' || s.outcome === 'Failed' ? 'text-loss' : 'text-muted-foreground')}>{s.outcomeReason}</p>}
+          <FitSummary detail={detail} />
           {detail.narrative.length > 0 && (
             <div className="space-y-1">
               {detail.narrative.map((n) => n.paragraphs.length > 0 && (
@@ -374,6 +382,106 @@ function DecisionSection({ pilot, detail, loading }: { pilot: Pilot; detail?: Pi
   )
 }
 
+/** Rules first, then the fit loop: every proposal the validator checked, with what it found. */
+function FitSummary({ detail }: { detail: PilotCycleDetail }) {
+  const rules = detail.steps.find((s) => s.name === 'Rules first')
+  const checks = detail.steps.filter((s) => s.name.startsWith('Fit check'))
+  if (!rules && checks.length === 0) return null
+  return (
+    <div className="space-y-1 rounded-lg border p-3">
+      <p className="font-medium">
+        Fit to the mandate: {checks.length === 0 ? 'not reached' : detail.fitRevisions === 0 ? 'the first proposal fitted every rule' : `${detail.fitRevisions} revision(s) until it fitted`}
+        {checks.length > 0 && checks[checks.length - 1].status !== 'ok' && ' – it never fitted, so nothing was traded'}
+      </p>
+      {rules && <p className="text-xs text-muted-foreground">Before any market data, the AI wrote down the rules: {rules.summary}</p>}
+      <ol className="list-decimal space-y-0.5 pl-5 text-muted-foreground">
+        {checks.map((c) => (
+          <li key={c.sequence}><span className={c.status === 'ok' ? 'text-gain' : 'text-loss'}>{c.status === 'ok' ? 'fits' : 'sent back'}</span> · {c.summary}</li>
+        ))}
+      </ol>
+    </div>
+  )
+}
+
+/** The AI's own portfolio without mandate limits, next to the mandate portfolio – recorded and compared, never traded. */
+function UnconstrainedSection({ detail }: { detail?: PilotCycleDetail }) {
+  if (!detail) return null
+  const u = detail.unconstrained
+  const c = detail.comparison
+  const failed = detail.steps.find((s) => s.name === 'Unconstrained portfolio' && s.status === 'error')
+  return (
+    <ResultSection title="Unconstrained portfolio" hint="The AI's own idea with no mandate limit – any listing, country, weight or volatility. It has to justify every choice. Recorded next to the mandate portfolio to show what the limits change; never traded.">
+      {!u ? (
+        <p className="rounded-lg border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
+          {failed ? failed.summary : 'No unconstrained portfolio for this cycle (it is built after the mandate decision).'}
+        </p>
+      ) : (
+        <Card>
+          <CardHeader className="flex flex-row flex-wrap items-center gap-2">
+            <CardTitle className="text-base">The AI's own idea · {u.targets.length} holding(s), cash {pct(u.cashWeight, 1)}</CardTitle>
+            <Badge variant="outline">{u.approach}</Badge>
+            <Badge variant="outline">confidence {u.confidence}</Badge>
+            <Badge variant="outline" className="border-warn/50 text-warn">not traded</Badge>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm">
+            {u.problems.length > 0 && <Warnings title="Not usable – recorded only" items={u.problems} />}
+            <div className="grid gap-4 md:grid-cols-2">
+              <Facts title="Why this portfolio" items={u.justification} />
+              <Facts title="What it does differently from the mandate" items={u.differencesFromMandate} />
+              <Facts title="Key risks" items={u.keyRisks} />
+            </div>
+            <SearchableTable label="holdings" caption="Unconstrained portfolio" rows={u.targets} rowKey={(t) => t.symbol} dense maxRows={8}
+              placeholder="Search holdings" matches={(t, q) => t.symbol.toLowerCase().includes(q)} initialSort={{ key: 'w', dir: 'desc' }} columns={[
+                { key: 'symbol', header: 'Symbol', cell: (t) => <span className="font-medium">{t.symbol}</span>, sortValue: (t) => t.symbol },
+                { key: 'w', header: 'Weight', align: 'right', cell: (t) => pct(t.weight, 2), sortValue: (t) => t.weight },
+                { key: 'thesis', header: 'Thesis', cell: (t) => <span className="line-clamp-2 max-w-md">{t.thesis}</span> },
+                { key: 'risks', header: 'Risks', cell: (t) => <span className="line-clamp-2 max-w-xs text-muted-foreground">{t.risks}</span> },
+              ]} />
+            {c && <ComparisonTable c={c} />}
+          </CardContent>
+        </Card>
+      )}
+    </ResultSection>
+  )
+}
+
+function ComparisonTable({ c }: { c: NonNullable<PilotCycleDetail['comparison']> }) {
+  const top = (r: Record<string, number> | undefined) => Object.entries(r ?? {}).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => `${k} ${pct(v, 0)}`).join(', ') || '—'
+  const rows: [string, (f: typeof c.mandate) => ReactNode][] = [
+    ['Holdings', (f) => f.holdings],
+    ['Cash', (f) => pct(f.cashWeight, 1)],
+    ['Ex-ante volatility', (f) => pct(f.risk?.volatility, 1)],
+    ['Historical max drawdown', (f) => pct(f.risk?.maxDrawdown, 1)],
+    ['Value at risk (95 %, 1 day)', (f) => pct(f.risk?.valueAtRisk95, 2)],
+    ['Worst 20 days', (f) => pct(f.worst20Days, 1)],
+    ['Largest position', (f) => (f.risk?.largestSymbol ? `${f.risk.largestSymbol} ${pct(f.risk.largestWeight, 1)}` : '—')],
+    ['Effective holdings', (f) => f.risk?.effectiveHoldings?.toFixed(1) ?? '—'],
+    ['Beta to the benchmark', (f) => f.betaToBenchmark?.toFixed(2) ?? '—'],
+    ['Trailing 12-month return', (f) => pct(f.trailingReturn12M, 1, true)],
+    ['Countries', (f) => top(f.risk?.countries)],
+    ['Sectors', (f) => top(f.risk?.sectors)],
+  ]
+  return (
+    <div className="space-y-2">
+      <p className="font-medium">Mandate portfolio vs unconstrained portfolio</p>
+      <div className="overflow-x-auto rounded-xl border">
+        <Table>
+          <TableHeader><TableRow><TableHead /><TableHead className="text-right">Mandate portfolio</TableHead><TableHead className="text-right">Unconstrained</TableHead></TableRow></TableHeader>
+          <TableBody>{rows.map(([label, f]) => (
+            <TableRow key={label}><TableCell>{label}</TableCell><TableCell className="text-right tabular">{f(c.mandate)}</TableCell><TableCell className="text-right tabular">{f(c.unconstrained)}</TableCell></TableRow>
+          ))}</TableBody>
+        </Table>
+      </div>
+      <p className="text-muted-foreground">{c.sharedSymbols.length} holding(s) in common ({pct(c.weightOverlap, 0)} of the weight).</p>
+      {c.rulesUnconstrainedBreaks.length > 0 && <Facts title="Mandate rules the unconstrained portfolio would break" items={c.rulesUnconstrainedBreaks.map((v) => v.detail)} />}
+      {c.narrative.map((n) => n.paragraphs.length > 0 && <p key={n.key}><span className="font-medium">{n.title}: </span>{n.paragraphs.join(' ')}</p>)}
+      <p className="text-xs text-muted-foreground">
+        {c.narrativeSource === 'model' ? 'Comparison text written by the model and checked against the figures above. ' : 'Comparison text assembled by the platform. '}{c.basis}
+      </p>
+    </div>
+  )
+}
+
 function Facts({ title, items }: { title: string; items: string[] }) {
   if (!items.length) return null
   return (
@@ -387,13 +495,16 @@ function Facts({ title, items }: { title: string; items: string[] }) {
 function AllocationTable({ detail }: { detail: PilotCycleDetail }) {
   const d = detail.decision!
   const executed = new Map((detail.executed?.weights ?? []).map((w) => [w.symbol, w.executedWeight]))
+  const first = new Map((detail.initialDecision?.targets ?? []).map((t) => [t.symbol, t.weight]))
+  const revised = detail.fitRevisions > 0 && detail.initialDecision != null
   const held = new Map((detail.observation?.holdings ?? []).map((h) => [h.symbol, h.weight ?? 0]))
   const rows = [...d.targets.map((t) => ({ ...t, before: held.get(t.symbol) ?? 0, after: executed.get(t.symbol) })),
     ...[...held.keys()].filter((k) => !d.targets.some((t) => t.symbol === k)).map((k) => ({ symbol: k, weight: 0, role: 'sold', thesis: '—', whyNow: '', risks: '', invalidation: '', before: held.get(k) ?? 0, after: executed.get(k) }))]
   const columns: Column<(typeof rows)[number]>[] = [
     { key: 'symbol', header: 'Symbol', cell: (r) => <span className="font-medium">{r.symbol}</span>, sortValue: (r) => r.symbol },
     { key: 'before', header: 'Before', align: 'right', cell: (r) => pct(r.before, 1), sortValue: (r) => r.before },
-    { key: 'ai', header: 'AI proposed', align: 'right', cell: (r) => pct(r.weight, 2), sortValue: (r) => r.weight },
+    ...(revised ? [{ key: 'first', header: 'First proposal', align: 'right' as const, cell: (r: (typeof rows)[number]) => (first.has(r.symbol) ? pct(first.get(r.symbol)!, 2) : '—'), sortValue: (r: (typeof rows)[number]) => first.get(r.symbol) ?? -1 }] : []),
+    { key: 'ai', header: revised ? 'AI final (fits)' : 'AI proposed', align: 'right', cell: (r) => pct(r.weight, 2), sortValue: (r) => r.weight },
     { key: 'after', header: 'Held after booking', align: 'right', cell: (r) => (r.after == null ? '—' : pct(r.after, 2)), sortValue: (r) => r.after ?? -1 },
     { key: 'role', header: 'Role', cell: (r) => r.role },
     { key: 'thesis', header: 'Thesis', cell: (r) => <span className="line-clamp-2 max-w-md">{r.thesis}</span> },
@@ -550,6 +661,9 @@ function ScorecardSection({ pilot }: { pilot: Pilot }) {
     { key: 'w1', header: '+1W', align: 'right', cell: (r) => pct(r.portfolioAfter1W, 2, true), sortValue: (r) => r.portfolioAfter1W },
     { key: 'm1', header: '+1M', align: 'right', cell: (r) => pct(r.portfolioAfter1M, 2, true), sortValue: (r) => r.portfolioAfter1M },
     { key: 'b1', header: 'Benchmark +1M', align: 'right', cell: (r) => pct(r.benchmarkAfter1M, 2, true), sortValue: (r) => r.benchmarkAfter1M },
+    { key: 't1', header: 'Mandate targets +1M', align: 'right', cell: (r) => pct(r.mandateTargetsAfter1M, 2, true), sortValue: (r) => r.mandateTargetsAfter1M },
+    { key: 'u1', header: 'Unconstrained +1M', align: 'right', cell: (r) => pct(r.unconstrainedAfter1M, 2, true), sortValue: (r) => r.unconstrainedAfter1M },
+    { key: 'rev', header: 'Revisions', align: 'right', cell: (r) => r.fitRevisions, sortValue: (r) => r.fitRevisions },
   ]
   return (
     <ResultSection title="Decision scorecard" hint="Each decision as recorded at the time, with what happened afterwards (measured from stored prices). A blank means that period has not passed yet.">

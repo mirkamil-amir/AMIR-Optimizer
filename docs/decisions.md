@@ -2,6 +2,21 @@
 
 Short records of decisions that are not obvious from the code. Newest first. Format: context → decision → consequences.
 
+## D-61 Matrix Pilot: rules first, fit until it fits, and an unconstrained portfolio for comparison (2026-11-13)
+**Context:** in the first real cycle (Gemini 3.5 Flash) the model proposed 98 % in US stocks against a 70 % US cap, kept it
+after the reviewer named the breach, and was blocked – it had no way to test a portfolio against the rules before
+deciding, and a blocked decision had no second chance. The owner asked that the AI read the restrictions first, then the
+market, fit the portfolio to every rule – going back until it fits – and, in parallel, build a portfolio of its own idea
+without any restriction, justify it, and compare the two. **Decision:** stages RULES (restate the mandate before any market
+data) → RESEARCH (with `check_allocation`, the same validator as the final check) → CONSTRUCT → FIT (breaches go back to the
+model with proposed and allowed values, at most 5 revisions; a HOLD that keeps a breaching portfolio is a breach) →
+CRITIQUE → FINALIZE (→ FIT) → VALIDATE (final, independent; BLOCKED if still breaking) → UNCONSTRAINED (any listing, any
+weight, long-only, justified, never traded) → COMPARE (platform figures for both, model text validated). This replaces
+D-60's "no second chance"; the measurement stays honest because the first proposal, every breach and revision are
+journaled and counted (fitted first time / revisions / blocked). **Consequences:** more model calls per cycle (about 6–20);
+migration `MatrixPilotFitAndShadow` (initial decision, revisions, unconstrained portfolio, comparison); the scorecard
+compares the mandate targets with the unconstrained portfolio as hypothetical fixed-weight holdings (F-PILOT-005).
+
 ## D-60 Matrix Pilot: a language model decides a paper portfolio, the platform controls it (2026-11-13)
 **Context:** the owner asked for an AI portfolio manager that controls a portfolio end to end – choosing securities,
 weights and rebalancing – to find out whether an AI can actually manage a portfolio with professional infrastructure.

@@ -19,7 +19,13 @@ public static partial class MockPilotScript
         {
             "pilot.check" => new { ok = true },
             "pilot.research" => Research(data),
-            "pilot.decide" or "pilot.finalize" => Decide(data),
+            "pilot.rules" => new
+            {
+                constraints = new[] { new { rule = "test", limit = "as in the mandate", implication = "Test model: restated without judgement." } },
+                tensions = Array.Empty<string>(),
+            },
+            "pilot.decide" or "pilot.finalize" or "pilot.revise" => Decide(data),
+            "pilot.unconstrained" => Unconstrained(data),
             "pilot.critique" => new
             {
                 concerns = new[] { new { area = "evidence", severity = "low", detail = "Test model: deterministic script, no real review." } },
@@ -66,6 +72,23 @@ public static partial class MockPilotScript
         var w = Math.Floor(Math.Min(maxPos, (1 - minCash - 0.01) / n) * 10_000) / 10_000;
         var targets = symbols.Take(n).Select(s => (s, w)).ToList();
         return Decision("REBALANCE", "equal_weight", targets, Math.Round(1 - w * n, 6), ["Test model: equal weights across the top screened symbols."]);
+    }
+
+    /// <summary>Test script: equal weights over the top five screened symbols, 5 % cash – no limits applied, no judgement.</summary>
+    private static object Unconstrained(JsonElement? data)
+    {
+        var symbols = data is { } d ? ScreenedSymbols(d).Take(5).ToList() : [];
+        var w = symbols.Count == 0 ? 0 : Math.Floor(0.95 / symbols.Count * 10_000) / 10_000;
+        return new
+        {
+            approach = "equal_weight",
+            targets = symbols.Select(s => new { symbol = s, weight = w, role = "test position", thesis = "Test model: top of the screen.", whyNow = "Test cycle.", risks = "Not assessed.", invalidation = "Not assessed." }),
+            cashWeight = Math.Round(1 - w * symbols.Count, 6),
+            justification = new[] { "Test model: deterministic script, no judgement." },
+            differencesFromMandate = new[] { "Test model: no position or country limits." },
+            keyRisks = new[] { "Not assessed (test model)." },
+            confidence = "low",
+        };
     }
 
     private static object Decision(string action, string approach, List<(string Symbol, double Weight)> targets, double cash, string[] rationale) => new

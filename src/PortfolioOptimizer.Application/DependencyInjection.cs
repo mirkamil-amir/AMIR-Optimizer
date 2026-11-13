@@ -87,6 +87,8 @@ public static class DependencyInjection
         services.AddScoped<Pilot.PilotTool, Pilot.AnalyzePortfolioTool>();
         services.AddScoped<Pilot.PilotTool, Pilot.OptimizerTool>();
         services.AddScoped<Pilot.PilotTool, Pilot.EstimateTradesTool>();
+        services.AddScoped<Pilot.PilotTool, Pilot.CheckAllocationTool>();
+        services.AddScoped<Pilot.PilotFitChecker>();
         services.AddScoped<Pilot.PilotEngine>();
         services.AddScoped<Pilot.PilotService>();
         return services;

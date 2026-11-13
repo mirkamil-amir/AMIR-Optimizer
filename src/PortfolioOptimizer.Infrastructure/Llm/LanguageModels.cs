@@ -125,7 +125,8 @@ public sealed class AnthropicLanguageModel : ILanguageModel
 /// </summary>
 public sealed class MockLanguageModel : ILanguageModel
 {
-    private readonly Queue<Func<LlmRequest, LlmResponse>> _scripted = new();
+    // Scripted answers in order; an entry with a purpose answers only a call with that purpose (others pass it by).
+    private readonly List<(string? Purpose, Func<LlmRequest, LlmResponse> Answer)> _scripted = [];
     private readonly Lock _gate = new();
 
     public string Provider => "Mock";
@@ -133,10 +134,13 @@ public sealed class MockLanguageModel : ILanguageModel
     public bool IsAvailable { get; set; } = true;
     public List<LlmRequest> Requests { get; } = [];
 
-    public void Enqueue(Func<LlmRequest, LlmResponse> next) { lock (_gate) _scripted.Enqueue(next); }
+    /// <summary>Answers the next call, whatever its purpose.</summary>
+    public void Enqueue(Func<LlmRequest, LlmResponse> next) { lock (_gate) _scripted.Add((null, next)); }
 
-    public void EnqueueJson(string purpose, object output) =>
-        Enqueue(r => r.Purpose == purpose ? Ok(JsonSerializer.SerializeToElement(output)) : throw new LanguageModelException(LlmFailure.InvalidOutput, $"Mock expected {purpose}, got {r.Purpose}."));
+    /// <summary>Answers the next call with this purpose (calls with other purposes are answered by other entries or the defaults).</summary>
+    public void Enqueue(string purpose, Func<LlmRequest, LlmResponse> next) { lock (_gate) _scripted.Add((purpose, next)); }
+
+    public void EnqueueJson(string purpose, object output) => Enqueue(purpose, _ => Ok(JsonSerializer.SerializeToElement(output)));
 
     public void EnqueueFailure(LlmFailure failure) => Enqueue(_ => throw new LanguageModelException(failure, $"Simulated {failure}."));
 
@@ -146,7 +150,12 @@ public sealed class MockLanguageModel : ILanguageModel
         lock (_gate)
         {
             Requests.Add(request);
-            if (_scripted.Count > 0) next = _scripted.Dequeue();
+            var i = _scripted.FindIndex(e => e.Purpose is null || e.Purpose == request.Purpose);
+            if (i >= 0)
+            {
+                next = _scripted[i].Answer;
+                _scripted.RemoveAt(i);
+            }
         }
         if (!IsAvailable) throw new LanguageModelException(LlmFailure.Unavailable, "Mock model disabled.");
         if (next is not null) return Task.FromResult(next(request));
