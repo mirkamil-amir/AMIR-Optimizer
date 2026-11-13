@@ -20,7 +20,7 @@ import { errorMessage } from '@/lib/api'
 import { dateTime, money, pct, relativeTime } from '@/lib/format'
 import {
   useCreatePilot, useDisablePilot, useEnablePilot, useKillPilot, usePilot, usePilotComparison, usePilotCycle, usePilotCycles, usePilotEvents,
-  usePilotHome, usePilotMandates, usePilotScorecard, useResumePilot, useRunPilot, useUpdatePilotMandate,
+  usePilotHome, usePilotMandates, usePilotScorecard, useResumePilot, useRunPilot, useUpdatePilotMandate, useCheckPilotModel,
 } from '@/lib/queries'
 import type {
   Pilot, PilotComparison, PilotCycleDetail, PilotCycleSummary, PilotEvent, PilotFrequency, PilotMandate, PilotModel, PilotOutcome, PilotOverview,
@@ -117,14 +117,40 @@ function ModelNote({ model }: { model: PilotModel }) {
     return (
       <Alert>
         <AlertTitle>No language model is configured</AlertTitle>
-        <AlertDescription>Matrix Pilot needs one (Agent:Llm:Provider on the server). It never falls back to fixed rules, so it cannot be switched on until a model is configured.</AlertDescription>
+        <AlertDescription>Matrix Pilot needs one (MATRIX_PILOT_PROVIDER or AGENT_LLM_PROVIDER, with its key, in .env). It never falls back to fixed rules, so it cannot be switched on until a model is configured.</AlertDescription>
       </Alert>
     )
   return (
-    <p className="text-sm text-muted-foreground">
-      Configured model: <span className="font-medium text-foreground">{modelText(model, model.isTestModel)}</span>.
-      {model.isTestModel && ' This environment uses a deterministic test script; its decisions are not AI decisions.'}
-    </p>
+    <div className="space-y-1">
+      <p className="text-sm text-muted-foreground">
+        Configured model: <span className="font-medium text-foreground">{modelText(model, model.isTestModel)}</span>.
+        {model.isTestModel && ' This environment uses a deterministic test script; its decisions are not AI decisions.'}
+      </p>
+      <ModelCheck />
+    </div>
+  )
+}
+
+/** Checks the configured key with one tiny model call (no portfolio data) – before switching on, or whenever in doubt. */
+function ModelCheck({ auto = false, onResult }: { auto?: boolean; onResult?: (ok: boolean) => void }) {
+  const check = useCheckPilotModel()
+  const run = () => check.mutate(undefined, { onSuccess: (r) => onResult?.(r.ok), onError: () => onResult?.(false) })
+  // The confirmation dialog checks once on opening; the result decides whether it can be confirmed.
+  useEffect(() => { if (auto) run() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  const r = check.data
+  return (
+    <div className="flex flex-wrap items-center gap-2 text-sm" role="status" aria-live="polite">
+      <Button type="button" size="xs" variant="outline" disabled={check.isPending} onClick={run}>
+        {check.isPending && <MatrixLoader />}{r ? 'Check again' : 'Check model connection'}
+      </Button>
+      {check.isPending && <span className="text-muted-foreground">Checking the key with one small request…</span>}
+      {!check.isPending && r && (
+        <span className={r.ok ? 'text-gain' : 'text-loss'}>
+          {r.ok ? 'Key valid' : 'Check failed'}: {r.message}{r.latencyMs != null && ` (${Math.round(r.latencyMs)} ms)`}
+        </span>
+      )}
+      {!check.isPending && check.error && <span className="text-loss">Check failed: {errorMessage(check.error)}</span>}
+    </div>
   )
 }
 
@@ -181,6 +207,7 @@ function ControlRoom({ overview, pilot, selected, onSelect }: { overview: PilotO
       )}
       {running && <WorkingPanel title={`Deciding: ${phaseLabel[pilot.runningPhase ?? "Queued"]}`} detail="The journal below fills as the cycle advances. The kill switch stops it before anything is booked." />}
 
+      <ModelCheck />
       <StatusSection pilot={pilot} />
       <DecisionSection pilot={pilot} detail={detail.data} loading={detail.isLoading} />
       <ActivitySection detail={detail.data} />
@@ -634,6 +661,7 @@ function ConfirmActivation({ overview, pilot, mode, onClose }: { overview: Pilot
   const enable = useEnablePilot(pilot.portfolioId)
   const resume = useResumePilot(pilot.portfolioId)
   const [understood, setUnderstood] = useState(false)
+  const [keyOk, setKeyOk] = useState(false)
   const m = overview.configuredModel
   const action = mode === 'enable' ? enable : resume
   const submit = () => action.mutate({ confirm: true, provider: m.provider, model: m.model }, {
@@ -657,13 +685,17 @@ function ConfirmActivation({ overview, pilot, mode, onClose }: { overview: Pilot
           <div><p className="font-medium">The AI may</p><ul className="list-disc pl-5 text-muted-foreground"><li>select securities</li><li>change weights</li><li>rebalance</li><li>create simulated transactions</li></ul></div>
           <div><p className="font-medium">The platform will</p><ul className="list-disc pl-5 text-muted-foreground"><li>validate every allocation</li><li>enforce the mandate and permissions</li><li>record every decision</li><li>keep an audit trail</li><li>let you stop it at once</li></ul></div>
         </div>
+        <div className="space-y-1">
+          <p className="text-sm font-medium">Model connection</p>
+          <ModelCheck auto onResult={setKeyOk} />
+        </div>
         <label className="flex items-start gap-2 text-sm">
           <Checkbox checked={understood} onCheckedChange={(c) => setUnderstood(c === true)} aria-label="I understand" />
           <span>I understand that an AI model will manage this paper portfolio on its own until I stop it.</span>
         </label>
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button onClick={submit} disabled={!understood || action.isPending}>{action.isPending && <MatrixLoader />}{mode === 'enable' ? 'Switch Matrix Pilot on' : 'Resume Matrix Pilot'}</Button>
+          <Button onClick={submit} disabled={!understood || !keyOk || action.isPending}>{action.isPending && <MatrixLoader />}{mode === 'enable' ? 'Switch Matrix Pilot on' : 'Resume Matrix Pilot'}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -711,7 +743,8 @@ function RunNowDialog({ pilot, onClose }: { pilot: Pilot; onClose: () => void })
           <DialogTitle>Run this period's decision now</DialogTitle>
           <DialogDescription>
             Matrix Pilot decides once per {pilot.frequency === 'Daily' ? 'day' : pilot.frequency === 'Weekly' ? 'week' : 'month'}. Running it now uses this period's decision; the
-            scheduled one is then skipped. It may book simulated trades within the mandate, and the model calls are billed by the provider.
+            scheduled one is then skipped. If an attempt fails or is skipped (nothing decided or traded), it can be tried again – up to
+            three attempts per period. It may book simulated trades within the mandate, and the model calls are billed by the provider.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

@@ -161,6 +161,7 @@ public sealed class PilotService(
         if (pilot.Status == PilotStatus.Active) throw new ConflictException("Matrix Pilot is already active.");
         if (pilot.Status is PilotStatus.Paused or PilotStatus.KillSwitched) throw new ConflictException("Matrix Pilot is stopped; use Resume.");
         RequireModel(request.Provider, request.Model);
+        await RequirePassingCheckAsync(ct);
         var now = clock.GetUtcNow().UtcDateTime;
         var previous = pilot.Status;
         if (pilot.Provider != model.Provider || pilot.Model != model.Model)
@@ -214,6 +215,7 @@ public sealed class PilotService(
         var pilot = await RequireAsync(portfolioId, ct, tracking: true);
         if (pilot.Status is not (PilotStatus.Paused or PilotStatus.KillSwitched)) throw new ConflictException($"Matrix Pilot is {pilot.Status}; only a stopped pilot can be resumed.");
         RequireModel(request.Provider, request.Model);
+        await RequirePassingCheckAsync(ct);
         if (pilot.Provider != model.Provider || pilot.Model != model.Model)
             throw new ConflictException($"The configured model ({model.Provider} {model.Model}) differs from this pilot's ({pilot.Provider} {pilot.Model}). Confirm the change in the mandate first.");
         var previous = pilot.Status;
@@ -301,8 +303,19 @@ public sealed class PilotService(
         var pilot = await RequireAsync(portfolioId, ct);
         if (pilot.Status != PilotStatus.Active) throw new ConflictException("Matrix Pilot must be active to decide.");
         if (pilot.ActiveCycleId is not null) throw new ConflictException("A decision cycle is already running.");
-        var cycle = await PilotCycles.TryCreateAsync(db, pilot, "Manual", clock.GetUtcNow().UtcDateTime, ct)
-                    ?? throw new ConflictException("This period already has a decision. The next one is due at the scheduled time.");
+        var now = clock.GetUtcNow().UtcDateTime;
+        var cycle = await PilotCycles.TryCreateAsync(db, pilot, "Manual", now, ct);
+        if (cycle is null)
+        {
+            var (state, attempts) = await PilotCycles.PeriodStateAsync(db, pilot.Id, PilotSchedule.PeriodKey(pilot.Frequency, now), ct);
+            throw new ConflictException(state switch
+            {
+                PilotPeriodState.AttemptsUsed =>
+                    $"This period has had {attempts} attempts that failed or were skipped (the most allowed). The next decision is due at the scheduled time.",
+                PilotPeriodState.Running => "A decision cycle of this period is already queued or running.",
+                _ => "This period already has a decision. The next one is due at the scheduled time.",
+            });
+        }
         await queue.EnqueueAsync(cycle.Id, ct);
         return Summary(cycle);
     }
@@ -548,6 +561,54 @@ public sealed class PilotService(
         };
     }
 
+    private static readonly IReadOnlyDictionary<string, System.Text.Json.JsonElement> CheckSchema =
+        System.Text.Json.JsonDocument.Parse("""{"type":"object","additionalProperties":false,"required":["ok"],"properties":{"ok":{"type":"boolean"}}}""")
+            .RootElement.EnumerateObject().ToDictionary(p => p.Name, p => p.Value.Clone());
+
+    /// <summary>
+    /// Checks that the pilot's model answers with the configured key: one tiny call that contains no portfolio, account or
+    /// user data. <c>Ok</c> only when the model answered (the key and model are accepted).
+    /// </summary>
+    public async Task<PilotModelCheckDto> CheckModelAsync(CancellationToken ct)
+    {
+        currentUser.RequireUserId();
+        var now = clock.GetUtcNow().UtcDateTime;
+        PilotModelCheckDto Result(bool ok, string status, string message, double? ms = null, string? reported = null) =>
+            new(model.Provider, model.Model, ok, status, message, ms, reported, now);
+        if (!model.IsAvailable)
+            return Result(false, "not_configured", model.Provider == "None"
+                ? "No language model is configured for Matrix Pilot (MATRIX_PILOT_PROVIDER or AGENT_LLM_PROVIDER)."
+                : $"{model.Provider} is configured, but no API key was found.");
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        try
+        {
+            var r = await model.GenerateAsync(new LlmRequest("pilot.check", "Connection check. Answer with the JSON object {\"ok\": true}.", "ping",
+                CheckSchema, 1000, "low", TimeSpan.FromSeconds(45)), ct);
+            return Result(true, "ok", $"{model.Provider} accepted the key and {r.Model} answered.", Math.Round(sw.Elapsed.TotalMilliseconds), r.Model);
+        }
+        catch (LanguageModelException ex)
+        {
+            var ms = Math.Round(sw.Elapsed.TotalMilliseconds);
+            return ex.Failure switch
+            {
+                // The model answered, only not in the expected shape: the key and model work.
+                LlmFailure.InvalidOutput or LlmFailure.Refused => Result(true, "ok", $"{model.Provider} accepted the key (the test answer had an unexpected shape).", ms),
+                LlmFailure.Unauthorized => Result(false, "key_rejected", $"{model.Provider} rejected the API key: it is invalid, expired or lacks access. Put a valid key in .env and restart the API.", ms),
+                LlmFailure.ModelNotFound => Result(false, "model_not_found", $"The model {model.Model} is not available for this key. Check MATRIX_PILOT_MODEL.", ms),
+                LlmFailure.RateLimited => Result(false, "rate_limited", $"{model.Provider} is rate limiting or the quota is used up; the key itself may be valid. Try again later.", ms),
+                LlmFailure.Timeout => Result(false, "timeout", $"{model.Provider} did not answer within 45 seconds.", ms),
+                LlmFailure.Unavailable => Result(false, "unavailable", $"{model.Provider} could not be reached.", ms),
+                _ => Result(false, "provider_error", $"{model.Provider} returned an error: {ex.Message}", ms),
+            };
+        }
+    }
+
+    private async Task RequirePassingCheckAsync(CancellationToken ct)
+    {
+        var check = await CheckModelAsync(ct);
+        if (!check.Ok) throw new ConflictException($"Model check failed – {check.Message} Matrix Pilot was not switched on.");
+    }
+
     private void RequireModel(string? provider, string? modelId)
     {
         if (!model.IsAvailable) throw new ConflictException("No language model is configured (Agent:Llm:Provider). Matrix Pilot needs one; it never falls back to fixed rules.");
@@ -640,16 +701,52 @@ public sealed class PilotService(
     }
 }
 
-/// <summary>Creates the cycle of a period – at most one per pilot and period (unique key), so duplicate ticks never decide twice.</summary>
+/// <summary>Why no cycle can start for the current period.</summary>
+public enum PilotPeriodState { Open, Decided, Running, AttemptsUsed }
+
+/// <summary>
+/// Creates the cycle of a period. A period has at most one cycle that ends in a decision (REBALANCED, NO TRADE, BLOCKED,
+/// PAUSED); attempts that ended FAILED or SKIPPED – nothing traded, nothing decided – can be retried up to
+/// <see cref="MaxAttemptsPerPeriod"/> times. Each attempt has its own unique key (<c>D:2026-11-13</c>, <c>D:2026-11-13#2</c> …),
+/// so two ticks that race for the same attempt still create only one cycle.
+/// </summary>
 public static class PilotCycles
 {
+    public const int MaxAttemptsPerPeriod = 3;
+
+    /// <summary>Attempts that leave the period open for another try: nothing was decided or traded.</summary>
+    public static bool AllowsRetry(PilotCycleOutcome o) => o is PilotCycleOutcome.Failed or PilotCycleOutcome.Skipped;
+
+    /// <summary>The period part of a cycle key (without the attempt suffix).</summary>
+    public static string PeriodOf(string cycleKey) => cycleKey.Split('#')[0];
+
+    public static async Task<(PilotPeriodState State, int Attempts)> PeriodStateAsync(IApplicationDbContext db, Guid pilotId, string period, CancellationToken ct)
+    {
+        var outcomes = await db.MatrixPilotCycles.AsNoTracking()
+            .Where(c => c.PilotId == pilotId && (c.CycleKey == period || c.CycleKey.StartsWith(period + "#")))
+            .Select(c => c.Outcome).ToListAsync(ct);
+        var state = outcomes.Any(o => o == PilotCycleOutcome.Pending) ? PilotPeriodState.Running
+            : outcomes.Any(o => !AllowsRetry(o)) ? PilotPeriodState.Decided
+            : outcomes.Count >= MaxAttemptsPerPeriod ? PilotPeriodState.AttemptsUsed
+            : PilotPeriodState.Open;
+        return (state, outcomes.Count);
+    }
+
     public static async Task<MatrixPilotCycle?> TryCreateAsync(IApplicationDbContext db, MatrixPilot pilot, string trigger, DateTime nowUtc, CancellationToken ct,
         string? cycleKey = null)
     {
+        var key = cycleKey;
+        if (key is null)
+        {
+            var period = PilotSchedule.PeriodKey(pilot.Frequency, nowUtc);
+            var (state, attempts) = await PeriodStateAsync(db, pilot.Id, period, ct);
+            if (state != PilotPeriodState.Open) return null;
+            key = attempts == 0 ? period : $"{period}#{attempts + 1}";
+        }
         var cycle = new MatrixPilotCycle
         {
             Id = Guid.NewGuid(), PilotId = pilot.Id, PortfolioId = pilot.PortfolioId, OwnerId = pilot.OwnerId,
-            CycleKey = cycleKey ?? PilotSchedule.PeriodKey(pilot.Frequency, nowUtc), Trigger = trigger, CorrelationId = Guid.NewGuid(),
+            CycleKey = key, Trigger = trigger, CorrelationId = Guid.NewGuid(),
             AsOfUtc = nowUtc, CreatedAtUtc = nowUtc, Phase = PilotCyclePhase.Queued, Outcome = PilotCycleOutcome.Pending,
             MandateVersion = pilot.MandateVersion, Provider = pilot.Provider, Model = pilot.Model, Effort = pilot.Effort,
             PromptVersion = PilotVersions.Prompt, ToolsVersion = PilotVersions.Tools, SchemaVersion = PilotVersions.Schema,

@@ -18,7 +18,8 @@ public sealed record LlmRequest(
 
 public sealed record LlmResponse(JsonElement Output, string Model, int InputTokens, int OutputTokens, double LatencyMs);
 
-public enum LlmFailure { Unavailable, RateLimited, Timeout, Refused, InvalidOutput, ProviderError }
+/// <summary>Why a model call failed. <c>Unauthorized</c>: the key was rejected; <c>ModelNotFound</c>: the model id is not available to this key.</summary>
+public enum LlmFailure { Unavailable, RateLimited, Timeout, Refused, InvalidOutput, ProviderError, Unauthorized, ModelNotFound }
 
 public sealed class LanguageModelException(LlmFailure failure, string message, Exception? inner = null) : Exception(message, inner)
 {

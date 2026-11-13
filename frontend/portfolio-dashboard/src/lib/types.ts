@@ -2136,3 +2136,9 @@ export interface PilotScorecard {
   }[]
   methodology: string
 }
+
+export interface PilotModelCheck {
+  provider: string; model: string; ok: boolean
+  status: 'ok' | 'not_configured' | 'key_rejected' | 'model_not_found' | 'rate_limited' | 'timeout' | 'unavailable' | 'provider_error'
+  message: string; latencyMs: number | null; modelReported: string | null; checkedAtUtc: string
+}

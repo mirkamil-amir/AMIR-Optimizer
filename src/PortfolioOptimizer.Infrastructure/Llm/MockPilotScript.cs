@@ -17,6 +17,7 @@ public static partial class MockPilotScript
         var data = Data(request.UserContent);
         object output = request.Purpose switch
         {
+            "pilot.check" => new { ok = true },
             "pilot.research" => Research(data),
             "pilot.decide" or "pilot.finalize" => Decide(data),
             "pilot.critique" => new

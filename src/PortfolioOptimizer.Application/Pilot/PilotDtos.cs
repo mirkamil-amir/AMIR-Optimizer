@@ -225,3 +225,10 @@ public sealed record PilotScoreRowDto(
 public sealed record PilotScoreTargetDto(string Symbol, double Weight, string Thesis, decimal? EntryPrice, double? After1D, double? After1W, double? After1M);
 
 public sealed record PilotScorecardDto(IReadOnlyList<PilotScoreRowDto> Rows, string Methodology);
+
+/// <summary>
+/// Result of the model check (one tiny call without portfolio data). Status: ok, not_configured, key_rejected,
+/// model_not_found, rate_limited, timeout, unavailable or provider_error.
+/// </summary>
+public sealed record PilotModelCheckDto(string Provider, string Model, bool Ok, string Status, string Message, double? LatencyMs, string? ModelReported,
+    DateTime CheckedAtUtc);

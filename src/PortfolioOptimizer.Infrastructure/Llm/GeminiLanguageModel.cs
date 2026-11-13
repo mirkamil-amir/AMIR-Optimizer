@@ -85,8 +85,11 @@ public sealed class GeminiLanguageModel : ILanguageModel
                 throw response.StatusCode switch
                 {
                     HttpStatusCode.TooManyRequests => new LanguageModelException(LlmFailure.RateLimited, "The language-model provider is rate limiting requests (quota)."),
-                    HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden => new LanguageModelException(LlmFailure.ProviderError, "The language-model provider rejected the API key."),
-                    HttpStatusCode.NotFound => new LanguageModelException(LlmFailure.ProviderError, $"The model {Model} is not available for this key."),
+                    HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden => new LanguageModelException(LlmFailure.Unauthorized, "The language-model provider rejected the API key."),
+                    // Gemini answers an invalid or expired key with 400 and the reason API_KEY_INVALID (only that token is read from the body).
+                    HttpStatusCode.BadRequest when text.Contains("API_KEY_INVALID", StringComparison.Ordinal) =>
+                        new LanguageModelException(LlmFailure.Unauthorized, "The language-model provider rejected the API key (invalid or expired)."),
+                    HttpStatusCode.NotFound => new LanguageModelException(LlmFailure.ModelNotFound, $"The model {Model} is not available for this key."),
                     _ => new LanguageModelException(LlmFailure.ProviderError, $"The language-model provider returned HTTP {status}."),
                 };
             }

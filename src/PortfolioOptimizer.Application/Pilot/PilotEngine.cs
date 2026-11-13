@@ -29,6 +29,8 @@ public sealed class PilotOptions
     public int ModelTimeoutSeconds { get; set; } = 300;
     public int MaxInputTokensPerCycle { get; set; } = 600_000;
     public int MaxConsecutiveFailures { get; set; } = 3;
+    /// <summary>After a FAILED or SKIPPED attempt (nothing decided or traded) the scheduler tries the same period again after this.</summary>
+    public int RetryAfterMinutes { get; set; } = 60;
     /// <summary>Characters of research log sent back to the model; older tool results are reduced to their summary beyond it.</summary>
     public int MaxResearchContextChars { get; set; } = 160_000;
     /// <summary>A cycle lease older than this is treated as abandoned (the process died mid-cycle).</summary>
@@ -110,6 +112,12 @@ public sealed class PilotEngine(
         catch (CycleStop stop)
         {
             (outcome, outcomeReason, pause) = (stop.Outcome, stop.Message, stop.PausePilot);
+        }
+        catch (LanguageModelException ex) when (ex.Failure is LlmFailure.Unauthorized or LlmFailure.ModelNotFound)
+        {
+            // Retrying cannot help: stop until the owner fixes the key or model and resumes (the model check runs again then).
+            (outcome, outcomeReason, pause) = (PilotCycleOutcome.Failed,
+                $"Model call failed ({ex.Failure}): {ex.Message} Nothing was traded; Matrix Pilot paused itself until the key or model is fixed and you resume it.", true);
         }
         catch (LanguageModelException ex)
         {
@@ -630,6 +638,9 @@ public sealed class PilotEngine(
             PilotId = pilot.Id, AtUtc = now, Actor = PilotActor.MatrixPilot, Action = $"cycle.{outcome.ToString().ToLowerInvariant()}",
             Reason = PilotText.Clip(reason, 500), CycleId = cycle.Id, CorrelationId = cycle.CorrelationId,
         };
+        // Nothing decided or traded: try this period again after a while (bounded by PilotCycles.MaxAttemptsPerPeriod).
+        var retry = PilotCycles.AllowsRetry(outcome)
+                    && (await PilotCycles.PeriodStateAsync(db, pilot.Id, PilotCycles.PeriodOf(cycle.CycleKey), ct)).Attempts < PilotCycles.MaxAttemptsPerPeriod;
         db.MatrixPilotEvents.Add(evt);
         // The owner may change the pilot at the same moment (kill switch): reload and re-apply instead of overwriting.
         for (var attempt = 0; ; attempt++)
@@ -650,7 +661,9 @@ public sealed class PilotEngine(
                 }
                 else if (outcome == PilotCycleOutcome.Failed) pilot.ConsecutiveFailures++;
             }
-            pilot.NextDecisionAtUtc = pilot.Status == PilotStatus.Active ? PilotSchedule.NextDecision(pilot.Frequency, now, _o.DecisionHourUtc) : null;
+            pilot.NextDecisionAtUtc = pilot.Status != PilotStatus.Active ? null
+                : retry ? now.AddMinutes(Math.Max(5, _o.RetryAfterMinutes))
+                : PilotSchedule.NextDecision(pilot.Frequency, now, _o.DecisionHourUtc);
             pilot.UpdatedAtUtc = now;
             pilot.Version++;
             evt.PreviousStatus = evt.NewStatus = pilot.Status;

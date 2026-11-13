@@ -285,6 +285,49 @@ public sealed class MatrixPilotTests(MatrixPilotTests.Shared shared) : IClassFix
     }
 
     [Fact]
+    public async Task ModelCheck_ValidatesTheKey_WithoutPortfolioData_AndARejectedKeyBlocksActivation()
+    {
+        var ok = await (await _alice.PostJsonAsync("/api/v1/pilots/model-check", new { })).ReadAsync<PilotModelCheckDto>();
+        Assert.True(ok.Ok);
+        Assert.Equal(("ok", "Mock"), (ok.Status, ok.Provider));
+        var sent = Assert.Single(_model.Requests, r => r.Purpose == "pilot.check");
+        Assert.Equal("ping", sent.UserContent); // no portfolio, account or user data
+
+        // A rejected key: the check says so, and switching on is refused before anything starts.
+        var p = await PortfolioAsync(_alice);
+        (await _alice.PostJsonAsync($"/api/v1/portfolios/{p.Id}/pilot", new CreatePilotRequest { Mandate = Mandate() })).EnsureStatus(HttpStatusCode.Created);
+        _model.EnqueueFailure(LlmFailure.Unauthorized);
+        var rejected = await (await _alice.PostJsonAsync("/api/v1/pilots/model-check", new { })).ReadAsync<PilotModelCheckDto>();
+        Assert.Equal((false, "key_rejected"), (rejected.Ok, rejected.Status));
+        _model.EnqueueFailure(LlmFailure.Unauthorized);
+        var enable = await _alice.PostJsonAsync($"/api/v1/portfolios/{p.Id}/pilot/enable", new EnablePilotRequest { Confirm = true, Provider = "Mock", Model = "mock-model" });
+        enable.EnsureStatus(HttpStatusCode.Conflict);
+        Assert.Contains("rejected the API key", await enable.Content.ReadAsStringAsync());
+        var overview = await (await _alice.GetAsync($"/api/v1/portfolios/{p.Id}/pilot")).ReadAsync<PilotOverviewDto>();
+        Assert.Equal(PilotStatus.Disabled, overview.Pilot!.Status);
+        Assert.Null(overview.Pilot.Baseline);
+
+        // Not configured at all.
+        _model.IsAvailable = false;
+        var none = await (await _alice.PostJsonAsync("/api/v1/pilots/model-check", new { })).ReadAsync<PilotModelCheckDto>();
+        Assert.Equal((false, "not_configured"), (none.Ok, none.Status));
+        (await _bob.PostJsonAsync("/api/v1/pilots/model-check", new { })).EnsureStatus(HttpStatusCode.OK); // any approved user, no data involved
+    }
+
+    [Fact]
+    public async Task KeyRejectedDuringACycle_PausesThePilotAtOnce_NoRetries()
+    {
+        var p = await ActivePilotAsync(_alice);
+        _model.EnqueueFailure(LlmFailure.Unauthorized);
+        var cycle = await RunCycleAsync(p.Id);
+        Assert.Equal(PilotCycleOutcome.Failed, cycle.Outcome);
+        Assert.Contains("paused itself until the key or model is fixed", cycle.OutcomeReason);
+        var pilot = (await (await _alice.GetAsync($"/api/v1/portfolios/{p.Id}/pilot")).ReadAsync<PilotOverviewDto>()).Pilot!;
+        Assert.Equal(PilotStatus.Paused, pilot.Status);
+        Assert.Null(pilot.NextDecisionAtUtc);
+    }
+
+    [Fact]
     public async Task NoModelConfigured_Fails_NeverFallsBackToRules()
     {
         var p = await ActivePilotAsync(_alice);
@@ -305,7 +348,7 @@ public sealed class MatrixPilotTests(MatrixPilotTests.Shared shared) : IClassFix
         finally { shared.Clock.Offset = TimeSpan.Zero; }
         Assert.Equal(PilotCycleOutcome.Skipped, cycle.Outcome);
         Assert.Contains("Waiting for data", cycle.OutcomeReason);
-        Assert.Empty(_model.Requests); // the model is not even asked
+        Assert.DoesNotContain(_model.Requests, r => r.Purpose != "pilot.check"); // only the activation's model check // the model is not even asked
         Assert.Equal(0, await ExecutionsAsync(p.Id));
     }
 
@@ -319,7 +362,7 @@ public sealed class MatrixPilotTests(MatrixPilotTests.Shared shared) : IClassFix
         finally { shared.Clock.Offset = TimeSpan.Zero; }
         Assert.Equal(PilotCycleOutcome.Skipped, cycle.Outcome);
         Assert.Contains("dated after the decision time", cycle.OutcomeReason);
-        Assert.Empty(_model.Requests);
+        Assert.DoesNotContain(_model.Requests, r => r.Purpose != "pilot.check"); // only the activation's model check
     }
 
     [Fact]
@@ -370,6 +413,54 @@ public sealed class MatrixPilotTests(MatrixPilotTests.Shared shared) : IClassFix
     }
 
     [Fact]
+    public async Task FailedAttempt_CanBeRetriedInTheSamePeriod_ButADecidedPeriodCannot()
+    {
+        var p = await ActivePilotAsync(_alice);
+        // Attempt 1 fails (provider error): nothing decided, so the period stays open and a retry is scheduled.
+        _model.EnqueueFailure(LlmFailure.ProviderError);
+        var first = await RunCycleAsync(p.Id);
+        Assert.Equal(PilotCycleOutcome.Failed, first.Outcome);
+        var pilot = (await (await _alice.GetAsync($"/api/v1/portfolios/{p.Id}/pilot")).ReadAsync<PilotOverviewDto>()).Pilot!;
+        Assert.InRange(pilot.NextDecisionAtUtc!.Value, DateTime.UtcNow.AddMinutes(50), DateTime.UtcNow.AddMinutes(70));
+
+        // "Run decision now" starts attempt 2 of the same period (its own key), which decides and books.
+        var retry = await (await _alice.PostJsonAsync($"/api/v1/portfolios/{p.Id}/pilot/run", new RunPilotNowRequest { Confirm = true }))
+            .EnsureStatus(HttpStatusCode.Accepted).ReadAsync<PilotCycleSummaryDto>();
+        Assert.Equal($"{first.CycleKey}#2", retry.CycleKey);
+        for (var i = 0; i < 100 && (await LoadCycleAsync(retry.Id)).Outcome == PilotCycleOutcome.Pending; i++) await Task.Delay(100);
+        Assert.Equal(PilotCycleOutcome.Rebalanced, (await LoadCycleAsync(retry.Id)).Outcome);
+
+        // Now the period has a decision: no further attempt, with the reason.
+        var refused = await _alice.PostJsonAsync($"/api/v1/portfolios/{p.Id}/pilot/run", new RunPilotNowRequest { Confirm = true });
+        refused.EnsureStatus(HttpStatusCode.Conflict);
+        Assert.Contains("already has a decision", await refused.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task BlockedDecision_IsADecision_NotRetried_AndAttemptsAreBounded()
+    {
+        var blockedPilot = await ActivePilotAsync(_alice);
+        _model.EnqueueJson("pilot.research", Turn(true));
+        _model.EnqueueJson("pilot.decide", Decision("REBALANCE", [("AAPL", 0.5), ("MSFT", 0.4)], 0.1));
+        Assert.Equal(PilotCycleOutcome.Blocked, (await RunCycleAsync(blockedPilot.Id)).Outcome);
+        (await _alice.PostJsonAsync($"/api/v1/portfolios/{blockedPilot.Id}/pilot/run", new RunPilotNowRequest { Confirm = true })).EnsureStatus(HttpStatusCode.Conflict);
+
+        // Three failed attempts use up the period (and pause the pilot after three failures in a row).
+        var p = await ActivePilotAsync(_alice);
+        for (var i = 1; i <= PilotCycles.MaxAttemptsPerPeriod; i++)
+        {
+            _model.EnqueueFailure(LlmFailure.ProviderError);
+            var c = await RunCycleAsync(p.Id);
+            Assert.Equal(i == 1 ? PilotSchedule.PeriodKey(PilotDecisionFrequency.Weekly, DateTime.UtcNow) : $"{PilotCycles.PeriodOf(c.CycleKey)}#{i}", c.CycleKey);
+        }
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
+        var pilot = await db.MatrixPilots.AsNoTracking().SingleAsync(x => x.PortfolioId == p.Id);
+        Assert.Null(await PilotCycles.TryCreateAsync(db, pilot, "Scheduled", DateTime.UtcNow, default));
+        Assert.Equal(PilotStatus.Paused, pilot.Status);
+    }
+
+    [Fact]
     public async Task SecondCycleWhileAnotherHoldsThePortfolio_DoesNotStart()
     {
         var p = await ActivePilotAsync(_alice);
@@ -384,7 +475,7 @@ public sealed class MatrixPilotTests(MatrixPilotTests.Shared shared) : IClassFix
         var second = await RunCycleAsync(p.Id, "SECOND");
         Assert.Equal(PilotCycleOutcome.Skipped, second.Outcome);
         Assert.Contains("Another decision cycle", second.OutcomeReason);
-        Assert.Empty(_model.Requests);
+        Assert.DoesNotContain(_model.Requests, r => r.Purpose != "pilot.check"); // only the activation's model check
         Assert.Equal(0, await ExecutionsAsync(p.Id));
     }
 
@@ -402,7 +493,7 @@ public sealed class MatrixPilotTests(MatrixPilotTests.Shared shared) : IClassFix
         var cycle = await RunCycleAsync(p.Id);
         Assert.Equal(PilotCycleOutcome.Skipped, cycle.Outcome);
         Assert.Contains("kill switch", cycle.OutcomeReason);
-        Assert.Empty(_model.Requests);
+        Assert.DoesNotContain(_model.Requests, r => r.Purpose != "pilot.check"); // only the activation's model check
         Assert.Equal(0, await ExecutionsAsync(p.Id));
 
         var events = await (await _alice.GetAsync($"/api/v1/portfolios/{p.Id}/pilot/events")).ReadAsync<PagedResult<PilotEventDto>>();

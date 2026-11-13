@@ -12,7 +12,7 @@ import type {
   PortfolioOverview, PortfolioTransaction, RecordTransactionRequest, MarketDataSummary, DataCheck, DataCheckRequest, DataDownload,
   PortfolioStrategy, StrategyBacktestRequest,
   Pilot, PilotCycleDetail, PilotCycleSummary, PilotComparison, PilotEvent, PilotFrequency, PilotHome, PilotMandate, PilotMandateVersion, PilotOverview,
-  PilotScorecard,
+  PilotScorecard, PilotModelCheck,
 } from './types'
 
 const V1 = '/api/v1'
@@ -1156,3 +1156,6 @@ export const useUpdatePilotMandate = (portfolioId: string) =>
     api.put<Pilot>(`${V1}/portfolios/${portfolioId}/pilot/mandate`, body))
 export const useRunPilot = (portfolioId: string) =>
   usePilotAction(portfolioId, () => api.post<PilotCycleSummary>(`${V1}/portfolios/${portfolioId}/pilot/run`, { confirm: true }))
+
+/** One tiny call to the pilot's model (no portfolio data): is the key accepted? */
+export const useCheckPilotModel = () => useMutation({ mutationFn: () => api.post<PilotModelCheck>(`${V1}/pilots/model-check`) })

@@ -20,6 +20,14 @@ public sealed class MatrixPilotController(PilotService pilots) : ControllerBase
     [HttpGet("pilots")]
     public Task<PilotHomeDto> Home(CancellationToken ct) => pilots.HomeAsync(ct);
 
+    /// <summary>
+    /// Checks that Matrix Pilot's model accepts the configured key (one tiny call, no portfolio or user data). Calls are
+    /// billed by the provider, so it is rate limited like other expensive actions.
+    /// </summary>
+    [HttpPost("pilots/model-check")]
+    [EnableRateLimiting(RateLimitPolicies.Expensive)]
+    public Task<PilotModelCheckDto> CheckModel(CancellationToken ct) => pilots.CheckModelAsync(ct);
+
     /// <summary>The portfolio's pilot (null when none exists yet) and a suggested mandate.</summary>
     [HttpGet("portfolios/{id:guid}/pilot")]
     [ProducesResponseType<PilotOverviewDto>(StatusCodes.Status200OK)]

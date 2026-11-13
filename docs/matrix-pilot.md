@@ -63,6 +63,12 @@ status, reason, cycle, correlation id) and an `AuditEvent`.
 **Activation** needs `confirm = true` and the provider/model the owner saw in the confirmation dialog (a model changed in
 between is refused). The first activation captures the **baseline** (time, value, cash, positions, benchmark level).
 
+**Model check** (`POST /api/v1/pilots/model-check`, "Check model connection" in the UI): one tiny call ("ping", a one-field
+schema – no portfolio, account or user data) that reports `ok`, `not_configured`, `key_rejected` (401/403, or Gemini's 400
+`API_KEY_INVALID`), `model_not_found`, `rate_limited`, `timeout`, `unavailable` or `provider_error`. Enable and resume run it
+on the server and are refused unless it passes; the confirmation dialog runs it on opening and can only be confirmed
+after it passed. A key rejected (or a model not found) during a cycle pauses the pilot at once – retrying cannot help.
+
 **Kill switch**: status → KillSwitched; no new cycle starts; a running cycle re-reads the status right before booking and
 stops (`SKIPPED – stopped before execution`). Booked trades stay in the ledger.
 
@@ -162,8 +168,13 @@ ids, executed weights and the report. `MatrixPilotStep` holds every step in orde
 result as given to the model (≤ 12 000 characters stored; SHA-256 prefix of the full result). No hidden reasoning is stored
 or requested: model calls store their structured output only.
 
-Idempotency: one cycle per pilot and period (`CycleKey` unique: `D:yyyy-MM-dd`, `W:yyyy-Www`, `M:yyyy-MM`); a cycle runs
-once (a finished cycle is ignored); the booking has its own idempotency key. Concurrency: the lease is a conditional
+Idempotency: one *decision* per pilot and period. Each attempt has a unique key (`D:yyyy-MM-dd`, `W:yyyy-Www`,
+`M:yyyy-MM`, retries `…#2`, `…#3`); a period with only FAILED or SKIPPED attempts (nothing decided or traded – e.g. a
+provider outage or stale data) stays open: the scheduler tries again after `RetryAfterMinutes` (60) and the owner can
+use "Run decision now", up to `PilotCycles.MaxAttemptsPerPeriod` (3) attempts. Once an attempt ends REBALANCED, NO TRADE,
+BLOCKED or PAUSED the period is closed – a blocked decision is never retried until it passes. Three failed attempts in a
+row also pause the pilot (`MaxConsecutiveFailures`). A cycle runs once (a finished cycle is ignored); the booking has its
+own idempotency key. Concurrency: the lease is a conditional
 update (`ActiveCycleId` null → this cycle); a second cycle does not start; owner actions and cycles use the pilot's
 `Version` token and retry on conflict. On restart, unfinished cycles are recorded as failed and leases released.
 

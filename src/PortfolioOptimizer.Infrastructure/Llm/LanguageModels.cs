@@ -107,6 +107,8 @@ public sealed class AnthropicLanguageModel : ILanguageModel
         }
         catch (LanguageModelException) { throw; }
         catch (AnthropicRateLimitException ex) { Log(request, ex); throw new LanguageModelException(LlmFailure.RateLimited, "The language-model provider is rate limiting requests.", ex); }
+        catch (Exception ex) when (ex is AnthropicUnauthorizedException or AnthropicForbiddenException) { Log(request, ex); throw new LanguageModelException(LlmFailure.Unauthorized, "The language-model provider rejected the API key.", ex); }
+        catch (AnthropicNotFoundException ex) { Log(request, ex); throw new LanguageModelException(LlmFailure.ModelNotFound, $"The model {Model} is not available for this key.", ex); }
         catch (AnthropicApiException ex) { Log(request, ex); throw new LanguageModelException(LlmFailure.ProviderError, $"The language-model provider returned an error.", ex); }
         catch (AnthropicIOException ex) { Log(request, ex); throw new LanguageModelException(LlmFailure.Unavailable, "The language-model provider could not be reached.", ex); }
         catch (OperationCanceledException ex) when (!ct.IsCancellationRequested) { throw new LanguageModelException(LlmFailure.Timeout, "The language model did not answer in time.", ex); }
