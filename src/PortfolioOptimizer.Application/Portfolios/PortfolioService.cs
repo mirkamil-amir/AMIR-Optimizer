@@ -253,6 +253,8 @@ public sealed class PortfolioService(IApplicationDbContext db, PriceQueryService
         if (await experiments.AnyAsync(e => busy.Contains(e.Status), ct) || await backtests.AnyAsync(r => busy.Contains(r.Status), ct)
             || await comparisons.AnyAsync(c => busy.Contains(c.Status), ct))
             throw new ConflictException("An optimization, backtest or comparison of this portfolio is still running. Delete it once it has finished.");
+        if (await db.MatrixPilots.AnyAsync(p => p.PortfolioId == id && p.ActiveCycleId != null, ct))
+            throw new ConflictException("A Matrix Pilot decision cycle of this portfolio is running. Delete it once the cycle has finished.");
         var experimentIds = await experiments.Select(e => e.Id).ToListAsync(ct);
         var sessions = db.ResearchSessions.Where(r => r.PortfolioId == id);
 
@@ -264,6 +266,8 @@ public sealed class PortfolioService(IApplicationDbContext db, PriceQueryService
         await experiments.ExecuteDeleteAsync(ct);
         await db.ResearchEvents.Where(e => sessions.Select(r => r.Id).Contains(e.SessionId)).ExecuteDeleteAsync(ct);
         await sessions.ExecuteDeleteAsync(ct);
+        // Matrix Pilot: journal, cycles, mandate versions and events go with the pilot (cascade) – removed before the ledger.
+        await db.MatrixPilots.Where(p => p.PortfolioId == id).ExecuteDeleteAsync(ct);
         await db.Orders.Where(o => o.PortfolioId == id).ExecuteDeleteAsync(ct);
         await db.PaperTradeBatches.Where(b => b.PortfolioId == id).ExecuteDeleteAsync(ct);
         await db.TradeProposals.Where(p => p.PortfolioId == id).ExecuteDeleteAsync(ct);

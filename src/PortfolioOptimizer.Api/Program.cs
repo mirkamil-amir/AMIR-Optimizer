@@ -34,7 +34,10 @@ builder.Services
     .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
+builder.Services.AddScoped<HttpCurrentUser>();
+// The request's user; in a background job scope, the user a job acts for (Matrix Pilot → its owner, BackgroundActor).
+builder.Services.AddScoped<ICurrentUser>(sp => new ActorAwareCurrentUser(sp.GetRequiredService<HttpCurrentUser>(),
+    sp.GetRequiredService<PortfolioOptimizer.Application.Common.BackgroundActor>()));
 builder.Services.AddScoped<IAuthorizationHandler, ApprovedAccountHandler>();
 builder.Services.AddAuthorization(Policies.Configure);
 builder.Services.AddAntiforgery(o =>

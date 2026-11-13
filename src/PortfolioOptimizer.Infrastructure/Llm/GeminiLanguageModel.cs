@@ -41,12 +41,12 @@ public sealed class GeminiLanguageModel : ILanguageModel
     public async Task<LlmResponse> GenerateAsync(LlmRequest request, CancellationToken ct)
     {
         if (_key is null) throw new LanguageModelException(LlmFailure.Unavailable, "No Gemini API key is configured.");
-        var body = BuildRequest(request, _options.Effort);
+        var body = BuildRequest(request, request.Effort ?? _options.Effort);
         var sw = Stopwatch.StartNew();
         for (var attempt = 0; ; attempt++)
         {
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            timeout.CancelAfter(TimeSpan.FromSeconds(_options.TimeoutSeconds));
+            timeout.CancelAfter(request.Timeout ?? TimeSpan.FromSeconds(_options.TimeoutSeconds));
             HttpResponseMessage response;
             try
             {
@@ -85,8 +85,11 @@ public sealed class GeminiLanguageModel : ILanguageModel
                 throw response.StatusCode switch
                 {
                     HttpStatusCode.TooManyRequests => new LanguageModelException(LlmFailure.RateLimited, "The language-model provider is rate limiting requests (quota)."),
-                    HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden => new LanguageModelException(LlmFailure.ProviderError, "The language-model provider rejected the API key."),
-                    HttpStatusCode.NotFound => new LanguageModelException(LlmFailure.ProviderError, $"The model {Model} is not available for this key."),
+                    HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden => new LanguageModelException(LlmFailure.Unauthorized, "The language-model provider rejected the API key."),
+                    // Gemini answers an invalid or expired key with 400 and the reason API_KEY_INVALID (only that token is read from the body).
+                    HttpStatusCode.BadRequest when text.Contains("API_KEY_INVALID", StringComparison.Ordinal) =>
+                        new LanguageModelException(LlmFailure.Unauthorized, "The language-model provider rejected the API key (invalid or expired)."),
+                    HttpStatusCode.NotFound => new LanguageModelException(LlmFailure.ModelNotFound, $"The model {Model} is not available for this key."),
                     _ => new LanguageModelException(LlmFailure.ProviderError, $"The language-model provider returned HTTP {status}."),
                 };
             }

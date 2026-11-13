@@ -240,16 +240,38 @@ public sealed class TradingService(
     private static decimal AffordableQuantity(decimal cash, decimal price, PortfolioSettings s) =>
         TradeProposalCalculator.MaxAffordable(cash, price, s.AllowFractionalShares, s.TransactionCostBps, s.MinimumFee);
 
-    private async Task<TradeProposalDto> CreateProposalAsync(Guid portfolioId, Guid? runId, Dictionary<int, double> targets, PortfolioSettings settings, CancellationToken ct)
+    /// <summary>
+    /// The orders a set of target weights would produce right now – the same calculation as a proposal, without storing
+    /// anything (Matrix Pilot's trade estimate). <paramref name="portfolio"/> must already be loaded owner-scoped.
+    /// </summary>
+    public async Task<ProposalComputation> PreviewAsync(Portfolio portfolio, Dictionary<int, double> targets, CancellationToken ct) =>
+        (await ComputeAsync(portfolio, targets, portfolio.Settings, ct)).Computation;
+
+    /// <summary>
+    /// A pending proposal for explicit target weights by symbol (Matrix Pilot's validated decision). Same checks as a
+    /// rebalance preview; <paramref name="note"/> records where the targets came from.
+    /// </summary>
+    public async Task<TradeProposalDto> CreateForTargetsAsync(Guid portfolioId, IReadOnlyDictionary<string, double> weights, string note, CancellationToken ct)
     {
         var portfolio = await portfolios.LoadAsync(portfolioId, ct);
         portfolio.EnsureActive();
+        var symbols = weights.Keys.Select(Asset.NormalizeSymbol).ToList();
+        var assets = await db.Assets.AsNoTracking().Where(a => symbols.Contains(a.Symbol)).ToDictionaryAsync(a => a.Symbol, ct);
+        var unknown = symbols.Except(assets.Keys).ToList();
+        if (unknown.Count > 0) throw new ValidationException("targetWeights", $"Unknown asset(s): {string.Join(", ", unknown)}.");
+        if (weights.Values.Any(v => v < 0 || !double.IsFinite(v)) || weights.Values.Sum() > 1 + 1e-9)
+            throw new ValidationException("targetWeights", "Weights must be non-negative and sum to at most 1.");
+        var targets = weights.ToDictionary(kv => assets[Asset.NormalizeSymbol(kv.Key)].Id, kv => kv.Value);
+        return await CreateProposalAsync(portfolioId, null, targets, portfolio.Settings, ct, note);
+    }
+
+    private async Task<(ProposalComputation Computation, PortfolioValuation Valuation)> ComputeAsync(Portfolio portfolio, Dictionary<int, double> targets,
+        PortfolioSettings settings, CancellationToken ct)
+    {
         var held = portfolio.Holdings.Where(h => h.Quantity > 0).ToDictionary(h => h.AssetId, h => h.Quantity);
         var ids = targets.Keys.Union(held.Keys).ToList();
         var assets = await db.Assets.AsNoTracking().Where(a => ids.Contains(a.Id)).ToDictionaryAsync(a => a.Id, ct);
-        // Prices in each stock's own currency, converted to the portfolio currency at the rate of the price date.
         var valuation = await valuations.ValueAsync(portfolio, null, ct, ids);
-
         var computation = TradeProposalCalculator.Compute(new ProposalParameters(
             portfolio.CashBalance,
             ids.Select(id =>
@@ -264,37 +286,53 @@ public sealed class TradingService(
             settings.TransactionCostBps,
             settings.MinimumFee,
             held.Count > 0 ? settings.RebalanceDriftThreshold : 0));
+        return (computation, valuation);
+    }
 
-        var proposal = new TradeProposal
-        {
-            Id = Guid.NewGuid(),
-            PortfolioId = portfolioId,
-            OptimizationRunId = runId,
-            CreatedAtUtc = clock.GetUtcNow().UtcDateTime,
-            Status = ProposalStatus.Pending,
-            AllowFractionalShares = settings.AllowFractionalShares,
-            PortfolioValue = computation.PortfolioValue,
-            CashBefore = computation.CashBefore,
-            EstimatedCashAfter = computation.CashAfter,
-            EstimatedCosts = computation.TotalCosts,
-            TargetCashWeight = computation.TargetCashWeight,
-            PortfolioVersion = portfolio.Version,
-            Notes = [.. computation.Notes],
-            Lines = computation.Lines.OrderByDescending(l => l.TargetWeight).ThenBy(l => l.Symbol).ToList(),
-        };
-        var foreign = valuation.Positions.Values.Where(v => v.Fx is not null).Select(v => v.Currency).Distinct().Order().ToList();
-        if (foreign.Count > 0)
-            proposal.Notes.Insert(0, $"Prices in {string.Join(", ", foreign)} are converted to {portfolio.BaseCurrency} with the reference rate of each price date. " +
-                                     "Executing buys or sells them through a SIMULATED currency exchange of the portfolio cash; no real money is converted.");
-        if (valuation.Positions.Values.Any(v => v.Price?.IsSimulated == true))
-            proposal.Notes.Insert(0, "Prices are SIMULATED and do not reflect real markets.");
-
+    private async Task<TradeProposalDto> CreateProposalAsync(Guid portfolioId, Guid? runId, Dictionary<int, double> targets, PortfolioSettings settings,
+        CancellationToken ct, string? note = null)
+    {
+        var portfolio = await portfolios.LoadAsync(portfolioId, ct);
+        portfolio.EnsureActive();
+        var (computation, valuation) = await ComputeAsync(portfolio, targets, settings, ct);
+        var proposal = NewProposal(portfolio, runId, computation);
+        if (note is not null) proposal.Notes.Insert(0, note);
+        AddValuationNotes(proposal, valuation, portfolio.BaseCurrency);
         await db.TradeProposals.Where(p => p.PortfolioId == portfolioId && p.Status == ProposalStatus.Pending)
             .ExecuteUpdateAsync(s => s.SetProperty(p => p.Status, ProposalStatus.Superseded), ct);
         db.TradeProposals.Add(proposal);
         await db.SaveChangesAsync(ct);
         return ToDto(proposal);
     }
+
+    private TradeProposal NewProposal(Portfolio portfolio, Guid? runId, ProposalComputation computation) => new()
+    {
+        Id = Guid.NewGuid(),
+        PortfolioId = portfolio.Id,
+        OptimizationRunId = runId,
+        CreatedAtUtc = clock.GetUtcNow().UtcDateTime,
+        Status = ProposalStatus.Pending,
+        AllowFractionalShares = portfolio.Settings.AllowFractionalShares,
+        PortfolioValue = computation.PortfolioValue,
+        CashBefore = computation.CashBefore,
+        EstimatedCashAfter = computation.CashAfter,
+        EstimatedCosts = computation.TotalCosts,
+        TargetCashWeight = computation.TargetCashWeight,
+        PortfolioVersion = portfolio.Version,
+        Notes = [.. computation.Notes],
+        Lines = computation.Lines.OrderByDescending(l => l.TargetWeight).ThenBy(l => l.Symbol).ToList(),
+    };
+
+    private static void AddValuationNotes(TradeProposal proposal, PortfolioValuation valuation, string baseCurrency)
+    {
+        var foreign = valuation.Positions.Values.Where(v => v.Fx is not null).Select(v => v.Currency).Distinct().Order().ToList();
+        if (foreign.Count > 0)
+            proposal.Notes.Insert(0, $"Prices in {string.Join(", ", foreign)} are converted to {baseCurrency} with the reference rate of each price date. " +
+                                     "Executing buys or sells them through a SIMULATED currency exchange of the portfolio cash; no real money is converted.");
+        if (valuation.Positions.Values.Any(v => v.Price?.IsSimulated == true))
+            proposal.Notes.Insert(0, "Prices are SIMULATED and do not reflect real markets.");
+    }
+
 
     private static TradeProposalDto ToDto(TradeProposal p)
     {

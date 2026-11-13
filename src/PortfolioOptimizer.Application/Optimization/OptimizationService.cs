@@ -78,8 +78,9 @@ public sealed class OptimizationService(
     /// <see cref="OptimizationRun.PortfolioId"/> stays empty until the run is saved to a portfolio.
     /// </summary>
     /// <param name="analysisCurrency">Currency of the analysis when there is no portfolio (the portfolio's base currency wins).</param>
+    /// <param name="asOf">Last price date the estimate may use (Matrix Pilot's decision date); null = the latest stored prices.</param>
     public async Task<(OptimizationRun Run, Dictionary<string, Asset> Assets)> EvaluateAsync(Portfolio? portfolio, Guid ownerId, PortfolioSettings settings,
-        int frontierPoints, CancellationToken ct, string? analysisCurrency = null)
+        int frontierPoints, CancellationToken ct, string? analysisCurrency = null, DateOnly? asOf = null)
     {
         var sw = Stopwatch.StartNew();
         var app = await prices.SettingsAsync(ct);
@@ -110,7 +111,7 @@ public sealed class OptimizationService(
         }
         var assets = await db.Assets.AsNoTracking().Where(a => universe.Contains(a.Symbol)).ToDictionaryAsync(a => a.Symbol, ct);
 
-        var conversion = await fx.GetSeriesInCurrencyAsync(universe, source, null, null, run.Currency, ct, settings.LookbackDays + 1);
+        var conversion = await fx.GetSeriesInCurrencyAsync(universe, source, null, asOf, run.Currency, ct, settings.LookbackDays + 1);
         var series = conversion.PriceSeries();
         run.FxSource = conversion.FxSource;
         diagnostics.AddRange(conversion.Notes);

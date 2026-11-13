@@ -2,6 +2,38 @@
 
 Short records of decisions that are not obvious from the code. Newest first. Format: context → decision → consequences.
 
+## D-61 Matrix Pilot: rules first, fit until it fits, and an unconstrained portfolio for comparison (2026-11-13)
+**Context:** in the first real cycle (Gemini 3.5 Flash) the model proposed 98 % in US stocks against a 70 % US cap, kept it
+after the reviewer named the breach, and was blocked – it had no way to test a portfolio against the rules before
+deciding, and a blocked decision had no second chance. The owner asked that the AI read the restrictions first, then the
+market, fit the portfolio to every rule – going back until it fits – and, in parallel, build a portfolio of its own idea
+without any restriction, justify it, and compare the two. **Decision:** stages RULES (restate the mandate before any market
+data) → RESEARCH (with `check_allocation`, the same validator as the final check) → CONSTRUCT → FIT (breaches go back to the
+model with proposed and allowed values, at most 5 revisions; a HOLD that keeps a breaching portfolio is a breach) →
+CRITIQUE → FINALIZE (→ FIT) → VALIDATE (final, independent; BLOCKED if still breaking) → UNCONSTRAINED (any listing, any
+weight, long-only, justified, never traded) → COMPARE (platform figures for both, model text validated). This replaces
+D-60's "no second chance"; the measurement stays honest because the first proposal, every breach and revision are
+journaled and counted (fitted first time / revisions / blocked). **Consequences:** more model calls per cycle (about 6–20);
+migration `MatrixPilotFitAndShadow` (initial decision, revisions, unconstrained portfolio, comparison); the scorecard
+compares the mandate targets with the unconstrained portfolio as hypothetical fixed-weight holdings (F-PILOT-005).
+
+## D-60 Matrix Pilot: a language model decides a paper portfolio, the platform controls it (2026-11-13)
+**Context:** the owner asked for an AI portfolio manager that controls a portfolio end to end – choosing securities,
+weights and rebalancing – to find out whether an AI can actually manage a portfolio with professional infrastructure.
+Until now the rule was that the language model never produces numbers, weights or decisions (D-21). **Decision:** one
+exception, scoped tightly: in Matrix Pilot (AI Probe › Matrix Pilot) the model is the decision-maker of one paper
+portfolio per pilot. It may use only READ, ANALYZE and SIMULATE tools over real services; every number it sees comes from
+the platform; its structured decision passes an independent validator and the owner's versioned mandate before the
+existing proposal and ledger book it (simulated). Fail closed: any model, data or system failure ends the cycle without
+a trade. One cycle per period (unique key), a lease per portfolio, kill switch and confirmed activation/resume by the
+owner only, a journal of every step, no hidden reasoning stored, news/description text never sent to the model, forward-
+only live record from the activation baseline (no backtest of the pilot – a model may know past outcomes). The pilot can
+use its own provider/model (`MatrixPilot:Provider`/`Model`), recorded on every cycle. Cycles run on their own queue and
+worker. The research assistant keeps D-21 unchanged. **Consequences:** docs/matrix-pilot.md; five tables (migration
+`MatrixPilot`); background jobs can act for a stored owner (`BackgroundActor`, never inside a request) so owner-scoped
+services need no bypass; `TradingService.PreviewAsync`/`CreateForTargetsAsync` and `OptimizationService.EvaluateAsync(asOf)`
+are shared with the pilot. Without a configured model the pilot cannot be switched on; it never falls back to fixed rules.
+
 ## D-59 The app thinks with a dot wave, not with the logo (2026-11-11)
 **Context:** the owner did not want the logo to move while the app works or to stand in for loading indicators; the logo
 belongs in the top-left corner. **Decision:** work in progress (`MatrixLoader` in buttons, `WorkingPanel` for downloads,

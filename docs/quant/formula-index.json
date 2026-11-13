@@ -1212,6 +1212,100 @@
         "quant-formulas"
       ],
       "verified": "2026-11-01"
+    },
+    {
+      "id": "F-PILOT-001",
+      "name": "Trailing metrics of a listing",
+      "status": "Correct under documented assumptions",
+      "severity": null,
+      "code": [
+        "src/PortfolioOptimizer.Application/Pilot/PilotAnalytics.cs#Compute"
+      ],
+      "tests": [
+        "PilotMetricsAndArgsTests.TrailingMetrics_UseTheRightWindows",
+        "MatrixPilotTests.ToolSeries_EndAtTheDecisionDate"
+      ],
+      "skills": [
+        "quant-formulas"
+      ],
+      "verified": "2026-11-13"
+    },
+    {
+      "id": "F-PILOT-002",
+      "name": "Risk of a candidate allocation",
+      "status": "Correct under documented assumptions",
+      "severity": null,
+      "code": [
+        "src/PortfolioOptimizer.Application/Pilot/PilotAnalytics.cs#AnalyzeAsync",
+        "src/PortfolioOptimizer.Application/Pilot/PilotAnalytics.cs#Exposures"
+      ],
+      "tests": [
+        "MatrixPilotTests.ToolSeries_EndAtTheDecisionDate",
+        "MatrixPilotTests.EndToEnd_ConfirmedActivation_AiDecides_ValidatorPasses_TradesBooked_JournalAndLiveRecord"
+      ],
+      "skills": [
+        "quant-formulas",
+        "optimization-backtesting"
+      ],
+      "verified": "2026-11-13"
+    },
+    {
+      "id": "F-PILOT-003",
+      "name": "Trade estimate and turnover of a decision",
+      "status": "Correct under documented assumptions",
+      "severity": null,
+      "code": [
+        "src/PortfolioOptimizer.Application/Pilot/PilotAnalytics.cs#EstimateTradesAsync",
+        "src/PortfolioOptimizer.Application/Trading/TradingService.cs#PreviewAsync",
+        "src/PortfolioOptimizer.Application/Pilot/PilotDecisionValidator.cs#Validate"
+      ],
+      "tests": [
+        "PilotDecisionValidatorTests.TurnoverRiskAndMinimumTrade_AreEnforced",
+        "MatrixPilotTests.MandateViolation_IsBlocked_AiProposalKeptNextToTheLimit_NothingTraded"
+      ],
+      "skills": [
+        "portfolio-accounting"
+      ],
+      "verified": "2026-11-13"
+    },
+    {
+      "id": "F-PILOT-004",
+      "name": "Live-record evaluation measures",
+      "status": "Correct under documented assumptions",
+      "severity": null,
+      "code": [
+        "src/PortfolioOptimizer.Application/Pilot/PilotService.cs#EvaluateAsync",
+        "src/PortfolioOptimizer.Application/Pilot/PilotService.cs#HitRateAsync",
+        "src/PortfolioOptimizer.Application/Pilot/PilotService.cs#Forward",
+        "src/PortfolioOptimizer.Application/Pilot/PilotService.cs#LiveForward"
+      ],
+      "tests": [
+        "PilotMetricsAndArgsTests.ForwardMoves_StartAtTheDecisionClose_AndStayBlankUntilThePeriodHasPassed",
+        "PilotMetricsAndArgsTests.LiveForward_IsTheChangeOfTheWealthIndex_NotADifferenceOfReturns",
+        "MatrixPilotTests.EndToEnd_ConfirmedActivation_AiDecides_ValidatorPasses_TradesBooked_JournalAndLiveRecord"
+      ],
+      "skills": [
+        "quant-formulas"
+      ],
+      "verified": "2026-11-13"
+    },
+    {
+      "id": "F-PILOT-005",
+      "name": "Hypothetical move of fixed weights (mandate targets vs unconstrained portfolio)",
+      "status": "Correct under documented assumptions",
+      "severity": null,
+      "code": [
+        "src/PortfolioOptimizer.Application/Pilot/PilotService.cs#Hypothetical",
+        "src/PortfolioOptimizer.Application/Pilot/PilotEngine.cs#CompareAsync"
+      ],
+      "tests": [
+        "PilotMetricsAndArgsTests.Hypothetical_IsTheWeightedMoveOfFixedWeights_CashEarnsNothing_AndBlankUntilEveryHoldingHasData",
+        "MatrixPilotTests.UnconstrainedPortfolio_MayIgnoreEveryLimit_IsComparedAndNeverTraded"
+      ],
+      "skills": [
+        "quant-formulas"
+      ],
+      "verified": "2026-11-13"
     }
   ]
 }

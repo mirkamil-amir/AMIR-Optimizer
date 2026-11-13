@@ -15,7 +15,9 @@
     "src/PortfolioOptimizer.Application/MarketData/PriceHistory.cs",
     "src/PortfolioOptimizer.Application/News/EventPriceComparison.cs",
     "src/PortfolioOptimizer.Domain/Portfolio.cs",
-    "frontend/portfolio-dashboard/src/lib/worked-examples.ts"
+    "frontend/portfolio-dashboard/src/lib/worked-examples.ts",
+    "src/PortfolioOptimizer.Application/Pilot/PilotAnalytics.cs",
+    "src/PortfolioOptimizer.Application/Pilot/PilotDecisionValidator.cs"
   ],
   "noFormulaFiles": {
     "src/PortfolioOptimizer.Optimization/MetricValue.cs": "result wrapper for unavailable metrics; no calculation",

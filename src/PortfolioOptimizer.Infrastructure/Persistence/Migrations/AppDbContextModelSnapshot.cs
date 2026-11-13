@@ -855,6 +855,431 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                     b.ToTable("MarketIndices");
                 });
 
+            modelBuilder.Entity("PortfolioOptimizer.Domain.MatrixPilot", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ActiveCycleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ActiveCycleStartedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("BaselineAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("BaselineJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<int>("ConsecutiveFailures")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Effort")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<DateTime?>("EnabledAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Frequency")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime?>("LastDecisionAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("LastSuccessfulDecisionAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("MandateVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Model")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime?>("NextDecisionAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PauseReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime?>("PausedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("PortfolioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PortfolioId")
+                        .IsUnique();
+
+                    b.HasIndex("OwnerId", "Status");
+
+                    b.HasIndex("Status", "NextDecisionAtUtc");
+
+                    b.ToTable("MatrixPilots");
+                });
+
+            modelBuilder.Entity("PortfolioOptimizer.Domain.MatrixPilotCycle", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("AsOfUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ComparisonJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTime?>("CompletedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ContextJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<Guid>("CorrelationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CritiqueJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("CycleKey")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<double>("DataMs")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("DecisionJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("Effort")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<string>("ExecutedJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<double>("ExecutionMs")
+                        .HasColumnType("double precision");
+
+                    b.Property<decimal>("Fees")
+                        .HasPrecision(28, 6)
+                        .HasColumnType("numeric(28,6)");
+
+                    b.Property<int>("FitRevisions")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("InitialDecisionJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<int>("InputTokens")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("MandateVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Model")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("ModelCalls")
+                        .HasColumnType("integer");
+
+                    b.Property<double>("ModelMs")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("ModelReported")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("NarrativeJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("NarrativeSource")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("OutcomeReason")
+                        .HasMaxLength(1500)
+                        .HasColumnType("character varying(1500)");
+
+                    b.Property<int>("OutputTokens")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Phase")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid>("PilotId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("PortfolioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PromptVersion")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<Guid?>("ProposalId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("SchemaVersion")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("ShadowJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTime?>("StartedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("ToolCalls")
+                        .HasColumnType("integer");
+
+                    b.Property<double>("ToolMs")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("ToolsVersion")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<double>("TotalMs")
+                        .HasColumnType("double precision");
+
+                    b.Property<Guid?>("TradeBatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("TradesBooked")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Trigger")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("ValidationJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<double>("ValidationMs")
+                        .HasColumnType("double precision");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Outcome");
+
+                    b.HasIndex("PilotId", "CreatedAtUtc");
+
+                    b.HasIndex("PilotId", "CycleKey")
+                        .IsUnique();
+
+                    b.ToTable("MatrixPilotCycles");
+                });
+
+            modelBuilder.Entity("PortfolioOptimizer.Domain.MatrixPilotEvent", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("Actor")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid?>("ActorUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("AtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CorrelationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CycleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("NewStatus")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid>("PilotId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PreviousStatus")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(600)
+                        .HasColumnType("character varying(600)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PilotId", "Id");
+
+                    b.ToTable("MatrixPilotEvents");
+                });
+
+            modelBuilder.Entity("PortfolioOptimizer.Domain.MatrixPilotMandateVersion", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("ChangesJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("MandateJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<Guid>("PilotId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PilotId", "Version")
+                        .IsUnique();
+
+                    b.ToTable("MatrixPilotMandates");
+                });
+
+            modelBuilder.Entity("PortfolioOptimizer.Domain.MatrixPilotStep", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("AtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CycleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<double>("DurationMs")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("InputJson")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("OutputHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("OutputJson")
+                        .HasColumnType("text");
+
+                    b.Property<int>("Sequence")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Summary")
+                        .IsRequired()
+                        .HasMaxLength(1100)
+                        .HasColumnType("character varying(1100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CycleId", "Sequence")
+                        .IsUnique();
+
+                    b.ToTable("MatrixPilotSteps");
+                });
+
             modelBuilder.Entity("PortfolioOptimizer.Domain.MlExperiment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2718,6 +3143,57 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                     b.Navigation("Asset");
                 });
 
+            modelBuilder.Entity("PortfolioOptimizer.Domain.MatrixPilot", b =>
+                {
+                    b.HasOne("PortfolioOptimizer.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PortfolioOptimizer.Domain.Portfolio", null)
+                        .WithMany()
+                        .HasForeignKey("PortfolioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("PortfolioOptimizer.Domain.MatrixPilotCycle", b =>
+                {
+                    b.HasOne("PortfolioOptimizer.Domain.MatrixPilot", null)
+                        .WithMany()
+                        .HasForeignKey("PilotId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("PortfolioOptimizer.Domain.MatrixPilotEvent", b =>
+                {
+                    b.HasOne("PortfolioOptimizer.Domain.MatrixPilot", null)
+                        .WithMany()
+                        .HasForeignKey("PilotId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("PortfolioOptimizer.Domain.MatrixPilotMandateVersion", b =>
+                {
+                    b.HasOne("PortfolioOptimizer.Domain.MatrixPilot", null)
+                        .WithMany()
+                        .HasForeignKey("PilotId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("PortfolioOptimizer.Domain.MatrixPilotStep", b =>
+                {
+                    b.HasOne("PortfolioOptimizer.Domain.MatrixPilotCycle", null)
+                        .WithMany("Steps")
+                        .HasForeignKey("CycleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("PortfolioOptimizer.Domain.MlExperiment", b =>
                 {
                     b.HasOne("PortfolioOptimizer.Infrastructure.Identity.ApplicationUser", null)
@@ -3028,6 +3504,11 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("PortfolioOptimizer.Domain.MarketIndex", b =>
                 {
                     b.Navigation("Members");
+                });
+
+            modelBuilder.Entity("PortfolioOptimizer.Domain.MatrixPilotCycle", b =>
+                {
+                    b.Navigation("Steps");
                 });
 
             modelBuilder.Entity("PortfolioOptimizer.Domain.MlExperiment", b =>

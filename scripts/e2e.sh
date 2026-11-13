@@ -23,6 +23,8 @@ export NEWS_STATISTICS_ENABLED=false NEWS_SEC_CONTACT= NEWS_SCHEDULE_ENABLED=fal
 export PROFILES_WIKIPEDIA_ENABLED=false PROFILES_MOCK_ENABLED=true
 # Research assistant: deterministic rules only (no language model, no key).
 export AGENT_LLM_PROVIDER=None ANTHROPIC_API_KEY=
+# Matrix Pilot: the deterministic test script (provider Mock, labelled as a test model), cycles started by the specs only.
+export MATRIX_PILOT_PROVIDER=Mock MATRIX_PILOT_MODEL= MATRIX_PILOT_SCHEDULER=false
 
 COMPOSE="${COMPOSE:-podman compose}"
 cleanup() {

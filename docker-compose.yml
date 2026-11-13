@@ -66,6 +66,10 @@ services:
       # Empty model = the provider's default. The key comes from LLM_API_KEY (any provider) or ANTHROPIC_API_KEY.
       Agent__Llm__Model: ${AGENT_LLM_MODEL:-}
       Agent__Llm__ApiKey: ${LLM_API_KEY:-${ANTHROPIC_API_KEY:-}}
+      # Matrix Pilot (docs/matrix-pilot.md): its own model provider and model id (empty = the research assistant's model above).
+      MatrixPilot__Provider: ${MATRIX_PILOT_PROVIDER:-}
+      MatrixPilot__Model: ${MATRIX_PILOT_MODEL:-}
+      MatrixPilot__SchedulerEnabled: ${MATRIX_PILOT_SCHEDULER:-true}
       Admin__Email: ${ADMIN_EMAIL:-}
       Admin__Password: ${ADMIN_PASSWORD:-}
       ModelArtifacts__RootPath: /app/artifacts

@@ -11,6 +11,8 @@ import type {
   FxInfo, FxRate, FxHistory, FxBoard, ResearchSession, ResearchSessionSummary, UpdateBriefRequest, HypothesisComparison, CompanyContext, RefinementChange,
   PortfolioOverview, PortfolioTransaction, RecordTransactionRequest, MarketDataSummary, DataCheck, DataCheckRequest, DataDownload,
   PortfolioStrategy, StrategyBacktestRequest,
+  Pilot, PilotCycleDetail, PilotCycleSummary, PilotComparison, PilotEvent, PilotFrequency, PilotHome, PilotMandate, PilotMandateVersion, PilotOverview,
+  PilotScorecard, PilotModelCheck,
 } from './types'
 
 const V1 = '/api/v1'
@@ -1065,3 +1067,95 @@ export const checkData = (request: DataCheckRequest) => api.post<DataCheck>(`${V
 export const downloadMissingData = (request: DataCheckRequest) => api.post<DataDownload>(`${V1}/market-data/download-missing`, request)
 
 export const getSyncJob = (id: string) => api.get<SyncJob>(`${V1}/market-data/jobs/${id}`)
+
+// ================================================================ Matrix Pilot
+
+const pilotKey = (portfolioId: string) => ['pilot', portfolioId] as const
+
+/** Refreshes while a cycle runs (the journal fills step by step), otherwise on demand. */
+const whileRunning = (running: boolean | undefined) => (running ? 4000 : false)
+
+export const usePilotHome = () => useQuery({ queryKey: ['pilots'] as const, queryFn: () => api.get<PilotHome>(`${V1}/pilots`) })
+
+export const usePilot = (portfolioId: string | undefined) =>
+  useQuery({
+    queryKey: pilotKey(portfolioId ?? ''),
+    queryFn: () => api.get<PilotOverview>(`${V1}/portfolios/${portfolioId}/pilot`),
+    enabled: !!portfolioId,
+    refetchInterval: (q) => whileRunning(q.state.data?.pilot?.displayStatus === 'RUNNING'),
+  })
+
+export const usePilotCycles = (portfolioId: string | undefined, enabled: boolean, running?: boolean) =>
+  useQuery({
+    queryKey: [...pilotKey(portfolioId ?? ''), 'cycles'] as const,
+    queryFn: () => api.get<PagedResult<PilotCycleSummary>>(`${V1}/portfolios/${portfolioId}/pilot/cycles?pageSize=100`),
+    enabled: !!portfolioId && enabled,
+    refetchInterval: whileRunning(running),
+  })
+
+export const usePilotCycle = (portfolioId: string | undefined, cycleId: string | undefined, running?: boolean) =>
+  useQuery({
+    queryKey: [...pilotKey(portfolioId ?? ''), 'cycle', cycleId ?? ''] as const,
+    queryFn: () => api.get<PilotCycleDetail>(`${V1}/portfolios/${portfolioId}/pilot/cycles/${cycleId}`),
+    enabled: !!portfolioId && !!cycleId,
+    refetchInterval: whileRunning(running),
+  })
+
+export const usePilotEvents = (portfolioId: string | undefined, enabled: boolean) =>
+  useQuery({
+    queryKey: [...pilotKey(portfolioId ?? ''), 'events'] as const,
+    queryFn: () => api.get<PagedResult<PilotEvent>>(`${V1}/portfolios/${portfolioId}/pilot/events?pageSize=200`),
+    enabled: !!portfolioId && enabled,
+  })
+
+export const usePilotMandates = (portfolioId: string | undefined, enabled: boolean) =>
+  useQuery({
+    queryKey: [...pilotKey(portfolioId ?? ''), 'mandates'] as const,
+    queryFn: () => api.get<PilotMandateVersion[]>(`${V1}/portfolios/${portfolioId}/pilot/mandates`),
+    enabled: !!portfolioId && enabled,
+  })
+
+export const usePilotComparison = (portfolioId: string | undefined, other: string | undefined, enabled: boolean) =>
+  useQuery({
+    queryKey: [...pilotKey(portfolioId ?? ''), 'comparison', other ?? ''] as const,
+    queryFn: () => api.get<PilotComparison>(`${V1}/portfolios/${portfolioId}/pilot/comparison${other ? `?other=${other}` : ''}`),
+    enabled: !!portfolioId && enabled,
+  })
+
+export const usePilotScorecard = (portfolioId: string | undefined, enabled: boolean) =>
+  useQuery({
+    queryKey: [...pilotKey(portfolioId ?? ''), 'scorecard'] as const,
+    queryFn: () => api.get<PilotScorecard>(`${V1}/portfolios/${portfolioId}/pilot/scorecard`),
+    enabled: !!portfolioId && enabled,
+  })
+
+/** Every pilot action invalidates the pilot's queries (status, journal, events) and the AI Probe list. */
+function usePilotAction<TArgs, TResult>(portfolioId: string, call: (args: TArgs) => Promise<TResult>) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: call,
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: pilotKey(portfolioId) })
+      qc.invalidateQueries({ queryKey: ['pilots'] })
+    },
+  })
+}
+
+export const useCreatePilot = (portfolioId: string) =>
+  usePilotAction(portfolioId, (body: { mandate: PilotMandate; frequency: PilotFrequency; effort: string }) => api.post<Pilot>(`${V1}/portfolios/${portfolioId}/pilot`, body))
+export const useEnablePilot = (portfolioId: string) =>
+  usePilotAction(portfolioId, (body: { confirm: boolean; provider: string; model: string }) => api.post<Pilot>(`${V1}/portfolios/${portfolioId}/pilot/enable`, body))
+export const useResumePilot = (portfolioId: string) =>
+  usePilotAction(portfolioId, (body: { confirm: boolean; provider: string; model: string }) => api.post<Pilot>(`${V1}/portfolios/${portfolioId}/pilot/resume`, body))
+export const useKillPilot = (portfolioId: string) =>
+  usePilotAction(portfolioId, (reason: string) => api.post<Pilot>(`${V1}/portfolios/${portfolioId}/pilot/kill`, { reason }))
+export const useDisablePilot = (portfolioId: string) =>
+  usePilotAction(portfolioId, (reason: string) => api.post<Pilot>(`${V1}/portfolios/${portfolioId}/pilot/disable`, { reason }))
+export const useUpdatePilotMandate = (portfolioId: string) =>
+  usePilotAction(portfolioId, (body: { mandate: PilotMandate; frequency: PilotFrequency; effort: string; reason: string; confirm: boolean; adoptConfiguredModel: boolean }) =>
+    api.put<Pilot>(`${V1}/portfolios/${portfolioId}/pilot/mandate`, body))
+export const useRunPilot = (portfolioId: string) =>
+  usePilotAction(portfolioId, () => api.post<PilotCycleSummary>(`${V1}/portfolios/${portfolioId}/pilot/run`, { confirm: true }))
+
+/** One tiny call to the pilot's model (no portfolio data): is the key accepted? */
+export const useCheckPilotModel = () => useMutation({ mutationFn: () => api.post<PilotModelCheck>(`${V1}/pilots/model-check`) })

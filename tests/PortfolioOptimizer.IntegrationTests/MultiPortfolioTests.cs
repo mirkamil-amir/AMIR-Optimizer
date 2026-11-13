@@ -339,9 +339,16 @@ public sealed class MultiPortfolioTests(MultiPortfolioTests.Shared shared) : ICl
         var b = await Perf(withFlows);
         var c = await Perf(withDividend);
         Assert.NotNull(a.TotalReturn.Value);
-        // Value jumps by ~1,000,000 but the time-weighted return barely differs (only AAPL's weight changes).
+        // Value jumps by ~1,000,000 but the flows are not returns: counting them would show thousands of percent.
         Assert.True(b.Series[^1].Value > 500_000);
-        Assert.InRange(b.TotalReturn.Value!.Value - a.TotalReturn.Value!.Value, -0.01, 0.01);
+        Assert.InRange(b.TotalReturn.Value!.Value, -0.5, 0.5);
+        // What may differ is only AAPL's weight (a few % in the plain portfolio, ~0 % after the deposit), so the gap is at most
+        // AAPL's largest weight times its largest move – derived from the data, because the simulated prices depend on the date.
+        var aaplStart = a.Series[0].Value - a.Series[0].Cash!.Value;
+        var maxWeight = a.Series.Max(s => (s.Value - s.Cash!.Value) / s.Value);
+        var maxMove = a.Series.Max(s => Math.Abs((s.Value - s.Cash!.Value) / aaplStart - 1));
+        var bound = 2 * maxWeight * maxMove + 0.002;
+        Assert.InRange(b.TotalReturn.Value!.Value - a.TotalReturn.Value!.Value, -bound, bound);
         // The deposit booked on a Saturday is applied (not dropped) and shows in the cash series.
         Assert.Equal(10_000d - (a.Series[0].Value - a.Series[0].Cash!.Value) + 500_000d, b.Series[^1].Cash!.Value, 2);
         // A dividend is income: about +1 % on a 10,000 portfolio.

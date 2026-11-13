@@ -1,5 +1,39 @@
 # Implementation status
 
+## 2026-11-13: Matrix Pilot – rules first, fit loop, unconstrained portfolio (AMIR-28, D-61)
+
+* Each cycle: the AI restates the mandate first (RULES), researches the market, tests candidates with `check_allocation`,
+  decides; breaches go back to it with proposed and allowed values until the portfolio fits (≤ 5 revisions, else BLOCKED).
+  Holding a portfolio that breaks the mandate counts as a breach.
+* The AI also builds its own unconstrained portfolio (any listing, weight, country; justified; never traded); the platform
+  compares both (risk, drawdown, concentration, country/sector mix, rules broken) and the scorecard tracks both
+  hypothetically 1 week / 1 month later.
+* Fixed on the way: the optimizer tool passed an invalid frontier size; model check before activation; retries of failed
+  periods; Gemini's invalid-key answer.
+
+## 2026-11-13: Matrix Pilot – AI-managed experimental portfolio (AMIR-28, D-60)
+
+* AI Probe has two parts: Research assistant and **Matrix Pilot** (`/research/pilot`, control room per portfolio). A
+  language model manages one paper portfolio: it researches with 13 platform tools (portfolio state, mandate, universe,
+  earlier decisions, news counts, existing Math/ML Optimizations, screening, security metrics, correlations, portfolio
+  risk, optimizer, trade estimate), decides holdings and weights or holds, and is challenged by a second reviewer call.
+  The platform validates the decision against the owner's versioned mandate, books it through the existing proposal and
+  ledger (simulated), journals every step and measures a forward-only live record from the activation baseline.
+* Controls: confirmed activation and resume, kill switch (also stops a running cycle before booking), one decision per
+  period, a lease per portfolio, fail closed (no fallback to rules), pause after a drawdown breach or three failures,
+  owner-only mandate changes with versions, model fixed per pilot (`MatrixPilot:Provider`/`Model` or the shared model).
+* Live record vs another portfolio and the benchmark in the control room and in the portfolio's Arena tab; decision
+  scorecard (1 day / 1 week / 1 month after each decision); evaluation counts by outcome.
+* Shared code: background jobs can act for a stored owner (`BackgroundActor`); `TradingService.PreviewAsync` /
+  `CreateForTargetsAsync`; `OptimizationService.EvaluateAsync(asOf)`; `LlmRequest` effort and timeout; own queue and
+  worker (`MatrixPilotWorker`). Migration `MatrixPilot` (five tables, additive).
+* Tested: unit 37 (`PilotUnitTests`), integration 20 (`MatrixPilotTests`, scripted model), Playwright `pilot.spec.ts`
+  (set up → confirm → decision → journal → refused second run → kill switch → audit → Arena live record) on the e2e stack;
+  full suites: unit 546, ML 42, integration 193/194 (the failure, `MultiPortfolioTests.Performance_RemovesDeposits…`,
+  fails identically on unmodified main – a date-dependent tolerance, not this change), Vitest 286, build, lint.
+* Not yet done: a cycle with a real model (no key on this machine), notifications (no channel exists), a side-by-side
+  model comparison page. See [limitations](limitations.md#matrix-pilot).
+
 ## 2026-11-11: new mark – a 3 × 3 grid of dots; the dot wave for work (AMIR-25, D-58, D-59)
 
 * The logo is a 3 × 3 grid of equal round dots – the thinking animation's dots at rest (chosen from the logo canvas,

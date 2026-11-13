@@ -56,6 +56,11 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<NewsStory> NewsStories => Set<NewsStory>();
     public DbSet<NewsStoryArticle> NewsStoryArticles => Set<NewsStoryArticle>();
     public DbSet<NewsStoryAsset> NewsStoryAssets => Set<NewsStoryAsset>();
+    public DbSet<MatrixPilot> MatrixPilots => Set<MatrixPilot>();
+    public DbSet<MatrixPilotMandateVersion> MatrixPilotMandates => Set<MatrixPilotMandateVersion>();
+    public DbSet<MatrixPilotCycle> MatrixPilotCycles => Set<MatrixPilotCycle>();
+    public DbSet<MatrixPilotStep> MatrixPilotSteps => Set<MatrixPilotStep>();
+    public DbSet<MatrixPilotEvent> MatrixPilotEvents => Set<MatrixPilotEvent>();
 
     /// <summary>ASP.NET Core data-protection keys (cookie and antiforgery encryption), shared across restarts and instances.</summary>
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
@@ -171,6 +176,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             e.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Cascade);
             e.HasMany(x => x.Events).WithOne().HasForeignKey(x => x.SessionId).OnDelete(DeleteBehavior.Cascade);
         });
+
+        ConfigureMatrixPilot(b);
 
         b.Entity<ResearchEvent>(e =>
         {
@@ -587,6 +594,88 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             e.HasIndex(x => x.CreatedAtUtc);
             e.HasIndex(x => new { x.OwnerId, x.CreatedAtUtc });
             e.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Restrict);
+        });
+    }
+
+    /// <summary>Matrix Pilot: one pilot per portfolio; versions, cycles, steps and events go with the pilot.</summary>
+    private static void ConfigureMatrixPilot(ModelBuilder b)
+    {
+        b.Entity<MatrixPilot>(e =>
+        {
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.Frequency).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.Provider).HasMaxLength(40);
+            e.Property(x => x.Model).HasMaxLength(100);
+            e.Property(x => x.Effort).HasMaxLength(10);
+            e.Property(x => x.PauseReason).HasMaxLength(500);
+            e.Property(x => x.BaselineJson).HasColumnType("jsonb");
+            e.Property(x => x.Version).IsConcurrencyToken();
+            e.HasIndex(x => x.PortfolioId).IsUnique();
+            e.HasIndex(x => new { x.OwnerId, x.Status });
+            e.HasIndex(x => new { x.Status, x.NextDecisionAtUtc });
+            // PortfolioService.DeleteAsync removes the pilot explicitly; the cascade also covers account deletion paths.
+            e.HasOne<Portfolio>().WithMany().HasForeignKey(x => x.PortfolioId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<MatrixPilotMandateVersion>(e =>
+        {
+            e.Property(x => x.Reason).HasMaxLength(500);
+            e.Property(x => x.ChangesJson).HasColumnType("jsonb");
+            e.Property(x => x.MandateJson).HasColumnType("jsonb");
+            e.HasIndex(x => new { x.PilotId, x.Version }).IsUnique();
+            e.HasOne<MatrixPilot>().WithMany().HasForeignKey(x => x.PilotId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<MatrixPilotCycle>(e =>
+        {
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.CycleKey).HasMaxLength(40);
+            e.Property(x => x.Trigger).HasMaxLength(20);
+            e.Property(x => x.Phase).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.Outcome).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.OutcomeReason).HasMaxLength(1500);
+            e.Property(x => x.Provider).HasMaxLength(40);
+            e.Property(x => x.Model).HasMaxLength(100);
+            e.Property(x => x.ModelReported).HasMaxLength(100);
+            e.Property(x => x.Effort).HasMaxLength(10);
+            e.Property(x => x.PromptVersion).HasMaxLength(40);
+            e.Property(x => x.ToolsVersion).HasMaxLength(40);
+            e.Property(x => x.SchemaVersion).HasMaxLength(40);
+            e.Property(x => x.NarrativeSource).HasMaxLength(20);
+            e.Property(x => x.Fees).HasPrecision(28, 6);
+            foreach (var json in new[] { nameof(MatrixPilotCycle.ContextJson), nameof(MatrixPilotCycle.DecisionJson), nameof(MatrixPilotCycle.CritiqueJson),
+                         nameof(MatrixPilotCycle.ValidationJson), nameof(MatrixPilotCycle.ExecutedJson), nameof(MatrixPilotCycle.NarrativeJson),
+                         nameof(MatrixPilotCycle.InitialDecisionJson), nameof(MatrixPilotCycle.ShadowJson), nameof(MatrixPilotCycle.ComparisonJson) })
+                e.Property(json).HasColumnType("jsonb");
+            // Idempotency: one decision per pilot and period, whatever the scheduler or a user does.
+            e.HasIndex(x => new { x.PilotId, x.CycleKey }).IsUnique();
+            e.HasIndex(x => new { x.PilotId, x.CreatedAtUtc });
+            e.HasIndex(x => x.Outcome);
+            e.HasOne<MatrixPilot>().WithMany().HasForeignKey(x => x.PilotId).OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(x => x.Steps).WithOne().HasForeignKey(x => x.CycleId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<MatrixPilotStep>(e =>
+        {
+            e.Property(x => x.Kind).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.Name).HasMaxLength(80);
+            e.Property(x => x.Status).HasMaxLength(20);
+            e.Property(x => x.Summary).HasMaxLength(1100);
+            e.Property(x => x.OutputHash).HasMaxLength(64);
+            e.HasIndex(x => new { x.CycleId, x.Sequence }).IsUnique();
+        });
+
+        b.Entity<MatrixPilotEvent>(e =>
+        {
+            e.Property(x => x.Actor).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.Action).HasMaxLength(60);
+            e.Property(x => x.PreviousStatus).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.NewStatus).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.Reason).HasMaxLength(600);
+            e.HasIndex(x => new { x.PilotId, x.Id });
+            e.HasOne<MatrixPilot>().WithMany().HasForeignKey(x => x.PilotId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 

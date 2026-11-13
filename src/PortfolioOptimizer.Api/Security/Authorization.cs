@@ -60,3 +60,16 @@ public sealed class HttpCurrentUser(IHttpContextAccessor accessor) : ICurrentUse
 
     public Guid RequireUserId() => UserId ?? throw new ForbiddenException("An authenticated user is required.");
 }
+
+/// <summary>
+/// The request's user, or – only where there is no request user – the user a background job acts for
+/// (<see cref="PortfolioOptimizer.Application.Common.BackgroundActor"/>). A request identity always wins.
+/// </summary>
+public sealed class ActorAwareCurrentUser(HttpCurrentUser http, PortfolioOptimizer.Application.Common.BackgroundActor actor) : ICurrentUser
+{
+    public Guid? UserId => http.UserId ?? actor.UserId;
+    public string? Email => http.UserId is not null ? http.Email : actor.Label;
+    public bool IsAdministrator => http.UserId is not null && http.IsAdministrator;
+    public string? IpAddress => http.IpAddress;
+    public Guid RequireUserId() => UserId ?? throw new ForbiddenException("An authenticated user is required.");
+}

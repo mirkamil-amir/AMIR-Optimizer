@@ -24,6 +24,7 @@ import { briefRows, eventLabel, isEligible, marketNames, objectiveNames, originL
 import type { Hypothesis, Level, RefinementChange, ResearchBrief, ResearchCandidate, ResearchSession, ReviewFlag, UpdateBriefRequest } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { MatrixLoader } from '@/components/matrix-loader'
+import { ProbeTabs } from '@/pages/pilot'
 
 const examples = [
   'I want a low-risk portfolio of US stocks without energy companies, at most 20% in any single stock.',
@@ -66,6 +67,7 @@ export function ResearchHomePage() {
 
   return (
     <>
+      <ProbeTabs />
       <PageHeader
         title="AI research assistant"
         info="Describe what you want to research. The assistant turns it into a brief you can edit, researches a universe, runs the real optimizer and explains the results with the evidence."

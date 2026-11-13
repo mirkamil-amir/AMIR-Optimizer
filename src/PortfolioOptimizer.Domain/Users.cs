@@ -61,6 +61,15 @@ public static class AuditActions
     public const string TransactionReversed = "portfolio.transaction_reversed";
     public const string TestDataPurged = "admin.test_data_purged";
     public const string ResearchRunSaved = "research.run_saved";
+    public const string PilotCreated = "pilot.created";
+    public const string PilotEnabled = "pilot.enabled";
+    public const string PilotDisabled = "pilot.disabled";
+    public const string PilotKillSwitch = "pilot.kill_switch";
+    public const string PilotPaused = "pilot.paused";
+    public const string PilotResumed = "pilot.resumed";
+    public const string PilotMandateChanged = "pilot.mandate_changed";
+    public const string PilotCycleCompleted = "pilot.cycle_completed";
+    public const string PilotTradesBooked = "pilot.trades_booked";
 }
 
 /// <summary>

@@ -59,6 +59,8 @@ public sealed class ApiFactory(string connectionString) : WebApplicationFactory<
         builder.UseSetting("MarketData:Profiles:Mock:Enabled", "true");
         // Research assistant: deterministic rules unless a test injects a scripted mock model.
         builder.UseSetting("Agent:Llm:Provider", "None");
+        // Matrix Pilot: tests start cycles themselves (no timer).
+        builder.UseSetting("MatrixPilot:SchedulerEnabled", "false");
         builder.UseSetting("Seed:Assets", "true");
         builder.UseSetting("Seed:DemoPortfolio", "false");
         builder.UseSetting("Seed:SyncOnEmptyDatabase", "false");

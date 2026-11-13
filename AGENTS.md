@@ -33,14 +33,14 @@ merge commits + 1). CI enforces it (`pr-title.yml` → `scripts/check-pr-name.sh
 | Path | What | Entry points |
 |---|---|---|
 | `src/PortfolioOptimizer.Api` | controllers, auth policies, antiforgery, rate limits, commands | `Program.cs` (`migrate`, `purge-test-data`), `Controllers/*`, `Security/*` |
-| `src/PortfolioOptimizer.Application` | use cases (owner-scoped), DTOs, validation | `Fx/` (FxService, FxTable, CurrencyConverter), `Portfolios/` (PortfolioService, PortfolioTransactionService, PortfolioValuationService), `MarketData/` (quotes, universes, discovery, `Markets.cs`, `PriceHistory.cs`), `Optimization/`, `Analytics/RealityCheckService.cs`, `Watchlists/`, `News/` (rules, service, `EventPriceComparison`), `MachineLearning/`, `Comparisons/`, `Research/` (AI research workflow: orchestrator, tools, validators), `Dtos/` |
+| `src/PortfolioOptimizer.Application` | use cases (owner-scoped), DTOs, validation | `Fx/` (FxService, FxTable, CurrencyConverter), `Portfolios/` (PortfolioService, PortfolioTransactionService, PortfolioValuationService), `MarketData/` (quotes, universes, discovery, `Markets.cs`, `PriceHistory.cs`), `Optimization/`, `Analytics/RealityCheckService.cs`, `Watchlists/`, `News/` (rules, service, `EventPriceComparison`), `MachineLearning/`, `Comparisons/`, `Research/` (AI research workflow: orchestrator, tools, validators), `Pilot/` (Matrix Pilot: engine, tools, validator, service), `Dtos/` |
 | `src/PortfolioOptimizer.Domain` | entities, rules | `MarketData.cs`, `Portfolio.cs`, `PortfolioTransactions.cs`, `Runs.cs`, `MachineLearning.cs`, `Watchlist.cs`, `News.cs`, `Users.cs` (roles, audit, `TestDataPolicy`) |
 | `src/PortfolioOptimizer.Optimization` | pure math: QP solver, mean-variance, `PortfolioSimulator`, diversification diagnostics | `Portfolio/MeanVarianceOptimizer.cs`, `Portfolio/DiversificationMath.cs`, `Backtesting/*` |
 | `src/PortfolioOptimizer.MachineLearning` | pure ML (no I/O, no optimizer use) | `Training/ExperimentEngine.cs`, `Features/FeatureCatalog.cs` |
 | `src/PortfolioOptimizer.Infrastructure` | EF Core/Npgsql, Identity, providers, jobs, seeding | `Persistence/AppDbContext.cs`, `MarketData/*Provider.cs`, `News/NewsProviders.cs`, `Jobs/BackgroundJobWorker.cs`, `Persistence/UniverseSeeder.cs`, `Seed/universes/*.csv` |
 | `frontend/portfolio-dashboard/src` | React app | `main.tsx` (routes), `pages/*`, `components/*`, `pages/portfolios.tsx` (overview), `pages/portfolio-workspace.tsx`, `lib/` (navigation (top bar + sidebar model), portfolio-context (URL-scoped portfolio), markets (venues, exchange cities, region frames), world-map (background map state), map-camera (framing + camera math), api, auth, selection, queries, types, interpretation, strategy-guide, glossary, quote-status, news) |
 | `tests/*` | unit, ML, integration (real PostgreSQL) | `IntegrationTests/ApiFactory.cs` |
-| `frontend/.../e2e` | Playwright | `admin.setup.ts` (environment guard), `journeys.spec.ts`, `research.spec.ts` (watchlist, news), `research-agent.spec.ts` (AI research journey), `multi-currency.spec.ts` (EUR portfolio with four markets), `navigation.spec.ts` (top bar, sidebar, admin area, viewports), `portfolios.spec.ts` (two portfolios, two users), `missing-data.spec.ts` (download dialog), `optimizations.spec.ts` (backtest window, comparison of two runs, portfolio tabs, Overview layout, world map) |
+| `frontend/.../e2e` | Playwright | `admin.setup.ts` (environment guard), `journeys.spec.ts`, `research.spec.ts` (watchlist, news), `research-agent.spec.ts` (AI research journey), `pilot.spec.ts` (Matrix Pilot: set up, decide, kill switch, live record), `multi-currency.spec.ts` (EUR portfolio with four markets), `navigation.spec.ts` (top bar, sidebar, admin area, viewports), `portfolios.spec.ts` (two portfolios, two users), `missing-data.spec.ts` (download dialog), `optimizations.spec.ts` (backtest window, comparison of two runs, portfolio tabs, Overview layout, world map) |
 | `tools/` | `universe-builder` (constituent CSVs, curated index-ETF lists), `world-map` (country outlines of the background map), `PortfolioOptimizer.DataMigration` (SQLite import) | |
 | `docs/quant`, `scripts/quant` | formula reference (every formula → code, tests, status), audit and risk register, maintenance tool | `formula-reference.md`, `maintain.py`, `manifest.json` |
 
@@ -122,6 +122,15 @@ updates its entry in [docs/quant/formula-reference.md](docs/quant/formula-refere
   `Confirm` for user-data changes, budgets, timeouts, events) – never rely on prompts. User text, news and descriptions
   are untrusted; news and descriptions are never sent to a model. Keys stay server-side. Details:
   [agentic-architecture.md](docs/agentic-architecture.md), [threat-model.md](docs/threat-model.md).
+* **Matrix Pilot (the one exception, D-60):** in AI Probe › Matrix Pilot the model decides holdings, weights and
+  rebalancing of one paper portfolio – nothing else. It gets only READ/ANALYZE/SIMULATE tools (`PilotToolRunner`; no tool
+  writes data, none takes a user or portfolio id), every number comes from platform services, every price series ends at
+  the decision date, and its structured decision passes `PilotDecisionValidator` + `AllocationValidator` and the owner's
+  versioned mandate before `TradingService` books it (simulated); breaches go back to the model until the portfolio
+  fits (≤ 5 revisions, first proposal kept), and its own unconstrained portfolio is recorded for comparison – never traded. Fail closed (no fallback to rules), one decision per period (failed attempts retried ≤ 3),
+  a lease per portfolio, kill switch and confirmed activation/resume by the owner only, journal of every step (no hidden
+  reasoning), news text never sent, forward-only live record from the baseline – never backfilled or backtested.
+  Background cycles act for the stored owner (`BackgroundActor`), never inside a request. Details: [matrix-pilot.md](docs/matrix-pilot.md).
 * Money `decimal`, math `double`; errors via `ValidationException`/`NotFoundException`/`ConflictException`/`ForbiddenException`.
 
 ## How to …
@@ -196,7 +205,7 @@ approval is per change).
 [market data](docs/market-data.md) · [quantitative strategies](docs/quantitative-strategies.md) ·
 [machine learning](docs/machine-learning.md) · [security](docs/security.md) · [testing](docs/testing.md) ·
 [deployment](docs/deployment.md) · [implementation status](docs/implementation-status.md) ·
-[agentic architecture](docs/agentic-architecture.md) · [threat model](docs/threat-model.md) · [agent evaluation](docs/agent-evaluation.md) ·
+[agentic architecture](docs/agentic-architecture.md) · [Matrix Pilot](docs/matrix-pilot.md) · [threat model](docs/threat-model.md) · [agent evaluation](docs/agent-evaluation.md) ·
 [portfolios](docs/portfolios.md) · [performance](docs/performance.md) · [decisions](docs/decisions.md) · [limitations](docs/limitations.md) · [watchlist](docs/watchlist.md) ·
 [financial news](docs/financial-news.md) · [portfolio reality check](docs/portfolio-reality-check.md) ·
 [formula reference](docs/quant/formula-reference.md) · [quant audit](docs/quant/audit-2026-10-28.md) · [subsystem inventory](docs/quant/subsystem-inventory.md) ·

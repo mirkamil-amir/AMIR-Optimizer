@@ -11,3 +11,14 @@ public interface IBackgroundJobQueue
 
     IAsyncEnumerable<BackgroundJob> DequeueAllAsync(CancellationToken cancellationToken);
 }
+
+/// <summary>
+/// Queue of Matrix Pilot decision cycles. Separate from <see cref="IBackgroundJobQueue"/> so that a cycle waiting minutes for
+/// model answers never holds up imports, backtests or ML runs (and vice versa).
+/// </summary>
+public interface IPilotCycleQueue
+{
+    ValueTask EnqueueAsync(Guid cycleId, CancellationToken cancellationToken = default);
+
+    IAsyncEnumerable<Guid> DequeueAllAsync(CancellationToken cancellationToken);
+}

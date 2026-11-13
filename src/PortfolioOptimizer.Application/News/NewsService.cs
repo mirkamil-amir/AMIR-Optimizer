@@ -439,9 +439,8 @@ public sealed class NewsService(
         foreach (var missing in leadIds.Where(id => !leads.ContainsKey(id)).ToList() is { Count: > 0 } rest
                      ? await db.NewsArticles.Where(a => rest.Contains(a.Id)).ToListAsync(ct) : [])
             leads[missing.Id] = missing;
-        foreach (var story in stories)
+        foreach (var (story, lead) in stories.Where(s => leads.ContainsKey(s.LeadArticleId)).Select(s => (s, leads[s.LeadArticleId])))
         {
-            if (!leads.TryGetValue(story.LeadArticleId, out var lead)) continue;
             story.Scope = lead.Scope;
             story.Category = lead.Category;
             story.EventType = lead.EventType ?? NewsEventType.General;

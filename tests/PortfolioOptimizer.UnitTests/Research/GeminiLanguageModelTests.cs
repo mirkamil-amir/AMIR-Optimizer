@@ -70,8 +70,8 @@ public sealed class GeminiLanguageModelTests
 
     [Theory]
     [InlineData(HttpStatusCode.TooManyRequests, LlmFailure.RateLimited)]
-    [InlineData(HttpStatusCode.Forbidden, LlmFailure.ProviderError)]
-    [InlineData(HttpStatusCode.NotFound, LlmFailure.ProviderError)]
+    [InlineData(HttpStatusCode.Forbidden, LlmFailure.Unauthorized)]
+    [InlineData(HttpStatusCode.NotFound, LlmFailure.ModelNotFound)]
     [InlineData(HttpStatusCode.ServiceUnavailable, LlmFailure.ProviderError)]
     public async Task HttpErrors_BecomeTypedFailures_AfterRetryingTransientOnes(HttpStatusCode status, LlmFailure expected)
     {
@@ -81,6 +81,19 @@ public sealed class GeminiLanguageModelTests
         Assert.DoesNotContain("echo", ex.Message);
         var transient = status is HttpStatusCode.TooManyRequests or HttpStatusCode.ServiceUnavailable;
         Assert.Equal(transient ? 2 : 1, handler.Requests.Count);
+    }
+
+    [Fact]
+    public async Task InvalidKey_AnsweredWith400_IsUnauthorized_NotRetried_AndOtherBadRequestsStayProviderErrors()
+    {
+        // Shape of Gemini's answer to an invalid key (reason API_KEY_INVALID), message shortened.
+        var invalid = new StubHandler(_ => Json(HttpStatusCode.BadRequest,
+            """{"error":{"code":400,"message":"API key not valid. Please pass a valid API key.","status":"INVALID_ARGUMENT","details":[{"reason":"API_KEY_INVALID"}]}}"""));
+        var ex = await Assert.ThrowsAsync<LanguageModelException>(() => Model(invalid).GenerateAsync(Request, CancellationToken.None));
+        Assert.Equal(LlmFailure.Unauthorized, ex.Failure);
+        Assert.Single(invalid.Requests);
+        var other = new StubHandler(_ => Json(HttpStatusCode.BadRequest, """{"error":{"code":400,"status":"INVALID_ARGUMENT"}}"""));
+        Assert.Equal(LlmFailure.ProviderError, (await Assert.ThrowsAsync<LanguageModelException>(() => Model(other).GenerateAsync(Request, CancellationToken.None))).Failure);
     }
 
     [Theory]
