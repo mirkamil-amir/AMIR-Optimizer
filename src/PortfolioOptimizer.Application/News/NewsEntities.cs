@@ -108,9 +108,8 @@ public static class NewsEntities
     {
         isOfficial &= !isSimulated;
         var found = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var tag in tags.Select(t => t.Trim()))
-            if (Tags.TryGetValue(tag, out var e) && !found.ContainsKey(e.Key))
-                found[e.Key] = $"provider tag {tag}";
+        foreach (var (tag, e) in tags.Select(t => t.Trim()).Where(Tags.ContainsKey).Select(t => (t, Tags[t])))
+            found.TryAdd(e.Key, $"provider tag {tag}");
         if (isOfficial && sourceCategory == NewsCategory.CentralBank && region is not null &&
             CentralBanks.FirstOrDefault(b => string.Equals(b.Region, region, StringComparison.OrdinalIgnoreCase)) is { } bank)
             found.TryAdd(bank.Key, $"official central-bank feed ({region})");

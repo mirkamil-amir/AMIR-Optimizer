@@ -122,7 +122,10 @@ public sealed class NewsScheduleTests
 /// <summary>Parsers of the new sources, on payloads in the shape the live sources returned on 2026-11-08.</summary>
 public sealed class WireSourceParsingTests
 {
-    private static NewsFeed Feed(string key) => new StatisticsFeedProvider(new HttpClient(), Options.Create(new StatisticsFeedOptions())).Feeds.Single(f => f.Key == key);
+    /// <summary>One client for the providers built here; these tests parse payloads and never send a request with it.</summary>
+    private static readonly HttpClient NoNetwork = new();
+
+    private static NewsFeed Feed(string key) => new StatisticsFeedProvider(NoNetwork, Options.Create(new StatisticsFeedOptions())).Feeds.Single(f => f.Key == key);
 
     private const string Bea = """
         <?xml version="1.0" encoding="us-ascii"?>
@@ -255,13 +258,13 @@ public sealed class WireSourceParsingTests
     [InlineData("7203.T", false)]
     [InlineData("^GSPC", false)]
     public void Edgar_SupportsUsListingsOnly(string symbol, bool expected) =>
-        Assert.Equal(expected, new SecEdgarProvider(new HttpClient(), Options.Create(new SecEdgarOptions())).Supports(symbol));
+        Assert.Equal(expected, new SecEdgarProvider(NoNetwork, Options.Create(new SecEdgarOptions())).Supports(symbol));
 
     [Fact]
     public void Edgar_IsOffWithoutTheOperatorsContact()
     {
-        Assert.False(new SecEdgarProvider(new HttpClient(), Options.Create(new SecEdgarOptions())).Descriptor.IsConfigured);
-        Assert.True(new SecEdgarProvider(new HttpClient(), Options.Create(new SecEdgarOptions { Contact = "Operator ops@example.test" })).Descriptor.IsConfigured);
+        Assert.False(new SecEdgarProvider(NoNetwork, Options.Create(new SecEdgarOptions())).Descriptor.IsConfigured);
+        Assert.True(new SecEdgarProvider(NoNetwork, Options.Create(new SecEdgarOptions { Contact = "Operator ops@example.test" })).Descriptor.IsConfigured);
     }
 
     private sealed class StubHandler(string body) : HttpMessageHandler
@@ -286,13 +289,14 @@ public sealed class WireSourceParsingTests
             ]}
             """;
         var handler = new StubHandler(body);
-        var yahoo = new YahooNewsProvider(new HttpClient(handler) { BaseAddress = new Uri("https://query1.finance.yahoo.com") }, Options.Create(new YahooNewsOptions()));
+        using var http = new HttpClient(handler) { BaseAddress = new Uri("https://query1.finance.yahoo.com") };
+        var yahoo = new YahooNewsProvider(http, Options.Create(new YahooNewsOptions()));
         var feed = yahoo.Feeds.Single(f => f.Key == "^STOXX50E");
         var items = await yahoo.GetFeedAsync(feed, CancellationToken.None);
         Assert.Contains("q=%5ESTOXX50E", handler.Requests.Single().Query);
         Assert.Equal("EU", items[0].Region);
         Assert.Null(items[1].Region);
         Assert.All(items, i => Assert.Null(i.SourceCategory)); // the query's category is never forced on articles
-        Assert.Empty(new YahooNewsProvider(new HttpClient(), Options.Create(new YahooNewsOptions { MarketFeeds = false })).Feeds);
+        Assert.Empty(new YahooNewsProvider(NoNetwork, Options.Create(new YahooNewsOptions { MarketFeeds = false })).Feeds);
     }
 }

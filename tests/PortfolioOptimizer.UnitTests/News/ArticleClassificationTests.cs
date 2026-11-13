@@ -20,7 +20,8 @@ public sealed class ArticleClassificationTests
     public void CompanyArticle_GetsCompanyScope_AndKeywordEventType()
     {
         var c = Classify("Apple earnings beat estimates on iPhone demand", ["AAPL"], equities: 1);
-        Assert.Equal((NewsCategory.Earnings, NewsScope.Company, NewsEventType.Results, (NewsMarketArea?)null), (c.Category, c.Scope, c.EventType, c.MarketArea));
+        Assert.Equal((NewsCategory.Earnings, NewsScope.Company, NewsEventType.Results), (c.Category, c.Scope, c.EventType));
+        Assert.Null(c.MarketArea);
         Assert.Equal("headline mentions “earnings”", c.EventTypeBasis);
     }
 

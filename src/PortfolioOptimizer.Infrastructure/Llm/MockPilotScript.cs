@@ -60,12 +60,13 @@ public static partial class MockPilotScript
         if (holdings > 0)
             return Decision("HOLD", "hold", [], 0, ["Test model: the portfolio already holds positions; the script holds."]);
 
-        var mandate = data!.Value.GetProperty("mandate");
+        if (data is not { } d) return Decision("HOLD", "hold", [], 0, ["Test model: no data."]);
+        var mandate = d.GetProperty("mandate");
         var minHoldings = mandate.GetProperty("minHoldings").GetInt32();
         var maxHoldings = mandate.GetProperty("maxHoldings").GetInt32();
         var maxPos = mandate.GetProperty("maxPositionWeight").GetDouble();
         var minCash = mandate.GetProperty("minCashWeight").GetDouble();
-        var symbols = ScreenedSymbols(data.Value).ToList();
+        var symbols = ScreenedSymbols(d).ToList();
         var n = Math.Min(maxHoldings, Math.Max(minHoldings, Math.Min(symbols.Count, (int)Math.Ceiling((1 - minCash - 0.01) / maxPos))));
         n = Math.Min(n, symbols.Count);
         if (n == 0) return Decision("HOLD", "hold", [], 0, ["Test model: no screened symbol available."]);
@@ -116,9 +117,10 @@ public static partial class MockPilotScript
     private static IEnumerable<string> ScreenedSymbols(JsonElement data)
     {
         if (!data.TryGetProperty("research", out var log)) yield break;
-        foreach (var entry in log.EnumerateArray())
+        foreach (var r in log.EnumerateArray()
+                     .Where(e => e.TryGetProperty("tool", out var t) && t.GetString() == "screen_universe" && e.TryGetProperty("result", out _))
+                     .Select(e => e.GetProperty("result")))
         {
-            if (!entry.TryGetProperty("tool", out var t) || t.GetString() != "screen_universe" || !entry.TryGetProperty("result", out var r)) continue;
             using var doc = JsonDocument.Parse(r.GetString()!);
             if (!doc.RootElement.TryGetProperty("top", out var top)) continue;
             foreach (var row in top.EnumerateArray()) yield return row.GetProperty("symbol").GetString()!;

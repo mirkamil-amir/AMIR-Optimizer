@@ -21,6 +21,7 @@ public static class NewsSchedule
             .OrderBy(c => c.Source).ThenBy(c => c.Symbol, StringComparer.Ordinal)
             .ToList();
 
+    /// <summary>The companies due for a news fetch: by priority (held, watched, curated), within it never fetched or stalest first; at most <paramref name="budget"/>.</summary>
     /// <param name="lastAttempt">Oldest last attempt over the providers that support the symbol; null = never fetched.</param>
     /// <param name="isDue">Whether any supporting provider is due for the symbol.</param>
     public static IReadOnlyList<ScheduledCompany> SelectDue(IReadOnlyList<ScheduledCompany> merged, Func<string, bool> isDue,

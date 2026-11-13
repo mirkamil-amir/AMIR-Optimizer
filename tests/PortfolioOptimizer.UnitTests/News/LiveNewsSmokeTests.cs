@@ -67,7 +67,7 @@ public class LiveNewsSmokeTests
     public async Task SecEdgar_FilingList_ParsesWithZonedAcceptanceTimes()
     {
         var contact = Environment.GetEnvironmentVariable("PO_SEC_CONTACT")!;
-        var c = new HttpClient { BaseAddress = new Uri("https://www.sec.gov"), Timeout = TimeSpan.FromSeconds(30) };
+        using var c = new HttpClient { BaseAddress = new Uri("https://www.sec.gov"), Timeout = TimeSpan.FromSeconds(30) };
         c.DefaultRequestHeaders.UserAgent.TryParseAdd($"Matrix-educational-research {contact}");
         var edgar = new SecEdgarProvider(c, Options.Create(new SecEdgarOptions { Contact = contact }));
         var items = await edgar.GetCompanyNewsAsync("AAPL", "Apple Inc.", CancellationToken.None);

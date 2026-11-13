@@ -206,9 +206,9 @@ public static class PilotArgs
     public static int Int(JsonElement args, string name, int @default, int min, int max)
     {
         if (!args.TryGetProperty(name, out var e) || e.ValueKind == JsonValueKind.Null) return @default;
-        if (e.ValueKind != JsonValueKind.Number || !e.TryGetDouble(out var d) || d != Math.Floor(d) || d < min || d > max)
+        if (e.ValueKind != JsonValueKind.Number || !e.TryGetInt32(out var d) || d < min || d > max)
             throw new PilotToolException("invalid_arguments", $"“{name}” must be a whole number between {min} and {max}.");
-        return (int)d;
+        return d;
     }
 
     public static double Number(JsonElement args, string name, double? @default, double min, double max)

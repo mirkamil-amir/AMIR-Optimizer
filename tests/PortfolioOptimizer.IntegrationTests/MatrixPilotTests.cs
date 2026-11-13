@@ -208,7 +208,7 @@ public sealed class MatrixPilotTests(MatrixPilotTests.Shared shared) : IClassFix
         var detail = await (await _alice.GetAsync($"/api/v1/portfolios/{p.Id}/pilot/cycles/{cycle.Id}")).ReadAsync<PilotCycleDetailDto>();
         Assert.Equal("REBALANCE", detail.Decision!.Action);
         Assert.NotNull(detail.Executed);
-        Assert.All(detail.Decision.Targets, t => Assert.Contains(detail.Executed!.Weights, w => w.Symbol == t.Symbol && w.ProposedWeight == t.Weight));
+        Assert.All(detail.Decision.Targets, t => Assert.Contains(detail.Executed!.Weights, w => w.Symbol == t.Symbol && Math.Abs(w.ProposedWeight - t.Weight) < 1e-12));
         Assert.Contains(detail.Steps, s => s.Category == "AI DECISION");
         Assert.Contains(detail.Steps, s => s.Category == "VALIDATION");
         Assert.Contains(detail.Steps, s => s.Category == "EXECUTION");

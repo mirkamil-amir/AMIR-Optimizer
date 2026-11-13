@@ -44,7 +44,10 @@ public sealed class MatrixPilotWorker(
                 do await ScheduleDueAsync(stoppingToken);
                 while (await timer.WaitForNextTickAsync(stoppingToken));
             }
-            catch (OperationCanceledException) { }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                logger.LogDebug("Matrix Pilot scheduler stopped (application shutting down).");
+            }
         }
         else logger.LogInformation("Matrix Pilot scheduler is disabled (cycles start only on the owner's request).");
         await consumer;
@@ -70,7 +73,10 @@ public sealed class MatrixPilotWorker(
                 }
             }
         }
-        catch (OperationCanceledException) { }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            logger.LogDebug("Matrix Pilot cycle queue stopped (application shutting down).");
+        }
     }
 
     /// <summary>Creates and enqueues the cycle of every active pilot whose next decision time has come.</summary>

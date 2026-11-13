@@ -233,7 +233,7 @@ public sealed class PilotEngine(
         {
             decision = await DecideAsync(cycle, "pilot.finalize", PilotPrompts.Finalize,
                 Data(new { stage = "finalize", proposed = decision, critique, risk, trades, mandate, portfolio = ctx.Observation, research = TrimLog(log) }), "Final decision", ct);
-            (decision, fitted) = await FitAsync(cycle, ctx, decision, log, ct);
+            (decision, _) = await FitAsync(cycle, ctx, decision, log, ct); // the final validation below checks it again
         }
         else journal.Add(cycle, PilotStepKind.AiDecision, "Final decision", "ok", 0, "The reviewer recommended keeping the decision; it stands as proposed.");
         cycle.DecisionJson = PilotJson.Serialize(decision);
@@ -895,7 +895,10 @@ public sealed class PilotEngine(
                 await db.SaveChangesAsync(ct);
                 break;
             }
-            catch (DbUpdateConcurrencyException) when (attempt < 3) { }
+            catch (DbUpdateConcurrencyException) when (attempt < 3)
+            {
+                logger.LogDebug("Matrix Pilot cycle {CycleId}: the pilot changed at the same moment; re-applying the result (attempt {Attempt}).", cycle.Id, attempt + 1);
+            }
         }
         logger.LogInformation(
             "Matrix Pilot cycle {CycleId} (correlation {CorrelationId}) for portfolio {PortfolioId}: {Outcome} in {Ms:0} ms; model {Provider}/{Model}, {ModelCalls} model calls, {ToolCalls} tool calls, {Trades} trades",
