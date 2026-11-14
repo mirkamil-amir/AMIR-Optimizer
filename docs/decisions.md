@@ -2,6 +2,19 @@
 
 Short records of decisions that are not obvious from the code. Newest first. Format: context → decision → consequences.
 
+## D-62 The logo thinks: a cube of balls that tumbles while the app works (2026-11-14)
+**Context:** the owner wanted a logo like a puzzle cube that turns while the app thinks, as if being solved. A coloured
+sticker cube looked too much like the commercial puzzle (whose six-colour look is protected trade dress), and a
+one-colour ball cube seen from its corner read as a flat hexagon; on example pages the owner chose a round ball that
+tumbles. **Decision:** the mark stays the 3 × 3 grid of dots (D-58's shape and favicon), now the front of a 3 × 3 × 3 cube
+of 27 equal balls in one colour (`lib/cube.ts`). It is the thinking indicator: while any `MatrixLoader` or `WorkingPanel`
+is on screen it opens into a round ball like the start-up globe (outer balls on a sphere, far side fainter) and tumbles
+over two axes while its layers twist; when the work ends it untwists, rests on a quarter turn and closes into the grid
+(`lib/thinking-mark.ts`). On arrival it thinks once briefly. Loaders show the same small tumbling ball. Reduced motion:
+no movement. Supersedes D-59 (the dot wave, and that the logo does not move while the app works) and D-58's fly-in.
+**Consequences:** one shared animation-frame loop (`lib/cube-animator.ts`) with a work register; it stops when every mark
+rests; frames are attributes, never React state. `MatrixLoader`/`WorkingPanel` keep their props, so no call site changed.
+
 ## D-61 Matrix Pilot: rules first, fit until it fits, and an unconstrained portfolio for comparison (2026-11-13)
 **Context:** in the first real cycle (Gemini 3.5 Flash) the model proposed 98 % in US stocks against a 70 % US cap, kept it
 after the reviewer named the breach, and was blocked – it had no way to test a portfolio against the rules before

@@ -31,7 +31,7 @@ export function GlobeScreen({ layout, leaving = false, className, children, ...r
 }
 
 /**
- * The mark and the name on the globe screens (D-58): the mark arrives once – every dot flies in – and then stays, white on
+ * The mark and the name on the globe screens (D-62): the mark arrives once – a short tumble – and then stays the grid, white on
  * the always-dark globe screen, above the letters.
  */
 export function GlobeName({ className }: { className?: string }) {

@@ -37,10 +37,12 @@
   with reduced motion; the Enter intro is off in Settings › Appearance and skipped by automated browsers unless `?intro=1`.
 - No decorative icons (the owner finds them childish): buttons, navigation, badges, alerts, empty states and toasts are
   text only. Icons only where they are the control itself (fold/sort/pager arrows, remove ×, phone menu, delete bin).
-  Work in progress shows the dot wave (`MatrixLoader`, `WorkingPanel` in `components/matrix-loader.tsx`, D-59) – never a
-  spinner, never the logo. The mark is a 3 × 3 grid of dots – the dot wave at rest (`lib/logo-dots.ts`, D-58), only in
-  the app's top-left corner and on the landing pages (above the name); no frame – the skin's brand colour on light
-  surfaces, the light text colour on dark ones (`--mark-ink`); its dots fly in once, then it stays still (no glow). Explanations use `InfoTip of={label}` – the label itself shows the tip on hover/focus, unmarked (no ⓘ, no underline).
+  The mark is a 3 × 3 grid of dots – the front of a 3 × 3 × 3 cube of 27 balls (`lib/cube.ts`, D-62), only in the app's
+  top-left corner and on the landing pages (above the name); no frame, one colour – the skin's brand colour on light
+  surfaces, the light text colour on dark ones (`--mark-ink`). The logo is the thinking indicator: while work is in
+  progress (any `MatrixLoader` or `WorkingPanel` on screen, `components/matrix-loader.tsx`) it opens into a round ball
+  like the globe and tumbles while its layers twist, then untwists back into the grid (`lib/thinking-mark.ts`, drawn by
+  `lib/cube-animator.ts`); the loaders show the same small tumbling ball. Never a spinner, no glow. Explanations use `InfoTip of={label}` – the label itself shows the tip on hover/focus, unmarked (no ⓘ, no underline).
 - Typography: `.heading-display` (Sora) only for page titles, section headings and the wordmark; `.font-nav` (Sora too,
   chosen from nine options) for the top bar and sidebar; body, tables and figures stay Geist. Sidebar and top-bar entries magnify near the
   pointer (`lib/nav-zoom.ts`, CSS variable set imperatively); the selected entry stays enlarged. Text outside cards must stay readable over the map: put dense lists on `.map-surface`.
