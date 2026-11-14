@@ -1,5 +1,28 @@
 # Implementation status
 
+## 2026-11-14: the thinking logo – a cube of balls (AMIR-29, D-62)
+
+* The mark stays the 3 × 3 grid of dots, now the front of a 3 × 3 × 3 cube of 27 equal balls (`lib/cube.ts`): the 18
+  balls behind hide exactly behind the front nine. One colour (`--mark-ink`); the favicon is unchanged.
+* The logo is the thinking indicator: while any `MatrixLoader` or `WorkingPanel` is on screen (a work register in
+  `lib/cube-animator.ts`) it opens into a round ball like the start-up globe – the outer balls on a sphere, the far side
+  fainter – and tumbles over two axes while its layers twist (R U R′ U′, one twist per 420 ms). When the last work ends
+  it finishes the twist, undoes its twists (or completes the cycle, whichever is shorter), comes to rest on a quarter
+  turn and closes into the grid within 2 s (`lib/thinking-mark.ts`, a pure state machine). On arrival it thinks once for
+  0.7 s. Loaders show the same small tumbling ball, so a busy button shows even with the logo out of sight. One
+  animation-frame loop for all marks, stopped when all rest; frames written as attributes, never React state. Reduced
+  motion: the logo stays the grid, loaders a still ball. Replaces the dot wave and the dots' fly-in (D-58, D-59).
+* Explored with the owner on standalone example pages first: a coloured sticker cube (too close to the commercial
+  puzzle), a ball cube from the corner (reads as a flat hexagon), three motions (steady spin, tumble, fast twists).
+  Chosen: round, tumbling, flat at rest.
+* Checked in the browser (dev server, sign-in page): the logo arrives as the tumbling ball and settles into the nine
+  dots (radius 11); screenshots mid-arrival and at rest. The signed-in shell was not checked in a browser (no test
+  account on the development stack).
+* Tested: Vitest `cube.test.ts` (5: the grid at rest, the favicon, the round ball inside the box, twists keep the
+  sphere, a quarter turn gives the same grid), `thinking-mark.test.ts` (4: rests, opens and moves, returns exactly to
+  the grid within 2 s for 54 start/stop timings, reopens while closing), `brand.test.tsx` (5: name and grid, one-time
+  arrival, thinks while work runs and returns when it ends, the loader tumbles, hidden without a label).
+
 ## 2026-11-13: Matrix Pilot – rules first, fit loop, unconstrained portfolio (AMIR-28, D-61)
 
 * Each cycle: the AI restates the mandate first (RULES), researches the market, tests candidates with `check_allocation`,
@@ -638,7 +661,7 @@
 
 * Converter card (rates board, pair chart, calculator) on the overview and stock-selection pages, backed by
   `/fx/history` and `/fx/board`; labelled reference rates with dates, never "live".
-* Brand: Matrix (formerly MatrixView, AMIR Optimizer); SVG mark (a 3 × 3 grid of dots, D-58; work in progress shows the same dots as a wave, D-59) in the sidebar, sign-in pages, favicon, tab title.
+* Brand: Matrix (formerly MatrixView, AMIR Optimizer); SVG mark (a 3 × 3 grid of dots, the front of a cube of 27 balls that tumbles while the app works, D-62) in the sidebar, sign-in pages, favicon, tab title.
 * Light / dark / system mode and five colour skins; header toggle and Settings → Appearance; persisted per browser.
 * Verified by unit, integration, Vitest and e2e tests and by screenshots (light, dark Ocean, Violet).
 

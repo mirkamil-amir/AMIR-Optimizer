@@ -1,6 +1,7 @@
 import { useId, useRef } from 'react'
-import { useLogoIntro } from '@/lib/logo-animator'
-import { LOGO_DOT_RADIUS, logoDots } from '@/lib/logo-dots'
+import { CubeSvg } from '@/components/cube-svg'
+import { GRID_POSE } from '@/lib/cube'
+import { isWorking, useThinkingMark } from '@/lib/cube-animator'
 import { cn } from '@/lib/utils'
 
 /** Matrix (named by the owner; "MatrixView" until 2026-11-01): after the covariance/correlation matrix at the core of the optimizer and the logo. */
@@ -8,25 +9,33 @@ export const BRAND = {
   name: 'Matrix',
 } as const
 
-const DOTS = logoDots()
+/** On arrival the mark thinks this long once, then settles into the grid. */
+export const ARRIVAL_MS = 700
 
 /**
- * The Matrix mark (owner's choice, 2026-11-11, D-58): a 3 × 3 grid of round dots – the thinking animation's dots at rest
- * (`lib/logo-dots.ts`; the dot wave of `MatrixLoader` uses the same dots). No frame: the dots stand on whatever is behind
- * them, coloured by `--mark-ink` – the skin's brand colour on light surfaces, the light text colour on dark ones – so the
- * mark always matches the app's background. Wherever it appears its dots fly in once (`intro`, `lib/logo-motion.ts`,
- * driven by `lib/logo-animator.ts`), then it stays still; it never moves while the app works (the dot wave shows that,
- * D-59). In the app it appears only in the top-left corner (`MatrixWordmark`); on the landing pages above the name
- * (`GlobeName`). `tile` puts it on a graded --brand tile (not used in the app; the favicon has one for browser tabs).
- * `decorative` hides it from assistive technology where the name follows anyway. `public/favicon.svg` is the still drawing.
+ * The Matrix mark (owner's choice, 2026-11-14, D-62): a 3 × 3 grid of dots – the front of a 3 × 3 × 3 cube of 27 balls
+ * (`lib/cube.ts`). It is the app's thinking indicator: while any work is in progress (a `MatrixLoader` or `WorkingPanel`
+ * on screen) it opens into a round ball like the start-up globe and tumbles while its layers twist; when the work ends it
+ * untwists and closes back into the grid (`lib/thinking-mark.ts`, drawn by `lib/cube-animator.ts`). On arrival it thinks
+ * once briefly (`intro`). With reduced motion it stays the grid. No frame: the dots stand on whatever is behind them,
+ * coloured by `--mark-ink` – the skin's brand colour on light surfaces, the light text colour on dark ones. In the app it
+ * appears only in the top-left corner (`MatrixWordmark`); on the landing pages above the name (`GlobeName`). `tile` puts
+ * it on a graded --brand tile (not used in the app). `decorative` hides it from assistive technology where the name
+ * follows anyway. `public/favicon.svg` is the still grid.
  */
 export function MatrixMark({ className, title = BRAND.name, tile = false, color = 'var(--mark-ink)', intro = true, decorative = false }:
   { className?: string; title?: string; tile?: boolean; color?: string; intro?: boolean; decorative?: boolean }) {
   const id = useId().replace(/:/g, '')
   const ref = useRef<SVGSVGElement>(null)
-  useLogoIntro(ref, intro)
+  const born = useRef<number | null>(null)
+  useThinkingMark(ref, () => {
+    if (isWorking()) return true
+    if (!intro) return false
+    born.current ??= performance.now()
+    return performance.now() - born.current < ARRIVAL_MS
+  })
   return (
-    <svg ref={ref} viewBox="0 0 100 100" className={cn('size-8 shrink-0', className)}
+    <CubeSvg ref={ref} pose={GRID_POSE} color={color} className={cn('size-8 shrink-0', className)}
       role={decorative ? undefined : 'img'} aria-label={decorative ? undefined : title} aria-hidden={decorative || undefined}>
       {tile && (
         <>
@@ -39,10 +48,7 @@ export function MatrixMark({ className, title = BRAND.name, tile = false, color 
           <rect width="100" height="100" rx="22" fill={`url(#matrix-tile-${id})`} />
         </>
       )}
-      {DOTS.map((d, i) => (
-        <circle key={i} cx={d.x} cy={d.y} r={LOGO_DOT_RADIUS} fill={color} data-i={i} data-x={d.x} data-y={d.y} data-r={LOGO_DOT_RADIUS} />
-      ))}
-    </svg>
+    </CubeSvg>
   )
 }
 

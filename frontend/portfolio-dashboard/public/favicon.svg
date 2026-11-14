@@ -1,7 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
   <title>Matrix</title>
-  <!-- The Matrix mark (src/lib/logo-dots.ts: a 3 × 3 grid of dots) without a frame: navy on light tab bars, white on
-       dark ones (the browser applies the colour scheme to SVG favicons); logo-dots.test.ts checks it. -->
+  <!-- The Matrix mark at rest (src/lib/cube.ts, D-62: the front of a 3 × 3 × 3 cube of balls – a 3 × 3 grid) without a
+       frame: navy on light tab bars, white on dark ones (the browser applies the colour scheme to SVG favicons);
+       cube.test.ts checks it against the code. -->
   <style>
     circle { fill: #1c2f5e; }
     @media (prefers-color-scheme: dark) { circle { fill: #ffffff; } }
