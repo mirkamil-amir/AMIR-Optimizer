@@ -76,7 +76,7 @@ GitHub Actions workflows in `.github/workflows/` (added 2026-10-29). None uses t
 
 | `pr-title.yml` | pull request opened, edited, reopened, new commits | `scripts/check-pr-name.sh`: title `<type>(AMIR-<N>): <Description>`, branch `<type>/amir_<n>_<short_description>`, same type and number; Dependabot branches exempt. Editing the title re-runs it. Test locally: `./scripts/check-pr-name.sh "<title>" "<branch>"` |
 
-`.github/dependabot.yml` opens weekly grouped update PRs for NuGet, npm, GitHub Actions and the two Dockerfiles.
+`.github/dependabot.yml` opens monthly grouped update PRs for NuGet, npm, GitHub Actions and the two Dockerfiles: per ecosystem at most one minor/patch PR and one major PR, each covering every project (the three test projects share one PR).
 
 Test results (`.trx`) are uploaded as artifacts of each run. Playwright retries a failed test once on CI
 (`retries: process.env.CI ? 1 : 0`). The workflows pass `actionlint` (with shellcheck). They had **not run on GitHub**

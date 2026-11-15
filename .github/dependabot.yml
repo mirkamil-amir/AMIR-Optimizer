@@ -1,32 +1,33 @@
-# Weekly dependency update pull requests, grouped per ecosystem so each week brings at most one PR per area.
-# Every PR runs ci.yml; major versions arrive as separate PRs.
+# Monthly dependency update pull requests, grouped per ecosystem: each month brings at most one minor/patch PR and one
+# major PR per area, covering every project in it (the three test projects share one PR). Every PR runs ci.yml.
 version: 2
 updates:
   - package-ecosystem: nuget
     directory: /
     schedule:
-      interval: weekly
-      day: monday
+      interval: monthly
     groups:
       nuget-minor:
         update-types: [minor, patch]
+      nuget-major:
+        update-types: [major]
     open-pull-requests-limit: 5
 
   - package-ecosystem: npm
     directory: /frontend/portfolio-dashboard
     schedule:
-      interval: weekly
-      day: monday
+      interval: monthly
     groups:
       npm-minor:
         update-types: [minor, patch]
+      npm-major:
+        update-types: [major]
     open-pull-requests-limit: 5
 
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
-      day: monday
+      interval: monthly
     groups:
       actions:
         patterns: ["*"]
@@ -36,5 +37,7 @@ updates:
       - /src/PortfolioOptimizer.Api
       - /frontend/portfolio-dashboard
     schedule:
-      interval: weekly
-      day: monday
+      interval: monthly
+    groups:
+      docker:
+        patterns: ["*"]
