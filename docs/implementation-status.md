@@ -1,5 +1,11 @@
 # Implementation status
 
+## 2026-11-15 (4): start-up globe never draws a negative radius (AMIR-35)
+
+* While the sign-in globe mounts or unmounts its canvas can be 0 × 0 (radius 0); the 1 px edge ring was then drawn with
+  radius −0.5 and the browser threw ("radius provided (-0.5) is negative" – a flaky e2e failure on CI). The globe now draws
+  nothing without a size, and the ring radius is clamped (`insideRingRadius` in `lib/globe.ts`, tested).
+
 ## 2026-11-15 (2): Pilot – portfolio header and five sub-sections (AMIR-32, D-64)
 
 * Top bar "AI Probe" is now **Pilot**. Above the tab line: the portfolio header in View's style (name, currency, status)

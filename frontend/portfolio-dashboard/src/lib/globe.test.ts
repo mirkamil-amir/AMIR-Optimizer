@@ -97,3 +97,14 @@ describe('globe placement', () => {
     expect(phone.cy + phone.r).toBeLessThan(Math.min(844 * 0.46, 390 * 0.96)) // above the panel
   })
 })
+
+describe('globe edge ring', () => {
+  it('never gets a negative radius, also on a canvas with no size yet', async () => {
+    const { insideRingRadius, placeGlobe } = await import('./globe')
+    // 0 × 0 while the sign-in globe mounts or unmounts: radius 0, and the 1 px ring once threw "radius (-0.5) is negative".
+    for (const layout of ['center', 'login'] as const) expect(placeGlobe(layout, 0, 0).r).toBe(0)
+    expect(insideRingRadius(0, 1)).toBe(0)
+    expect(insideRingRadius(0.2, 1)).toBe(0)
+    expect(insideRingRadius(300, 12)).toBe(294) // a normal globe: just inside its edge
+  })
+})

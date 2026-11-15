@@ -161,3 +161,11 @@ export function orbitPoint(a: number, radius: number, tilt: number, roll: number
   const z = Math.sin(a) * radius * Math.cos(t)
   return { x: x * Math.cos(r) - y * Math.sin(r), y: x * Math.sin(r) + y * Math.cos(r), z }
 }
+
+/**
+ * Radius of a ring stroked `width` wide just inside a circle of radius `r` (the globe's edge). Never negative: a canvas
+ * with no size yet (r = 0, while the sign-in globe mounts or unmounts) would otherwise make the browser throw on `arc`.
+ */
+export function insideRingRadius(r: number, width: number): number {
+  return Math.max(0, r - width / 2)
+}
