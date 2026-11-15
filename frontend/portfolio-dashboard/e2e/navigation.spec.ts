@@ -24,7 +24,7 @@ test.describe('as administrator', () => {
     await expect(primary(page).getByRole('link', { name: 'View' })).toHaveAttribute('aria-current', 'page')
 
     for (const [name, heading, url] of [
-      ['AI Probe', 'AI research assistant', /\/research$/],
+      ['AI Probe', 'Matrix Pilot', /\/research\/pilot$/],
       ['Wire', 'Financial news', /\/news$/],
       ['Radar', 'Watchlist', /\/watchlist$/],
       ['Atlas', 'Market data', /\/market-data$/],

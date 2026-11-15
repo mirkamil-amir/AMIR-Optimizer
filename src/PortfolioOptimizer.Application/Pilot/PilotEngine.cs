@@ -9,7 +9,6 @@ using PortfolioOptimizer.Application.Common;
 using PortfolioOptimizer.Application.Dtos;
 using PortfolioOptimizer.Application.MarketData;
 using PortfolioOptimizer.Application.Portfolios;
-using PortfolioOptimizer.Application.Research;
 using PortfolioOptimizer.Application.Trading;
 using PortfolioOptimizer.Domain;
 

@@ -2,6 +2,17 @@
 
 Short records of decisions that are not obvious from the code. Newest first. Format: context → decision → consequences.
 
+## D-63 The research assistant is removed; AI Probe is Matrix Pilot (2026-11-15)
+**Context:** the owner is reworking the AI Probe experience and wanted the research assistant (AI Probe › Research
+assistant, D-21–D-24) removed completely before the redesign. **Decision:** its code (`Application/Research`,
+`ResearchController`, the research page and tests) and its tables (`ResearchSessions`, `ResearchEvents`, migration
+`RemoveResearchAssistant`, backed up first) are gone. What other features use stays: the language-model providers and
+settings (Matrix Pilot), `NarrativeValidator` and `InterpretationSection` (now in `Application/Pilot`), optimization runs
+that the assistant once saved (ordinary Math Optimizations) and their audit entries (`research.run_saved`). AI Probe opens
+Matrix Pilot directly; `/research` and old session links redirect to `/research/pilot`. **Consequences:** Matrix Pilot is
+the only part of Matrix that calls a language model; the rule "the model never produces numbers, weights or decisions"
+now has no other user than D-60's exception, and the threat model covers Matrix Pilot only.
+
 ## D-62 The logo thinks: a cube of balls that tumbles while the app works (2026-11-14)
 **Context:** the owner wanted a logo like a puzzle cube that turns while the app thinks, as if being solved. A coloured
 sticker cube looked too much like the commercial puzzle (whose six-colour look is protected trade dress), and a
@@ -510,13 +521,13 @@ validation as the Anthropic provider; the validator now allows negated cautions 
 leaked JSON field names. **Consequences:** both providers are interchangeable by configuration; the request shape is
 covered by unit tests from a recorded response and by an opt-in live test.
 
-## D-24 The model cannot change user data; saving is a separate confirmed request (2026-10-15)
+## D-24 The model cannot change user data; saving is a separate confirmed request (2026-10-15) – removed with the assistant (D-63)
 **Context:** an assistant that "does things" invites prompt injection into persistent actions. **Decision:** the only
 writing tool (`save_research_run`) is `UserDataChange`; `ToolRunner` denies it unless the request carries
 `Confirm = true`, which the UI sends only from a confirmation dialog. Model output can never trigger it.
 **Consequences:** one extra click; denied attempts are visible in the activity log; no high-impact tools exist.
 
-## D-23 Explanations are templates first; model narratives must pass a numeric validator (2026-10-15)
+## D-23 Explanations are templates first; model narratives must pass a numeric validator (2026-10-15) – assistant removed (D-63); the validator lives on in Matrix Pilot
 **Context:** explanations that contradict the numbers are worse than none. **Decision:** every hypothesis gets a
 deterministic seven-section explanation from its computed values; a model narrative replaces it only if every number is
 within 0.05 of a value in the evidence (or its rounding), every ticker belongs to the hypothesis and no forbidden promise
@@ -524,14 +535,14 @@ appears. Otherwise the template is shown with the reason. **Alternatives:** trus
 self-check (not verifiable). **Consequences:** the product is fully usable without a model; model text is
 labelled; some correct but differently-rounded narratives are rejected (conservative).
 
-## D-22 Hypotheses are unsaved evaluations; only a confirmed save creates a run (2026-10-15)
+## D-22 Hypotheses are unsaved evaluations; only a confirmed save creates a run (2026-10-15) – removed with the assistant (D-63)
 **Context:** research explores many alternatives; persisting each as an optimization run would flood the history and
 blur what the user chose. **Decision:** `OptimizationService.EvaluateAsync` and `RealityCheckService.AnalyzeAsync`
 compute without saving; hypotheses live in the research session with their full inputs and a config hash (idempotency).
 Saving re-evaluates with the stored inputs and links the run to the session. **Consequences:** reproducible, no
 duplicates; the existing optimizer and reality-check pages work unchanged on saved runs.
 
-## D-21 One deterministic orchestrator with bounded model calls, model off by default (2026-10-15)
+## D-21 One deterministic orchestrator with bounded model calls, model off by default (2026-10-15) – removed with the assistant (D-63)
 **Context:** the challenge asked for an agentic, explainable research platform; no model key is available and numbers
 must never come from a model. **Decision:** a state machine (`ResearchAgent`) with five typed tools; a language model
 is used for three schema-bound proposals (brief fields, unclear refinements, narratives) via `ILanguageModel`

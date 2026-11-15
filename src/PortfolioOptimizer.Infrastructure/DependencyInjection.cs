@@ -79,7 +79,7 @@ public static class DependencyInjection
         services.AddSingleton<MockFxProvider>();
         services.AddSingleton<IFxRateProvider>(sp => sp.GetRequiredService<MockFxProvider>());
 
-        // Language model for the research assistant (optional; deterministic rules are used when none is configured).
+        // Shared language model (optional; Matrix Pilot uses it unless MatrixPilot:Provider names its own).
         services.Configure<LanguageModelOptions>(configuration.GetSection(LanguageModelOptions.Section));
         services.AddSingleton<MockLanguageModel>();
         services.AddHttpClient(GeminiLanguageModel.HttpClientName, c =>

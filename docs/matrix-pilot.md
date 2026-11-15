@@ -4,13 +4,14 @@ Matrix Pilot (AI Probe › Matrix Pilot, `/research/pilot`) lets a language mode
 it researches with the platform's tools, chooses holdings and weights, and decides whether to rebalance. The platform
 checks every decision against the owner's mandate, books it in the existing ledger (simulated – no real order is ever
 sent), records every step and measures the result from the day the pilot is switched on. Decision D-60 makes this the one
-exception to "the language model never produces weights or decisions" (D-21); the research assistant is unchanged.
+exception to "the language model never produces weights or decisions" (D-21); since the research assistant was removed
+(D-63) it is the only part of Matrix that uses a language model.
 
 ```text
 AI = investment decision-maker            Platform = data, calculations, validation, booking, accounting, audit, measurement
 ```
 
-Related: [agentic architecture](agentic-architecture.md) (research assistant) · [threat model](threat-model.md#matrix-pilot) ·
+Related: [threat model](threat-model.md#matrix-pilot) ·
 [portfolio accounting](portfolios.md) · [limitations](limitations.md#matrix-pilot) · [decisions D-60](decisions.md).
 
 ## 1. What the model decides, and what it cannot
@@ -205,6 +206,10 @@ live portfolio 1, 5 and 21 trading days later – measured afterwards, never fed
 
 | Setting | Default | Meaning |
 |---|---|---|
+| `Agent:Llm:Provider` (`AGENT_LLM_PROVIDER`) | `None` | shared model provider: `None`, `Anthropic`, `Gemini`, `Mock` (tests) |
+| `Agent:Llm:Model` (`AGENT_LLM_MODEL`) | provider default | `claude-opus-5-5` / `gemini-3.8-flash` |
+| `Agent:Llm:ApiKey` (`LLM_API_KEY`, or `ANTHROPIC_API_KEY`; Gemini also reads `GEMINI_API_KEY`) | empty | server-side only; never logged or sent to the browser (Gemini: `x-goog-api-key` header, never in the URL) |
+| `Agent:Llm:TimeoutSeconds` / `MaxRetries` / `Effort` | 60 / 2 / `low` | per request; retries on 429/5xx |
 | `MatrixPilot:Provider` / `Model` | empty | the pilot's own model (Anthropic, Gemini, Mock, None); empty = `Agent:Llm` |
 | `MatrixPilot:SchedulerEnabled` | true | create due cycles every `SchedulerIntervalMinutes` (15) |
 | `MatrixPilot:DecisionHourUtc` | 22 | after the trading day's closes are stored |

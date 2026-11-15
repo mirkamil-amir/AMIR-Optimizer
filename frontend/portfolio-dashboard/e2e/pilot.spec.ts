@@ -44,9 +44,8 @@ test('Matrix Pilot: set up, confirm, decide, book, inspect, kill switch, live re
   await acceptDownloadIfAsked(page)
   await expect(page.getByText('What your result means')).toBeVisible({ timeout: 60_000 })
 
-  // AI Probe › Matrix Pilot lists the portfolio, not set up yet.
+  // AI Probe opens Matrix Pilot, which lists the portfolio, not set up yet.
   await page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'AI Probe' }).click()
-  await page.getByRole('navigation', { name: 'AI Probe' }).getByRole('link', { name: 'Matrix Pilot' }).click()
   await expect(page).toHaveURL(/\/research\/pilot$/)
   await expect(page.getByText(/deterministic test script/)).toBeVisible()
   await expect(page.getByRole('row', { name: /Pilot E2E/ })).toContainText('not set up')

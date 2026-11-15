@@ -7,7 +7,6 @@ using PortfolioOptimizer.Application.Dtos;
 using PortfolioOptimizer.Application.Fx;
 using PortfolioOptimizer.Application.MarketData;
 using PortfolioOptimizer.Application.Portfolios;
-using PortfolioOptimizer.Application.Research;
 using PortfolioOptimizer.Domain;
 
 namespace PortfolioOptimizer.Application.Pilot;

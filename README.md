@@ -5,10 +5,9 @@ The logo is a 3 × 3 grid of dots – the front of a cube of 27 balls; while the
 tumbles like a puzzle cube being solved, then closes back into the grid. The name is set in Sora
 (`frontend/…/src/components/brand.tsx`, `src/lib/cube.ts`, `src/lib/thinking-mark.ts`, `public/favicon.svg`).
 
-An educational portfolio-research platform. An **AI research assistant** turns an investment objective into an
-editable research brief, researches a universe with evidence, runs the real optimizer and risk review, explains the
-results only with numbers it can show, and lets students refine and compare alternatives before deliberately saving
-one (works without any language model; see [agentic architecture](docs/agentic-architecture.md)). Students browse ~2,250 stocks and index ETFs from thirty-six markets (S&P 500, DAX 40 and the
+An educational portfolio-research platform. In **AI Probe › Matrix Pilot** a language model manages one experimental
+paper portfolio under the owner's mandate while the platform calculates, validates, books and measures every decision
+(optional; see [Matrix Pilot](docs/matrix-pilot.md)). Students browse ~2,250 stocks and index ETFs from thirty-six markets (S&P 500, DAX 40 and the
 historical DAX 30, CAC 40, FTSE 100, Nikkei 225, SMI, IBEX 35, FTSE MIB, OMX Stockholm 30, OMX Copenhagen 25, S&P/TSX 60,
 S&P/ASX 50, Hang Seng, NIFTY 50, Straits Times, OBX, OMX Helsinki 25, BEL 20, PSI, ISEQ 20, ATX, WIG20, BUX, FTSE/Athex
 Large Cap, OMX Iceland 15, TA-35, KOSPI 200, SSE 50, FTSE Bursa Malaysia KLCI, SET50, Ibovespa, LQ45, S&P/BMV IPC, FTSE/JSE
@@ -32,14 +31,13 @@ an interpretation generated from its own numbers.
 | Backend | .NET 10, ASP.NET Core Web API, EF Core 10 + **PostgreSQL 17** (Npgsql), ASP.NET Core Identity (cookie sessions), Swagger UI |
 | Quant engine | Custom ADMM QP solver, Ledoit–Wolf covariance, efficient frontier, shared portfolio simulator |
 | ML engine | Ridge and logistic regression (in-house, closed form / IRLS), random forest and gradient boosting (ML.NET FastForest / FastTree) |
-| AI research | Deterministic orchestrator + typed tools; optional Claude (official Anthropic C# SDK) or Gemini (REST) for validated brief/refinement/narrative proposals |
+| Matrix Pilot | Fixed decision state machine + READ/ANALYZE/SIMULATE tools; Claude (official Anthropic C# SDK) or Gemini (REST), validated before any booking |
 | Frontend | React 19 + TypeScript, Vite 8, Tailwind CSS v4, shadcn/ui on Base UI, TanStack Query, Recharts |
 | Market data | Yahoo Finance (default; quotes in batches of 20), Alpha Vantage (optional, free key), Mock (simulated, tests) |
 | Tests | xUnit: 195 unit + 40 ML + 89 integration (real PostgreSQL) · Vitest: 65 · Playwright: 21 on a disposable stack · opt-in live provider smoke tests |
 
 Documentation: [AGENTS.md](AGENTS.md) (start here when changing code) · [architecture](docs/architecture.md) ·
-[agentic research architecture](docs/agentic-architecture.md) · [threat model](docs/threat-model.md) ·
-[agent evaluation](docs/agent-evaluation.md) ·
+[Matrix Pilot](docs/matrix-pilot.md) · [threat model](docs/threat-model.md) ·
 [database](docs/database.md) · [market data](docs/market-data.md) · [quantitative strategies](docs/quantitative-strategies.md) ·
 [machine learning & strategy comparison](docs/machine-learning.md) · [security](docs/security.md) ·
 [testing](docs/testing.md) · [deployment, backup & restore](docs/deployment.md) ·
@@ -99,7 +97,7 @@ Offline demo: start with `MarketData__DefaultProvider=Mock` on a new database, o
 ## Using the platform
 
 Navigation: the top bar holds **View · AI Probe · Wire · Radar · Atlas · Codex · Lexicon · Settings** (portfolio
-workspace, AI research, financial news, watchlist, market data, strategy guide, glossary, settings); the left sidebar
+workspace, Matrix Pilot, financial news, watchlist, market data, strategy guide, glossary, settings); the left sidebar
 lists the Matrix's sections (**Lens** – your portfolios, **Forge** – new portfolio, **Solver** and **Pattern** – the Math
 and ML Optimization, **Trace** – history, **Rewind** – backtesting, **Arena** – comparison) and, for administrators,
 **Administration** with **Admin settings**. A portfolio's tabs are Core · Solver · Pattern · Trace · Rewind · Arena ·
@@ -119,14 +117,9 @@ on several continents open up a world view. Selecting a stock ripples its city, 
 in the header lists the markets in view and offers "Fit selected markets" and "World view". Headlines use Sora, text and
 figures Geist (both bundled with the app). Details: [portfolios.md](docs/portfolios.md).
 
-0. **AI research** (`/research`, in the top bar). Write an objective ("low-risk US stocks without energy,
-   at most 20 % per stock"). The brief separates what you said from what was assumed (badges) and asks only for what
-   blocks the research (the market). The shortlist shows the criterion and the evidence for every inclusion and
-   exclusion. "Run analysis" calculates your method and an equal-weight baseline with the real optimizer, reviews them
-   (concentration, sensitivity, in/out-of-sample) and explains them in seven sections. Questions ("why is MSFT so
-   large?") are answered from the computed values; changes ("cap at 15 %", "exclude JPM") are shown as an exact proposal
-   and only recalculated after you confirm. Compare any two hypotheses; "Save as optimization run" (with confirmation)
-   creates a normal run you can reopen, trade on paper or check further. Every tool call is in the activity log.
+0. **Matrix Pilot** (AI Probe, `/research/pilot`). Set up an AI-managed experimental paper portfolio with a mandate,
+   confirm it, and follow every decision in its control room: the tools the model used, the validation, the simulated
+   bookings and the forward-only live record. Paper money only; details in [matrix-pilot.md](docs/matrix-pilot.md).
 0c. **Currency converter and themes.** The overview (My portfolios) has a currency converter: reference rates of the major currencies (plus any of the 29 published ones you add; BGN as history only since the euro changeover) against
    a selectable base (“1 USD =”, any published currency, default the currency of the totals) with 1-day changes, a 1M–5Y chart of
    the selected pair and a calculator (ECB daily reference rates, dated, never “live”; simulated with simulated prices).
@@ -210,7 +203,7 @@ in `appsettings*.json` or in git.
 | `Universes__Directory` | – | Folder with `indices.csv` / `<CODE>.csv` overriding the bundled constituent files |
 | `RateLimiting__QuotePermitPerMinute` | `60` | On-demand quote refreshes per user |
 | `Fx__Ecb__BaseUrl` / `…TimeoutSeconds` | `https://data-api.ecb.europa.eu/service/` / `30` | ECB reference-rate API (no key); simulated prices use simulated rates |
-| `Agent__Llm__Provider` | `None` | Research assistant language model: `None` (deterministic rules only), `Anthropic`, `Gemini`, `Mock` (tests) |
+| `Agent__Llm__Provider` | `None` | Shared language model (Matrix Pilot unless `MatrixPilot__Provider` is set): `None`, `Anthropic`, `Gemini`, `Mock` (tests) |
 | `Agent__Llm__Model` / `…ApiKey` / `…TimeoutSeconds` / `…MaxRetries` / `…Effort` | provider default / – / `60` / `2` / `low` | Model settings; the key (**secret**; compose reads `LLM_API_KEY`) stays on the server |
 
 ## API overview (`/api/v1`)
@@ -228,7 +221,6 @@ readable `XSRF-TOKEN` cookie; `GET /auth/antiforgery` issues one). Swagger UI se
 | Machine learning | `GET /ml/models`, `POST/GET /ml/experiments` (`portfolioId` in the body / as filter), `GET/DELETE /ml/experiments/{id}`, `PUT …/portfolio` (link to a portfolio of the same currency), `…/metrics`, `…/backtest`, `…/models`, `GET/POST …/predictions` |
 | Strategy comparison | `POST/GET /strategy-comparisons` (`portfolioId`, `strategyA`, `strategyB` = `{kind: Mathematical|MachineLearning, id}`), `GET/DELETE /strategy-comparisons/{id}`; `GET /portfolios/{id}/strategies` lists a portfolio's optimizations |
 | Backtests | `POST /backtests` (custom), `POST /backtests/from-strategy` (an optimization of a portfolio), `GET /backtests?portfolioId`, `GET /backtests/{id}` |
-| AI research | `GET/POST /research`, `GET/DELETE /research/{id}`, `PUT …/brief`, `PUT …/universe`, `POST …/evaluate`, `POST/DELETE …/refinements`, `POST …/refinements/{proposalId}/apply`, `GET …/compare?a&b`, `POST …/save` (requires `confirm: true`), `GET …/companies/{symbol}` |
 | Market data & assets | `GET/POST /assets`, `PATCH /assets/{symbol}`, `POST /market-data/sync`, `GET /market-data/jobs/{id}`, `GET /market-data/status`, `POST /market-data/check`, `POST /market-data/download-missing` |
 | Portfolios, optimization, trading, analytics, backtests | as before: `/portfolios/…`, `/optimization-runs/…`, `/trade-proposals/…`, `/backtests/…` (all owner-scoped) |
 | Settings | `GET /settings` (all users), `PUT /settings` (administrators) |

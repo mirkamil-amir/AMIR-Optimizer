@@ -41,6 +41,6 @@ public interface ILanguageModel
 
 /// <summary>
 /// The language model Matrix Pilot decides with: its own provider and model when <c>MatrixPilot:Provider</c> is set (so a
-/// pilot can run on a different model than the research assistant), otherwise the shared <see cref="ILanguageModel"/>.
+/// pilot can run on a different model than the shared one), otherwise the shared <see cref="ILanguageModel"/>.
 /// </summary>
 public interface IPilotLanguageModel : ILanguageModel;

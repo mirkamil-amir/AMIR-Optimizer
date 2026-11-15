@@ -10,12 +10,12 @@ describe('navigation model', () => {
     expect(primaryNav.map((p) => p.label)).toEqual([
       'View', 'AI Probe', 'Wire', 'Radar', 'Atlas', 'Codex', 'Lexicon', 'Settings',
     ])
-    expect(primaryNav.map((p) => p.to)).toEqual(['/', '/research', '/news', '/watchlist', '/market-data', '/learn', '/learn/glossary', '/settings'])
+    expect(primaryNav.map((p) => p.to)).toEqual(['/', '/research/pilot', '/news', '/watchlist', '/market-data', '/learn', '/learn/glossary', '/settings'])
   })
 
   it('does not repeat the moved destinations in the sidebar', () => {
     for (const admin of [false, true]) {
-      for (const moved of ['/research', '/news', '/watchlist', '/market-data', '/learn', '/learn/glossary', '/settings']) expect(sidebarPaths(admin)).not.toContain(moved)
+      for (const moved of ['/research/pilot', '/news', '/watchlist', '/market-data', '/learn', '/learn/glossary', '/settings']) expect(sidebarPaths(admin)).not.toContain(moved)
     }
   })
 
@@ -32,7 +32,7 @@ describe('navigation model', () => {
 
   it('gives every branded top-bar area its plain name as hint and keeps Settings plain', () => {
     expect(primaryNav.map((p) => [p.label, p.hint?.split(':')[0]])).toEqual([
-      ['View', 'Portfolio workspace'], ['AI Probe', 'AI Research'], ['Wire', 'Financial News'], ['Radar', 'Watchlist'],
+      ['View', 'Portfolio workspace'], ['AI Probe', 'Matrix Pilot'], ['Wire', 'Financial News'], ['Radar', 'Watchlist'],
       ['Atlas', 'Market Data'], ['Codex', 'Strategy Guide'], ['Lexicon', 'Glossary'], ['Settings', undefined],
     ])
   })
@@ -56,7 +56,7 @@ describe('navigation model', () => {
   it.each([
     ['/', 'optimizer'], ['/stocks', 'optimizer'], ['/stocks/AAPL', 'optimizer'], ['/optimize/12', 'optimizer'],
     ['/history', 'optimizer'], ['/reality-check/7', 'optimizer'], ['/machine-learning/3', 'optimizer'],
-    ['/holdings', 'optimizer'], ['/portfolios/p1', 'optimizer'], ['/portfolios/p1/transactions', 'optimizer'], ['/research', 'research'], ['/research/abc', 'research'], ['/news', 'news'],
+    ['/holdings', 'optimizer'], ['/portfolios/p1', 'optimizer'], ['/portfolios/p1/transactions', 'optimizer'], ['/research/pilot', 'research'], ['/research/pilot/p1', 'research'], ['/news', 'news'],
     ['/watchlist', 'watchlist'], ['/market-data', 'market-data'], ['/market-data/currencies', 'market-data'], ['/learn', 'strategy-guide'], ['/learn/max-sharpe', 'strategy-guide'],
     ['/learn/glossary', 'glossary'], ['/settings', 'settings'], ['/settings/', 'settings'],
   ])('assigns %s to the %s area', (path, id) => {

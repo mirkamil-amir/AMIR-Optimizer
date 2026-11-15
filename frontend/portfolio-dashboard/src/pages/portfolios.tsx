@@ -197,7 +197,7 @@ function DeletePortfolioDialog({ portfolio, onClose }: { portfolio: PortfolioSum
           <AlertDialogTitle>Delete “{portfolio?.name}” permanently?</AlertDialogTitle>
           <AlertDialogDescription>
             This removes the portfolio and every record of it: holdings, transactions, cash ledger, proposals, Math and ML Optimizations,
-            backtests, strategy comparisons and research sessions. Stock prices are shared and stay. It cannot be undone.
+            backtests, strategy comparisons and its Matrix Pilot record. Stock prices are shared and stay. It cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

@@ -1,5 +1,4 @@
 using PortfolioOptimizer.Application.Dtos;
-using PortfolioOptimizer.Application.Research;
 using PortfolioOptimizer.Domain;
 
 namespace PortfolioOptimizer.Application.Pilot;

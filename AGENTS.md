@@ -33,14 +33,14 @@ merge commits + 1). CI enforces it (`pr-title.yml` → `scripts/check-pr-name.sh
 | Path | What | Entry points |
 |---|---|---|
 | `src/PortfolioOptimizer.Api` | controllers, auth policies, antiforgery, rate limits, commands | `Program.cs` (`migrate`, `purge-test-data`), `Controllers/*`, `Security/*` |
-| `src/PortfolioOptimizer.Application` | use cases (owner-scoped), DTOs, validation | `Fx/` (FxService, FxTable, CurrencyConverter), `Portfolios/` (PortfolioService, PortfolioTransactionService, PortfolioValuationService), `MarketData/` (quotes, universes, discovery, `Markets.cs`, `PriceHistory.cs`), `Optimization/`, `Analytics/RealityCheckService.cs`, `Watchlists/`, `News/` (rules, service, `EventPriceComparison`), `MachineLearning/`, `Comparisons/`, `Research/` (AI research workflow: orchestrator, tools, validators), `Pilot/` (Matrix Pilot: engine, tools, validator, service), `Dtos/` |
+| `src/PortfolioOptimizer.Application` | use cases (owner-scoped), DTOs, validation | `Fx/` (FxService, FxTable, CurrencyConverter), `Portfolios/` (PortfolioService, PortfolioTransactionService, PortfolioValuationService), `MarketData/` (quotes, universes, discovery, `Markets.cs`, `PriceHistory.cs`), `Optimization/`, `Analytics/RealityCheckService.cs`, `Watchlists/`, `News/` (rules, service, `EventPriceComparison`), `MachineLearning/`, `Comparisons/`, `Pilot/` (Matrix Pilot: engine, tools, validators incl. `NarrativeValidator`, service), `Dtos/` |
 | `src/PortfolioOptimizer.Domain` | entities, rules | `MarketData.cs`, `Portfolio.cs`, `PortfolioTransactions.cs`, `Runs.cs`, `MachineLearning.cs`, `Watchlist.cs`, `News.cs`, `Users.cs` (roles, audit, `TestDataPolicy`) |
 | `src/PortfolioOptimizer.Optimization` | pure math: QP solver, mean-variance, `PortfolioSimulator`, diversification diagnostics | `Portfolio/MeanVarianceOptimizer.cs`, `Portfolio/DiversificationMath.cs`, `Backtesting/*` |
 | `src/PortfolioOptimizer.MachineLearning` | pure ML (no I/O, no optimizer use) | `Training/ExperimentEngine.cs`, `Features/FeatureCatalog.cs` |
 | `src/PortfolioOptimizer.Infrastructure` | EF Core/Npgsql, Identity, providers, jobs, seeding | `Persistence/AppDbContext.cs`, `MarketData/*Provider.cs`, `News/NewsProviders.cs`, `Jobs/BackgroundJobWorker.cs`, `Persistence/UniverseSeeder.cs`, `Seed/universes/*.csv` |
 | `frontend/portfolio-dashboard/src` | React app | `main.tsx` (routes), `pages/*`, `components/*`, `pages/portfolios.tsx` (overview), `pages/portfolio-workspace.tsx`, `lib/` (navigation (top bar + sidebar model), portfolio-context (URL-scoped portfolio), markets (venues, exchange cities, region frames), world-map (background map state), map-camera (framing + camera math), api, auth, selection, queries, types, interpretation, strategy-guide, glossary, quote-status, news) |
 | `tests/*` | unit, ML, integration (real PostgreSQL) | `IntegrationTests/ApiFactory.cs` |
-| `frontend/.../e2e` | Playwright | `admin.setup.ts` (environment guard), `journeys.spec.ts`, `research.spec.ts` (watchlist, news), `research-agent.spec.ts` (AI research journey), `pilot.spec.ts` (Matrix Pilot: set up, decide, kill switch, live record), `multi-currency.spec.ts` (EUR portfolio with four markets), `navigation.spec.ts` (top bar, sidebar, admin area, viewports), `portfolios.spec.ts` (two portfolios, two users), `missing-data.spec.ts` (download dialog), `optimizations.spec.ts` (backtest window, comparison of two runs, portfolio tabs, Overview layout, world map) |
+| `frontend/.../e2e` | Playwright | `admin.setup.ts` (environment guard), `journeys.spec.ts`, `research.spec.ts` (watchlist, news), `pilot.spec.ts` (Matrix Pilot: set up, decide, kill switch, live record), `multi-currency.spec.ts` (EUR portfolio with four markets), `navigation.spec.ts` (top bar, sidebar, admin area, viewports), `portfolios.spec.ts` (two portfolios, two users), `missing-data.spec.ts` (download dialog), `optimizations.spec.ts` (backtest window, comparison of two runs, portfolio tabs, Overview layout, world map) |
 | `tools/` | `universe-builder` (constituent CSVs, curated index-ETF lists), `world-map` (country outlines of the background map), `PortfolioOptimizer.DataMigration` (SQLite import) | |
 | `docs/quant`, `scripts/quant` | formula reference (every formula → code, tests, status), audit and risk register, maintenance tool | `formula-reference.md`, `maintain.py`, `manifest.json` |
 
@@ -115,13 +115,8 @@ updates its entry in [docs/quant/formula-reference.md](docs/quant/formula-refere
   the stored numbers support, labelled fact/estimate/interpretation/caution.
 * **Test data:** tests never run against real databases. e2e only via `scripts/e2e.sh` (guard endpoint
   `/api/v1/system/test-environment`); test accounts use the `.test` domain.
-* **AI research assistant:** the language model never produces numbers, weights or decisions. Calculations come
-  from `OptimizationService.EvaluateAsync` / `RealityCheckService.AnalyzeAsync`; model output is only a proposal that
-  passes allow-lists, quote checks (`BriefInterpreter`), `RefinementRules.Check` or `NarrativeValidator`, with a
-  deterministic path when the model is off or fails. Tools enforce permissions in `ToolRunner` (owner re-check,
-  `Confirm` for user-data changes, budgets, timeouts, events) – never rely on prompts. User text, news and descriptions
-  are untrusted; news and descriptions are never sent to a model. Keys stay server-side. Details:
-  [agentic-architecture.md](docs/agentic-architecture.md), [threat-model.md](docs/threat-model.md).
+* **Language model (only Matrix Pilot, D-63):** the research assistant was removed on 2026-11-15; no other feature calls a
+  model. Keys stay server-side; news and descriptions are never sent to a model. Details: [threat-model.md](docs/threat-model.md).
 * **Matrix Pilot (the one exception, D-60):** in AI Probe › Matrix Pilot the model decides holdings, weights and
   rebalancing of one paper portfolio – nothing else. It gets only READ/ANALYZE/SIMULATE tools (`PilotToolRunner`; no tool
   writes data, none takes a user or portfolio id), every number comes from platform services, every price series ends at
@@ -137,7 +132,7 @@ updates its entry in [docs/quant/formula-reference.md](docs/quant/formula-refere
 
 * **Add a market or index:** add the venue to `Markets.Venues` (suffix, MIC, currency, time zone, Alpha Vantage
   suffix or null) and its session to `Markets.Session`, with `SymbolMapper` tests; mirror it in `frontend/…/lib/markets.ts`
-  (exchange city for the background map) and `BriefRules`/`lib/research.ts`; add a parser + sector mapping in
+  (exchange city for the background map); add a parser + sector mapping in
   `tools/universe-builder/build_universes.py`, run it, validate every symbol and its currency against the price provider
   (listings in another currency → `CURRENCY_OVERRIDES`), commit the CSV (re-imported automatically on start). Benchmarks:
   `UniverseSeeder.Benchmarks` + `Markets.IndexVenues`. The currency must have an ECB rate (`EcbFxProvider.Currencies`).
@@ -156,10 +151,6 @@ updates its entry in [docs/quant/formula-reference.md](docs/quant/formula-refere
   (return provider tags as canonical symbols, skip incomplete items, throw `NewsProviderException` on bad responses),
   register it with `AddProviderClient`, unit-test parsing from synthetic payloads in the real response shape, and
   document terms/coverage in [financial-news.md](docs/financial-news.md).
-* **Add a research tool:** subclass `ResearchTool<TArgs,TResult>` in `Application/Research/Tools.cs` (name, purpose,
-  category, `Validate`, timeout), register it in `DependencyInjection`, call it only through `ToolRunner`, add an
-  evaluation case to `ResearchAgentTests` and [agent-evaluation.md](docs/agent-evaluation.md). A tool that writes user
-  data must be `ToolCategory.UserDataChange`.
 * **Add a portfolio feature:** take the portfolio id from the route, load it owner-scoped, call `EnsureActive()` before
   changes, add a cross-user case to `MultiPortfolioTests` and a section/link inside the workspace (`/portfolios/:id/…`).
 * **Add an endpoint:** controller → application service → DTO; mirror types in `lib/types.ts` and hooks in
@@ -205,7 +196,7 @@ approval is per change).
 [market data](docs/market-data.md) · [quantitative strategies](docs/quantitative-strategies.md) ·
 [machine learning](docs/machine-learning.md) · [security](docs/security.md) · [testing](docs/testing.md) ·
 [deployment](docs/deployment.md) · [implementation status](docs/implementation-status.md) ·
-[agentic architecture](docs/agentic-architecture.md) · [Matrix Pilot](docs/matrix-pilot.md) · [threat model](docs/threat-model.md) · [agent evaluation](docs/agent-evaluation.md) ·
+[Matrix Pilot](docs/matrix-pilot.md) · [threat model](docs/threat-model.md) ·
 [portfolios](docs/portfolios.md) · [performance](docs/performance.md) · [decisions](docs/decisions.md) · [limitations](docs/limitations.md) · [watchlist](docs/watchlist.md) ·
 [financial news](docs/financial-news.md) · [portfolio reality check](docs/portfolio-reality-check.md) ·
 [formula reference](docs/quant/formula-reference.md) · [quant audit](docs/quant/audit-2026-10-28.md) · [subsystem inventory](docs/quant/subsystem-inventory.md) ·

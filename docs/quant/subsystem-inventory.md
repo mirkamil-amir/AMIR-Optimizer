@@ -18,7 +18,8 @@ What exists, where it is implemented, its invariants and how to diagnose it – 
 | Scheduled refresh (prices, news) | yes | `Jobs/ScheduledMarketDataRefresh.cs`, `News/NewsRefreshWorker.cs` | market-data-fx |
 | Auth (cookies, approval, roles, antiforgery, rate limits) | yes | `src/PortfolioOptimizer.Api/Security`, `Infrastructure/Identity` | platform-architecture |
 | Paper portfolio ledger and trading | yes | `Domain/Portfolio.cs`, `Application/Portfolios`, `Application/Trading` | portfolio-accounting |
-| AI research workflow | yes | `Application/Research` | (docs: [agentic architecture](../agentic-architecture.md)) |
+| AI research workflow | **removed** 2026-11-15 (D-63) | – | – |
+| Matrix Pilot (language model) | yes | `Application/Pilot` | (docs: [Matrix Pilot](../matrix-pilot.md)) |
 | Cache layer (Redis or other) | **no** – by design, queries are fixed first ([performance](../performance.md)) | – | – |
 | Metrics/tracing (OpenTelemetry etc.) | **no** – `ILogger` logs and `/health`, `/health/ready` only | `Api/Program.cs` | platform-architecture |
 | CI | added 2026-10-28: `.github/workflows/quant-maintenance.yml` (not yet run on GitHub) | – | maintain-knowledge |

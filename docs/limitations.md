@@ -116,26 +116,15 @@
 * No Swiss market in the catalogue yet (CHF portfolios work; CHF stocks cannot be selected).
 * Monitoring (scheduled reviews, alerts) is not implemented; review and rebalance are user-triggered.
 
-## AI research assistant
-* The Anthropic provider has **not been exercised against the live API** (no key available); it compiles against SDK
-  12.57.0 and the workflow is tested with a scripted mock. The server-side fallback option in the request is unverified.
-* The Gemini provider was verified live with `gemini-3.8-flash` on a free-tier key: answers take 9–36 s and the free tier
-  rate-limits bursts (HTTP 429), so during an evaluation some explanations fall back to the template. A paid tier or a
-  lighter model (`AGENT_LLM_MODEL=gemini-3.5-flash-lite`) reduces this; untested here.
-* Rule parsers cover common English phrasings; other languages and unusual wording reach the model (if configured) or
-  get "not understood" with examples.
-* Only the mean-variance strategies and equal weight are available to hypotheses; ML signals, backtests and the strategy
-  comparison are not part of the workflow (answered honestly when asked).
-* The universe screen uses only stored history; members without enough history are excluded (with a reason), so a fresh
-  database yields small shortlists until prices are downloaded. There is no tool to download history from the workflow.
-* Requests run synchronously (seconds); there is no background continuation or monitoring/alerting step yet.
-* Explanation quality was not evaluated with users.
-
 ## Matrix Pilot
 
 * **No real model has run a cycle yet.** All automated tests use a scripted model; the e2e stack uses a deterministic
   test script (labelled "test script – not an AI"). The quality of real model decisions, cost per cycle and latency are
   unmeasured until a provider key is configured (`MatrixPilot:Provider`/`Model` or `Agent:Llm`).
+* **Providers:** the Anthropic provider has not been exercised against the live API (no key available; it compiles
+  against the official SDK and is covered by mock-based tests). The Gemini provider answered live with `gemini-3.8-flash`
+  on a free-tier key in 9–36 s and the free tier rate-limits bursts (HTTP 429) – for a pilot a failed call fails the
+  cycle (no fallback), so a paid tier is needed. The weekly live smoke test checks one structured Gemini answer.
 * **Data the AI does not have:** fundamentals, valuation ratios, earnings, factor exposures, macro series and transaction
   cost models beyond the portfolio's bps + minimum fee do not exist in the platform; the tools say so rather than
   approximate. News reaches the model only as counts by event type (no text, by design).

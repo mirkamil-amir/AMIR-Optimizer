@@ -1,6 +1,5 @@
 using System.Net;
 using PortfolioOptimizer.Application.Dtos;
-using PortfolioOptimizer.Application.Research;
 using PortfolioOptimizer.Domain;
 using PortfolioOptimizer.MachineLearning.Models;
 
@@ -292,8 +291,6 @@ public sealed class StrategyComparisonTests(StrategyComparisonTests.Shared share
         })).ReadAsync<BacktestDto>();
         await WaitAsync<BacktestDto>(_user, $"/api/v1/backtests/{backtest.Id}", b => b.Status);
         var comparison = await CompareAsync(new CreateStrategyComparisonRequest { PortfolioId = p.Id, StrategyA = Math(run), StrategyB = Ml(experiment) });
-        var research = await (await _user.PostJsonAsync("/api/v1/research",
-            new StartResearchRequest { Objective = "Low risk portfolio of US stocks", Market = "US", PortfolioId = p.Id })).ReadAsync<ResearchSessionDto>();
         var prices = (await (await _user.GetAsync("/api/v1/stocks/AAPL/prices")).ReadAsync<PagedResult<PriceBarDto>>()).TotalCount;
 
         Assert.Equal(HttpStatusCode.NoContent, (await _user.DeleteAsync($"/api/v1/portfolios/{p.Id}")).StatusCode);
@@ -301,7 +298,7 @@ public sealed class StrategyComparisonTests(StrategyComparisonTests.Shared share
         foreach (var url in new[]
                  {
                      $"/api/v1/portfolios/{p.Id}", $"/api/v1/optimization-runs/{run.Id}", $"/api/v1/ml/experiments/{experiment.Summary.Id}",
-                     $"/api/v1/backtests/{backtest.Id}", $"/api/v1/strategy-comparisons/{comparison.Summary.Id}", $"/api/v1/research/{research.Id}",
+                     $"/api/v1/backtests/{backtest.Id}", $"/api/v1/strategy-comparisons/{comparison.Summary.Id}",
                  })
             Assert.True((await _user.GetAsync(url)).StatusCode == HttpStatusCode.NotFound, url);
         // Shared market data stays: the stock's stored price history is unchanged.

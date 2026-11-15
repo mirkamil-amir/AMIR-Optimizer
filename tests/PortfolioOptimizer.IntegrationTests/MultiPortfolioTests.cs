@@ -3,7 +3,6 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using PortfolioOptimizer.Application.Dtos;
-using PortfolioOptimizer.Application.Research;
 using PortfolioOptimizer.Domain;
 using PortfolioOptimizer.Infrastructure.Persistence;
 
@@ -465,8 +464,6 @@ public sealed class MultiPortfolioTests(MultiPortfolioTests.Shared shared) : ICl
         Assert.Equal(HttpStatusCode.NotFound, (await _bob.PostAsync($"/api/v1/portfolios/{p.Id}/quotes/refresh", null)).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await _bob.PostJsonAsync($"/api/v1/portfolios/{p.Id}/optimization-runs", new RunOptimizationRequest())).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await _bob.PostJsonAsync($"/api/v1/optimization-runs/{run.Id}/trade-proposals", new { })).StatusCode);
-        // Research cannot be attached to someone else's portfolio either.
-        Assert.Equal(HttpStatusCode.NotFound, (await _bob.PostJsonAsync("/api/v1/research", new StartResearchRequest { Objective = "low risk US", PortfolioId = p.Id })).StatusCode);
 
         var bobs = await (await _bob.GetAsync("/api/v1/portfolios/overview")).ReadAsync<PortfolioOverviewDto>();
         Assert.Empty(bobs.Portfolios);
@@ -475,17 +472,5 @@ public sealed class MultiPortfolioTests(MultiPortfolioTests.Shared shared) : ICl
         Assert.Equal(10_000m - 100m + 50m, holdings.Summary.CashBalance);
         Assert.Equal(buy.Quantity, holdings.Holdings.Single(h => h.Quantity > 0).Quantity);
         Assert.Equal("Private", (await (await _alice.GetAsync($"/api/v1/portfolios/{p.Id}")).ReadAsync<PortfolioDto>()).Name);
-    }
-
-    [Fact]
-    public async Task Research_StartedFromAPortfolio_UsesItsCurrency_AndKeepsTheLink()
-    {
-        var eur = await CreateAsync(_alice, "EUR research", ["SAP.DE", "ADS.DE"], currency: "EUR", cash: 10_000m);
-        var session = await (await _alice.PostJsonAsync("/api/v1/research",
-            new StartResearchRequest { Objective = "Low risk portfolio of US stocks", Market = "US", PortfolioId = eur.Id })).ReadAsync<ResearchSessionDto>();
-        Assert.Equal(eur.Id, session.PortfolioId);
-        Assert.Equal("EUR research", session.PortfolioName);
-        Assert.Equal("EUR", session.PortfolioCurrency);
-        Assert.Contains(session.Events, e => e.Name == "portfolio_context");
     }
 }

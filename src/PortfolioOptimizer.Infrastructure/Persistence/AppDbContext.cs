@@ -45,8 +45,6 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<StrategyComparison> StrategyComparisons => Set<StrategyComparison>();
     public DbSet<WatchlistEntry> WatchlistEntries => Set<WatchlistEntry>();
     public DbSet<CompanyProfile> CompanyProfiles => Set<CompanyProfile>();
-    public DbSet<ResearchSession> ResearchSessions => Set<ResearchSession>();
-    public DbSet<ResearchEvent> ResearchEvents => Set<ResearchEvent>();
     public DbSet<NewsArticle> NewsArticles => Set<NewsArticle>();
     public DbSet<NewsArticleAsset> NewsArticleAssets => Set<NewsArticleAsset>();
     public DbSet<NewsArticleClassification> NewsArticleClassifications => Set<NewsArticleClassification>();
@@ -159,34 +157,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             e.HasOne(x => x.Asset).WithMany().HasForeignKey(x => x.AssetId).OnDelete(DeleteBehavior.Restrict);
         });
 
-        b.Entity<ResearchSession>(e =>
-        {
-            e.Property(x => x.Id).ValueGeneratedNever();
-            e.Property(x => x.Title).HasMaxLength(160);
-            e.Property(x => x.State).HasConversion<string>().HasMaxLength(20);
-            e.Property(x => x.BriefJson).HasColumnType("jsonb");
-            e.Property(x => x.CandidatesJson).HasColumnType("jsonb");
-            e.Property(x => x.HypothesesJson).HasColumnType("jsonb");
-            e.Property(x => x.PendingRefinementJson).HasColumnType("jsonb");
-            e.Property(x => x.Version).IsConcurrencyToken();
-            e.HasIndex(x => new { x.OwnerId, x.UpdatedAtUtc });
-            // PortfolioService.DeleteAsync removes the portfolio's research first; SET NULL only guards other deletions.
-            e.HasOne<Portfolio>().WithMany().HasForeignKey(x => x.PortfolioId).OnDelete(DeleteBehavior.SetNull);
-            // Private research of the user: removed with the account.
-            e.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Cascade);
-            e.HasMany(x => x.Events).WithOne().HasForeignKey(x => x.SessionId).OnDelete(DeleteBehavior.Cascade);
-        });
-
         ConfigureMatrixPilot(b);
-
-        b.Entity<ResearchEvent>(e =>
-        {
-            e.Property(x => x.Kind).HasMaxLength(20);
-            e.Property(x => x.Name).HasMaxLength(60);
-            e.Property(x => x.Status).HasMaxLength(20);
-            e.Property(x => x.Summary).HasMaxLength(500);
-            e.HasIndex(x => new { x.SessionId, x.Id });
-        });
 
         b.Entity<CompanyProfile>(e =>
         {

@@ -239,7 +239,7 @@ public sealed class PortfolioService(IApplicationDbContext db, PriceQueryService
 
     /// <summary>
     /// Permanently deletes a portfolio (active or archived) with every record of it: holdings, ledger, transactions, proposals,
-    /// Math and ML Optimizations (with their model artifacts), backtests, strategy comparisons and research sessions. Shared
+    /// Math and ML Optimizations (with their model artifacts), backtests, strategy comparisons and Matrix Pilot records. Shared
     /// data – instruments, prices, quotes, FX rates – is never touched. The client confirms first; refused (409) while one of
     /// its optimizations, backtests or comparisons is still queued or running.
     /// </summary>
@@ -256,7 +256,6 @@ public sealed class PortfolioService(IApplicationDbContext db, PriceQueryService
         if (await db.MatrixPilots.AnyAsync(p => p.PortfolioId == id && p.ActiveCycleId != null, ct))
             throw new ConflictException("A Matrix Pilot decision cycle of this portfolio is running. Delete it once the cycle has finished.");
         var experimentIds = await experiments.Select(e => e.Id).ToListAsync(ct);
-        var sessions = db.ResearchSessions.Where(r => r.PortfolioId == id);
 
         await using var tx = await db.Database.BeginTransactionAsync(ct);
         await comparisons.ExecuteDeleteAsync(ct);
@@ -264,8 +263,6 @@ public sealed class PortfolioService(IApplicationDbContext db, PriceQueryService
         // Prediction sets reference model versions (restrict); versions and training events cascade with the experiment.
         await db.MlPredictionSets.Where(p => experimentIds.Contains(p.ExperimentId)).ExecuteDeleteAsync(ct);
         await experiments.ExecuteDeleteAsync(ct);
-        await db.ResearchEvents.Where(e => sessions.Select(r => r.Id).Contains(e.SessionId)).ExecuteDeleteAsync(ct);
-        await sessions.ExecuteDeleteAsync(ct);
         // Matrix Pilot: journal, cycles, mandate versions and events go with the pilot (cascade) – removed before the ledger.
         await db.MatrixPilots.Where(p => p.PortfolioId == id).ExecuteDeleteAsync(ct);
         await db.Orders.Where(o => o.PortfolioId == id).ExecuteDeleteAsync(ct);

@@ -102,8 +102,7 @@ these files.
   own scope). `ApiFactory` sets `MatrixPilot:SchedulerEnabled=false`.
 * `PilotUnitTests` (37): mandate, schedule, decision validator, metrics, forward moves, argument parsing, background actor.
 * `e2e/pilot.spec.ts` on `./scripts/e2e.sh`, which now starts the stack with `MATRIX_PILOT_PROVIDER=Mock` (deterministic
-  test script, not an AI) and `MATRIX_PILOT_SCHEDULER=false`; the research assistant stays on `None`
-  (`research-agent.spec.ts` passes unchanged).
+  test script, not an AI) and `MATRIX_PILOT_SCHEDULER=false`; the shared model stays on `None`.
 * `./scripts/test.sh`: integration 193/194 – `MultiPortfolioTests.Performance_RemovesDepositsAndWithdrawals_ButCountsDividends`
   fails (0.0105 vs ±0.01) identically on unmodified main: a tolerance that depends on today's simulated prices, not
   this change.
@@ -174,7 +173,7 @@ these files.
 |---|---|
 | Unit | 195 passed, 5 skipped (live smoke) – adds `Research/ResearchRulesTests.cs`: 32 |
 | ML | 40 passed |
-| Integration | 89 passed – adds `ResearchAgentTests`: 16 (journey + evaluation cases, see [agent-evaluation.md](agent-evaluation.md)) |
+| Integration | 89 passed – adds `ResearchAgentTests`: 16 (journey + evaluation cases, see agent-evaluation.md (removed 2026-11-15)) |
 | Frontend unit (Vitest) | 65 passed (adds `lib/research.test.ts`: 3) |
 | End-to-end | 23 passed incl. `research-agent.spec.ts` (2) and two throwaway screenshot tests (desktop 1440 / phone 390, no horizontal scroll; spec deleted afterwards) |
 | Lint / build | 0 errors / OK |
