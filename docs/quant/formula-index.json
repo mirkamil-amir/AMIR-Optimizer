@@ -1282,12 +1282,13 @@
       "tests": [
         "PilotMetricsAndArgsTests.ForwardMoves_StartAtTheDecisionClose_AndStayBlankUntilThePeriodHasPassed",
         "PilotMetricsAndArgsTests.LiveForward_IsTheChangeOfTheWealthIndex_NotADifferenceOfReturns",
-        "MatrixPilotTests.EndToEnd_ConfirmedActivation_AiDecides_ValidatorPasses_TradesBooked_JournalAndLiveRecord"
+        "MatrixPilotTests.EndToEnd_ConfirmedActivation_AiDecides_ValidatorPasses_TradesBooked_JournalAndLiveRecord",
+        "MatrixPilotTests.ReportingCurrency_ConvertsTheLiveRecordAndScorecard_AndSaysSo"
       ],
       "skills": [
         "quant-formulas"
       ],
-      "verified": "2026-11-13"
+      "verified": "2026-11-15"
     },
     {
       "id": "F-PILOT-005",

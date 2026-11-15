@@ -14,8 +14,11 @@ import { ThemeProvider } from '@/lib/theme'
 import './index.css'
 
 // Route-level code splitting keeps the initial bundle small.
-const PilotHomePage = lazy(() => import('@/pages/pilot').then((m) => ({ default: m.PilotHomePage })))
-const PilotControlRoomPage = lazy(() => import('@/pages/pilot').then((m) => ({ default: m.PilotControlRoomPage })))
+const PilotLayout = lazy(() => import('@/pages/pilot').then((m) => ({ default: m.PilotLayout })))
+const PilotStatusPage = lazy(() => import('@/pages/pilot').then((m) => ({ default: m.PilotStatusPage })))
+const PilotToCurrent = lazy(() => import('@/pages/pilot').then((m) => ({ default: m.PilotToCurrent })))
+const PilotPortfolioPage = lazy(() => import('@/pages/pilot').then((m) => ({ default: m.PilotPortfolioPage })))
+const PilotPortfolioRedirect = lazy(() => import('@/pages/pilot').then((m) => ({ default: m.PilotPortfolioRedirect })))
 const OverviewPage = lazy(() => import('@/pages/overview').then((m) => ({ default: m.OverviewPage })))
 const PortfoliosPage = lazy(() => import('@/pages/portfolios').then((m) => ({ default: m.PortfoliosPage })))
 const PortfolioWorkspace = lazy(() => import('@/pages/portfolio-workspace').then((m) => ({ default: m.PortfolioWorkspace })))
@@ -96,11 +99,30 @@ const router = createBrowserRouter([
               { path: 'holdings', element: <Navigate to=".." relative="path" replace /> },
             ],
           },
-          // The research assistant was removed on 2026-11-15; AI Probe is Matrix Pilot, old links land there.
-          { path: '/research', element: <Navigate to="/research/pilot" replace /> },
-          { path: '/research/pilot', element: <PilotHomePage /> },
-          { path: '/research/pilot/:portfolioId', element: <PilotControlRoomPage /> },
-          { path: '/research/:sessionId', element: <Navigate to="/research/pilot" replace /> },
+          // Pilot (Matrix Pilot, D-64): a portfolio's Performance, Decisions, Mandate and Audit (the current portfolio when the
+          // URL names none, like View), then Pilot Status (information only).
+          {
+            path: '/pilot',
+            element: <PilotLayout />,
+            children: [
+              { index: true, element: <PilotToCurrent section="performance" /> },
+              { path: 'status', element: <PilotStatusPage /> },
+              { path: 'decisions', element: <PilotToCurrent section="decisions" /> },
+              { path: 'performance', element: <PilotToCurrent section="performance" /> },
+              { path: 'mandate', element: <PilotToCurrent section="mandate" /> },
+              { path: 'audit', element: <PilotToCurrent section="audit" /> },
+              { path: ':portfolioId', element: <PilotPortfolioRedirect /> },
+              { path: ':portfolioId/decisions', element: <PilotPortfolioPage section="decisions" key="decisions" /> },
+              { path: ':portfolioId/performance', element: <PilotPortfolioPage section="performance" key="performance" /> },
+              { path: ':portfolioId/mandate', element: <PilotPortfolioPage section="mandate" key="mandate" /> },
+              { path: ':portfolioId/audit', element: <PilotPortfolioPage section="audit" key="audit" /> },
+            ],
+          },
+          // Earlier AI Probe URLs (renamed Pilot on 2026-11-15, D-64; the research assistant was removed on 2026-11-15, D-63; Matrix Pilot lived under /research/pilot).
+          { path: '/research', element: <Navigate to="/pilot" replace /> },
+          { path: '/research/pilot', element: <Navigate to="/pilot" replace /> },
+          { path: '/research/pilot/:portfolioId', element: <PilotPortfolioRedirect /> },
+          { path: '/research/:sessionId', element: <Navigate to="/pilot" replace /> },
           { path: '/stocks', element: <StocksPage /> },
           { path: '/stocks/:symbol', element: <StockPage /> },
           { path: '/watchlist', element: <WatchlistPage /> },

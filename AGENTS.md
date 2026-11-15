@@ -117,7 +117,7 @@ updates its entry in [docs/quant/formula-reference.md](docs/quant/formula-refere
   `/api/v1/system/test-environment`); test accounts use the `.test` domain.
 * **Language model (only Matrix Pilot, D-63):** the research assistant was removed on 2026-11-15; no other feature calls a
   model. Keys stay server-side; news and descriptions are never sent to a model. Details: [threat-model.md](docs/threat-model.md).
-* **Matrix Pilot (the one exception, D-60):** in AI Probe › Matrix Pilot the model decides holdings, weights and
+* **Matrix Pilot (the one exception, D-60):** in Pilot (Matrix Pilot) the model decides holdings, weights and
   rebalancing of one paper portfolio – nothing else. It gets only READ/ANALYZE/SIMULATE tools (`PilotToolRunner`; no tool
   writes data, none takes a user or portfolio id), every number comes from platform services, every price series ends at
   the decision date, and its structured decision passes `PilotDecisionValidator` + `AllocationValidator` and the owner's

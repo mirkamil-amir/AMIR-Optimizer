@@ -5,7 +5,7 @@ The logo is a 3 × 3 grid of dots – the front of a cube of 27 balls; while the
 tumbles like a puzzle cube being solved, then closes back into the grid. The name is set in Sora
 (`frontend/…/src/components/brand.tsx`, `src/lib/cube.ts`, `src/lib/thinking-mark.ts`, `public/favicon.svg`).
 
-An educational portfolio-research platform. In **AI Probe › Matrix Pilot** a language model manages one experimental
+An educational portfolio-research platform. In **Pilot** (Matrix Pilot) a language model manages one experimental
 paper portfolio under the owner's mandate while the platform calculates, validates, books and measures every decision
 (optional; see [Matrix Pilot](docs/matrix-pilot.md)). Students browse ~2,250 stocks and index ETFs from thirty-six markets (S&P 500, DAX 40 and the
 historical DAX 30, CAC 40, FTSE 100, Nikkei 225, SMI, IBEX 35, FTSE MIB, OMX Stockholm 30, OMX Copenhagen 25, S&P/TSX 60,
@@ -96,7 +96,7 @@ Offline demo: start with `MarketData__DefaultProvider=Mock` on a new database, o
 
 ## Using the platform
 
-Navigation: the top bar holds **View · AI Probe · Wire · Radar · Atlas · Codex · Lexicon · Settings** (portfolio
+Navigation: the top bar holds **View · Pilot · Wire · Radar · Atlas · Codex · Lexicon · Settings** (portfolio
 workspace, Matrix Pilot, financial news, watchlist, market data, strategy guide, glossary, settings); the left sidebar
 lists the Matrix's sections (**Lens** – your portfolios, **Forge** – new portfolio, **Solver** and **Pattern** – the Math
 and ML Optimization, **Trace** – history, **Rewind** – backtesting, **Arena** – comparison) and, for administrators,
@@ -117,9 +117,9 @@ on several continents open up a world view. Selecting a stock ripples its city, 
 in the header lists the markets in view and offers "Fit selected markets" and "World view". Headlines use Sora, text and
 figures Geist (both bundled with the app). Details: [portfolios.md](docs/portfolios.md).
 
-0. **Matrix Pilot** (AI Probe, `/research/pilot`). Set up an AI-managed experimental paper portfolio with a mandate,
-   confirm it, and follow every decision in its control room: the tools the model used, the validation, the simulated
-   bookings and the forward-only live record. Paper money only; details in [matrix-pilot.md](docs/matrix-pilot.md).
+0. **Matrix Pilot** (Pilot, `/pilot`). Choose a portfolio in the small box, set up an AI-managed paper portfolio with a mandate,
+   confirm it, and follow it in **Decisions** (each decision, the tools the model used, the validation), **Performance** (the
+   forward-only live record, the scorecard, in any currency), **Mandate**, **Audit**, and see all portfolios in **Pilot Status**. Paper money only; see [matrix-pilot.md](docs/matrix-pilot.md).
 0c. **Currency converter and themes.** The overview (My portfolios) has a currency converter: reference rates of the major currencies (plus any of the 29 published ones you add; BGN as history only since the euro changeover) against
    a selectable base (“1 USD =”, any published currency, default the currency of the totals) with 1-day changes, a 1M–5Y chart of
    the selected pair and a calculator (ECB daily reference rates, dated, never “live”; simulated with simulated prices).

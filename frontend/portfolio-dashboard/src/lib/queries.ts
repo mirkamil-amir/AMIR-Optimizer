@@ -1059,21 +1059,30 @@ export const usePilotMandates = (portfolioId: string | undefined, enabled: boole
     enabled: !!portfolioId && enabled,
   })
 
-export const usePilotComparison = (portfolioId: string | undefined, other: string | undefined, enabled: boolean) =>
+/** `?a=1&b=2` from the defined values, or '' when there are none. */
+function query(values: Record<string, string | undefined>): string {
+  const p = new URLSearchParams()
+  for (const [k, v] of Object.entries(values)) if (v) p.set(k, v)
+  const s = p.toString()
+  return s ? `?${s}` : ''
+}
+
+/** Live record vs another portfolio and the benchmark; `currency` is a reporting view (converted on the server, D-64). */
+export const usePilotComparison = (portfolioId: string | undefined, other: string | undefined, enabled: boolean, currency?: string) =>
   useQuery({
-    queryKey: [...pilotKey(portfolioId ?? ''), 'comparison', other ?? ''] as const,
-    queryFn: () => api.get<PilotComparison>(`${V1}/portfolios/${portfolioId}/pilot/comparison${other ? `?other=${other}` : ''}`),
+    queryKey: [...pilotKey(portfolioId ?? ''), 'comparison', other ?? '', currency ?? ''] as const,
+    queryFn: () => api.get<PilotComparison>(`${V1}/portfolios/${portfolioId}/pilot/comparison${query({ other, currency })}`),
     enabled: !!portfolioId && enabled,
   })
 
-export const usePilotScorecard = (portfolioId: string | undefined, enabled: boolean) =>
+export const usePilotScorecard = (portfolioId: string | undefined, enabled: boolean, currency?: string) =>
   useQuery({
-    queryKey: [...pilotKey(portfolioId ?? ''), 'scorecard'] as const,
-    queryFn: () => api.get<PilotScorecard>(`${V1}/portfolios/${portfolioId}/pilot/scorecard`),
+    queryKey: [...pilotKey(portfolioId ?? ''), 'scorecard', currency ?? ''] as const,
+    queryFn: () => api.get<PilotScorecard>(`${V1}/portfolios/${portfolioId}/pilot/scorecard${query({ currency })}`),
     enabled: !!portfolioId && enabled,
   })
 
-/** Every pilot action invalidates the pilot's queries (status, journal, events) and the AI Probe list. */
+/** Every pilot action invalidates the pilot's queries (status, journal, events) and the Pilot Status list. */
 function usePilotAction<TArgs, TResult>(portfolioId: string, call: (args: TArgs) => Promise<TResult>) {
   const qc = useQueryClient()
   return useMutation({

@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { ADMIN_STATE, admin, approve, register, requireAdminCredentials, signIn, signOut, strongPassword, uniqueEmail } from './helpers'
 
 // Application navigation: eight primary areas in the top bar, View sections and administration in the sidebar.
-const PRIMARY = ['View', 'AI Probe', 'Wire', 'Radar', 'Atlas', 'Codex', 'Lexicon', 'Settings']
+const PRIMARY = ['View', 'Pilot', 'Wire', 'Radar', 'Atlas', 'Codex', 'Lexicon', 'Settings']
 
 const primary = (page: Page) => page.getByRole('navigation', { name: 'Primary' })
 const optimizer = (page: Page) => page.getByRole('navigation', { name: 'View sections' }).first()
@@ -24,7 +24,7 @@ test.describe('as administrator', () => {
     await expect(primary(page).getByRole('link', { name: 'View' })).toHaveAttribute('aria-current', 'page')
 
     for (const [name, heading, url] of [
-      ['AI Probe', 'Matrix Pilot', /\/research\/pilot$/],
+      ['Pilot', 'Matrix Pilot', /\/pilot(\/|$)/],
       ['Wire', 'Financial news', /\/news$/],
       ['Radar', 'Watchlist', /\/watchlist$/],
       ['Atlas', 'Market data', /\/market-data$/],
@@ -135,7 +135,7 @@ test.describe('as administrator', () => {
       // Keyboard: the primary links are focusable in order.
       await primary(page).getByRole('link', { name: 'View' }).focus()
       await page.keyboard.press('Tab')
-      await expect(primary(page).getByRole('link', { name: 'AI Probe' })).toBeFocused()
+      await expect(primary(page).getByRole('link', { name: 'Pilot' })).toBeFocused()
     })
   }
 })

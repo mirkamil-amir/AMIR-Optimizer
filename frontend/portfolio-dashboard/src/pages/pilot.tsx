@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { Link, useParams } from 'react-router'
+import { Link, Navigate, Outlet, useLocation, useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -12,11 +12,15 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { EmptyState, ErrorState, InfoTip, LoadingBlock, MetricCard, MetricGroup, MetricValue, PageHeader, ResultSection, Warnings } from '@/components/common'
+import { EmptyState, ErrorState, InfoTip, LoadingBlock, MetricCard, MetricGroup, MetricValue, ResultSection, Warnings } from '@/components/common'
 import { SearchableTable, type Column } from '@/components/data-table'
 import { TimeSeriesChart, Legend, seriesColor } from '@/components/charts'
 import { MatrixLoader, WorkingPanel } from '@/components/matrix-loader'
+import { NavHint } from '@/components/nav-hint'
+import { ReportingCurrencySelect } from '@/components/currency'
 import { errorMessage } from '@/lib/api'
+import { PILOT_SECTIONS, pilotPath, type PilotPortfolioSection as PortfolioSection, type PilotSectionPath } from '@/lib/navigation'
+import { usePortfolioContext } from '@/lib/portfolio-context'
 import { dateTime, money, pct, relativeTime } from '@/lib/format'
 import {
   useCreatePilot, useDisablePilot, useEnablePilot, useKillPilot, usePilot, usePilotComparison, usePilotCycle, usePilotCycles, usePilotEvents,
@@ -28,10 +32,8 @@ import type {
 } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
-// AI Probe › Matrix Pilot (docs/matrix-pilot.md): the control room of an AI-managed experimental (paper) portfolio. The page
-// shows what the model decided and what the platform calculated, validated and booked – always labelled apart.
-
-export const PILOT_LABEL = 'Matrix Pilot – AI-managed experimental portfolio'
+// Pilot › Matrix Pilot (docs/matrix-pilot.md): an AI-managed experimental (paper) portfolio in four sub-sections – Performance, Decisions,
+// Mandate & Audit, Pilot Status. They show what the model decided and what the platform calculated, validated and booked – labelled apart.
 
 // ================================================================ outcome / status labels
 
@@ -63,12 +65,78 @@ function modelText(m: { provider: string; model: string }, isTest?: boolean) {
   return isTest || m.provider === 'Mock' ? `${m.provider} ${m.model} (test script – not an AI)` : `${m.provider} ${m.model}`
 }
 
-// ================================================================ AI Probe › Matrix Pilot (list of portfolios)
+// ================================================================ Pilot: layout and sub-sections
 
-export function PilotHomePage() {
+/**
+ * Pilot's frame: the portfolio header (name, box, controls), the sub-section tabs (Performance leftmost, Pilot Status
+ * rightmost) and the sub-section below. No page title – the top bar says Pilot; Pilot Status has a screen-reader heading.
+ */
+export function PilotLayout() {
+  const { portfolioId } = useParams()
+  const { pathname } = useLocation()
+  const segments = pathname.split('/')
+  const current = PILOT_SECTIONS.find((s) => segments.includes(s.path))?.path ?? 'performance'
+  return (
+    <>
+      {portfolioId ? <PilotHeader portfolioId={portfolioId} section={current === 'status' ? 'performance' : current} /> : <h1 className="sr-only">Matrix Pilot</h1>}
+      <nav aria-label="Pilot sections" className="nav-scroll -mx-1 mb-6 overflow-x-auto border-b">
+        <ul className="flex min-w-max gap-0.5 px-1">
+          {PILOT_SECTIONS.map((s) => {
+            const active = s.path === current
+            return (
+              <li key={s.path}>
+                <NavHint hint={s.hint} side="bottom">
+                  <Link
+                    to={pilotPath(s.path, portfolioId)}
+                    aria-current={active ? 'page' : undefined}
+                    aria-description={s.hint}
+                    className={cn(
+                      'inline-flex border-b-2 px-3 py-2 text-sm whitespace-nowrap transition-colors focus-visible:rounded-t-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset',
+                      active ? 'border-primary font-semibold text-foreground' : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground',
+                    )}
+                  >
+                    {s.label}
+                  </Link>
+                </NavHint>
+              </li>
+            )
+          })}
+        </ul>
+      </nav>
+      <Outlet />
+    </>
+  )
+}
+
+const sectionLabel = (section: PilotSectionPath) => PILOT_SECTIONS.find((s) => s.path === section)!.label
+
+/**
+ * The portfolio a Pilot sub-section opens with when the URL names none (like View's current portfolio): the current
+ * portfolio when it has a pilot, otherwise the first portfolio with a pilot, otherwise the current one. The URL and the
+ * portfolio box then show which portfolio it is.
+ */
+export function PilotToCurrent({ section }: { section: PortfolioSection }) {
+  const { portfolioId, isLoading } = usePortfolioContext()
+  const home = usePilotHome()
+  if (home.error) return <ErrorState error={home.error} onRetry={() => home.refetch()} />
+  if (isLoading || !home.data) return <LoadingBlock height="h-40" />
+  const rows = home.data.portfolios
+  const withPilot = rows.filter((r) => r.pilotStatus)
+  const target = (withPilot.some((r) => r.portfolioId === portfolioId) ? portfolioId : withPilot[0]?.portfolioId) ?? portfolioId ?? rows[0]?.portfolioId
+  if (!target) {
+    return (
+      <EmptyState title="No portfolio yet" description="Matrix Pilot manages one of your portfolios. Create one with Forge, then set up Matrix Pilot for it."
+        action={<Button render={<Link to="/stocks" />}>Open Forge</Button>} />
+    )
+  }
+  return <Navigate to={pilotPath(section, target)} replace />
+}
+
+/** Pilot Status: information only – every portfolio of the user with its Matrix Pilot status (no links). */
+export function PilotStatusPage() {
   const home = usePilotHome()
   const columns: Column<PilotPortfolioRow>[] = [
-    { key: 'name', header: 'Portfolio', cell: (r) => <Link className="font-medium hover:underline" to={`/research/pilot/${r.portfolioId}`}>{r.name}</Link>, sortValue: (r) => r.name },
+    { key: 'name', header: 'Portfolio', cell: (r) => <span className="font-medium">{r.name}</span>, sortValue: (r) => r.name },
     { key: 'ccy', header: 'Currency', cell: (r) => r.baseCurrency, sortValue: (r) => r.baseCurrency },
     {
       key: 'pilot', header: 'Matrix Pilot', sortValue: (r) => r.pilotStatus ?? '',
@@ -80,11 +148,7 @@ export function PilotHomePage() {
   ]
   return (
     <>
-      <PageHeader
-        title="Matrix Pilot"
-        info="An AI model manages one paper portfolio on its own: it researches with the platform's tools, chooses holdings and weights and decides when to rebalance. The platform checks every decision against your mandate before anything is booked, records every step and measures the result from the day you switch it on."
-        description={PILOT_LABEL + '. Paper money only; results are measured, not promised.'}
-      />
+      <h2 className="sr-only">Pilot Status</h2>
       {home.error ? <ErrorState error={home.error} onRetry={() => home.refetch()} /> : !home.data ? <LoadingBlock height="h-40" /> : (
         <div className="space-y-4">
           <ModelNote model={home.data.configuredModel} />
@@ -95,6 +159,12 @@ export function PilotHomePage() {
       )}
     </>
   )
+}
+
+/** /pilot/:id (and the earlier control-room URL) opens the portfolio's Performance. */
+export function PilotPortfolioRedirect() {
+  const { portfolioId } = useParams()
+  return <Navigate to={pilotPath('performance', portfolioId)} replace />
 }
 
 function ModelNote({ model }: { model: PilotModel }) {
@@ -139,41 +209,91 @@ function ModelCheck({ auto = false, onResult }: { auto?: boolean; onResult?: (ok
   )
 }
 
-// ================================================================ control room
+// ================================================================ one portfolio's sub-sections
 
-export function PilotControlRoomPage() {
+/** A portfolio-bound Pilot sub-section (the header with the controls is in the layout); without a pilot each offers the setup. */
+export function PilotPortfolioPage({ section }: { section: PortfolioSection }) {
   const { portfolioId } = useParams()
   const overview = usePilot(portfolioId)
-  const [selected, setSelected] = useState<string | undefined>()
   if (overview.error) return <ErrorState error={overview.error} onRetry={() => overview.refetch()} />
   if (!overview.data) return <LoadingBlock />
   const o = overview.data
   return (
     <>
-      <PageHeader
-        title={`Matrix Pilot · ${o.portfolioName}`}
-        info="The control room of this portfolio's AI manager: status, the latest decision, every tool it used, the validation, the bookings and the live record."
-        description={o.label}
-        actions={o.pilot ? <PilotActions overview={o} pilot={o.pilot} /> : undefined}
-      />
-      {!o.pilot ? <SetupCard overview={o} /> : <ControlRoom overview={o} pilot={o.pilot} selected={selected} onSelect={setSelected} />}
+      <h2 className="sr-only">{sectionLabel(section)}</h2>
+      {!o.pilot ? <SetupCard overview={o} /> : <PilotSection overview={o} pilot={o.pilot} section={section} />}
     </>
   )
 }
 
-function ControlRoom({ overview, pilot, selected, onSelect }: { overview: PilotOverview; pilot: Pilot; selected?: string; onSelect: (id: string) => void }) {
-  const running = pilot.displayStatus === 'RUNNING'
+/**
+ * The portfolio header above the tabs, styled like a portfolio's header in View: its name, currency and Matrix Pilot
+ * status on the left; the portfolio box and the controls (kill switch always reachable) on the right.
+ */
+function PilotHeader({ portfolioId, section }: { portfolioId: string; section: PortfolioSection }) {
+  const overview = usePilot(portfolioId)
+  const home = usePilotHome()
+  const { select } = usePortfolioContext()
+  const navigate = useNavigate()
+  const o = overview.data
+  if (!o) return <h1 className="sr-only">Matrix Pilot</h1>
+  const rows = home.data?.portfolios ?? []
+  // The box always lists this portfolio, also before the list has loaded.
+  const portfolios = rows.some((p) => p.portfolioId === o.portfolioId) ? rows : [{ portfolioId: o.portfolioId, name: o.portfolioName }, ...rows]
+  const pilot = o.pilot
+  return (
+    <section aria-label="Pilot portfolio" className="mb-4 flex flex-wrap items-start justify-between gap-3">
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <h1 className="heading-display truncate text-[1.8rem]">{o.portfolioName}</h1>
+        <Badge variant="outline" className="tabular">{o.baseCurrency}</Badge>
+        {pilot ? <StatusBadge status={pilot.displayStatus} /> : <span className="text-sm text-muted-foreground">Matrix Pilot not set up</span>}
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Select value={o.portfolioId} items={portfolios.map((p) => ({ value: p.portfolioId, label: p.name }))}
+          onValueChange={(v) => {
+            if (!v || v === o.portfolioId) return
+            select(String(v)) // becomes the current portfolio, as in View
+            navigate(pilotPath(section, String(v)))
+          }}>
+          <SelectTrigger size="sm" className="w-48" aria-label="Portfolio"><SelectValue /></SelectTrigger>
+          <SelectContent>{portfolios.map((p) => <SelectItem key={p.portfolioId} value={p.portfolioId}>{p.name}</SelectItem>)}</SelectContent>
+        </Select>
+        {pilot && <PilotActions overview={o} pilot={pilot} />}
+      </div>
+    </section>
+  )
+}
+
+function PilotSection({ overview, pilot, section }: { overview: PilotOverview; pilot: Pilot; section: PortfolioSection }) {
   // When a cycle finishes or the status changes, everything derived from it (journal, timeline, record, scorecard, audit) is reloaded.
   const qc = useQueryClient()
   const stamp = `${pilot.status}|${pilot.latestCycle?.id ?? ''}|${pilot.latestCycle?.outcome ?? ''}|${pilot.mandateVersion}`
   useEffect(() => {
     qc.invalidateQueries({ queryKey: ['pilot', pilot.portfolioId], predicate: (q) => q.queryKey.length > 2 })
   }, [qc, pilot.portfolioId, stamp])
-  const cycles = usePilotCycles(pilot.portfolioId, true, running)
-  const cycleId = selected ?? pilot.latestDecision?.id ?? pilot.latestCycle?.id
-  const detail = usePilotCycle(pilot.portfolioId, cycleId, running && cycleId === pilot.latestCycle?.id)
   return (
     <div className="space-y-8">
+      <PilotAlerts overview={overview} pilot={pilot} section={section} />
+      {section === 'decisions' && <DecisionsSection pilot={pilot} />}
+      {section === 'performance' && <PerformanceSection pilot={pilot} />}
+      {section === 'mandate' && (
+        <>
+          <MandateSection overview={overview} pilot={pilot} />
+          <ResultSection title="Model connection" hint="Checks the configured key with one small request (no portfolio data).">
+            <p className="text-sm text-muted-foreground">This pilot decides with {modelText(pilot)}.</p>
+            <ModelCheck />
+          </ResultSection>
+        </>
+      )}
+      {section === 'audit' && <AuditSection pilot={pilot} />}
+    </div>
+  )
+}
+
+function PilotAlerts({ overview, pilot, section }: { overview: PilotOverview; pilot: Pilot; section: PortfolioSection }) {
+  const running = pilot.displayStatus === 'RUNNING'
+  return (
+    <>
       {pilot.status === 'KillSwitched' || pilot.status === 'Paused' ? (
         <Alert>
           <AlertTitle>{pilot.status === 'KillSwitched' ? 'Stopped by the kill switch' : 'Paused by the system'} {pilot.pausedAtUtc && `· ${dateTime(pilot.pausedAtUtc)}`}</AlertTitle>
@@ -189,24 +309,52 @@ function ControlRoom({ overview, pilot, selected, onSelect }: { overview: PilotO
           </AlertDescription>
         </Alert>
       )}
-      {running && <WorkingPanel title={`Deciding: ${phaseLabel[pilot.runningPhase ?? "Queued"]}`} detail="The journal below fills as the cycle advances. The kill switch stops it before anything is booked." />}
+      {running && (
+        <WorkingPanel title={`Deciding: ${phaseLabel[pilot.runningPhase ?? 'Queued']}`}
+          detail={section === 'decisions' ? 'The decision and its steps below fill as the cycle advances. The kill switch stops it before anything is booked.'
+            : 'Follow it under Decisions. The kill switch stops it before anything is booked.'} />
+      )}
+    </>
+  )
+}
 
-      <ModelCheck />
-      <StatusSection pilot={pilot} />
+/** Decisions: one decision cycle in full (decision, unconstrained idea, every step) and the timeline to choose another. */
+function DecisionsSection({ pilot }: { pilot: Pilot }) {
+  const running = pilot.displayStatus === 'RUNNING'
+  const [selected, setSelected] = useState<string | undefined>()
+  const cycles = usePilotCycles(pilot.portfolioId, true, running)
+  const cycleId = selected ?? pilot.latestDecision?.id ?? pilot.latestCycle?.id
+  const detail = usePilotCycle(pilot.portfolioId, cycleId, running && cycleId === pilot.latestCycle?.id)
+  return (
+    <>
       <DecisionSection pilot={pilot} detail={detail.data} loading={detail.isLoading} />
       <UnconstrainedSection detail={detail.data} />
       <ActivitySection detail={detail.data} />
       <ResultSection title="Decision timeline" hint="Every cycle with what it ended in. NO TRADE is a decision; SKIPPED, BLOCKED and FAILED are not, and say why. Select a row to inspect it above.">
         {cycles.error ? <ErrorState error={cycles.error} /> : !cycles.data ? <LoadingBlock height="h-32" /> : (
-          <SearchableTable label="cycles" rows={cycles.data.items} rowKey={(c) => c.id} onRowClick={(c) => onSelect(c.id)} placeholder="Search cycles"
+          <SearchableTable label="cycles" rows={cycles.data.items} rowKey={(c) => c.id} onRowClick={(c) => setSelected(c.id)} placeholder="Search cycles"
             matches={(c, q) => `${c.outcomeLabel} ${c.outcomeReason ?? ''} ${c.approach ?? ''}`.toLowerCase().includes(q)} initialSort={{ key: 'at', dir: 'desc' }}
             empty="No decision yet. The first one runs at the next decision time (or when you choose Run decision now)." columns={cycleColumns(cycleId)} />
         )}
       </ResultSection>
-      <LiveRecordSection pilot={pilot} />
-      <ScorecardSection pilot={pilot} />
-      <MandateSection overview={overview} pilot={pilot} />
-      <AuditSection pilot={pilot} />
+    </>
+  )
+}
+
+/** Performance: where the pilot stands, its forward-only live record and how each decision turned out. */
+function PerformanceSection({ pilot }: { pilot: Pilot }) {
+  // Reporting currency, as in View's Overview: converts the live record and scorecard for viewing (server side, dated
+  // rates); the portfolio keeps its currency and nothing is exchanged.
+  const [reporting, setReporting] = useState<string>()
+  return (
+    <>
+      <div className="-mt-2 flex flex-wrap items-center gap-2">
+        <ReportingCurrencySelect value={reporting} accountCurrency={pilot.baseCurrency} onChange={setReporting} />
+        {reporting && <span className="text-xs text-muted-foreground">Shown in {reporting} – converted from {pilot.baseCurrency} with dated exchange rates; returns include currency moves.</span>}
+      </div>
+      <StatusSection pilot={pilot} currency={reporting} />
+      <LiveRecordSection pilot={pilot} currency={reporting} />
+      <ScorecardSection pilot={pilot} currency={reporting} />
       <ResultSection title="What your result means" hint="How to read this experiment honestly.">
         <Card><CardContent className="space-y-2 pt-4 text-sm leading-relaxed">
           <p>Matrix Pilot is an experiment: can an AI model manage a portfolio end to end when every number comes from the platform's own calculations? Its record starts on {pilot.baseline ? dateTime(pilot.baseline.atUtc) : 'the day you switch it on'} and is never back-filled.</p>
@@ -214,7 +362,7 @@ function ControlRoom({ overview, pilot, selected, onSelect }: { overview: PilotO
           <p>Paper money only: no real order is sent anywhere. This is educational research, not investment advice, and past results do not predict future ones.</p>
         </CardContent></Card>
       </ResultSection>
-    </div>
+    </>
   )
 }
 
@@ -231,13 +379,13 @@ function cycleColumns(selected?: string): Column<PilotCycleSummary>[] {
 
 // ---------------------------------------------------------------- status
 
-function StatusSection({ pilot }: { pilot: Pilot }) {
-  const cmp = usePilotComparison(pilot.portfolioId, undefined, !!pilot.baseline)
+function StatusSection({ pilot, currency }: { pilot: Pilot; currency?: string }) {
+  const cmp = usePilotComparison(pilot.portfolioId, undefined, !!pilot.baseline, currency)
   const live = cmp.data?.pilot
   const e = pilot.evaluation
   const ccy = pilot.baseCurrency
   return (
-    <ResultSection title="Status" hint="Where the pilot stands now. Figures come from the ledger and stored prices; the live record starts at the baseline.">
+    <ResultSection title="At a glance" titleHidden hint="Where the pilot stands now. Figures come from the ledger and stored prices; the live record starts at the baseline.">
       <MetricGroup title="Matrix Pilot" columns={4}>
         <MetricCard label="Status" value={<StatusBadge status={pilot.displayStatus} />} sub={pilot.status === 'Active' ? `since ${dateTime(pilot.enabledAtUtc)}` : pilot.pauseReason ?? undefined} />
         <MetricCard label="AI model" value={<span className="text-base">{modelText(pilot)}</span>} sub={`Effort ${pilot.effort}`} hint="Recorded on every decision, so a later model change never relabels old decisions." />
@@ -258,7 +406,8 @@ function StatusSection({ pilot }: { pilot: Pilot }) {
         <MetricCard label="Not decided" value={e.skipped + e.blocked + e.failed} sub={`${e.blocked} blocked, ${e.failed} failed, ${e.skipped} skipped`} />
         <MetricCard label="Turnover" value={pct(e.turnoverSum, 1)} sub={e.averageTurnoverPerRebalance == null ? undefined : `${pct(e.averageTurnoverPerRebalance, 1)} per rebalance`}
           hint="One-way turnover ½Σ|w − w₀| of the executed rebalances, added up." />
-        <MetricCard label="Costs" value={money(e.fees, ccy)} sub={e.costDragPct == null ? undefined : `${pct(e.costDragPct, 3)} of the starting value`} />
+        <MetricCard label="Costs" value={money(e.fees, ccy)}
+          sub={[e.costDragPct == null ? null : `${pct(e.costDragPct, 3)} of the starting value`, currency && currency !== ccy ? `booked in ${ccy}` : null].filter(Boolean).join(' · ') || undefined} />
       </MetricGroup>
       <MetricGroup title="Fit to the mandate" hint="How often the AI's first proposal already fitted every rule, and how often the validator had to send a proposal back.">
         <MetricCard label="Fitted first time" value={`${e.decisionsThatFittedFirstTime} of ${e.rebalanced + e.noTrade}`} sub="decisions that needed no revision" />
@@ -275,7 +424,7 @@ function StatusSection({ pilot }: { pilot: Pilot }) {
 function DecisionSection({ pilot, detail, loading }: { pilot: Pilot; detail?: PilotCycleDetail; loading: boolean }) {
   if (loading) return <LoadingBlock height="h-48" />
   if (!detail) return (
-    <ResultSection title="AI decision"><EmptyState title="No decision yet" description="The first decision runs at the next decision time." /></ResultSection>
+    <ResultSection title="AI decision" titleHidden><EmptyState title="No decision yet" description="The first decision runs at the next decision time." /></ResultSection>
   )
   const d = detail.decision
   const s = detail.summary
@@ -289,7 +438,7 @@ function DecisionSection({ pilot, detail, loading }: { pilot: Pilot; detail?: Pi
   } : null
   const ccy = pilot.baseCurrency
   return (
-    <ResultSection title="AI decision" hint="What the model decided (AI DECISION), next to what the platform checked and booked. A blocked proposal is shown as proposed – never quietly changed to fit.">
+    <ResultSection title="AI decision" titleHidden hint="What the model decided (AI DECISION), next to what the platform checked and booked. A blocked proposal is shown as proposed – never quietly changed to fit.">
       <Card>
         <CardHeader className="flex flex-row flex-wrap items-center gap-2">
           <CardTitle className="text-base">{d?.action ?? 'No decision'} · {dateTime(s.asOfUtc)}</CardTitle>
@@ -550,10 +699,10 @@ function pretty(json: string) {
 // ---------------------------------------------------------------- live record
 
 /** Matrix Pilot's forward-only record against another of the user's portfolios and the benchmark (also shown in the Arena tab). */
-export function LiveRecordSection({ pilot, title = 'Live record vs another portfolio' }: { pilot: Pilot; title?: string }) {
+export function LiveRecordSection({ pilot, title = 'Live record vs another portfolio', currency }: { pilot: Pilot; title?: string; currency?: string }) {
   const home = usePilotHome()
   const [other, setOther] = useState<string>('none')
-  const cmp = usePilotComparison(pilot.portfolioId, other === 'none' ? undefined : other, true)
+  const cmp = usePilotComparison(pilot.portfolioId, other === 'none' ? undefined : other, true, currency)
   const options = [{ value: 'none', label: 'Benchmark only' },
     ...(home.data?.portfolios.filter((p) => p.portfolioId !== pilot.portfolioId).map((p) => ({ value: p.portfolioId, label: `${p.name} (${p.baseCurrency})` })) ?? [])]
   return (
@@ -633,8 +782,8 @@ function ComparisonBody({ data }: { data: PilotComparison }) {
 
 // ---------------------------------------------------------------- scorecard
 
-function ScorecardSection({ pilot }: { pilot: Pilot }) {
-  const card = usePilotScorecard(pilot.portfolioId, true)
+function ScorecardSection({ pilot, currency }: { pilot: Pilot; currency?: string }) {
+  const card = usePilotScorecard(pilot.portfolioId, true, currency)
   type Row = NonNullable<typeof card.data>['rows'][number]
   const columns: Column<Row>[] = [
     { key: 'at', header: 'Decided', cell: (r) => dateTime(r.decidedAtUtc), sortValue: (r) => r.decidedAtUtc },
@@ -669,7 +818,7 @@ function MandateSection({ overview, pilot }: { overview: PilotOverview; pilot: P
   const versions = usePilotMandates(pilot.portfolioId, true)
   const [editing, setEditing] = useState(false)
   return (
-    <ResultSection title="Mandate" hint="The limits the AI works within. Only you can change them; every change is a new version and the old one is kept. The AI can only ask (see its requests above).">
+    <ResultSection title="Mandate" hint="The limits the AI works within. Only you can change them; every change is a new version and the old one is kept. The AI can only ask (its requests are shown with each decision under Decisions).">
       <MandateSummary mandate={pilot.mandate} />
       <div className="flex flex-wrap gap-2">
         <Button variant="outline" onClick={() => setEditing(true)} disabled={pilot.displayStatus === 'RUNNING' || !overview.portfolioActive}>Change mandate</Button>
@@ -723,7 +872,7 @@ function AuditSection({ pilot }: { pilot: Pilot }) {
     { key: 'reason', header: 'Reason', cell: (e) => <span className="line-clamp-2 max-w-md">{e.reason ?? '—'}</span> },
   ]
   return (
-    <ResultSection title="Audit trail" hint="Every switch-on, kill switch, pause, resume, mandate change and cycle outcome, with who caused it and why." collapsible>
+    <ResultSection title="Audit trail" hint="Every switch-on, kill switch, pause, resume, mandate change and cycle outcome, with who caused it and why.">
       {events.error ? <ErrorState error={events.error} /> : !events.data ? <LoadingBlock height="h-24" /> : (
         <SearchableTable label="events" rows={events.data.items} rowKey={(e) => String(e.id)} columns={columns} dense placeholder="Search events"
           matches={(e, q) => `${e.action} ${e.reason ?? ''}`.toLowerCase().includes(q)} initialSort={{ key: 'at', dir: 'desc' }} maxRows={10} />
@@ -1052,7 +1201,7 @@ export function PilotInArena({ portfolioId }: { portfolioId: string }) {
     return (
       <div className="mb-8 space-y-2">
         <LiveRecordSection pilot={pilot} title="Live record: Matrix Pilot" />
-        <Button size="sm" variant="outline" render={<Link to={`/research/pilot/${portfolioId}`} />}>Open Matrix Pilot</Button>
+        <Button size="sm" variant="outline" render={<Link to={pilotPath('performance', portfolioId)} />}>Open Pilot</Button>
       </div>
     )
   }
@@ -1061,8 +1210,8 @@ export function PilotInArena({ portfolioId }: { portfolioId: string }) {
   return (
     <p className="mb-6 text-sm text-muted-foreground">
       Matrix Pilot runs on {others.map((p, i) => (
-        <span key={p.portfolioId}>{i > 0 && ', '}<Link className="font-medium text-foreground hover:underline" to={`/research/pilot/${p.portfolioId}`}>{p.name}</Link></span>
-      ))}. Its live record can be compared with this portfolio there (Live record vs another portfolio).
+        <span key={p.portfolioId}>{i > 0 && ', '}<Link className="font-medium text-foreground hover:underline" to={pilotPath('performance', p.portfolioId)}>{p.name}</Link></span>
+      ))}. Its live record can be compared with this portfolio under Pilot › Performance.
     </p>
   )
 }

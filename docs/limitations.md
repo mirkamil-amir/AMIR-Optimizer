@@ -144,8 +144,8 @@
   revisions are not an issue yet. Provider history revisions (a corrected past close) are stored over the old value, so a
   decision's inputs are reproducible from the journal (results as given to the model, hash of the full result), not by
   re-querying the price table.
-* **No notifications:** the platform has no notification channel; status changes, failures and pauses are visible in AI
-  Probe › Matrix Pilot (status, timeline, audit trail) only.
+* **No notifications:** the platform has no notification channel; status changes, failures and pauses are visible in
+  Pilot (Pilot Status, Decisions timeline, Audit) only.
 * **No model comparison view yet:** two pilots on two portfolios with different models are recorded apart (model per
   cycle) and can be compared through the live record, but there is no side-by-side "Model A vs Model B" page.
 * **Redis / caching:** none (by design, see performance.md); a cycle reads at most ~500 listings × 253 prices per screen.

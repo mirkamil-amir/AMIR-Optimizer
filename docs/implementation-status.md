@@ -1,5 +1,17 @@
 # Implementation status
 
+## 2026-11-15 (2): Pilot – portfolio header and five sub-sections (AMIR-32, D-64)
+
+* Top bar "AI Probe" is now **Pilot**. Above the tab line: the portfolio header in View's style (name, currency, status)
+  with the portfolio box and the controls. Tabs "Pilot sections": **Performance** (default; reporting-currency box),
+  **Decisions**, **Mandate**, **Audit** – one portfolio each (`/pilot/:portfolioId/<section>`, the current portfolio like
+  View when none is given) – and **Pilot Status** (`/pilot/status`, information only). No page title; the "At a glance"
+  and "AI decision" headings are for screen readers only (`ResultSection titleHidden`).
+* API: `GET …/pilot/comparison` and `…/pilot/scorecard` take an optional `currency` (reporting view, dated rates).
+* Redirects: `/research`, `/research/pilot` → `/pilot`; `/research/pilot/:id` and `/pilot/:id` → that portfolio's Performance.
+* Tests: `MatrixPilotTests.ReportingCurrency_ConvertsTheLiveRecordAndScorecard_AndSaysSo`, `navigation.test.ts`,
+  `navigation.spec.ts`, `pilot.spec.ts` (header, all five tabs, EUR view, Pilot Status without links).
+
 ## 2026-11-15: research assistant removed (AMIR-31, D-63)
 
 * Removed: AI Probe › Research assistant – `Application/Research` (agent, tools, brief/refinement rules, interpretation),
