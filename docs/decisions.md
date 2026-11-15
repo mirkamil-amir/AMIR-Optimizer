@@ -2,6 +2,17 @@
 
 Short records of decisions that are not obvious from the code. Newest first. Format: context → decision → consequences.
 
+## D-67 Matrix Pilot moves into View, as a portfolio tab after Pattern (2026-11-15)
+**Context:** Matrix Pilot always works on one portfolio, which is how View is organised; as a top-bar area of its own it
+needed its own portfolio header, box and status page. The owner asked to fit it into View next to Pattern. **Decision:**
+Pilot is a portfolio tab after Pattern (`/portfolios/:id/pilot/<sub-tab>`, sub-tabs Performance · Decisions · Mandate ·
+Audit) and a sidebar entry after Pattern; the top-bar entry is gone. View's header names and switches the portfolio and,
+while a pilot exists, shows a "Matrix Pilot <STATUS>" badge on every tab linking to the Pilot tab – the AI books trades on
+its own, unlike Solver and Pattern, which only propose. The status and controls (kill switch) sit next to the sub-tabs.
+The Pilot Status page becomes a row on each portfolio's Lens card. Old `/pilot/…` and `/research…` URLs redirect.
+**Consequences:** supersedes D-64's layout (its sub-tabs, currency box and rules stay); one place per page as D-47 asks;
+"AI-managed experimental portfolio" is the Pilot hint in the sidebar and tab bar.
+
 ## D-66 Ledger: one Transactions list instead of Recorded, Executions and Orders (2026-11-15)
 **Context:** the Ledger had five sub-tabs. Recorded (only what was typed in with Record transaction) was always empty
 for the owner, whose trades all came from confirmed proposals or Matrix Pilot; Executions held those trades; Orders

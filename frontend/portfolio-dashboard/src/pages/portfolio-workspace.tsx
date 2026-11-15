@@ -18,9 +18,9 @@ import { TransactionDialog } from '@/components/transaction-form'
 import { errorMessage } from '@/lib/api'
 import { PortfolioScope, portfolioPath, usePortfolioContext } from '@/lib/portfolio-context'
 import { countriesOf } from '@/lib/markets'
-import { useArchivePortfolio, useHoldings, useMlExperiment, usePortfolio, useRun, useUpdatePortfolioDetails } from '@/lib/queries'
+import { useArchivePortfolio, useHoldings, useMlExperiment, usePilotHome, usePortfolio, useRun, useUpdatePortfolioDetails } from '@/lib/queries'
 import { useMapHighlight } from '@/lib/world-map'
-import { SECTION_NAMES } from '@/lib/navigation'
+import { SECTION_NAMES, pilotPath } from '@/lib/navigation'
 import { NavHint } from '@/components/nav-hint'
 import type { PortfolioSummary } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -30,6 +30,7 @@ const SECTIONS = [
   { path: '', ...SECTION_NAMES.overview },
   { path: 'optimize', ...SECTION_NAMES.math },
   { path: 'ml-optimize', ...SECTION_NAMES.ml },
+  { path: 'pilot', ...SECTION_NAMES.pilot },
   { path: 'runs', ...SECTION_NAMES.history },
   { path: 'backtest', ...SECTION_NAMES.backtest },
   { path: 'comparison', ...SECTION_NAMES.comparison },
@@ -123,6 +124,7 @@ function WorkspaceHeader({ portfolio }: { portfolio: PortfolioSummary }) {
             <Badge variant="outline" className="tabular">{ccy}</Badge>
             {archived && <Badge variant="secondary">Archived</Badge>}
             {portfolio.usesSimulatedData && <DataBadge kind="simulated" />}
+            <PilotBadge portfolioId={portfolio.id} />
           </div>
           {portfolio.description && <p className="text-sm text-muted-foreground">{portfolio.description}</p>}
         </div>
@@ -309,4 +311,22 @@ export function RunRedirect() {
   }
   if (!run.data) return <LoadingBlock height="h-96" />
   return <Navigate to={portfolioPath(run.data.portfolioId, `optimize/${run.data.id}`)} replace />
+}
+
+/**
+ * While a portfolio has a Matrix Pilot, every tab says so next to its name – the AI books trades on its own here – and
+ * the badge leads to the Pilot tab with its kill switch (D-67).
+ */
+function PilotBadge({ portfolioId }: { portfolioId: string }) {
+  const home = usePilotHome()
+  const row = home.data?.portfolios.find((p) => p.portfolioId === portfolioId)
+  if (!row?.pilotStatus) return null
+  const status = row.running ? 'RUNNING' : row.pilotStatus === 'KillSwitched' ? 'KILL SWITCH' : row.pilotStatus.toUpperCase()
+  const active = status === 'ACTIVE' || status === 'RUNNING'
+  return (
+    <Link to={pilotPath('performance', portfolioId)} title="AI-managed experimental portfolio – open its Pilot tab"
+      className={cn('rounded-md border px-2 py-0.5 text-xs font-semibold hover:bg-muted', active ? 'border-gain/50 text-gain' : status === 'DISABLED' ? 'text-muted-foreground' : 'border-warn/50 text-warn')}>
+      Matrix Pilot {status}
+    </Link>
+  )
 }

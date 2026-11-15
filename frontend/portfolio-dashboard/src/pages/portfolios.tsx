@@ -10,9 +10,10 @@ import {
 import { CurrencyConverterCard } from '@/components/currency-converter'
 import { DataBadge, EmptyState, ErrorState, InfoTip, LoadingBlock, MetricCard, PageHeader, Signed } from '@/components/common'
 import { errorMessage } from '@/lib/api'
-import { date, money, relativeTime } from '@/lib/format'
+import { date, dateTime, money, relativeTime } from '@/lib/format'
 import { portfolioPath } from '@/lib/portfolio-context'
-import { useArchivePortfolio, useDeletePortfolio, useFxInfo, usePortfolioOverview, useRefreshPortfolioQuotes } from '@/lib/queries'
+import { useArchivePortfolio, useDeletePortfolio, useFxInfo, usePilotHome, usePortfolioOverview, useRefreshPortfolioQuotes } from '@/lib/queries'
+import { pilotPath } from '@/lib/navigation'
 import type { PortfolioSummary } from '@/lib/types'
 import { CurrencySelect } from '@/components/currency'
 import { venues } from '@/lib/markets'
@@ -155,6 +156,7 @@ function PortfolioCard({ p }: { p: PortfolioSummary }) {
           </div>
           <Row label="Last optimization" value={p.latestOptimizationAtUtc ? relativeTime(p.latestOptimizationAtUtc) : 'none yet'} />
           <Row label="Last trade" value={p.lastTradeAtUtc ? relativeTime(p.lastTradeAtUtc) : 'none yet'} />
+          <PilotRow portfolioId={p.id} />
         </dl>
         <p className="text-[11px] text-muted-foreground">
           {p.valuationDate ? `Valued at stored prices of ${date(p.valuationDate)}` : 'Cash only – no positions to value'}
@@ -172,6 +174,32 @@ function PortfolioCard({ p }: { p: PortfolioSummary }) {
       </CardFooter>
       <DeletePortfolioDialog portfolio={deleting ? p : null} onClose={() => setDeleting(false)} />
     </Card>
+  )
+}
+
+/**
+ * Matrix Pilot of this portfolio on Lens (the former Pilot Status, D-67): its status with the last and next decision,
+ * linking to the portfolio's Pilot tab; "not set up" otherwise.
+ */
+function PilotRow({ portfolioId }: { portfolioId: string }) {
+  const home = usePilotHome()
+  const r = home.data?.portfolios.find((x) => x.portfolioId === portfolioId)
+  const status = r?.pilotStatus ? (r.running ? 'RUNNING' : r.pilotStatus === 'KillSwitched' ? 'KILL SWITCH' : r.pilotStatus.toUpperCase()) : null
+  return (
+    <div className="col-span-2">
+      <dt className="text-xs text-muted-foreground">Matrix Pilot</dt>
+      <dd className="text-sm">
+        {!home.data ? '…' : !status ? <span className="text-muted-foreground">not set up</span> : (
+          <>
+            <Link to={pilotPath('performance', portfolioId)} className="font-semibold hover:underline">{status}</Link>
+            <span className="text-xs text-muted-foreground">
+              {r!.lastDecisionAtUtc ? ` · last decision ${relativeTime(r!.lastDecisionAtUtc)}` : ' · no decision yet'}
+              {r!.nextDecisionAtUtc ? ` · next ${dateTime(r!.nextDecisionAtUtc)}` : ''}
+            </span>
+          </>
+        )}
+      </dd>
+    </div>
   )
 }
 

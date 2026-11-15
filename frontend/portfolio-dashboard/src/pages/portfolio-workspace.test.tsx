@@ -27,6 +27,8 @@ vi.mock('@/lib/queries', () => ({
   useRecordTransaction: () => idle,
   useRun: () => ({ data: undefined }),
   useStocks: () => ({ data: undefined }),
+  // The Matrix Pilot badge in the header (D-67): one portfolio with an active pilot.
+  usePilotHome: () => ({ data: { portfolios: [{ portfolioId: 'b', pilotStatus: 'Active', running: false }] } }),
 }))
 
 /** A section with its own transient state, standing in for e.g. the optimizer form. */
@@ -70,13 +72,26 @@ describe('portfolio workspace', () => {
     expect(within(screen.getByRole('navigation', { name: 'Portfolio sections' })).getByRole('link', { name: 'Core' })).toHaveAttribute('aria-current', 'page')
   })
 
+  it('says on every tab that an AI manages the portfolio, linking to its Pilot tab (D-67)', async () => {
+    data.portfolios = [summary('a', 'Growth'), summary('b', 'Tech')]
+    renderAt('/portfolios/b')
+    expect(await screen.findByRole('link', { name: 'Matrix Pilot ACTIVE' })).toHaveAttribute('href', '/portfolios/b/pilot/performance')
+  })
+
+  it('shows no Matrix Pilot badge for a portfolio without a pilot', async () => {
+    data.portfolios = [summary('a', 'Growth')]
+    renderAt('/portfolios/a')
+    await screen.findByRole('heading', { level: 1, name: 'Growth' })
+    expect(screen.queryByRole('link', { name: /^Matrix Pilot/ })).toBeNull()
+  })
+
   it('keeps every section inside the portfolio, with short labels and no Performance or Holdings tab', async () => {
     data.portfolios = [summary('a', 'Growth')]
     renderAt('/portfolios/a')
     const nav = await screen.findByRole('navigation', { name: 'Portfolio sections' })
     const links = within(nav).getAllByRole('link')
     expect(links.map((l) => l.textContent)).toEqual([
-      'Core', 'Solver', 'Pattern', 'Trace', 'Rewind', 'Arena', 'Ledger',
+      'Core', 'Solver', 'Pattern', 'Pilot', 'Trace', 'Rewind', 'Arena', 'Ledger',
     ])
     for (const link of links) expect(link.getAttribute('href')).toMatch(/^\/portfolios\/a(\/|$)/)
     expect(within(nav).getByRole('link', { name: 'Trace' })).toHaveAttribute('href', '/portfolios/a/runs')

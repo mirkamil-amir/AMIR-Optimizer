@@ -1,6 +1,6 @@
 # Matrix Pilot – AI-managed experimental portfolio
 
-Matrix Pilot (top bar **Pilot**, `/pilot`) lets a language model manage one **paper** portfolio on its own:
+Matrix Pilot (a portfolio's **Pilot** tab in View, after Pattern) lets a language model manage one **paper** portfolio on its own:
 it researches with the platform's tools, chooses holdings and weights, and decides whether to rebalance. The platform
 checks every decision against the owner's mandate, books it in the existing ledger (simulated – no real order is ever
 sent), records every step and measures the result from the day the pilot is switched on. Decision D-60 makes this the one
@@ -44,27 +44,27 @@ tool that writes data; asking for one is answered with `not_permitted` and journ
 | `BackgroundActor` + `ActorAwareCurrentUser` | `Application/Common`, `Api/Security/Authorization.cs` | the job acts as the pilot's stored owner, so every owner-scoped service applies its normal checks |
 | `IPilotLanguageModel` | `Application/Abstractions/ILanguageModel.cs`, `Infrastructure/DependencyInjection.cs` | the pilot's model: `MatrixPilot:Provider`/`Model`, or the shared `Agent:Llm` model |
 | `MatrixPilotController` | `Api/Controllers` | `/api/v1/pilots`, `/api/v1/portfolios/{id}/pilot/...` |
-| `pages/pilot.tsx` | frontend | Pilot and its sub-sections (Performance, Decisions, Mandate, Audit, Pilot Status – `PILOT_SECTIONS` in `lib/navigation.ts`); `PilotInArena` in the portfolio's Arena tab |
+| `pages/pilot.tsx` | frontend | Pilot and its sub-sections (the Pilot tab with Performance, Decisions, Mandate, Audit – `PILOT_SECTIONS` in `lib/navigation.ts`); `PilotInArena` in the portfolio's Arena tab |
 
-**Pages** (top bar **Pilot**; tab bar "Pilot sections", left to right, no visible page title – D-64):
+**Pages** (a portfolio tab in View, after Pattern – D-67; sub-tabs "Pilot sections", left to right):
 
-| Sub-section | URL | What it shows |
+| Sub-tab | URL | What it shows |
 |---|---|---|
-| Performance | `/pilot/:portfolioId/performance` (default of `/pilot`) | a reporting-currency box (as in View's Overview), at a glance (status, live record, behaviour, fit), live record vs another portfolio, decision scorecard, what the result means |
-| Decisions | `/pilot/:portfolioId/decisions` | the AI decision (proposed vs held, validation, fit), the unconstrained portfolio, every step of the cycle (AI activity) and the decision timeline to pick another cycle |
-| Mandate | `/pilot/:portfolioId/mandate` | the mandate and its versions, the model connection |
-| Audit | `/pilot/:portfolioId/audit` | the audit trail: switch-on, kill switch, pause, resume, mandate changes, cycle outcomes |
-| Pilot Status | `/pilot/status` | information only (no links): every portfolio of the user with its Matrix Pilot status, last and next decision; the configured model and its check |
+| Performance | `/portfolios/:id/pilot/performance` (default of `…/pilot`) | a reporting-currency box (as in View's Overview), at a glance (status, live record, behaviour, fit), live record vs another portfolio, decision scorecard, what the result means |
+| Decisions | `/portfolios/:id/pilot/decisions` | the AI decision (proposed vs held, validation, fit), the unconstrained portfolio, every step of the cycle (AI activity) and the decision timeline to pick another cycle |
+| Mandate | `/portfolios/:id/pilot/mandate` | the mandate and its versions, the model connection |
+| Audit | `/portfolios/:id/pilot/audit` | the audit trail: switch-on, kill switch, pause, resume, mandate changes, cycle outcomes |
 
-Above the tab line sits the portfolio header, styled like a portfolio in View: the name (`heading-display`), its currency
-and the Matrix Pilot status, with the portfolio box and the controls (Switch on / Run decision now / Kill switch /
-Resume / Switch off) on the right, so the kill switch is always one click away; without a pilot each sub-section offers
-the setup. Without a portfolio in the URL (`/pilot`, `/pilot/decisions`, …) they open the current portfolio like View –
-the current one if it has a pilot, else the first portfolio with a pilot, else the current one; choosing another in the
-box makes it the current portfolio. The reporting currency on Performance is a view: `GET …/pilot/comparison` and
-`…/pilot/scorecard` take `?currency=XXX` and convert through the performance service and `FxService` with dated rates
-(returns then include currency moves, and the response says so); costs stay in the portfolio currency. `/research…`
-URLs redirect.
+View's header names the portfolio and switches it; while the portfolio has a pilot it shows a "Matrix Pilot <STATUS>"
+badge on every tab, linking to the Pilot tab – the AI books trades on its own here, unlike Solver and Pattern, which
+only propose. Next to the sub-tabs sit the Matrix Pilot status and its controls (Switch on / Run decision now / Kill
+switch / Resume / Switch off), so the kill switch is always one click away; without a pilot each sub-tab offers the
+setup. Every portfolio's pilot status (status, last and next decision) is a row on its card on **Lens** – there is no
+separate status page. The sidebar's **Pilot** and `/pilot`, `/pilot/<sub-tab>` open the current portfolio's Pilot (the
+current portfolio if it has a pilot, else the first portfolio with one, else the current one). The reporting currency on
+Performance is a view: `GET …/pilot/comparison` and `…/pilot/scorecard` take `?currency=XXX` and convert through the
+performance service and `FxService` with dated rates (returns then include currency moves, and the response says so);
+costs stay in the portfolio currency. Earlier `/pilot/…` and `/research…` URLs redirect.
 
 ## 3. Lifecycle
 
@@ -102,6 +102,13 @@ leverage (the platform supports nothing else). `Validate()` rejects inconsistent
 A change needs confirmation, creates version n+1 with the changed fields (before/after) and the reason, and applies from
 the next cycle; each cycle records the mandate version it ran under. The model's `mandateRequests` are shown to the owner
 and never applied.
+
+**Form** (set-up and Change mandate, `components/mandate-form.tsx`, `lib/mandate.ts`): only numbers are typed. Indexes are
+checkboxes grouped by market (with a filter, at most 10); allowed and excluded stocks are chosen in the Forge stock chooser
+(opened in a dialog with a selection of its own, so the user's temporary selection is untouched; at most 500; a stock moved
+to one list leaves the other); sector, country and currency limits are checkboxes from the catalogue with a percent field
+(default 20 %); the benchmark is a list of the indexes' benchmarks or the portfolio's own; frequency and effort are
+toggle buttons.
 
 ## 5. Decision cycle (state machine)
 
@@ -217,7 +224,7 @@ dates in the pilot's currency, and the benchmark. Total/annualized return, volat
 trades, fees, cash, holdings, monthly returns, timeline, evaluation counts (decisions by outcome, trades, turnover, cost
 drag, tool failures, denied requests, tokens, decision interval, 1-month hit rate). Nothing before the baseline,
 nothing back-filled; a backtest of Matrix Pilot does not exist (an LLM cannot be backtested honestly – it may know
-the outcome). Shown in Pilot › Performance and in the portfolio's Arena tab (`PilotInArena`).
+the outcome). Shown in the portfolio's Pilot tab (Performance) and in its Arena tab (`PilotInArena`).
 
 The scorecard (`/pilot/scorecard`) lists each decision as recorded at the time with the moves of its holdings and of the
 live portfolio 1, 5 and 21 trading days later – measured afterwards, never fed back into that decision.
