@@ -51,7 +51,8 @@ export function TradesPage() {
         {!archived && <Button variant="outline" onClick={onRebalance} disabled={rebalance.isPending}>Rebalance to latest run</Button>}
       </div>
       <Tabs value={tab} onValueChange={(v) => setTab(String(v))}>
-        <TabsList className="nav-scroll max-w-full overflow-x-auto">
+        {/* Sideways scrolling for narrow screens only: overflow-y-hidden, or the 1 px of the tab highlight shows a scrollbar. */}
+        <TabsList className="nav-scroll max-w-full overflow-x-auto overflow-y-hidden">
           <TabsTrigger value="transactions">Transactions</TabsTrigger>
           <TabsTrigger value="proposals">Proposals</TabsTrigger>
           <TabsTrigger value="cash">Cash</TabsTrigger>
