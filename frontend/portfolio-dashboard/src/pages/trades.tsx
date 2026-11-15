@@ -119,7 +119,7 @@ function Activity({ currency, readOnly }: { currency: string; readOnly: boolean 
         columns={[
           { key: 'date', header: 'Date', cell: (a) => <span className="text-xs tabular" title={dateTime(a.atUtc)}>{date(a.effectiveDate)}</span> },
           {
-            key: 'what', header: 'What', cell: (a) => (
+            key: 'what', header: 'Positions', cell: (a) => (
               <span className="flex flex-wrap items-center gap-1">
                 <Badge variant="outline" className={kindStyle[a.kind]}>{a.kind}</Badge>
                 {a.symbol && <span className="font-medium">{a.symbol}</span>}
