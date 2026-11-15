@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { COUNTRY_PATHS, MAP_HEIGHT, MAP_TOP } from '@/components/world-map-geo'
-import { arcPairs, arcPoints, landDots, orbitPoint, placeGlobe, seaDots, toVec, type GlobeLayout, type Vec3 } from '@/lib/globe'
+import { arcPairs, arcPoints, insideRingRadius, landDots, orbitPoint, placeGlobe, seaDots, toVec, type GlobeLayout, type Vec3 } from '@/lib/globe'
 import { venues, type Venue } from '@/lib/markets'
 
 // Loaded on demand by the start-up intro (globe-intro.tsx): the country outlines stay out of the initial bundle.
@@ -113,6 +113,11 @@ interface Look { x: number; y: number } // pointer position, −1 … 1 across t
 function drawGlobe(ctx: CanvasRenderingContext2D, w: number, h: number, t: number, layout: GlobeLayout, look: Look) {
   const { points, view, count, cities, arcs, stars } = globeScene()
   const { cx, cy, r } = placeGlobe(layout, w, h)
+  // No size yet (mounting, unmounting or hidden): nothing to draw – and no circle may get a negative radius.
+  if (r < 1) {
+    ctx.clearRect(0, 0, w, h)
+    return
+  }
   const s = -(SPIN_START + t * SPIN_PER_MS + look.x * LOOK_SPIN) * RAD
   const tilt = (TILT - look.y * LOOK_TILT) * RAD
   const [cs, sn, ct, st] = [Math.cos(s), Math.sin(s), Math.cos(tilt), Math.sin(tilt)]
@@ -263,7 +268,7 @@ function drawGlobe(ctx: CanvasRenderingContext2D, w: number, h: number, t: numbe
     ctx.globalAlpha = alpha * sphereIn
     ctx.lineWidth = width
     ctx.beginPath()
-    ctx.arc(cx, cy, r - width / 2, 0, Math.PI * 2)
+    ctx.arc(cx, cy, insideRingRadius(r, width), 0, Math.PI * 2)
     ctx.stroke()
   }
   ctx.globalAlpha = sphereIn

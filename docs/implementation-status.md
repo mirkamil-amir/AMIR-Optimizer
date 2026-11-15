@@ -1,5 +1,11 @@
 # Implementation status
 
+## 2026-11-15 (4): start-up globe never draws a negative radius (AMIR-35)
+
+* While the sign-in globe mounts or unmounts its canvas can be 0 × 0 (radius 0); the 1 px edge ring was then drawn with
+  radius −0.5 and the browser threw ("radius provided (-0.5) is negative" – a flaky e2e failure on CI). The globe now draws
+  nothing without a size, and the ring radius is clamped (`insideRingRadius` in `lib/globe.ts`, tested).
+
 ## 2026-11-15 (3): ML weighting made visible (AMIR-34, D-65)
 
 * Default weighting of an ML Optimization is now rank-weighted (request and form); equal weight stays available.
