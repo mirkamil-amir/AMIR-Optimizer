@@ -57,13 +57,16 @@ public sealed class ApiFactory(string connectionString) : WebApplicationFactory<
         // Company descriptions: simulated provider only (no network).
         builder.UseSetting("MarketData:Profiles:Wikipedia:Enabled", "false");
         builder.UseSetting("MarketData:Profiles:Mock:Enabled", "true");
-        // Research assistant: deterministic rules unless a test injects a scripted mock model.
+        // Shared language model off unless a test injects a scripted mock model (Matrix Pilot tests do).
         builder.UseSetting("Agent:Llm:Provider", "None");
         // Matrix Pilot: tests start cycles themselves (no timer).
         builder.UseSetting("MatrixPilot:SchedulerEnabled", "false");
         builder.UseSetting("Seed:Assets", "true");
         builder.UseSetting("Seed:DemoPortfolio", "false");
         builder.UseSetting("Seed:SyncOnEmptyDatabase", "false");
+        // One test server serves a whole test class from one client address: lift the global per-IP limit (600/min in
+        // production) as well as the per-feature ones, so a fast runner never gets 429 in the middle of a test.
+        builder.UseSetting("RateLimiting:PermitPerMinute", "100000");
         builder.UseSetting("RateLimiting:ExpensivePermitPerMinute", "1000");
         builder.UseSetting("RateLimiting:AuthenticationPermitPerMinute", "1000");
         if (TestServices is not null) builder.ConfigureServices(TestServices);
