@@ -130,7 +130,7 @@ test('two independent portfolios: create, optimize, record, switch, reload, isol
   await page.getByRole('option', { name: 'Tech B' }).click()
   await expect(page).toHaveURL(new RegExp(`/portfolios/${b}/transactions$`))
   await expect(page.getByRole('heading', { level: 1, name: 'Tech B' })).toBeVisible()
-  await expect(page.getByText('Nothing recorded yet')).toBeVisible()
+  await expect(page.getByText('Nothing entered by hand yet')).toBeVisible()
   await sections(page).getByRole('link', { name: 'Core' }).click()
   await expect(page.getByRole('region', { name: 'Holdings', exact: true })).toBeVisible()
   await expect(page.getByRole('row', { name: /AAPL/ })).toHaveCount(0)

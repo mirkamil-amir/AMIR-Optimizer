@@ -54,7 +54,7 @@ export function TradesPage() {
           <TabsTrigger value="orders">Orders</TabsTrigger>
           <TabsTrigger value="cash">Cash</TabsTrigger>
         </TabsList>
-        <TabsContent value="journal" className="mt-4"><Journal currency={ccy} readOnly={archived} /></TabsContent>
+        <TabsContent value="journal" className="mt-4"><Journal currency={ccy} readOnly={archived} onShow={setTab} /></TabsContent>
         <TabsContent value="proposals" className="mt-4"><Proposals currency={ccy} /></TabsContent>
         <TabsContent value="transactions" className="mt-4"><Transactions currency={ccy} /></TabsContent>
         <TabsContent value="orders" className="mt-4"><Orders currency={ccy} /></TabsContent>
@@ -200,10 +200,15 @@ function TabCard({ children }: { children: ReactNode }) {
 const REVERSIBLE = new Set(['Deposit', 'Withdrawal', 'Dividend', 'Fee'])
 
 /** Manually recorded transactions of this portfolio, newest first, with an audit-safe reversal for cash events. */
-function Journal({ currency, readOnly }: { currency: string; readOnly: boolean }) {
+function Journal({ currency, readOnly, onShow }: { currency: string; readOnly: boolean; onShow: (tab: string) => void }) {
   const { portfolioId } = usePortfolioContext()
   const [page, setPage] = useState(1)
   const journal = useJournal(portfolioId, page)
+  // When nothing was entered by hand, say where the trades are: confirmed proposals and Matrix Pilot book executions.
+  const executions = useTransactions(portfolioId, 1)
+  const executed = executions.data?.totalCount ?? 0
+  const elsewhere = executed === 0 ? ''
+    : ` This portfolio's ${executed === 1 ? 'trade' : `${executed} trades`} from confirmed proposals and Matrix Pilot ${executed === 1 ? 'is' : 'are'} under Executions, the cash movements under Cash.`
   const reverse = useReverseTransaction(portfolioId ?? '')
   const [pending, setPending] = useState<string | null>(null)
 
@@ -256,7 +261,9 @@ function Journal({ currency, readOnly }: { currency: string; readOnly: boolean }
               ) : null,
             },
           ]}
-          empty={<EmptyState title="Nothing recorded yet" description="Use “Record transaction” to book a buy, sell, deposit, withdrawal, dividend or fee." />}
+          empty={<EmptyState title="Nothing entered by hand yet"
+            description={`Recorded lists only what you book with “Record transaction” (a buy, sell, deposit, withdrawal, dividend or fee).${elsewhere}`}
+            action={executed > 0 ? <Button variant="outline" size="sm" onClick={() => onShow('transactions')}>Show Executions</Button> : undefined} />}
         />
         <Pager page={page} totalPages={journal.data.totalPages} onChange={setPage} />
       </CardContent>

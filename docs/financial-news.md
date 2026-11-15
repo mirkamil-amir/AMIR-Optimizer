@@ -232,7 +232,9 @@ including cash, the Overview's basis, with the price date) or the portfolio's sh
 in it ÷ total value) – and a story linked to a holding is High attention. Missing prices or rates leave the weight
 `null` and list the valuation problems; nothing is estimated. No predicted effect is shown; Compare opens the event and
 price-movement comparison with its "not evidence of causation" note. The section appears once the portfolio holds a
-position; it requests the held companies' due news like the feeds.
+position; it requests the held companies' due news like the feeds. Condensed rows (2026-11-15, AMIR-36): each held
+stock's tag carries its weight and each held currency appears as a tag with its share (the basis in the tooltip) instead
+of a "Why you see this" line; the Compare buttons sit side by side under the attention label; summaries take one line.
 
 **Visibility (privacy):** with `News:Feeds:HideOthersInterests` (default true) a story is shown only when it has no
 listing, or one of its listings is curated, an index or benchmark, or held or watched by the caller – otherwise stories
