@@ -1969,3 +1969,32 @@ export interface PilotModelCheck {
   status: 'ok' | 'not_configured' | 'key_rejected' | 'model_not_found' | 'rate_limited' | 'timeout' | 'unavailable' | 'provider_error'
   message: string; latencyMs: number | null; modelReported: string | null; checkedAtUtc: string
 }
+
+/** Where a Ledger › Transactions row came from (D-66). */
+export type ActivitySource = 'BookedByHand' | 'TradeProposal' | 'MatrixPilot' | 'StartingCash' | 'System'
+
+/**
+ * One row of Ledger › Transactions: a buy or sell (its fees and settlement included) or a cash flow from outside or
+ * income. `amount` is the signed cash effect in the portfolio currency (+ in, − out); price and quantity are in `currency`.
+ */
+export interface PortfolioActivity {
+  id: string
+  kind: 'Buy' | 'Sell' | 'Deposit' | 'Withdrawal' | 'Dividend' | 'Fee' | 'Reversal'
+  atUtc: string
+  effectiveDate: string
+  symbol: string | null
+  quantity: number | null
+  price: number | null
+  currency: string
+  fxRate: number
+  amount: number
+  fees: number
+  realizedPnl: number | null
+  source: ActivitySource
+  proposalId: string | null
+  journalId: string | null
+  canReverse: boolean
+  reversed: boolean
+  reversal: boolean
+  note: string | null
+}

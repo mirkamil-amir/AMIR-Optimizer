@@ -110,7 +110,8 @@ test('two independent portfolios: create, optimize, record, switch, reload, isol
   await expect(holdingNews).toBeVisible()
   await holdingNews.getByRole('button', { name: '90 days' }).click()
   await expect(holdingNews.getByRole('article', { name: /SIMULATED: Apple/ }).first()).toBeVisible({ timeout: 30_000 })
-  await expect(holdingNews.getByText(/AAPL is \d+\.\d% of this portfolio/).first()).toBeVisible()
+  // The holding's weight sits on its tag (condensed rows, AMIR-36): "AAPL 12.3%".
+  await expect(holdingNews.getByRole('link', { name: /^AAPL/ }).first()).toHaveText(/^AAPL\d+\.\d%$/)
 
   // Invalid bookings are explained and change nothing.
   await page.getByRole('button', { name: 'Record transaction' }).click()
@@ -122,15 +123,20 @@ test('two independent portfolios: create, optimize, record, switch, reload, isol
   await dialog.getByRole('button', { name: 'Cancel' }).click()
 
   await sections(page).getByRole('link', { name: 'Ledger' }).click()
-  const recorded = page.getByRole('table', { name: 'Recorded transactions' })
-  await expect(recorded.getByRole('row')).toHaveCount(3) // header + deposit + buy
+  // Ledger › Transactions: everything that went in or out, once each, with where it came from (D-66).
+  const transactions = page.getByRole('table', { name: 'Transactions' })
+  await expect(transactions.getByRole('row')).toHaveCount(4) // header + starting cash + deposit + buy
+  await expect(transactions.getByRole('row', { name: /Buy AAPL/ })).toContainText('By hand')
+  await expect(transactions.getByRole('row', { name: /Deposit/ }).filter({ hasText: 'Starting cash' })).toHaveCount(1)
+  await expect(page.getByRole('tab')).toHaveText(['Transactions', 'Proposals', 'Cash'])
 
   // Switch to B: nothing of A appears (holdings, recorded transactions, runs).
   await page.getByRole('combobox', { name: 'Switch portfolio' }).click()
   await page.getByRole('option', { name: 'Tech B' }).click()
   await expect(page).toHaveURL(new RegExp(`/portfolios/${b}/transactions$`))
   await expect(page.getByRole('heading', { level: 1, name: 'Tech B' })).toBeVisible()
-  await expect(page.getByText('Nothing entered by hand yet')).toBeVisible()
+  await expect(page.getByRole('table', { name: 'Transactions' }).getByRole('row')).toHaveCount(2) // header + its starting cash
+  await expect(page.getByRole('table', { name: 'Transactions' })).not.toContainText('AAPL')
   await sections(page).getByRole('link', { name: 'Core' }).click()
   await expect(page.getByRole('region', { name: 'Holdings', exact: true })).toBeVisible()
   await expect(page.getByRole('row', { name: /AAPL/ })).toHaveCount(0)

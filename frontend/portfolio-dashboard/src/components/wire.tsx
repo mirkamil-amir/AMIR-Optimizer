@@ -68,13 +68,13 @@ export function StoryRow({ story, showWhy = false, exposure }: { story: WireStor
                 className={cn('rounded border px-1.5 py-0.5 font-medium text-foreground hover:bg-muted', (a.onWatchlist || a.held) && 'border-foreground/40')}
                 title={`${a.name ?? a.symbol}${a.onWatchlist ? ' · on your watchlist' : ''}${a.held ? ' · in one of your portfolios' : ''}${held ? ` · ${held.basis}` : ''}`}>
                 {a.symbol}
-                {held && <span className="ml-1 font-normal text-muted-foreground tabular" aria-label={`${pct(held.weight, 1)} of this portfolio`}>{held.weight == null ? '–' : pct(held.weight, 1)}</span>}
+                {held && <span className="ml-1 font-normal text-muted-foreground tabular">{held.weight == null ? '–' : pct(held.weight, 1)}</span>}
               </Link>
             )
           })}
           {currencies.map((c) => (
             <span key={c.label} className="rounded border px-1.5 py-0.5 font-medium text-foreground" title={c.basis}>
-              {c.label}<span className="ml-1 font-normal text-muted-foreground tabular" aria-label={`${pct(c.weight, 1)} of this portfolio`}>{c.weight == null ? '–' : pct(c.weight, 1)}</span>
+              {c.label}<span className="ml-1 font-normal text-muted-foreground tabular">{c.weight == null ? '–' : pct(c.weight, 1)}</span>
             </span>
           ))}
           {story.entities.map((e) => (

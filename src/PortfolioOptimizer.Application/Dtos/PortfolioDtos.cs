@@ -304,3 +304,34 @@ public sealed record OrderDto(
     string? Message,
     string Currency = "USD",
     decimal? FxRate = null);
+
+/// <summary>Where a Ledger › Transactions row came from (D-66).</summary>
+public enum ActivitySource { BookedByHand, TradeProposal, MatrixPilot, StartingCash, System }
+
+/// <summary>
+/// One row of Ledger › Transactions: a buy or sell (with its own fees and settlement) or a cash flow from outside or
+/// income (deposit, withdrawal, dividend, standalone fee). <see cref="Amount"/> is the signed cash effect in the
+/// portfolio currency (+ in, − out, fees included); price and quantity are in the instrument's currency.
+/// <see cref="Kind"/> is Buy, Sell, Deposit, Withdrawal, Dividend, Fee or Reversal; <see cref="JournalId"/> is the hand-booked record
+/// behind the row (its id reverses a cash event).
+/// </summary>
+public sealed record PortfolioActivityDto(
+    Guid Id,
+    string Kind,
+    DateTime AtUtc,
+    DateOnly EffectiveDate,
+    string? Symbol,
+    decimal? Quantity,
+    decimal? Price,
+    string Currency,
+    decimal FxRate,
+    decimal Amount,
+    decimal Fees,
+    decimal? RealizedPnl,
+    ActivitySource Source,
+    Guid? ProposalId,
+    Guid? JournalId,
+    bool CanReverse,
+    bool Reversed,
+    bool Reversal,
+    string? Note);

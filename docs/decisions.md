@@ -2,6 +2,18 @@
 
 Short records of decisions that are not obvious from the code. Newest first. Format: context → decision → consequences.
 
+## D-66 Ledger: one Transactions list instead of Recorded, Executions and Orders (2026-11-15)
+**Context:** the Ledger had five sub-tabs. Recorded (only what was typed in with Record transaction) was always empty
+for the owner, whose trades all came from confirmed proposals or Matrix Pilot; Executions held those trades; Orders
+repeated them as the intermediate step. The owner found the panel hard to understand and asked for one list of what was
+added to or taken from the portfolio, keeping Proposals and Cash. **Decision:** Ledger has **Transactions · Proposals ·
+Cash**. Transactions (`GET …/activity`, `PortfolioActivityService`, read only) lists every execution – by hand, from a
+proposal or by Matrix Pilot, with its own fees and settlement – and every deposit, withdrawal, dividend and standalone fee
+(starting cash included), once each, newest first, with its source; hand-booked cash events can be reversed there and a
+reversal is labelled. Orders are not listed: their fills are the executions and a rejected order changed nothing; each
+executed proposal shows its order outcome in Proposals (`…/orders?proposalId=`). **Consequences:** nothing stored or
+booked changed; the journal, executions and orders endpoints stay; trade commissions are never a separate row.
+
 ## D-65 ML Optimization weights by rank by default and says when the model cannot choose (2026-11-15)
 **Context:** the owner asked why ML Optimizations always came out equal-weighted. 20 of 22 runs used the form's default
 "Equal weight", so the model chose which stocks were held but never how much; 5 of them also held as many stocks as the

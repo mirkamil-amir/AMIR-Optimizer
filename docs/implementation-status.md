@@ -1,13 +1,15 @@
 # Implementation status
 
-## 2026-11-15 (5): condensed holdings news, readable lists, Recorded explained (AMIR-36)
+## 2026-11-15 (5): condensed holdings news, readable lists, one Ledger list (AMIR-36, D-66)
 
 * Core › News about your holdings: each held stock's tag shows its weight (currencies as tags with their share), no
   "Why you see this" line; Compare buttons side by side; shorter rows (`StoryRow exposure`, tested).
 * Every `SearchableTable` has a card background (82 % over the map), so Solver's allocation and Pattern's predictions
   with their weights are readable like the cards around them.
-* Ledger › Recorded lists only hand-booked transactions; when empty it now says where the trades are (N under Executions,
-  from confirmed proposals and Matrix Pilot) with a "Show Executions" button.
+* Ledger has three sub-tabs (D-66): **Transactions** – every buy and sell (by hand, proposal or Matrix Pilot) and every
+  deposit, withdrawal, dividend and standalone fee, once each with its source (`GET …/activity`, `PortfolioActivityService`,
+  `MultiPortfolioTests.Activity_ListsEverythingThatChangedThePortfolio_OnceEach_WithItsSource`) – **Proposals** (with each
+  executed proposal's order outcome, `…/orders?proposalId=`) and **Cash**. Recorded, Executions and Orders are merged.
 
 ## 2026-11-15 (4): start-up globe never draws a negative radius (AMIR-35)
 

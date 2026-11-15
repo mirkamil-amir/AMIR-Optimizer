@@ -311,11 +311,11 @@ public sealed class PortfolioService(IApplicationDbContext db, PriceQueryService
             page, pageSize, total);
     }
 
-    public async Task<PagedResult<OrderDto>> GetOrdersAsync(Guid id, int page, int pageSize, CancellationToken ct)
+    public async Task<PagedResult<OrderDto>> GetOrdersAsync(Guid id, int page, int pageSize, CancellationToken ct, Guid? proposalId = null)
     {
         ValidatePaging(page, pageSize);
         await EnsureExistsAsync(id, ct);
-        var q = db.Orders.AsNoTracking().Where(o => o.PortfolioId == id);
+        var q = db.Orders.AsNoTracking().Where(o => o.PortfolioId == id && (proposalId == null || o.ProposalId == proposalId));
         var total = await q.CountAsync(ct);
         var items = await q.OrderByDescending(o => o.CreatedAtUtc).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
         return new PagedResult<OrderDto>(items.Select(o => o.ToDto()).ToList(), page, pageSize, total);

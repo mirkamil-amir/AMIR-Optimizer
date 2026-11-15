@@ -104,6 +104,16 @@ Endpoint `POST /api/v1/portfolios/{id}/journal` (header `Idempotency-Key` requir
   within one portfolio; ML experiments, backtests and comparisons keep an optional `PortfolioId` (deleting the portfolio
   unlinks them, it does not delete them).
 
+## Ledger (2026-11-15, D-66)
+
+The Ledger tab has three sub-tabs. **Transactions** lists what went into and out of the portfolio, once each, newest
+first (`PortfolioActivityService`): every execution – booked by hand with Record transaction, from a confirmed trade
+proposal or by Matrix Pilot – with its own fees and settlement, and every deposit, withdrawal, dividend and standalone fee
+(the starting cash included). Each row names its source; reversible hand-booked cash events carry Reverse, and a reversal
+is labelled as one. Orders are the intermediate step of a proposal (their fills are the executions), so they are not
+listed; each executed proposal shows its order outcome (filled, partly filled, rejected with the reason) in **Proposals**.
+**Cash** is the full cash ledger, settlements included. The earlier Recorded, Executions and Orders lists are merged.
+
 ## API and authorization
 
 All endpoints require an approved account and antiforgery for unsafe methods. Every portfolio endpoint resolves the
@@ -121,7 +131,8 @@ behaves exactly like an unknown id (404). The user id comes from the authenticat
 | POST | `/api/v1/portfolios/{id}/quotes/refresh` | refresh the quotes of the open positions (cache window reused, `quotes` rate limit) |
 | GET/POST | `/api/v1/portfolios/{id}/journal` | list / record manual transactions |
 | POST | `/api/v1/portfolios/{id}/journal/{tid}/reverse` | reverse a cash event |
-| GET | `…/holdings`, `…/transactions` (executions), `…/cash-ledger`, `…/orders`, `…/performance`, `…/risk`, `…/optimization-runs`, `…/trade-proposals` | unchanged, owner-scoped |
+| GET | `/api/v1/portfolios/{id}/activity` | Ledger › Transactions: every buy and sell (by hand, proposal or Matrix Pilot) and every deposit, withdrawal, dividend and standalone fee, once each with its source, newest first (D-66) |
+| GET | `…/holdings`, `…/transactions` (executions), `…/cash-ledger`, `…/orders` (`?proposalId=`), `…/performance`, `…/risk`, `…/optimization-runs`, `…/trade-proposals` | unchanged, owner-scoped |
 
 Cross-user tests: `MultiPortfolioTests.AnotherUser_CannotReadOrChangeAnyPartOfAPortfolio` (every endpoint above),
 `AuthTests.Users_CannotSeeOrChangeEachOthersData`, e2e `portfolios.spec.ts` (second user, URL and API).
