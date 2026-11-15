@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { Link, NavLink, useParams } from 'react-router'
+import { Link, useParams } from 'react-router'
 import { toast } from 'sonner'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -32,20 +32,6 @@ import { cn } from '@/lib/utils'
 // shows what the model decided and what the platform calculated, validated and booked – always labelled apart.
 
 export const PILOT_LABEL = 'Matrix Pilot – AI-managed experimental portfolio'
-
-// ================================================================ AI Probe sub-navigation
-
-/** The two parts of AI Probe (text links; the selected one is marked for screen readers too). */
-export function ProbeTabs() {
-  const cls = ({ isActive }: { isActive: boolean }) =>
-    cn('rounded-md px-3 py-1.5 text-sm font-medium', isActive ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground')
-  return (
-    <nav aria-label="AI Probe" className="mb-5 flex gap-1 border-b pb-2">
-      <NavLink to="/research" end className={cls}>Research assistant</NavLink>
-      <NavLink to="/research/pilot" className={cls}>Matrix Pilot</NavLink>
-    </nav>
-  )
-}
 
 // ================================================================ outcome / status labels
 
@@ -94,7 +80,6 @@ export function PilotHomePage() {
   ]
   return (
     <>
-      <ProbeTabs />
       <PageHeader
         title="Matrix Pilot"
         info="An AI model manages one paper portfolio on its own: it researches with the platform's tools, chooses holdings and weights and decides when to rebalance. The platform checks every decision against your mandate before anything is booked, records every step and measures the result from the day you switch it on."
@@ -160,12 +145,11 @@ export function PilotControlRoomPage() {
   const { portfolioId } = useParams()
   const overview = usePilot(portfolioId)
   const [selected, setSelected] = useState<string | undefined>()
-  if (overview.error) return <><ProbeTabs /><ErrorState error={overview.error} onRetry={() => overview.refetch()} /></>
-  if (!overview.data) return <><ProbeTabs /><LoadingBlock /></>
+  if (overview.error) return <ErrorState error={overview.error} onRetry={() => overview.refetch()} />
+  if (!overview.data) return <LoadingBlock />
   const o = overview.data
   return (
     <>
-      <ProbeTabs />
       <PageHeader
         title={`Matrix Pilot · ${o.portfolioName}`}
         info="The control room of this portfolio's AI manager: status, the latest decision, every tool it used, the validation, the bookings and the live record."

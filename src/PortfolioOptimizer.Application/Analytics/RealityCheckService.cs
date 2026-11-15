@@ -54,7 +54,7 @@ public sealed class RealityCheckService(
     }
 
     /// <summary>
-    /// Reality check of a run record – saved (via <see cref="GetAsync"/>, owner-checked) or an unsaved research hypothesis
+    /// Reality check of a run record – saved (via <see cref="GetAsync"/>, owner-checked) or an unsaved evaluation
     /// produced for the current user by <see cref="OptimizationService.EvaluateAsync"/>. Callers are responsible for ownership.
     /// </summary>
     public async Task<RealityCheckDto> AnalyzeAsync(OptimizationRun run, CancellationToken ct)

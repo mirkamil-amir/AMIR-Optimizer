@@ -148,7 +148,6 @@ function WorkspaceHeader({ portfolio }: { portfolio: PortfolioSummary }) {
             <DropdownMenuTrigger render={<Button variant="outline" aria-label="More portfolio actions" />}>More</DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuItem onClick={() => setEditing(true)}>Rename or describe</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate(`/research?portfolio=${portfolio.id}`)}>Research for this portfolio</DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => (archived ? void toggleArchive() : setConfirmArchive(true))}>
                 {archived ? <>Restore</> : <>Archive</>}

@@ -4,13 +4,11 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using PortfolioOptimizer.Application.Abstractions;
-using PortfolioOptimizer.Application.Dtos;
-using PortfolioOptimizer.Application.Research;
 using PortfolioOptimizer.Domain;
 using PortfolioOptimizer.Infrastructure.Llm;
 using PortfolioOptimizer.UnitTests.MarketData;
 
-namespace PortfolioOptimizer.UnitTests.Research;
+namespace PortfolioOptimizer.UnitTests.Llm;
 
 public sealed class GeminiLanguageModelTests
 {
@@ -20,7 +18,7 @@ public sealed class GeminiLanguageModelTests
         ["properties"] = JsonSerializer.SerializeToElement(new { market = new { type = new[] { "string", "null" } } }),
     };
 
-    private static LlmRequest Request => new("research-brief", "Follow the schema.", "<user_objective>German stocks</user_objective>", Schema, 500);
+    private static LlmRequest Request => new("pilot.test", "Follow the schema.", "<user_objective>German stocks</user_objective>", Schema, 500);
 
     private sealed class StubHandler(Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler
     {
@@ -128,8 +126,8 @@ public sealed class GeminiLanguageModelTests
 }
 
 /// <summary>
-/// Opt-in (PO_LIVE_SMOKE=1 and GEMINI_API_KEY or LLM_API_KEY): the research assistant's three model uses against the real
-/// Gemini API, through the same validators as in production. Costs a few thousand tokens.
+/// Opt-in (PO_LIVE_SMOKE=1 and GEMINI_API_KEY or LLM_API_KEY): a structured call against the real
+/// Gemini API (the provider Matrix Pilot can use). Costs a few hundred tokens.
 /// </summary>
 public sealed class LiveGeminiSmokeTests
 {
@@ -142,37 +140,19 @@ public sealed class LiveGeminiSmokeTests
     }
 
     [LiveSmokeFact]
-    public async Task Brief_FromGermanText_UsesQuotedModelProposals()
+    public async Task StructuredAnswer_FollowsTheSchema()
     {
         var model = Live();
         Assert.True(model.IsAvailable, "Set GEMINI_API_KEY or LLM_API_KEY.");
-        // The rule parser does not know these German words; the model's proposal is accepted only with a verbatim quote.
-        var r = await new BriefInterpreter(model).InterpretAsync(
-            new StartResearchRequest { Objective = "Ich möchte ein risikoarmes Portfolio aus deutschen Aktien, ohne Energieunternehmen." }, CancellationToken.None);
-        Console.WriteLine($"brief by: {r.InterpretedBy}; market {r.Brief.Market}; risk {r.Brief.RiskPreference}; excluded {string.Join(",", r.Brief.ExcludeSectors)}; rejected: {string.Join(" | ", r.Rejected)}; tokens {r.InputTokens}+{r.OutputTokens}");
-        Assert.Contains("Gemini", r.InterpretedBy);
-        Assert.Equal("DE", r.Brief.Market);
-        Assert.Equal(FieldOrigin.User, r.Brief.Origins["market"].Source);
-    }
-
-    [LiveSmokeFact]
-    public async Task Narrative_IsEitherVerifiedOrRejected_NeverAFailure()
-    {
-        var config = new HypothesisConfig("MinimumVariance", 0.4, ["AAPL", "KO", "JNJ"], [], new Dictionary<string, double>(), "LedoitWolf", 504, 10);
-        var run = new OptimizationRunDto(Guid.NewGuid(), Guid.Empty, DateTime.UtcNow, ObjectiveKind.MinimumVariance, OptimizationRunStatus.Succeeded, "",
-            ["AAPL", "KO", "JNJ"], new DateOnly(2024, 10, 15), new DateOnly(2026, 10, 15), 504, "Mock", true, "", new PortfolioSettingsDto(),
-            0.061, 0.124, 0.17, 0, 0, 0, [],
-            [
-                new AllocationDto("KO", "Coca-Cola", "Consumer Staples", 0.40, 0.05, 0.15, 0.35),
-                new AllocationDto("JNJ", "Johnson & Johnson", "Health Care", 0.35, 0.06, 0.16, 0.33),
-                new AllocationDto("AAPL", "Apple Inc.", "Information Technology", 0.25, 0.09, 0.27, 0.32),
-            ],
-            new RunAnalyticsDto([], [], [], [], [], null, 0, []), "");
-        var sw = System.Diagnostics.Stopwatch.StartNew();
-        var r = await new InterpretationService(Live()).InterpretAsync(config, run, null, [], [], new HashSet<string> { "AAPL", "KO", "JNJ", "MSFT" }, true, CancellationToken.None);
-        Console.WriteLine($"narrative ({sw.Elapsed.TotalSeconds:0.0} s): {r.ModelEventStatus} – {r.ModelEventSummary}; source {r.Interpretation.Source}; tokens {r.InputTokens}+{r.OutputTokens}");
-        foreach (var s in r.Interpretation.Sections) Console.WriteLine($"  [{s.Key}] {string.Join(" ", s.Paragraphs)}");
-        Assert.NotEqual("error", r.ModelEventStatus);
-        Assert.True(r.InputTokens > 0);
+        var schema = new Dictionary<string, JsonElement>
+        {
+            ["type"] = JsonSerializer.SerializeToElement("object"),
+            ["properties"] = JsonSerializer.SerializeToElement(new { currency = new { type = "string" } }),
+            ["required"] = JsonSerializer.SerializeToElement(new[] { "currency" }),
+        };
+        var r = await model.GenerateAsync(new LlmRequest("smoke", "Answer with the ISO 4217 code only, following the schema.",
+            "Which currency is used in Germany?", schema, 500), CancellationToken.None);
+        Console.WriteLine($"model {r.Model}; tokens {r.InputTokens}+{r.OutputTokens}; {r.Output}");
+        Assert.Equal("EUR", r.Output.GetProperty("currency").GetString());
     }
 }

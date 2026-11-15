@@ -21,7 +21,7 @@ was in the **frontend** and a few gaps:
 | No manual transactions (cash moved only through the initial deposit and confirmed proposals) | backend | Journal: buy, sell, deposit, withdrawal, dividend, fee, reversal |
 | Delete was the only lifecycle action and removed all history | `PortfolioService.DeleteAsync` | Archive / restore; delete only after archiving |
 | Deposits/withdrawals on a non-trading day were dropped from the performance replay | `PortfolioAnalyticsService` | Every cash entry applied on the next valued day |
-| AI research used "the user's first portfolio" for its currency and saved runs | `ResearchAgent`, `SaveHypothesisTool` | Optional portfolio context per research session (owner-checked) |
+| AI research used "the user's first portfolio" for its currency and saved runs | (research assistant, removed 2026-11-15, D-63) | – |
 
 ## Domain model
 
@@ -104,13 +104,6 @@ Endpoint `POST /api/v1/portfolios/{id}/journal` (header `Idempotency-Key` requir
   within one portfolio; ML experiments, backtests and comparisons keep an optional `PortfolioId` (deleting the portfolio
   unlinks them, it does not delete them).
 
-## AI research context
-
-`StartResearchRequest.PortfolioId` (optional, owner-checked) attaches a session to a portfolio: its currency is the analysis
-currency and a saved run is attached to it by default (still with the user's confirmation). Only the id and currency are
-used – no holdings, names or descriptions are sent to a language model. Without a context the research is independent.
-Existing sessions stay independent after the migration (their portfolio cannot be inferred reliably).
-
 ## API and authorization
 
 All endpoints require an approved account and antiforgery for unsafe methods. Every portfolio endpoint resolves the
@@ -124,7 +117,7 @@ behaves exactly like an unknown id (404). The user id comes from the authenticat
 | POST | `/api/v1/portfolios` | create (name, description, currency, cash, universe, max weight) |
 | PUT | `/api/v1/portfolios/{id}/details` | rename / describe |
 | POST | `/api/v1/portfolios/{id}/archive`, `/restore` | lifecycle |
-| DELETE | `/api/v1/portfolios/{id}` | active or archived (the UI confirms first); removes every record of the portfolio incl. Math/ML Optimizations, backtests, comparisons and research – never shared prices; 409 while one of them is running |
+| DELETE | `/api/v1/portfolios/{id}` | active or archived (the UI confirms first); removes every record of the portfolio incl. Math/ML Optimizations, backtests, comparisons and Matrix Pilot records – never shared prices; 409 while one of them is running |
 | POST | `/api/v1/portfolios/{id}/quotes/refresh` | refresh the quotes of the open positions (cache window reused, `quotes` rate limit) |
 | GET/POST | `/api/v1/portfolios/{id}/journal` | list / record manual transactions |
 | POST | `/api/v1/portfolios/{id}/journal/{tid}/reverse` | reverse a cash event |
@@ -140,7 +133,7 @@ Cross-user tests: `MultiPortfolioTests.AnotherUser_CannotReadOrChangeAnyPartOfAP
 | `/` | **My portfolios** (sidebar: Lens; visible title with Forge a portfolio, totals' currency in the totals line): equal-height cards with value, cash, invested, holdings, P/L, last optimization, last trade (buy or sell; deposits and fees do not count) and the actions Open · Refresh prices · Delete; totals; archived list (restore, delete); currency converter |
 | `/stocks` | **New portfolio** (sidebar: New): details (name, description, currency, starting cash, advanced cap) → choose stocks → review → Create (the steps are in the title's tip) |
 | `/portfolios/:id/optimize/stocks`, `/portfolios/:id/ml-optimize/stocks` | **Choose stocks** for a Math or ML Optimization: the New portfolio stock list (`StockChooser`) without the creation form; starts with the optimization's stocks, "Use N stocks" returns with them as the universe (`?from=selection`), "Back to …" returns unchanged |
-| `/portfolios/:id` | workspace: header (name, currency, description, warnings, switcher, Record transaction, rename, archive, research) and tabs Core · Solver · Pattern · Trace · Rewind · Arena · Ledger (overview, Math and ML Optimization, history, backtesting, comparison, transactions – D-47; the plain-named titles under the tabs are screen-reader only); the Overview starts with the key figures as one story in three rows – **Value** (total value, daily change, cash · invested, unrealized P&L with cost basis, holdings; the valuation date above the Holdings card; a reporting currency converts the whole page for viewing), **Performance** for the date range (total and time-weighted return, annualized return, realized P&L, realized volatility, Sharpe, Sortino, max drawdown), then portfolio vs benchmark (date range) and allocation, then **Risk** of today's weights (ex-ante volatility, Sharpe, max drawdown, beta, VaR, CVaR, tracking error, information ratio; window dates shown) – then **Holdings** (currency exposure when more than one currency, the positions table with search, sector filter, closed/target-only and a side panel per stock; the former Holdings tab, merged 2026-10-26), **News about your holdings**
+| `/portfolios/:id` | workspace: header (name, currency, description, warnings, switcher, Record transaction, rename, archive) and tabs Core · Solver · Pattern · Trace · Rewind · Arena · Ledger (overview, Math and ML Optimization, history, backtesting, comparison, transactions – D-47; the plain-named titles under the tabs are screen-reader only); the Overview starts with the key figures as one story in three rows – **Value** (total value, daily change, cash · invested, unrealized P&L with cost basis, holdings; the valuation date above the Holdings card; a reporting currency converts the whole page for viewing), **Performance** for the date range (total and time-weighted return, annualized return, realized P&L, realized volatility, Sharpe, Sortino, max drawdown), then portfolio vs benchmark (date range) and allocation, then **Risk** of today's weights (ex-ante volatility, Sharpe, max drawdown, beta, VaR, CVaR, tracking error, information ratio; window dates shown) – then **Holdings** (currency exposure when more than one currency, the positions table with search, sector filter, closed/target-only and a side panel per stock; the former Holdings tab, merged 2026-10-26), **News about your holdings**
 once a position is held (stories about its holdings and its currencies' rate decisions with each holding's weight from
 the valuation; financial-news.md), performance history (value and cash, drawdown, monthly returns), risk breakdown (risk contribution; correlation from two holdings), historical weights and recent activity; all data notes last – each chart once |
 | `/portfolios/:id/optimize[/:runId]`, `/ml-optimize[/:experimentId]`, `/transactions` | sections of that portfolio (`/holdings` and `/performance` open the Overview) (Math and ML Optimization share one layout; an experiment of another portfolio redirects to it) |
@@ -177,7 +170,6 @@ stay in the ledger, which is consistent on its own). Prefer restoring the pre-up
 | New portfolio with universe and review | implemented, tested |
 | Manual buy/sell/deposit/withdrawal/dividend/fee, idempotency, reversal of cash events | implemented, tested |
 | Time-weighted performance with external flows, cash series | implemented, tested |
-| Portfolio-aware AI research (currency, save target) | implemented, tested |
 | Trade reversal, back-dated/imported history with duplicate detection | not implemented (record the opposite trade; no imports) |
 | Money-weighted return, combined multi-portfolio return | not implemented (overview shows value and P/L only) |
 | Backtests, ML experiments and strategy comparisons attached to a portfolio | not implemented: they stay per user and take their defaults from the most recently opened portfolio |

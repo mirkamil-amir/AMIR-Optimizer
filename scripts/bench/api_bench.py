@@ -88,7 +88,6 @@ def main():
         ("fx board", "/api/v1/fx/board?base=USD&quotes=EUR,GBP,JPY,CHF,CAD,AUD,CNY,SEK,NOK"),
         ("fx history 1Y", "/api/v1/fx/history?from=EUR&to=USD&days=365"),
         ("settings", "/api/v1/settings"),
-        ("research sessions", "/api/v1/research"),
     ]
     if run_id:
         endpoints += [("optimization run", f"/api/v1/optimization-runs/{run_id}"),

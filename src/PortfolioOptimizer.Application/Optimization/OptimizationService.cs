@@ -73,8 +73,8 @@ public sealed class OptimizationService(
 
     /// <summary>
     /// Runs the optimization for <paramref name="settings"/> and returns the complete run record WITHOUT saving it
-    /// (successful or not). <see cref="RunAsync"/> saves it; the research workflow keeps it as an unsaved hypothesis until the
-    /// user explicitly saves. Without a portfolio, there are no current holdings (no turnover limit context) and
+    /// (successful or not). <see cref="RunAsync"/> saves it; Matrix Pilot uses it as an unsaved evaluation and never saves it, as the
+    /// pilot only proposes. Without a portfolio, there are no current holdings (no turnover limit context) and
     /// <see cref="OptimizationRun.PortfolioId"/> stays empty until the run is saved to a portfolio.
     /// </summary>
     /// <param name="analysisCurrency">Currency of the analysis when there is no portfolio (the portfolio's base currency wins).</param>
@@ -220,7 +220,7 @@ public sealed class OptimizationService(
         return (run, assets);
     }
 
-    /// <summary>The DTO of an unsaved run (research hypotheses use the same shape as saved runs).</summary>
+    /// <summary>The DTO of an unsaved run (unsaved evaluations use the same shape as saved runs).</summary>
     public async Task<OptimizationRunDto> ToDtoAsync(OptimizationRun run, CancellationToken ct)
     {
         var assets = await db.Assets.AsNoTracking().Where(a => run.Symbols.Contains(a.Symbol)).ToDictionaryAsync(a => a.Symbol, ct);

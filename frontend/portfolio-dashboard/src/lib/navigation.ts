@@ -86,7 +86,7 @@ export const primaryNav: PrimaryEntry[] = [
     // Earlier portfolio-less URLs (/holdings, /trades, /analytics) redirect into a portfolio workspace.
     match: [...optimizerEntries.flatMap((e) => [...(e.end ? [] : [e.to]), ...(e.match ?? [])]), '/holdings', '/trades', '/analytics'],
   },
-  { id: 'research', to: '/research', label: 'AI Probe', hint: 'AI Research: an assistant turns your question into a brief and runs the real optimizer on it' },
+  { id: 'research', to: '/research/pilot', label: 'AI Probe', hint: 'Matrix Pilot: an AI model manages one experimental paper portfolio under your mandate' },
   { id: 'news', to: '/news', label: 'Wire', hint: 'Financial News: articles from news providers, linked to stocks by the providers\' own tags' },
   { id: 'watchlist', to: '/watchlist', label: 'Radar', hint: 'Watchlist: stocks you follow without holding them' },
   { id: 'market-data', to: '/market-data', label: 'Atlas', hint: 'Market Data: stocks, ETFs, indexes and exchange rates of 35 markets' },

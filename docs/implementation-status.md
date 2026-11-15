@@ -1,5 +1,19 @@
 # Implementation status
 
+## 2026-11-15: research assistant removed (AMIR-31, D-63)
+
+* Removed: AI Probe › Research assistant – `Application/Research` (agent, tools, brief/refinement rules, interpretation),
+  `ResearchController` (`/api/v1/research…`), `ResearchSession`/`ResearchEvent`, the research page, its hooks and types,
+  `ResearchAgentTests`, `ResearchRulesTests`, `research-agent.spec.ts`, docs `agentic-architecture.md` and
+  `agent-evaluation.md`. Migration `RemoveResearchAssistant` drops `ResearchSessions` and `ResearchEvents` (development
+  database backed up first: 4 sessions, 69 events).
+* Kept because other features use them: the language-model providers and `Agent:Llm` settings (Matrix Pilot),
+  `NarrativeValidator` + `InterpretationSection` (moved to `Application/Pilot`, tests to `UnitTests/Pilot`), the
+  optimization run the assistant once saved (an ordinary Math Optimization) and its audit entry, `OptimizationService.
+  EvaluateAsync` and `RealityCheckService.AnalyzeAsync`. The live Gemini smoke test now checks one structured answer.
+* AI Probe opens Matrix Pilot directly (no sub-tabs); `/research` and old session links redirect to `/research/pilot`;
+  the portfolio menu no longer offers "Research for this portfolio". The threat model covers Matrix Pilot only.
+
 ## 2026-11-14: the thinking logo – a cube of balls (AMIR-29, D-62)
 
 * The mark stays the 3 × 3 grid of dots, now the front of a 3 × 3 × 3 cube of 27 equal balls (`lib/cube.ts`): the 18
@@ -696,8 +710,8 @@
   (unsaved until confirmed); deterministic flags, suggestions and 7-section interpretation; refinement proposed then
   confirmed; comparison; confirmed, idempotent save as a normal optimization run; activity log and budget; optional
   language model (`Agent:Llm:Provider`, Anthropic SDK) with quote/allow-list/numeric validation and deterministic
-  fallbacks. Docs: [agentic-architecture.md](agentic-architecture.md), [threat-model.md](threat-model.md),
-  [agent-evaluation.md](agent-evaluation.md), decisions D-21–D-24, launch blockers in launch-readiness.md.
+  fallbacks. Docs: agentic-architecture.md (removed 2026-11-15), [threat-model.md](threat-model.md),
+  agent-evaluation.md (removed 2026-11-15), decisions D-21–D-24, launch blockers in launch-readiness.md.
 * **Verified:** 15 evaluation cases + journey (integration, real PostgreSQL), rule/validator unit tests, Vitest, e2e
   journey of 17 steps on the disposable stack, desktop/phone screenshots reviewed. Bugs found by the tests and fixed:
   "equal weighting" not recognised; infeasible per-stock caps were proposable; tool failures were not persisted in the

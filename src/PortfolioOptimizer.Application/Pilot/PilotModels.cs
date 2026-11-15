@@ -353,6 +353,6 @@ public sealed record PilotPortfolioComparison(
     IReadOnlyList<string> SharedSymbols,
     // WeightOverlap: Σ min(wᵢ, vᵢ) over all symbols – 1 = identical portfolios, 0 = nothing in common.
     double WeightOverlap,
-    IReadOnlyList<Research.InterpretationSection> Narrative,
+    IReadOnlyList<InterpretationSection> Narrative,
     string NarrativeSource,
     string Basis);

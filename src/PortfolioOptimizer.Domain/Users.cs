@@ -60,6 +60,7 @@ public static class AuditActions
     public const string TransactionRecorded = "portfolio.transaction_recorded";
     public const string TransactionReversed = "portfolio.transaction_reversed";
     public const string TestDataPurged = "admin.test_data_purged";
+    /// <summary>Written by the removed research assistant (2026-11-15); kept so older audit entries stay recognisable.</summary>
     public const string ResearchRunSaved = "research.run_saved";
     public const string PilotCreated = "pilot.created";
     public const string PilotEnabled = "pilot.enabled";
