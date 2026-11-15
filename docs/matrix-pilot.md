@@ -103,6 +103,13 @@ A change needs confirmation, creates version n+1 with the changed fields (before
 the next cycle; each cycle records the mandate version it ran under. The model's `mandateRequests` are shown to the owner
 and never applied.
 
+**Form** (set-up and Change mandate, `components/mandate-form.tsx`, `lib/mandate.ts`): only numbers are typed. Indexes are
+checkboxes grouped by market (with a filter, at most 10); allowed and excluded stocks are chosen in the Forge stock chooser
+(opened in a dialog with a selection of its own, so the user's temporary selection is untouched; at most 500; a stock moved
+to one list leaves the other); sector, country and currency limits are checkboxes from the catalogue with a percent field
+(default 20 %); the benchmark is a list of the indexes' benchmarks or the portfolio's own; frequency and effort are
+toggle buttons.
+
 ## 5. Decision cycle (state machine)
 
 ```text

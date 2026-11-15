@@ -12,12 +12,14 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { EmptyState, ErrorState, InfoTip, LoadingBlock, MetricCard, MetricGroup, MetricValue, ResultSection, Warnings } from '@/components/common'
+import { EmptyState, ErrorState, LoadingBlock, MetricCard, MetricGroup, MetricValue, ResultSection, Warnings } from '@/components/common'
 import { SearchableTable, type Column } from '@/components/data-table'
 import { TimeSeriesChart, Legend, seriesColor } from '@/components/charts'
 import { MatrixLoader, WorkingPanel } from '@/components/matrix-loader'
 import { NavHint } from '@/components/nav-hint'
 import { ReportingCurrencySelect } from '@/components/currency'
+import { MandateForm } from '@/components/mandate-form'
+import { fromForm, toForm } from '@/lib/mandate'
 import { errorMessage } from '@/lib/api'
 import { PILOT_SECTIONS, pilotPath, type PilotPortfolioSection as PortfolioSection, type PilotSectionPath } from '@/lib/navigation'
 import { usePortfolioContext } from '@/lib/portfolio-context'
@@ -27,7 +29,7 @@ import {
   usePilotHome, usePilotMandates, usePilotScorecard, useResumePilot, useRunPilot, useUpdatePilotMandate, useCheckPilotModel,
 } from '@/lib/queries'
 import type {
-  Pilot, PilotComparison, PilotCycleDetail, PilotCycleSummary, PilotEvent, PilotFrequency, PilotMandate, PilotModel, PilotOutcome, PilotOverview,
+  Pilot, PilotComparison, PilotCycleDetail, PilotCycleSummary, PilotEvent, PilotMandate, PilotModel, PilotOutcome, PilotOverview,
   PilotPortfolioRow, PilotStep,
 } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -1052,7 +1054,7 @@ function MandateDialog({ overview, pilot, onClose }: { overview: PilotOverview; 
   }
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle>Change the mandate</DialogTitle>
           <DialogDescription>Saving creates version {pilot.mandateVersion + 1}; version {pilot.mandateVersion} is kept with the changed fields. Applies from the next decision.</DialogDescription>
@@ -1074,116 +1076,6 @@ function MandateDialog({ overview, pilot, onClose }: { overview: PilotOverview; 
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
-}
-
-interface MandateFormState {
-  universe: string; indexes: string; excluded: string; maxPos: string; minPos: string; minHoldings: string; maxHoldings: string
-  minCash: string; maxCash: string; maxTurnover: string; minTrade: string; maxVol: string; drawdown: string
-  sectors: string; currencies: string; countries: string; benchmark: string; frequency: PilotFrequency; effort: string
-}
-
-const p100 = (v: number) => String(Math.round(v * 10000) / 100)
-const limitsText = (r: Record<string, number>) => Object.entries(r).map(([k, v]) => `${k}=${p100(v)}`).join('\n')
-
-function toForm(m: PilotMandate, frequency: PilotFrequency, effort: string): MandateFormState {
-  return {
-    universe: m.universe.join(', '), indexes: m.indexes.join(', '), excluded: m.excludedSymbols.join(', '), maxPos: p100(m.maxPositionWeight),
-    minPos: p100(m.minPositionWeight), minHoldings: String(m.minHoldings), maxHoldings: String(m.maxHoldings), minCash: p100(m.minCashWeight),
-    maxCash: p100(m.maxCashWeight), maxTurnover: p100(m.maxTurnover), minTrade: String(m.minTradeValue), maxVol: m.maxVolatility == null ? '' : p100(m.maxVolatility),
-    drawdown: p100(m.drawdownPauseThreshold), sectors: limitsText(m.sectorLimits), currencies: limitsText(m.currencyLimits), countries: limitsText(m.countryLimits),
-    benchmark: m.benchmark ?? '', frequency, effort,
-  }
-}
-
-/** Parses the form; the server validates the mandate again (and rejects, never repairs). */
-function fromForm(f: MandateFormState): { mandate: PilotMandate } | { error: string } {
-  const list = (s: string) => s.split(/[\s,;]+/).map((x) => x.trim()).filter(Boolean)
-  const frac = (s: string, name: string) => {
-    const v = Number(s.replace('%', ''))
-    if (!Number.isFinite(v)) throw new Error(`${name} must be a number (percent).`)
-    return v / 100
-  }
-  const limits = (s: string, name: string) => Object.fromEntries(s.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
-    const [k, v] = l.split('=')
-    if (!k || v === undefined) throw new Error(`${name}: write one “Name=percent” per line.`)
-    return [k.trim(), frac(v.trim(), name)]
-  }))
-  try {
-    return {
-      mandate: {
-        universe: list(f.universe).map((s) => s.toUpperCase()), indexes: list(f.indexes), excludedSymbols: list(f.excluded).map((s) => s.toUpperCase()),
-        maxPositionWeight: frac(f.maxPos, 'Maximum position'), minPositionWeight: frac(f.minPos, 'Minimum position'),
-        minHoldings: Number(f.minHoldings), maxHoldings: Number(f.maxHoldings), minCashWeight: frac(f.minCash, 'Minimum cash'), maxCashWeight: frac(f.maxCash, 'Maximum cash'),
-        maxTurnover: frac(f.maxTurnover, 'Maximum turnover'), minTradeValue: Number(f.minTrade), maxVolatility: f.maxVol.trim() ? frac(f.maxVol, 'Maximum volatility') : null,
-        drawdownPauseThreshold: frac(f.drawdown, 'Drawdown pause'), sectorLimits: limits(f.sectors, 'Sector limits'), currencyLimits: limits(f.currencies, 'Currency limits'),
-        countryLimits: limits(f.countries, 'Country limits'), benchmark: f.benchmark.trim() || null,
-      },
-    }
-  } catch (e) {
-    return { error: (e as Error).message }
-  }
-}
-
-const textarea = 'min-h-16 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50'
-
-function MandateForm({ form, onChange }: { form: MandateFormState; onChange: (f: MandateFormState) => void }) {
-  const set = (k: keyof MandateFormState) => (e: { target: { value: string } }) => onChange({ ...form, [k]: e.target.value })
-  const field = (k: keyof MandateFormState, label: string, hint?: string) => (
-    <div className="space-y-1">
-      <Label htmlFor={`m-${k}`}><InfoTip of={label}>{hint}</InfoTip></Label>
-      <Input id={`m-${k}`} value={String(form[k])} onChange={set(k)} inputMode="decimal" />
-    </div>
-  )
-  const area = (k: keyof MandateFormState, label: string, placeholder: string, hint?: string) => (
-    <div className="space-y-1">
-      <Label htmlFor={`m-${k}`}><InfoTip of={label}>{hint}</InfoTip></Label>
-      <textarea id={`m-${k}`} className={textarea} value={String(form[k])} onChange={set(k)} placeholder={placeholder} />
-    </div>
-  )
-  const freq = [{ value: 'Daily', label: 'Daily' }, { value: 'Weekly', label: 'Weekly' }, { value: 'Monthly', label: 'Monthly' }]
-  const efforts = ['low', 'medium', 'high', 'xhigh', 'max'].map((e) => ({ value: e, label: e }))
-  return (
-    <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2">
-        {area('universe', 'Allowed symbols', 'AAPL, MSFT, …', 'Symbols the AI may hold (in addition to index members).')}
-        {area('indexes', 'Allowed indexes', 'e.g. SP500', 'Every current member of these indexes is investable.')}
-        {area('excluded', 'Excluded symbols', 'e.g. XOM', 'Never held, whatever the AI proposes.')}
-        <div className="space-y-1">
-          <Label>Decision frequency and effort</Label>
-          <div className="flex gap-2">
-            <Select value={form.frequency} onValueChange={(v) => v && onChange({ ...form, frequency: v as PilotFrequency })} items={freq}>
-              <SelectTrigger aria-label="Decision frequency" className="w-36"><SelectValue /></SelectTrigger>
-              <SelectContent>{freq.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
-            </Select>
-            <Select value={form.effort} onValueChange={(v) => v && onChange({ ...form, effort: String(v) })} items={efforts}>
-              <SelectTrigger aria-label="Model effort" className="w-28"><SelectValue /></SelectTrigger>
-              <SelectContent>{efforts.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
-          <p className="text-xs text-muted-foreground">Higher effort means more thorough model reasoning and higher cost per decision.</p>
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        {field('maxPos', 'Max position %')}
-        {field('minPos', 'Min position %')}
-        {field('minHoldings', 'Min holdings')}
-        {field('maxHoldings', 'Max holdings')}
-        {field('minCash', 'Min cash %')}
-        {field('maxCash', 'Max cash %')}
-        {field('maxTurnover', 'Max turnover %', 'One-way turnover per decision, once the portfolio holds positions.')}
-        {field('minTrade', 'Min trade value', 'Smallest order, in the portfolio currency.')}
-        {field('maxVol', 'Max volatility %', 'Ceiling for the proposal\'s ex-ante annualized volatility (empty = none).')}
-        {field('drawdown', 'Drawdown pause %', 'Matrix Pilot pauses itself when its live record falls this far from its peak.')}
-        {field('benchmark', 'Benchmark', 'Empty = the portfolio\'s benchmark.')}
-      </div>
-      <div className="grid gap-3 sm:grid-cols-3">
-        {area('sectors', 'Sector limits %', 'Energy=10')}
-        {area('currencies', 'Currency limits %', 'EUR=30')}
-        {area('countries', 'Country limits %', 'US=70')}
-      </div>
-      <p className="text-xs text-muted-foreground">Long-only, no leverage: the platform supports nothing else. The server rejects an impossible mandate instead of adjusting it.</p>
-    </div>
   )
 }
 

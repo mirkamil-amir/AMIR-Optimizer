@@ -8,6 +8,8 @@
   View when none is given) – and **Pilot Status** (`/pilot/status`, information only). No page title; the "At a glance"
   and "AI decision" headings are for screen readers only (`ResultSection titleHidden`).
 * API: `GET …/pilot/comparison` and `…/pilot/scorecard` take an optional `currency` (reporting view, dated rates).
+* Mandate form without free text: indexes, sector/country/currency limits by checkbox, allowed and excluded stocks in the
+  Forge stock chooser (own selection), benchmark from a list, frequency and effort as toggles (`lib/mandate.ts` + tests).
 * Redirects: `/research`, `/research/pilot` → `/pilot`; `/research/pilot/:id` and `/pilot/:id` → that portfolio's Performance.
 * Tests: `MatrixPilotTests.ReportingCurrency_ConvertsTheLiveRecordAndScorecard_AndSaysSo`, `navigation.test.ts`,
   `navigation.spec.ts`, `pilot.spec.ts` (header, all five tabs, EUR view, Pilot Status without links).
