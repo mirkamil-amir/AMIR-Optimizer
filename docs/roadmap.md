@@ -2,9 +2,9 @@
 
 Prioritized follow-up work after the 2026-10-15 pass. Order reflects dependencies and risk, not effort.
 
-## 0. AI Probe – user experience (next)
+## 0. Pilot – user experience (next)
 
-* The research assistant was removed on 2026-11-15 (D-63) ahead of a redesign of AI Probe and Matrix Pilot.
+* The research assistant was removed on 2026-11-15 (D-63) ; AI Probe became Pilot with four sub-sections (D-64). Next: refine each sub-section.
 
 ## 1. Licensed, point-in-time data (blocks any commercial use and any credible backtest claim)
 * Licensed end-of-day prices with redistribution rights; point-in-time index constituents incl. delisted securities

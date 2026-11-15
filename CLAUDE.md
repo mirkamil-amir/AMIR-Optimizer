@@ -8,16 +8,22 @@
   (run ML Optimizations through the API, backtest/compare them within a portfolio, report honestly); subsystem skills
   `/quant-formulas`, `/optimization-backtesting`, `/market-data-fx`, `/ml-pipeline`, `/portfolio-accounting`,
   `/platform-architecture`, `/maintain-knowledge` (see AGENTS.md › Skills).
-- AI Probe is Matrix Pilot (`/research/pilot`, control room `/research/pilot/:portfolioId`; its live record also in the
-  portfolio's Arena tab; `/research` redirects there – the research assistant was removed on 2026-11-15, D-63).
+- Pilot (top bar; "AI Probe" until 2026-11-15, D-64) is Matrix Pilot. Above the tab line: the portfolio header like a
+  View portfolio (name in `heading-display` 1.8rem, currency, status) with the portfolio box and the controls (kill switch
+  always reachable). Tabs (`PILOT_SECTIONS` in `lib/navigation.ts`, "Pilot sections"), left to right: **Performance**
+  (default; reporting-currency box like View's Overview), **Decisions**, **Mandate**, **Audit**
+  (`/pilot/:portfolioId/<section>`; without an id they open the current portfolio like View – its pilot first) and
+  **Pilot Status** (`/pilot/status`, information only, no links). No page title. Old `/research…` URLs redirect; the live
+  record is also in the portfolio's Arena tab (the research assistant was removed, D-63).
   Matrix Pilot is the only place a model is used and decides a portfolio (D-60, docs/matrix-pilot.md); label it "AI-managed
-  experimental portfolio", never claim results, and show test-model decisions as "test script – not an AI".
+  experimental portfolio" (the Pilot hint; no visible title since 2026-11-15, owner), never claim results, and show
+  test-model decisions as "test script – not an AI".
 - UI names: "Math Optimization" (`/portfolios/:id/optimize`, an `OptimizationRun`) and "ML Optimization"
   (`/portfolios/:id/ml-optimize`, an `MlExperiment` linked to that portfolio) – two tabs of a portfolio with one shared
   layout (results in `ResultSection`s, never tabs; "What your result means" last). Keep both pages alike when changing
   one. Backtesting and Comparison work on any optimization of one portfolio. Use these names in explanatory UI text, docs and
   tests; navigation uses the branded labels below (owner's choice, 2026-10-27, D-47).
-- Navigation labels (`SECTION_NAMES` in `lib/navigation.ts`, shared by sidebar and tabs): top bar View · AI Probe · Wire · Radar · Atlas · Codex · Lexicon · Settings; sidebar
+- Navigation labels (`SECTION_NAMES` in `lib/navigation.ts`, shared by sidebar and tabs): top bar View · Pilot · Wire · Radar · Atlas · Codex · Lexicon · Settings; sidebar
   Lens · Forge · Solver · Pattern · Trace · Rewind · Arena. Portfolio tabs: Core · Solver · Pattern · Trace · Rewind · Arena ·
   Ledger (Ledger's sub-tabs keep plain names). Each entry's `hint` gives the plain name (Backtesting, …) as tooltip and
   `aria-description`; page titles, docs and explanatory text keep the plain names. Buttons: a section's main action

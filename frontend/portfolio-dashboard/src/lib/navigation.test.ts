@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  adminSection, optimizerSections, primaryForPath, primaryNav, sidebarEntryForPath, sidebarSections,
+  adminSection, optimizerSections, PILOT_SECTIONS, pilotPath, primaryForPath, primaryNav, sidebarEntryForPath, sidebarSections,
 } from './navigation'
 
 const sidebarPaths = (admin: boolean) => sidebarSections(admin).flatMap((s) => s.items.map((i) => i.to))
@@ -8,14 +8,14 @@ const sidebarPaths = (admin: boolean) => sidebarSections(admin).flatMap((s) => s
 describe('navigation model', () => {
   it('has exactly eight primary destinations in the required order', () => {
     expect(primaryNav.map((p) => p.label)).toEqual([
-      'View', 'AI Probe', 'Wire', 'Radar', 'Atlas', 'Codex', 'Lexicon', 'Settings',
+      'View', 'Pilot', 'Wire', 'Radar', 'Atlas', 'Codex', 'Lexicon', 'Settings',
     ])
-    expect(primaryNav.map((p) => p.to)).toEqual(['/', '/research/pilot', '/news', '/watchlist', '/market-data', '/learn', '/learn/glossary', '/settings'])
+    expect(primaryNav.map((p) => p.to)).toEqual(['/', '/pilot', '/news', '/watchlist', '/market-data', '/learn', '/learn/glossary', '/settings'])
   })
 
   it('does not repeat the moved destinations in the sidebar', () => {
     for (const admin of [false, true]) {
-      for (const moved of ['/research/pilot', '/news', '/watchlist', '/market-data', '/learn', '/learn/glossary', '/settings']) expect(sidebarPaths(admin)).not.toContain(moved)
+      for (const moved of ['/pilot', '/news', '/watchlist', '/market-data', '/learn', '/learn/glossary', '/settings']) expect(sidebarPaths(admin)).not.toContain(moved)
     }
   })
 
@@ -32,7 +32,7 @@ describe('navigation model', () => {
 
   it('gives every branded top-bar area its plain name as hint and keeps Settings plain', () => {
     expect(primaryNav.map((p) => [p.label, p.hint?.split(':')[0]])).toEqual([
-      ['View', 'Portfolio workspace'], ['AI Probe', 'Matrix Pilot'], ['Wire', 'Financial News'], ['Radar', 'Watchlist'],
+      ['View', 'Portfolio workspace'], ['Pilot', 'Matrix Pilot'], ['Wire', 'Financial News'], ['Radar', 'Watchlist'],
       ['Atlas', 'Market Data'], ['Codex', 'Strategy Guide'], ['Lexicon', 'Glossary'], ['Settings', undefined],
     ])
   })
@@ -56,7 +56,7 @@ describe('navigation model', () => {
   it.each([
     ['/', 'optimizer'], ['/stocks', 'optimizer'], ['/stocks/AAPL', 'optimizer'], ['/optimize/12', 'optimizer'],
     ['/history', 'optimizer'], ['/reality-check/7', 'optimizer'], ['/machine-learning/3', 'optimizer'],
-    ['/holdings', 'optimizer'], ['/portfolios/p1', 'optimizer'], ['/portfolios/p1/transactions', 'optimizer'], ['/research/pilot', 'research'], ['/research/pilot/p1', 'research'], ['/news', 'news'],
+    ['/holdings', 'optimizer'], ['/portfolios/p1', 'optimizer'], ['/portfolios/p1/transactions', 'optimizer'], ['/pilot', 'pilot'], ['/pilot/status', 'pilot'], ['/pilot/p1/performance', 'pilot'], ['/news', 'news'],
     ['/watchlist', 'watchlist'], ['/market-data', 'market-data'], ['/market-data/currencies', 'market-data'], ['/learn', 'strategy-guide'], ['/learn/max-sharpe', 'strategy-guide'],
     ['/learn/glossary', 'glossary'], ['/settings', 'settings'], ['/settings/', 'settings'],
   ])('assigns %s to the %s area', (path, id) => {
@@ -80,5 +80,17 @@ describe('navigation model', () => {
     expect(sidebarEntryForPath('/admin/settings', true)?.label).toBe('Admin settings')
     expect(sidebarEntryForPath('/admin', true)?.label).toBe('Admin overview')
     expect(sidebarEntryForPath('/admin/settings', false)).toBeUndefined()
+  })
+})
+
+describe('Pilot sub-sections', () => {
+  it('runs Performance, Decisions, Mandate, Audit, Pilot Status from left to right', () => {
+    expect(PILOT_SECTIONS.map((s) => s.label)).toEqual(['Performance', 'Decisions', 'Mandate', 'Audit', 'Pilot Status'])
+  })
+
+  it('keeps the portfolio in the portfolio sections and has one Pilot Status for all', () => {
+    expect(PILOT_SECTIONS.map((s) => pilotPath(s.path, 'p1'))).toEqual(['/pilot/p1/performance', '/pilot/p1/decisions', '/pilot/p1/mandate', '/pilot/p1/audit', '/pilot/status'])
+    // Without a portfolio in the URL the section opens the current portfolio (resolved by the page, like View).
+    expect(pilotPath('decisions')).toBe('/pilot/decisions')
   })
 })

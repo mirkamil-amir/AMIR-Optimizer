@@ -1775,7 +1775,7 @@ export interface DataCheck {
 }
 export interface DataDownload { syncJobIds: string[]; priceSymbols: string[]; currencies: string[] }
 
-// ================================================================ Matrix Pilot (AI Probe › Matrix Pilot, docs/matrix-pilot.md)
+// ================================================================ Matrix Pilot (Pilot, docs/matrix-pilot.md)
 
 export type PilotStatus = 'Disabled' | 'Active' | 'Paused' | 'KillSwitched'
 export type PilotFrequency = 'Daily' | 'Weekly' | 'Monthly'

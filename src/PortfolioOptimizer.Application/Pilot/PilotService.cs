@@ -323,11 +323,15 @@ public sealed class PilotService(
 
     // ==================================================================================================== live record
 
-    public async Task<PilotComparisonDto> CompareAsync(Guid portfolioId, Guid? otherPortfolioId, CancellationToken ct)
+    /// <summary>
+    /// The live record against another portfolio and the benchmark, in the portfolio currency or in <paramref name="currency"/>
+    /// (a reporting view: converted through the performance service with dated rates, so returns include currency moves).
+    /// </summary>
+    public async Task<PilotComparisonDto> CompareAsync(Guid portfolioId, Guid? otherPortfolioId, CancellationToken ct, string? currency = null)
     {
         var portfolio = await portfolios.LoadAsync(portfolioId, ct);
         var pilot = await RequireAsync(portfolioId, ct);
-        var currency = portfolio.BaseCurrency;
+        currency = currency is null ? portfolio.BaseCurrency : Currencies.Normalize(currency);
         var warnings = new List<string>();
         var cycles = await db.MatrixPilotCycles.AsNoTracking().Where(c => c.PilotId == pilot.Id).OrderBy(c => c.AsOfUtc).ToListAsync(ct);
         var evaluation = await EvaluateAsync(pilot, cycles, portfolio, ct);
@@ -345,6 +349,8 @@ public sealed class PilotService(
         var mine = await performance.GetPerformanceAsync(portfolioId, start, null, ct, currency);
         var pilotSeries = await SeriesAsync("pilot", "Matrix Pilot", portfolioId, mine, ct);
         warnings.AddRange(mine.Warnings);
+        if (currency != portfolio.BaseCurrency)
+            warnings.Add($"Shown in {currency}, converted from the portfolio currency {portfolio.BaseCurrency} with dated exchange rates: returns include currency moves. Nothing is exchanged.");
         PilotComparisonSeriesDto? other = null;
         PerformanceDto? otherPerf = null;
         if (otherPortfolioId is { } oid)
@@ -376,9 +382,11 @@ public sealed class PilotService(
         return new PilotComparisonDto(portfolioId, currency, baselineAt, start, pilotSeries, other, benchmark, monthly, evaluation, timeline, methodology, warnings);
     }
 
-    public async Task<PilotScorecardDto> ScorecardAsync(Guid portfolioId, CancellationToken ct)
+    /// <summary>Each decision with what happened afterwards, measured in the portfolio currency or in <paramref name="currency"/>.</summary>
+    public async Task<PilotScorecardDto> ScorecardAsync(Guid portfolioId, CancellationToken ct, string? currency = null)
     {
         var portfolio = await portfolios.LoadAsync(portfolioId, ct);
+        var ccy = currency is null ? portfolio.BaseCurrency : Currencies.Normalize(currency);
         var pilot = await RequireAsync(portfolioId, ct);
         var cycles = await db.MatrixPilotCycles.AsNoTracking()
             .Where(c => c.PilotId == pilot.Id && (c.Outcome == PilotCycleOutcome.Rebalanced || c.Outcome == PilotCycleOutcome.NoTrade || c.Outcome == PilotCycleOutcome.Blocked))
@@ -389,9 +397,9 @@ public sealed class PilotService(
         var symbols = decisions.SelectMany(d => d.Decision!.Targets.Select(t => t.Symbol).Concat(d.Shadow?.Targets.Select(t => t.Symbol) ?? []))
             .Append(portfolio.Settings.BenchmarkSymbol).Distinct().ToList();
         var earliest = decisions.Count == 0 ? DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime) : DateOnly.FromDateTime(decisions.Min(d => d.Cycle.AsOfUtc));
-        var conversion = symbols.Count == 0 ? null : await fx.GetSeriesInCurrencyAsync(symbols, app.ActiveProvider, earliest.AddDays(-7), null, portfolio.BaseCurrency, ct);
+        var conversion = symbols.Count == 0 ? null : await fx.GetSeriesInCurrencyAsync(symbols, app.ActiveProvider, earliest.AddDays(-7), null, ccy, ct);
         var series = conversion?.PriceSeries() ?? [];
-        PerformanceDto? live = pilot.BaselineAtUtc is { } b ? await performance.GetPerformanceAsync(portfolioId, DateOnly.FromDateTime(b), null, ct) : null;
+        PerformanceDto? live = pilot.BaselineAtUtc is { } b ? await performance.GetPerformanceAsync(portfolioId, DateOnly.FromDateTime(b), null, ct, ccy) : null;
         var rows = decisions.Select(x =>
         {
             var d = x.Decision!;
@@ -406,8 +414,8 @@ public sealed class PilotService(
                 x.Shadow is { Problems.Count: 0 } sh2 ? Hypothetical(series, sh2.Targets.Select(t => (t.Symbol, t.Weight)), day, 21) : null);
         }).ToList();
         return new PilotScorecardDto(rows,
-            "Each decision as it was recorded at the time (never edited afterwards). Outcomes are measured afterwards from stored prices in the portfolio " +
-            "currency: the change of each target's price and of the live portfolio 1, 5 and 21 trading days after the decision date. A blank means that " +
+            $"Each decision as it was recorded at the time (never edited afterwards). Outcomes are measured afterwards from stored prices in {ccy}{(ccy == portfolio.BaseCurrency ? " (the portfolio currency)" : $" (converted from {portfolio.BaseCurrency} with dated rates)")} " +
+            "– the change of each target's price and of the live portfolio 1, 5 and 21 trading days after the decision date. A blank means that " +
             "period has not passed yet. Blocked decisions were not executed; their figures show what the proposal's holdings did, not the portfolio. " +
             "The mandate targets and the unconstrained portfolio are compared the same way: fixed weights bought on the decision date, cash at 0 %, " +
             "hypothetical (the unconstrained portfolio is never traded; the live portfolio can differ from the targets by rounding and costs). " +

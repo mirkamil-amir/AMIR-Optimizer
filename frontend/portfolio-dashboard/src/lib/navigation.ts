@@ -17,7 +17,7 @@ export interface NavEntry {
 
 export interface NavSection { title: string; items: NavEntry[] }
 
-export type PrimaryId = 'optimizer' | 'research' | 'news' | 'watchlist' | 'market-data' | 'strategy-guide' | 'glossary' | 'settings'
+export type PrimaryId = 'optimizer' | 'pilot' | 'news' | 'watchlist' | 'market-data' | 'strategy-guide' | 'glossary' | 'settings'
 
 export interface PrimaryEntry extends NavEntry { id: PrimaryId }
 
@@ -36,6 +36,29 @@ export const SECTION_NAMES = {
   comparison: { label: 'Arena', hint: 'Comparison: several optimizations side by side over the same period' },
   transactions: { label: 'Ledger', hint: 'Transactions: recorded bookings, proposals, executions, orders and cash' },
 } as const
+
+/**
+ * Sub-sections of Pilot (Matrix Pilot, docs/matrix-pilot.md, D-64), left to right. Performance, Decisions, Mandate and
+ * Audit show one portfolio (`/pilot/:portfolioId/<path>`; without one they open the current portfolio, like View);
+ * Pilot Status, rightmost, is information only about every portfolio (`/pilot/status`).
+ */
+export const PILOT_SECTIONS = [
+  { path: 'performance', label: 'Performance', hint: 'The live record, its comparison with another portfolio and the scorecard of each decision' },
+  { path: 'decisions', label: 'Decisions', hint: 'What the AI decided, its unconstrained idea, every step it took and the timeline of decisions' },
+  { path: 'mandate', label: 'Mandate', hint: 'The limits the AI works within, their versions and the model connection' },
+  { path: 'audit', label: 'Audit', hint: 'Every switch-on, kill switch, pause, resume, mandate change and decision outcome, with who caused it and why' },
+  { path: 'status', label: 'Pilot Status', hint: 'Every portfolio with its Matrix Pilot status, last and next decision' },
+] as const
+
+export type PilotSectionPath = (typeof PILOT_SECTIONS)[number]['path']
+/** The sub-sections that show one portfolio. */
+export type PilotPortfolioSection = Exclude<PilotSectionPath, 'status'>
+
+/** URL of a Pilot sub-section: Pilot Status, or a portfolio's section (without an id: the current portfolio's). */
+export function pilotPath(section: PilotSectionPath, portfolioId?: string): string {
+  if (section === 'status') return '/pilot/status'
+  return portfolioId ? `/pilot/${portfolioId}/${section}` : `/pilot/${section}`
+}
 
 /** Sections of the Optimizer workspace, shown in the left sidebar. */
 export const optimizerSections: NavSection[] = [
@@ -86,7 +109,7 @@ export const primaryNav: PrimaryEntry[] = [
     // Earlier portfolio-less URLs (/holdings, /trades, /analytics) redirect into a portfolio workspace.
     match: [...optimizerEntries.flatMap((e) => [...(e.end ? [] : [e.to]), ...(e.match ?? [])]), '/holdings', '/trades', '/analytics'],
   },
-  { id: 'research', to: '/research/pilot', label: 'AI Probe', hint: 'Matrix Pilot: an AI model manages one experimental paper portfolio under your mandate' },
+  { id: 'pilot', to: '/pilot', label: 'Pilot', hint: 'Matrix Pilot: AI-managed experimental portfolio – an AI model manages one paper portfolio under your mandate' },
   { id: 'news', to: '/news', label: 'Wire', hint: 'Financial News: articles from news providers, linked to stocks by the providers\' own tags' },
   { id: 'watchlist', to: '/watchlist', label: 'Radar', hint: 'Watchlist: stocks you follow without holding them' },
   { id: 'market-data', to: '/market-data', label: 'Atlas', hint: 'Market Data: stocks, ETFs, indexes and exchange rates of 35 markets' },

@@ -237,7 +237,8 @@ export function Collapsible({ title, summary, icon, hint, actions, defaultOpen =
  * visible at once – results are never hidden behind tabs. `collapsible`: reference material (inputs, methodology) folded
  * until its heading is clicked.
  */
-export function ResultSection({ title, hint, collapsible = false, children }: { title: string; hint?: ReactNode; collapsible?: boolean; children: ReactNode }) {
+/** A titled result block; `titleHidden` keeps the title for screen readers only (the region keeps its name). */
+export function ResultSection({ title, hint, collapsible = false, titleHidden = false, children }: { title: string; hint?: ReactNode; collapsible?: boolean; titleHidden?: boolean; children: ReactNode }) {
   const [open, setOpen] = useState(false)
   const id = useId()
   if (collapsible) {
@@ -255,7 +256,7 @@ export function ResultSection({ title, hint, collapsible = false, children }: { 
   }
   return (
     <section className="space-y-3" aria-label={title}>
-      <h3 className="heading-display flex items-center gap-1.5 border-b pb-1 text-[1.15rem]"><InfoTip of={title}>{hint}</InfoTip></h3>
+      {titleHidden ? <h3 className="sr-only">{title}</h3> : <h3 className="heading-display flex items-center gap-1.5 border-b pb-1 text-[1.15rem]"><InfoTip of={title}>{hint}</InfoTip></h3>}
       {children}
     </section>
   )

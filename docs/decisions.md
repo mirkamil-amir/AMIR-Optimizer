@@ -2,6 +2,21 @@
 
 Short records of decisions that are not obvious from the code. Newest first. Format: context → decision → consequences.
 
+## D-64 AI Probe becomes Pilot: a portfolio header and five sub-sections (2026-11-15)
+**Context:** with the research assistant gone (D-63), AI Probe held only Matrix Pilot: a portfolio list and one long
+control room. The owner asked to rename it "Pilot" and group the functions by similarity, then, reviewing two versions,
+for Performance first, a portfolio's information shown at once (like View), the portfolio name on top in View's style
+with the portfolio box and controls above the tab line, Mandate and Audit apart, a currency box on Performance as in
+View's Overview, a list ("Pilot Status") that is information only and rightmost, and no title or label text above.
+**Decision:** top bar **Pilot**; portfolio header (name, currency, status · box, controls); tabs (`PILOT_SECTIONS`)
+Performance · Decisions · Mandate · Audit · Pilot Status. The first four show one portfolio
+(`/pilot/:portfolioId/<section>`); without an id they open the current portfolio as View does (its own pilot first) – the
+URL, header and box show which. Pilot Status (`/pilot/status`) has no links. The reporting currency converts the live
+record and scorecard on the server (`?currency=`, performance service + `FxService`, dated rates; the response says
+returns include currency moves); costs stay in the portfolio currency. "AI-managed experimental portfolio" stays in the
+Pilot hint (top bar). `/research…` URLs redirect. **Consequences:** the kill switch never moves out of reach; the selected
+cycle belongs to Decisions only; Arena's "Open Pilot" leads to Performance; the e2e journey walks all five.
+
 ## D-63 The research assistant is removed; AI Probe is Matrix Pilot (2026-11-15)
 **Context:** the owner is reworking the AI Probe experience and wanted the research assistant (AI Probe › Research
 assistant, D-21–D-24) removed completely before the redesign. **Decision:** its code (`Application/Research`,

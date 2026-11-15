@@ -1044,16 +1044,19 @@ optimizer). Minimum trade: every non-zero order value ≥ the mandate's minimum,
 |---|---|
 | Status | Correct under documented assumptions |
 | Code | `src/PortfolioOptimizer.Application/Pilot/PilotService.cs#EvaluateAsync`; `src/PortfolioOptimizer.Application/Pilot/PilotService.cs#HitRateAsync`; `src/PortfolioOptimizer.Application/Pilot/PilotService.cs#Forward`; `src/PortfolioOptimizer.Application/Pilot/PilotService.cs#LiveForward` |
-| Tests | `PilotMetricsAndArgsTests.ForwardMoves_StartAtTheDecisionClose_AndStayBlankUntilThePeriodHasPassed`; `PilotMetricsAndArgsTests.LiveForward_IsTheChangeOfTheWealthIndex_NotADifferenceOfReturns`; `MatrixPilotTests.EndToEnd_ConfirmedActivation_AiDecides_ValidatorPasses_TradesBooked_JournalAndLiveRecord` |
+| Tests | `PilotMetricsAndArgsTests.ForwardMoves_StartAtTheDecisionClose_AndStayBlankUntilThePeriodHasPassed`; `PilotMetricsAndArgsTests.LiveForward_IsTheChangeOfTheWealthIndex_NotADifferenceOfReturns`; `MatrixPilotTests.EndToEnd_ConfirmedActivation_AiDecides_ValidatorPasses_TradesBooked_JournalAndLiveRecord`; `MatrixPilotTests.ReportingCurrency_ConvertsTheLiveRecordAndScorecard_AndSaysSo` |
 | Skills | quant-formulas |
-| Verified | 2026-11-13 |
+| Verified | 2026-11-15 |
 
 Cost drag = Σ fees of the pilot's bookings / baseline portfolio value. Turnover sum = Σ estimated turnover (F-PILOT-003)
 of executed rebalances. Forward move of a holding after $n$ trading days $P_{i+n}/P_i - 1$ from the last close on or
 before the decision date; of the live portfolio $(1+R_{i+n})/(1+R_i)-1$ on the time-weighted wealth index (F-PERF-011).
 Hit rate (1 month) = share of target holdings of executed decisions with a positive 21-day move, counted only when the
 period has passed (sample size shown). Measured after each decision and never fed back into it; a short record says
-little (sample size is shown next to every rate).
+little (sample size is shown next to every rate). Currency: prices and the wealth index are in the portfolio currency, or in
+a reporting currency requested for the scorecard and live record (`?currency=`), converted with the dated rate of each
+price date (`FxService`, F-PERF-011's conversion) – returns then include currency moves and the response says so; fees
+and cost drag stay in the portfolio currency.
 
 ### F-PILOT-005 · Hypothetical move of fixed weights (mandate targets vs unconstrained portfolio)
 

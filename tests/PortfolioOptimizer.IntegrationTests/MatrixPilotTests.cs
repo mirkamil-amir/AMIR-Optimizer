@@ -822,6 +822,27 @@ public sealed class MatrixPilotTests(MatrixPilotTests.Shared shared) : IClassFix
     }
 
     [Fact]
+    public async Task ReportingCurrency_ConvertsTheLiveRecordAndScorecard_AndSaysSo()
+    {
+        var p = await ActivePilotAsync(_alice);
+        await RunCycleAsync(p.Id);
+        var usd = await (await _alice.GetAsync($"/api/v1/portfolios/{p.Id}/pilot/comparison")).ReadAsync<PilotComparisonDto>();
+        var eur = await (await _alice.GetAsync($"/api/v1/portfolios/{p.Id}/pilot/comparison?currency=EUR")).ReadAsync<PilotComparisonDto>();
+        Assert.Equal("USD", usd.Currency);
+        Assert.Equal("EUR", eur.Currency);
+        Assert.DoesNotContain(usd.Warnings, w => w.Contains("converted from the portfolio currency"));
+        Assert.Contains(eur.Warnings, w => w.Contains("Shown in EUR, converted from the portfolio currency USD"));
+        // Same live record, same dates – only the reporting currency differs.
+        Assert.Equal(usd.Start, eur.Start);
+        Assert.Equal(usd.Pilot.Points.Select(x => x.Date), eur.Pilot.Points.Select(x => x.Date));
+
+        var card = await (await _alice.GetAsync($"/api/v1/portfolios/{p.Id}/pilot/scorecard?currency=EUR")).ReadAsync<PilotScorecardDto>();
+        Assert.Contains("in EUR (converted from USD", card.Methodology);
+        Assert.Contains("(the portfolio currency)", (await (await _alice.GetAsync($"/api/v1/portfolios/{p.Id}/pilot/scorecard")).ReadAsync<PilotScorecardDto>()).Methodology);
+        (await _alice.GetAsync($"/api/v1/portfolios/{p.Id}/pilot/comparison?currency=euro")).EnsureStatus(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
     public async Task DeletingThePortfolio_RemovesThePilotAndItsJournal()
     {
         var p = await ActivePilotAsync(_alice);

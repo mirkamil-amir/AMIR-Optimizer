@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using PortfolioOptimizer.Api.Security;
@@ -82,10 +83,16 @@ public sealed class MatrixPilotController(PilotService pilots) : ControllerBase
     [HttpGet("portfolios/{id:guid}/pilot/events")]
     public Task<PagedResult<PilotEventDto>> Events(Guid id, CancellationToken ct, int page = 1, int pageSize = 50) => pilots.EventsAsync(id, page, pageSize, ct);
 
-    /// <summary>Forward-only live record against another of the caller's portfolios and the benchmark.</summary>
+    /// <summary>
+    /// Forward-only live record against another of the caller's portfolios and the benchmark, in the portfolio currency or in
+    /// <paramref name="currency"/> (a reporting conversion that changes nothing in the portfolio).
+    /// </summary>
     [HttpGet("portfolios/{id:guid}/pilot/comparison")]
-    public Task<PilotComparisonDto> Comparison(Guid id, CancellationToken ct, Guid? other = null) => pilots.CompareAsync(id, other, ct);
+    public Task<PilotComparisonDto> Comparison(Guid id, CancellationToken ct, Guid? other = null, [FromQuery, RegularExpression("^[A-Z]{3}$")] string? currency = null) =>
+        pilots.CompareAsync(id, other, ct, currency);
 
+    /// <summary>Each decision with what happened afterwards, in the portfolio currency or in <paramref name="currency"/>.</summary>
     [HttpGet("portfolios/{id:guid}/pilot/scorecard")]
-    public Task<PilotScorecardDto> Scorecard(Guid id, CancellationToken ct) => pilots.ScorecardAsync(id, ct);
+    public Task<PilotScorecardDto> Scorecard(Guid id, CancellationToken ct, [FromQuery, RegularExpression("^[A-Z]{3}$")] string? currency = null) =>
+        pilots.ScorecardAsync(id, ct, currency);
 }
