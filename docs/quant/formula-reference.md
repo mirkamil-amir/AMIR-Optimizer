@@ -913,13 +913,14 @@ correction across experiments (documented limitation).
 |---|---|
 | Status | Verified correct |
 | Code | `src/PortfolioOptimizer.MachineLearning/Strategy/PortfolioConstruction.cs#Build`; `src/PortfolioOptimizer.MachineLearning/Strategy/PortfolioConstruction.cs#ApplyCaps` |
-| Tests | `ModelTests.TopK_EqualWeight_SelectsHighestScores`; `ModelTests.RankAndInverseVolatilityWeighting_FollowTheirRules`; `ModelTests.Caps_AreRespected_AndExcessIsRedistributedOrHeldInCash`; `ModelTests.SectorLimits_AreEnforced`; `ModelTests.ThresholdAndTurnoverLimit_AreApplied` |
+| Tests | `ModelTests.TopK_EqualWeight_SelectsHighestScores`; `ModelTests.RankAndInverseVolatilityWeighting_FollowTheirRules`; `ModelTests.Caps_AreRespected_AndExcessIsRedistributedOrHeldInCash`; `ModelTests.SectorLimits_AreEnforced`; `ModelTests.ThresholdAndTurnoverLimit_AreApplied`; `ValidationAndLeakageTests.TopKCoveringEveryStock_IsReported_BecauseTheRankingCannotChooseThen` |
 | Skills | ml-pipeline |
-| Verified | 2026-10-28 |
+| Verified | 2026-11-15 |
 
 Rank → threshold → top K → equal / rank $(K-i)$ / $1/\sigma_{63}$ / score − min + 10 % spread → iterative capping (excess to
 uncapped names, remainder in cash) → turnover limit by $w = w_0 + \alpha(w^* - w_0)$, $\alpha = \tau/T$. Never uses the
-mean-variance optimizer (architecture test).
+mean-variance optimizer (architecture test). Default weighting of a request: rank $(K-i)$ (D-65; the engine's own default
+stays equal). If $K \ge n$ usable stocks, every stock is held and the result warns that the ranking cannot change the holdings.
 
 ### F-ML-008 · Walk-forward training cutoff and ML backtest
 

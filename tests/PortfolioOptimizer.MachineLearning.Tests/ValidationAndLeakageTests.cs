@@ -105,6 +105,25 @@ public class ValidationAndLeakageTests
     }
 
     [Fact]
+    public void TopKCoveringEveryStock_IsReported_BecauseTheRankingCannotChooseThen()
+    {
+        var panel = SyntheticMarket.Panel(8, 1300, momentumStrength: 0.1, seed: 9);
+        var all = new ExperimentEngine().Run(panel, new ExperimentConfiguration
+        {
+            Family = ModelFamily.RidgeRegression, Portfolio = new PortfolioConstructionSettings { TopK = 10, MaxWeight = 0.5 },
+        }, null, CancellationToken.None);
+        Assert.Contains(all.Warnings, w => w.Contains("top K = 10") && w.Contains("usable stocks (8)") && w.Contains("equal-weight portfolio of the universe"));
+        // Every rebalance then holds every stock, equally weighted.
+        Assert.All(all.Backtest.Rebalances, r => Assert.Equal(8, r.TargetWeights.Count(w => w.Value > 0)));
+
+        var some = new ExperimentEngine().Run(panel, new ExperimentConfiguration
+        {
+            Family = ModelFamily.RidgeRegression, Portfolio = new PortfolioConstructionSettings { TopK = 3, Weighting = WeightingMethod.RankWeighted, MaxWeight = 0.5 },
+        }, null, CancellationToken.None);
+        Assert.DoesNotContain(some.Warnings, w => w.Contains("top K ="));
+    }
+
+    [Fact]
     public void WalkForwardBacktest_DecisionsUseOnlyPastData()
     {
         var market = SyntheticMarket.Generate(15, 1300, 0.1, seed: 4);

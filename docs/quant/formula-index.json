@@ -1131,12 +1131,13 @@
         "ModelTests.RankAndInverseVolatilityWeighting_FollowTheirRules",
         "ModelTests.Caps_AreRespected_AndExcessIsRedistributedOrHeldInCash",
         "ModelTests.SectorLimits_AreEnforced",
-        "ModelTests.ThresholdAndTurnoverLimit_AreApplied"
+        "ModelTests.ThresholdAndTurnoverLimit_AreApplied",
+        "ValidationAndLeakageTests.TopKCoveringEveryStock_IsReported_BecauseTheRankingCannotChooseThen"
       ],
       "skills": [
         "ml-pipeline"
       ],
-      "verified": "2026-10-28"
+      "verified": "2026-11-15"
     },
     {
       "id": "F-ML-008",

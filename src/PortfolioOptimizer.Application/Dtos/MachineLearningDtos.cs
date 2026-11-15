@@ -53,7 +53,11 @@ public sealed record CreateMlExperimentRequest : IValidatableObject
 
     // ---- portfolio construction & backtest
     [Range(1, 100)] public int TopK { get; init; } = 10;
-    public WeightingMethod Weighting { get; init; } = WeightingMethod.EqualWeight;
+    /// <summary>
+    /// How the selected stocks are weighted. Default rank-weighted (since 2026-11-15, D-65): with equal weights the model only
+    /// chooses the stocks, so its ranking would not show in the weights.
+    /// </summary>
+    public WeightingMethod Weighting { get; init; } = WeightingMethod.RankWeighted;
     [Range(0.01, 1)] public double MaxWeight { get; init; } = 0.2;
     [Range(0, 0.5)] public double CashReserve { get; init; }
     /// <summary>Minimum score to be selected (probability for the outperformance target; predicted value otherwise; −volatility for the volatility target).</summary>
@@ -106,7 +110,10 @@ public sealed record MlExperimentSummaryDto(
     double? BacktestAnnualizedReturn,
     string? Error,
     Guid? PortfolioId = null,
-    string Currency = "USD");
+    string Currency = "USD",
+    // How predictions became weights, so a list can say "equal weights" plainly (D-65).
+    int? TopK = null,
+    WeightingMethod? Weighting = null);
 
 /// <summary>Links an experiment to one of the caller's portfolios (null unlinks). The currencies must match.</summary>
 public sealed record AssignMlExperimentPortfolioRequest(Guid? PortfolioId);

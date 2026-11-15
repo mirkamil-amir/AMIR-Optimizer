@@ -58,6 +58,15 @@ public sealed class ExperimentEngine
 
         var split = ChronologicalSplitter.Split(dataset, config.Split);
         warnings.AddRange(split.Warnings);
+        // Holding at least as many stocks as can be ranked means the ranking cannot change which stocks are held.
+        var usable = panel.AssetCount - dataset.Summary.AssetsWithoutUsableHistory;
+        if (config.Portfolio.TopK >= usable)
+            warnings.Add($"Stocks held (top K = {config.Portfolio.TopK}) is at least the number of usable stocks ({usable}): every stock is held at each " +
+                "rebalance, so the model's ranking does not change which stocks are held" +
+                (config.Portfolio.Weighting == WeightingMethod.EqualWeight
+                    ? " – with equal weights the portfolio is the equal-weight portfolio of the universe."
+                    : $" – only the {WeightingLabel(config.Portfolio.Weighting)} weights depend on it.") +
+                " Choose a top K below the number of stocks for the model to select.");
         var topK = config.RankingTopK ?? config.Portfolio.TopK;
         var higherIsBetter = TargetCatalog.HigherIsBetter(config.Target);
 
@@ -287,6 +296,14 @@ public sealed class ExperimentEngine
             var p = Math.Clamp(s.Prediction, 1e-12, 1 - 1e-12);
             return -(s.Label * Math.Log(p) + (1 - s.Label) * Math.Log(1 - p));
         });
+
+    private static string WeightingLabel(WeightingMethod w) => w switch
+    {
+        WeightingMethod.RankWeighted => "rank-weighted",
+        WeightingMethod.InverseVolatility => "inverse-volatility",
+        WeightingMethod.ScoreProportional => "score-proportional",
+        _ => "equal",
+    };
 
     private static TrainingData ToData(IReadOnlyList<Sample> samples, FeatureEngine engine) =>
         new(samples.Select(s => s.Features).ToList(), samples.Select(s => s.Label).ToList(), engine.Names);
