@@ -24,7 +24,8 @@ test.describe('as administrator', () => {
     await expect(primary(page).getByRole('link', { name: 'View' })).toHaveAttribute('aria-current', 'page')
 
     for (const [name, heading, url] of [
-      ['Pilot', 'Matrix Pilot', /\/pilot(\/|$)/],
+      // Pilot opens a portfolio's Performance (heading Performance) or, without a portfolio, the empty Matrix Pilot page.
+      ['Pilot', /^(Matrix Pilot|Performance)$/, /\/pilot(\/|$)/],
       ['Wire', 'Financial news', /\/news$/],
       ['Radar', 'Watchlist', /\/watchlist$/],
       ['Atlas', 'Market data', /\/market-data$/],
@@ -34,8 +35,9 @@ test.describe('as administrator', () => {
     ] as const) {
       await primary(page).getByRole('link', { name }).click()
       await expect(page).toHaveURL(url)
-      await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible()
-      await expect(primary(page).getByRole('link', { name })).toHaveAttribute('aria-current', 'page')
+      await expect(page.getByRole('heading', { name: heading, exact: true }).first()).toBeVisible()
+      // 'page' on the area's own address, 'true' inside it (Pilot opens a portfolio's Performance when the user has one).
+      await expect(primary(page).getByRole('link', { name })).toHaveAttribute('aria-current', /^(page|true)$/)
     }
     // Ordinary settings carry no administrator form.
     await expect(page.getByRole('main')).not.toContainText('Application settings')
@@ -71,7 +73,7 @@ test.describe('as administrator', () => {
     ] as const) {
       await optimizer(page).getByRole('link', { name, exact: true }).click()
       await expect(page).toHaveURL(url)
-      await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible()
+      await expect(page.getByRole('heading', { name: heading, exact: true }).first()).toBeVisible()
       await expect(optimizer(page).getByRole('link', { name, exact: true })).toHaveAttribute('aria-current', 'page')
       await expect(primary(page).getByRole('link', { name: 'View' })).toHaveAttribute('aria-current', 'true')
     }

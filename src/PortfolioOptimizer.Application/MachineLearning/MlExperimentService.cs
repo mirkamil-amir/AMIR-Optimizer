@@ -329,6 +329,7 @@ public sealed class MlExperimentService(
     private static MlExperimentSummaryDto Summary(MlExperiment e)
     {
         MlResultDocument? r = null;
+        var config = JsonSerializer.Deserialize<CreateMlExperimentRequest>(e.ConfigJson, MlJson.Options);
         if (e.ResultJson is not null) r = JsonSerializer.Deserialize<MlResultDocument>(e.ResultJson, MlJson.Options);
         double? backtestReturn = null;
         if (e.BacktestJson is not null)
@@ -340,7 +341,7 @@ public sealed class MlExperimentService(
             Enum.Parse<ModelFamily>(e.ModelFamily), Enum.Parse<PredictionTarget>(e.Target), e.HorizonDays, e.Symbols.Count,
             e.CreatedAtUtc, e.CompletedAtUtc, e.UsesSimulatedData, e.IsExploratory,
             r?.TestMetrics.Ranking.MeanInformationCoefficient, r?.TestMetrics.Regression?.OutOfSampleR2, r?.TestMetrics.Classification?.RocAuc,
-            backtestReturn, e.Error, e.PortfolioId, e.Currency);
+            backtestReturn, e.Error, e.PortfolioId, e.Currency, config?.TopK, config?.Weighting);
     }
 
     private static MlModelVersionDto ToDto(MlModelVersion v) => new(v.Id, v.Version, v.Role, v.ModelFamily, v.TrainedFrom, v.TrainedThrough, v.TrainingSamples,

@@ -2,6 +2,17 @@
 
 Short records of decisions that are not obvious from the code. Newest first. Format: context → decision → consequences.
 
+## D-65 ML Optimization weights by rank by default and says when the model cannot choose (2026-11-15)
+**Context:** the owner asked why ML Optimizations always came out equal-weighted. 20 of 22 runs used the form's default
+"Equal weight", so the model chose which stocks were held but never how much; 5 of them also held as many stocks as the
+universe had (top K ≥ stocks), so the result was exactly the equal-weight portfolio. **Decision:** the default weighting
+of a request and of the form is rank-linear (an explicit choice of any method is unchanged; stored experiments keep
+theirs). When top K is at least the number of stocks, the form warns before the run and the stored result carries a
+warning (`ExperimentEngine`); the history and results name the weighting in plain words ("equal weights"). The
+results' caution no longer calls a rank-weighted all-stock portfolio "equal-weight". **Consequences:** new ML
+Optimizations differ from equal weight unless the user asks for it; comparisons with earlier experiments name both
+weightings; no formula changed (F-ML-007 records the default).
+
 ## D-64 AI Probe becomes Pilot: a portfolio header and five sub-sections (2026-11-15)
 **Context:** with the research assistant gone (D-63), AI Probe held only Matrix Pilot: a portfolio list and one long
 control room. The owner asked to rename it "Pilot" and group the functions by similarity, then, reviewing two versions,

@@ -6,6 +6,14 @@
   radius −0.5 and the browser threw ("radius provided (-0.5) is negative" – a flaky e2e failure on CI). The globe now draws
   nothing without a size, and the ring radius is clamped (`insideRingRadius` in `lib/globe.ts`, tested).
 
+## 2026-11-15 (3): ML weighting made visible (AMIR-34, D-65)
+
+* Default weighting of an ML Optimization is now rank-weighted (request and form); equal weight stays available.
+* Top K ≥ number of stocks: warning on the form and in the stored result (`ExperimentEngine`); the results caution names
+  the weighting correctly. History rows and results show "top K of N · <weighting>" (`MlExperimentSummaryDto.TopK/Weighting`).
+* Tests: `ValidationAndLeakageTests.TopKCoveringEveryStock_IsReported_BecauseTheRankingCannotChooseThen`,
+  `MachineLearningTests` (default and summary), `interpretation.test.ts`, `format.test.ts`.
+
 ## 2026-11-15 (2): Pilot – portfolio header and five sub-sections (AMIR-32, D-64)
 
 * Top bar "AI Probe" is now **Pilot**. Above the tab line: the portfolio header in View's style (name, currency, status)

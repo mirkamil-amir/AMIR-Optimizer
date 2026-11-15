@@ -995,6 +995,9 @@ export interface MlExperimentSummary {
   /** Portfolio the experiment belongs to (null: created before portfolios were recorded, until assigned). */
   portfolioId?: string | null
   currency?: string
+  /** How predictions became weights (D-65); null for experiments listed without their configuration. */
+  topK?: number | null
+  weighting?: WeightingMethod | null
 }
 
 export interface RegressionMetrics { count: number; mae: number; rmse: number; outOfSampleR2: number | null; pooledRankCorrelation: number | null; directionalAccuracy: number | null }

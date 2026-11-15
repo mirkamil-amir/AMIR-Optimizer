@@ -1,4 +1,4 @@
-import { pct } from './format'
+import { pct, weightingText } from './format'
 import type { MlExperiment, MlBacktest, OptimizationRun, StrategyComparison, StrategyPerformance } from './types'
 
 /**
@@ -159,11 +159,16 @@ export function interpretMlExperiment(e: MlExperiment, backtest?: MlBacktest): I
     const selected = p.predictions.filter((x) => x.selected).sort((a, b) => b.targetWeight - a.targetWeight)
     out.push({
       kind: 'fact',
-      text: `Turning predictions into a portfolio: the ${selected.length} highest-ranked stocks are held (${e.configuration.weighting === 'EqualWeight' ? 'equal weights' : e.configuration.weighting}), capped at ${share(e.configuration.maxWeight)} each, ${share(p.cashWeight)} in cash. ` +
+      text: `Turning predictions into a portfolio: the ${selected.length} highest-ranked stocks are held (${weightingText(e.configuration.weighting)}), capped at ${share(e.configuration.maxWeight)} each, ${share(p.cashWeight)} in cash. ` +
         `Selected: ${selected.slice(0, 6).map((x) => `${x.symbol} ${share(x.targetWeight)}`).join(', ')}${selected.length > 6 ? ', …' : ''}.`,
     })
     if (selected.length >= e.symbols.length)
-      out.push({ kind: 'caution', text: 'Every stock in the universe was selected, so the ML portfolio is just an equal-weight portfolio and its backtest cannot differ from equal weight. Use a larger universe or a smaller "Stocks held".' })
+      out.push({
+        kind: 'caution',
+        text: e.configuration.weighting === 'EqualWeight'
+          ? 'Every stock in the universe was selected, so the ML portfolio is just an equal-weight portfolio and its backtest cannot differ from equal weight. Use a larger universe or a smaller "Stocks held".'
+          : `Every stock in the universe was selected, so the model's ranking did not change which stocks are held – only the ${weightingText(e.configuration.weighting)} depend on it. Use a larger universe or a smaller "Stocks held".`,
+      })
   }
 
   if (backtest) {

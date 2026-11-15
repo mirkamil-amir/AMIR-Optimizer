@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { axisDate, date, money, num, pct, qty, signClass } from './format'
+import { axisDate, date, money, num, pct, qty, signClass, weightingText } from './format'
 
 describe('format', () => {
   it('formats fractions as percentages', () => {
@@ -37,5 +37,14 @@ describe('format', () => {
   it('labels chart axes with the day on short spans, so a three-month chart does not repeat "Aug 26"', () => {
     expect(axisDate('2026-08-12', 92)).toBe('Aug 12')
     expect(axisDate('2026-08-12', 366)).toBe('Aug 26')
+  })
+})
+
+describe('weightingText', () => {
+  it('says equal weights plainly and names every other method', () => {
+    expect(weightingText('EqualWeight')).toBe('equal weights')
+    expect(weightingText('RankWeighted')).toBe('rank-weighted weights')
+    expect(weightingText('InverseVolatility')).toBe('inverse-volatility weights')
+    expect(weightingText('ScoreProportional')).toBe('score-proportional weights')
   })
 })
