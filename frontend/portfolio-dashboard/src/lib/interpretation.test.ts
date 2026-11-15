@@ -83,4 +83,21 @@ describe('interpretMlExperiment', () => {
     const text = interpretMlExperiment(experiment(0.01, 0.2, 0.4)).map((i) => i.text).join('\n')
     expect(text).toContain('overfitting')
   })
+
+  it('names the weighting and says what holding every stock means for it', () => {
+    const allHeld = (weighting: MlExperiment['configuration']['weighting']): MlExperiment => {
+      const e = experiment(0.02, 0.5)
+      return {
+        ...e, configuration: { ...e.configuration, weighting },
+        latestPredictions: { predictions: e.symbols.map((s, i) => ({ symbol: s, selected: true, targetWeight: 0.1 - i * 0.001 })), cashWeight: 0 },
+      } as unknown as MlExperiment
+    }
+    const equal = interpretMlExperiment(allHeld('EqualWeight')).map((i) => i.text).join('\n')
+    expect(equal).toContain('(equal weights)')
+    expect(equal).toContain('just an equal-weight portfolio')
+    const ranked = interpretMlExperiment(allHeld('RankWeighted')).map((i) => i.text).join('\n')
+    expect(ranked).toContain('(rank-weighted weights)')
+    expect(ranked).toContain('only the rank-weighted weights depend on it')
+    expect(ranked).not.toContain('just an equal-weight portfolio')
+  })
 })

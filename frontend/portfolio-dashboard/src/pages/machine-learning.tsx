@@ -35,7 +35,7 @@ import type {
   AssetEligibility, MlCatalog, MlExperiment, MlExperimentRequest, MlExperimentSummary, MlPrediction, ModelFamily, PeriodMetrics, Portfolio, PredictionTarget,
   TradeProposal, WeightingMethod,
 } from '@/lib/types'
-import { date, dateTime, familyLabels, money, num, pct, relativeTime, targetLabels } from '@/lib/format'
+import { date, dateTime, familyLabels, money, num, pct, relativeTime, targetLabels, weightingText } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { MatrixLoader, WorkingPanel } from '@/components/matrix-loader'
 
@@ -98,7 +98,8 @@ const defaults: Omit<MlExperimentRequest, 'universe' | 'benchmarkSymbol' | 'risk
   hyperparameters: null,
   seed: 42,
   topK: 10,
-  weighting: 'EqualWeight',
+  // Rank-weighted by default (D-65): with equal weights the model only chooses the stocks, never their weights.
+  weighting: 'RankWeighted',
   maxWeight: 0.2,
   cashReserve: 0,
   minimumScore: null,
@@ -230,6 +231,13 @@ function NewExperimentForm({ catalog, portfolio }: { catalog: MlCatalog; portfol
                 <SelectContent>{catalog.weightingMethods.map((w) => <SelectItem key={w.value} value={w.value}>{w.label}</SelectItem>)}</SelectContent>
               </Select>
             </Field>
+            {universe.length > 0 && form.topK >= universe.length && (
+              <p className="col-span-2 rounded-md border border-warn/50 px-3 py-2 text-xs text-warn" role="status">
+                Stocks held ({form.topK}) covers all {universe.length} stocks of the universe: the model&apos;s ranking will not change which stocks are held
+                {form.weighting === 'EqualWeight' ? ', and with equal weights the result is the equal-weight portfolio' : `; only the ${weightingText(form.weighting)} depend on it`}.
+                Choose fewer than {universe.length} for the model to select.
+              </p>
+            )}
             <NumberField label="Max weight per stock (%)" value={form.maxWeight * 100} min={1} max={100} onChange={(v) => set('maxWeight', v / 100)} />
             <NumberField label="Cash reserve (%)" value={form.cashReserve * 100} min={0} max={50} onChange={(v) => set('cashReserve', v / 100)} />
             <NumberField label="Max turnover per rebalance (%)" value={form.maxTurnover === null || form.maxTurnover === undefined ? '' : form.maxTurnover * 100} min={0} max={100} optional
@@ -332,6 +340,7 @@ function ExperimentHistory({ portfolioId, activeId }: { portfolioId: string; act
                     </div>
                     <div className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-muted-foreground tabular">
                       <span>{relativeTime(e.createdAtUtc)}</span>
+                      {e.weighting && <span>top {e.topK} of {e.universeSize} · {weightingText(e.weighting)}</span>}
                       {e.testRankCorrelation !== null && <span>test IC {num(e.testRankCorrelation, 3)}</span>}
                       {e.testRocAuc !== null && <span>AUC {num(e.testRocAuc, 3)}</span>}
                       {e.usesSimulatedData && <span className="text-foreground">simulated</span>}
@@ -633,6 +642,8 @@ function AllocationBasis({ e }: { e: MlExperiment }) {
   return (
     <>
       {familyLabels[s.modelFamily]} · {targetLabels[s.target]} · {s.horizonDays}-day horizon · {e.symbols.length} stocks · benchmark {e.benchmarkSymbol}.
+      {' '}Holds the top {e.configuration.topK} with {weightingText(e.configuration.weighting)}
+      {e.configuration.topK >= e.symbols.length ? ' – every stock of the universe, so the ranking does not change the holdings' : ''}.
       {set && <> Predictions as of {date(set.asOfDate)} for the next {set.horizonDays} trading days · model v{set.modelVersion} ({set.modelRole}, trained through {date(set.modelTrainedThrough)}) · created {dateTime(set.createdAtUtc)}.</>}
       {' '}Predicted values are uncertain model estimates, not guarantees. {set?.intervalMethod ?? 'No uncertainty interval is shown for this target.'} Drivers: {e.results?.contributionMethod}
     </>

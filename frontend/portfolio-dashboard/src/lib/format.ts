@@ -1,4 +1,4 @@
-import type { ModelFamily, PredictionTarget } from './types'
+import type { ModelFamily, PredictionTarget, WeightingMethod } from './types'
 
 // Consistent number, currency, percentage and date formatting (en-US, values are fractions for %).
 
@@ -111,4 +111,9 @@ export const targetLabels: Record<PredictionTarget, string> = {
   ForwardExcessReturn: 'Forward excess return',
   OutperformBenchmark: 'Probability of outperformance',
   ForwardVolatility: 'Forward volatility',
+}
+
+/** How an ML Optimization weights the stocks it holds, in plain words ("equal weights" said plainly, D-65). */
+export function weightingText(w: WeightingMethod): string {
+  return { EqualWeight: 'equal weights', RankWeighted: 'rank-weighted weights', InverseVolatility: 'inverse-volatility weights', ScoreProportional: 'score-proportional weights' }[w]
 }

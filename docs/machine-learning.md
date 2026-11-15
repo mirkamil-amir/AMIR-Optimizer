@@ -101,6 +101,10 @@ Rank by score (inverted for volatility) → optional minimum score → top K →
 inverse 63-day volatility, or score-proportional) → per-stock cap and optional sector caps by iterative capping (what
 cannot be placed stays in cash) → optional cash reserve → optional turnover limit by partial rebalancing. Weights are
 validated (≥ 0, Σ ≤ 1). A paper-trade proposal can be created from the result; nothing executes without confirmation.
+The default weighting is rank-linear (D-65): with equal weights the model only chooses which stocks are held, never how
+much. When top K is at least the number of usable stocks, every stock is held and the ranking cannot change the holdings;
+the form warns before the run, the result carries a warning (`ExperimentEngine`), and the history and results name the
+weighting used ("equal weights" plainly).
 
 ## Walk-forward ML backtest
 

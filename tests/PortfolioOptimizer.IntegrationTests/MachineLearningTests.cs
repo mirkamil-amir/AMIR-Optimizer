@@ -1,3 +1,4 @@
+using PortfolioOptimizer.MachineLearning.Strategy;
 using System.Net;
 using Npgsql;
 using PortfolioOptimizer.Application.Dtos;
@@ -126,6 +127,9 @@ public sealed class MachineLearningTests(MachineLearningTests.Shared shared) : I
         // History lists the experiment with its out-of-sample headline metric.
         var list = await (await _user.GetAsync("/api/v1/ml/experiments")).ReadAsync<PagedResult<MlExperimentSummaryDto>>();
         Assert.Contains(list.Items, e => e.Id == done.Summary.Id && e.TestRankCorrelation is not null);
+        // …and with how its predictions became weights: rank-weighted when the request names no method (D-65).
+        var listed = list.Items.Single(e => e.Id == done.Summary.Id);
+        Assert.Equal((4, WeightingMethod.RankWeighted), (listed.TopK, listed.Weighting));
     }
 
     [Fact]
