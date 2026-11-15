@@ -34,8 +34,10 @@ export function toForm(m: PilotMandate, frequency: PilotFrequency, effort: strin
 /** Reads the form; the server validates the mandate again (and rejects, never repairs). */
 export function fromForm(f: MandateFormState): { mandate: PilotMandate } | { error: string } {
   const frac = (s: string, name: string) => {
-    const v = Number(s.replace('%', '').replace(',', '.').trim())
-    if (s.trim() === '' || !Number.isFinite(v)) throw new Error(`${name} must be a number (percent).`)
+    // Every % sign and a decimal comma are accepted ("12,5 %"); anything else that is not a number is refused.
+    const t = s.replace(/%/g, '').replace(/,/g, '.').trim()
+    const v = Number(t)
+    if (t === '' || !Number.isFinite(v)) throw new Error(`${name} must be a number (percent).`)
     return v / 100
   }
   const whole = (s: string, name: string) => {

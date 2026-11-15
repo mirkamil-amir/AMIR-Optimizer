@@ -31,3 +31,14 @@ describe('mandate form', () => {
     expect('error' in empty && empty.error).toBe('Maximum position must be a number (percent).')
   })
 })
+
+describe('mandate form percentages', () => {
+  it('accepts a percent sign and a decimal comma, and refuses what is not one number', () => {
+    const f = toForm(mandate, 'Weekly', 'high')
+    const read = (maxPos: string) => fromForm({ ...f, maxPos })
+    expect('mandate' in read('12,5 %') && read('12,5 %')).toMatchObject({ mandate: { maxPositionWeight: 0.125 } })
+    expect('mandate' in read('20%%') && read('20%%')).toMatchObject({ mandate: { maxPositionWeight: 0.2 } })
+    expect(read('1,2,3')).toEqual({ error: 'Maximum position must be a number (percent).' })
+    expect(read('%')).toEqual({ error: 'Maximum position must be a number (percent).' })
+  })
+})
