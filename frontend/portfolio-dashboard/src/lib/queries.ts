@@ -9,7 +9,7 @@ import type {
   AdminOverview, HistoryRange, PriceHistory, Watchlist, WatchlistAddResult, NewsFeed, NewsFilters, EventComparison, RealityCheck, CompanyProfile,
   WireFeedName, WireQuery, WireResponses, NewsSourceStatus, PortfolioNews, WireClassificationHistory,
   FxInfo, FxRate, FxHistory, FxBoard,
-  PortfolioOverview, PortfolioTransaction, RecordTransactionRequest, MarketDataSummary, DataCheck, DataCheckRequest, DataDownload,
+  PortfolioActivity, PortfolioOverview, PortfolioTransaction, RecordTransactionRequest, MarketDataSummary, DataCheck, DataCheckRequest, DataDownload,
   PortfolioStrategy, StrategyBacktestRequest,
   Pilot, PilotCycleDetail, PilotCycleSummary, PilotComparison, PilotEvent, PilotFrequency, PilotHome, PilotMandate, PilotMandateVersion, PilotOverview,
   PilotScorecard, PilotModelCheck,
@@ -24,7 +24,8 @@ export const keys = {
   journal: (id: string, page: number) => ['journal', id, page] as const,
   holdings: (id: string, currency?: string) => ['holdings', id, currency ?? ''] as const,
   transactions: (id: string, page: number, symbol?: string) => ['transactions', id, page, symbol ?? ''] as const,
-  orders: (id: string, page: number) => ['orders', id, page] as const,
+  orders: (id: string, page: number, proposalId?: string) => ['orders', id, page, proposalId ?? ''] as const,
+  activity: (id: string, page: number) => ['activity', id, page] as const,
   cash: (id: string, page: number) => ['cash', id, page] as const,
   proposals: (id: string) => ['proposals', id] as const,
   runs: (id: string) => ['runs', id] as const,
@@ -72,12 +73,21 @@ export const useTransactions = (id: string | undefined, page = 1, symbol?: strin
     placeholderData: keepPreviousData,
   })
 
-export const useOrders = (id: string | undefined, page = 1) =>
+/** Simulated orders, newest first; with `proposalId` only that proposal's (its order outcome in the Proposals tab). */
+export const useOrders = (id: string | undefined, page = 1, proposalId?: string) =>
   useQuery({
-    queryKey: keys.orders(id ?? '', page),
-    queryFn: () => api.get<PagedResult<Order>>(`${V1}/portfolios/${id}/orders?page=${page}&pageSize=25`),
+    queryKey: keys.orders(id ?? '', page, proposalId),
+    queryFn: () => api.get<PagedResult<Order>>(`${V1}/portfolios/${id}/orders?page=${page}&pageSize=${proposalId ? 200 : 25}${proposalId ? `&proposalId=${proposalId}` : ''}`),
     enabled: !!id,
     placeholderData: keepPreviousData,
+  })
+
+/** Ledger › Transactions: everything that added to or took from the portfolio, newest first (D-66). */
+export const usePortfolioActivity = (id: string | undefined, page = 1) =>
+  useQuery({
+    queryKey: keys.activity(id ?? '', page),
+    queryFn: () => api.get<PagedResult<PortfolioActivity>>(`${V1}/portfolios/${id}/activity?page=${page}&pageSize=50`),
+    enabled: !!id,
   })
 
 export const useCashLedger = (id: string | undefined, page = 1) =>
@@ -141,7 +151,7 @@ export function useCreatePortfolio() {
 /** Everything that depends on one portfolio's state – refreshed after a booking or lifecycle change. */
 function invalidatePortfolio(qc: ReturnType<typeof useQueryClient>, id: string) {
   qc.invalidateQueries({ queryKey: keys.portfolios })
-  for (const k of ['portfolio', 'holdings', 'transactions', 'orders', 'cash', 'proposals', 'performance', 'risk', 'journal']) {
+  for (const k of ['portfolio', 'holdings', 'transactions', 'orders', 'cash', 'proposals', 'performance', 'risk', 'journal', 'activity']) {
     qc.invalidateQueries({ queryKey: [k, id] })
   }
 }
@@ -278,7 +288,7 @@ export function useExecuteProposal(portfolioId: string) {
     mutationFn: ({ proposalId, idempotencyKey }: { proposalId: string; idempotencyKey: string }) =>
       api.post<PaperTradeResult>(`${V1}/portfolios/${portfolioId}/paper-trades`, { proposalId, confirm: true }, { 'Idempotency-Key': idempotencyKey }),
     onSuccess: () => {
-      for (const k of ['holdings', 'transactions', 'orders', 'cash', 'proposals', 'performance', 'risk', 'portfolio']) {
+      for (const k of ['holdings', 'transactions', 'orders', 'cash', 'proposals', 'performance', 'risk', 'portfolio', 'activity']) {
         qc.invalidateQueries({ queryKey: [k, portfolioId] })
       }
       qc.invalidateQueries({ queryKey: keys.portfolios })

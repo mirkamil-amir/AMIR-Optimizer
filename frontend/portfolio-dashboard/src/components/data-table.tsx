@@ -72,7 +72,8 @@ export function DataTable<T>({
   return (
     <div>
       {/* data-scrolled-x: set while scrolled sideways, so pinned columns can turn opaque only then (no re-render). */}
-      <div className={cn('overflow-x-auto rounded-lg border', scrolls && 'overflow-y-auto')} data-scrolled-x="false"
+      {/* bg-card: as opaque as a card (index.css), so the figures stay readable over the background map. */}
+      <div className={cn('overflow-x-auto rounded-lg border bg-card', scrolls && 'overflow-y-auto')} data-scrolled-x="false"
         onScrollCapture={(e) => { e.currentTarget.dataset.scrolledX = String((e.target as HTMLElement).scrollLeft > 0) }}
         style={scrolls ? { maxHeight: maxHeight ?? `calc(2.25rem + ${maxRows} * ${dense ? 2.3 : 2.85}rem)` } : undefined}>
         <Table containerClassName={scrolls ? 'overflow-visible' : undefined}>

@@ -473,4 +473,49 @@ public sealed class MultiPortfolioTests(MultiPortfolioTests.Shared shared) : ICl
         Assert.Equal(buy.Quantity, holdings.Holdings.Single(h => h.Quantity > 0).Quantity);
         Assert.Equal("Private", (await (await _alice.GetAsync($"/api/v1/portfolios/{p.Id}")).ReadAsync<PortfolioDto>()).Name);
     }
+
+    [Fact]
+    public async Task Activity_ListsEverythingThatChangedThePortfolio_OnceEach_WithItsSource()
+    {
+        var p = await CreateAsync(_alice, "Activity", ["AAPL", "MSFT"], cash: 10_000m);
+        var deposit = await BookAsync(_alice, p.Id, new RecordTransactionRequest { Type = PortfolioTransactionType.Deposit, Amount = 500m });
+        var buy = await BookAsync(_alice, p.Id, new RecordTransactionRequest { Type = PortfolioTransactionType.Buy, Symbol = "AAPL", Quantity = 2, Price = 100m, Fee = 1m });
+        var proposal = await (await _alice.PostJsonAsync($"/api/v1/portfolios/{p.Id}/rebalance-preview",
+            new RebalancePreviewRequest { TargetWeights = new Dictionary<string, double> { ["MSFT"] = 0.3 } })).ReadAsync<TradeProposalDto>();
+        (await _alice.SendAsync(WithKey(HttpMethod.Post, $"/api/v1/portfolios/{p.Id}/paper-trades",
+            new ExecutePaperTradesRequest { ProposalId = proposal.Id, Confirm = true }))).EnsureStatus(HttpStatusCode.OK);
+
+        var list = await (await _alice.GetAsync($"/api/v1/portfolios/{p.Id}/activity")).ReadAsync<PagedResult<PortfolioActivityDto>>();
+        var executions = await (await _alice.GetAsync($"/api/v1/portfolios/{p.Id}/transactions")).ReadAsync<PagedResult<TransactionDto>>();
+        // Every trade once (hand-booked and executed), plus the two deposits – no orders, settlements or trade commissions.
+        Assert.Equal(executions.TotalCount + 2, list.TotalCount);
+        Assert.DoesNotContain(list.Items, a => a.Kind == "Fee");
+        Assert.Equal(list.Items.OrderByDescending(a => a.AtUtc).Select(a => a.Id), list.Items.Select(a => a.Id)); // newest first
+
+        Assert.Single(list.Items, a => a.Kind == "Deposit" && a.Source == ActivitySource.StartingCash && a.Amount == 10_000m && !a.CanReverse);
+        var dep = Assert.Single(list.Items, a => a.Kind == "Deposit" && a.Source == ActivitySource.BookedByHand);
+        Assert.Equal((500m, deposit.Id, true), (dep.Amount, dep.JournalId, dep.CanReverse));
+        var hand = Assert.Single(list.Items, a => a.Kind == "Buy" && a.Source == ActivitySource.BookedByHand);
+        Assert.Equal(("AAPL", 2m, 1m, -201m, buy.Id, false), (hand.Symbol, hand.Quantity, hand.Fees, hand.Amount, hand.JournalId, hand.CanReverse));
+        // The rebalance sold the AAPL (not in the target) and bought MSFT: both trades name the proposal.
+        var executed = list.Items.Where(a => a.Source == ActivitySource.TradeProposal).ToList();
+        Assert.Equal(["Buy MSFT", "Sell AAPL"], executed.Select(a => $"{a.Kind} {a.Symbol}").Order());
+        Assert.All(executed, a => Assert.Equal(proposal.Id, a.ProposalId));
+        Assert.True(executed.Single(a => a.Kind == "Buy").Amount < 0);
+        Assert.True(executed.Single(a => a.Kind == "Sell").Amount > 0);
+
+        // A reversal shows on both rows; the reversed deposit can no longer be reversed.
+        (await _alice.SendAsync(WithKey(HttpMethod.Post, $"/api/v1/portfolios/{p.Id}/journal/{deposit.Id}/reverse", new ReverseTransactionRequest())))
+            .EnsureStatus(HttpStatusCode.Created);
+        var after = await (await _alice.GetAsync($"/api/v1/portfolios/{p.Id}/activity")).ReadAsync<PagedResult<PortfolioActivityDto>>();
+        var original = after.Items.Single(a => a.Id == dep.Id);
+        Assert.Equal((true, false), (original.Reversed, original.CanReverse));
+        var undo = Assert.Single(after.Items, a => a.Reversal);
+        Assert.Equal(("Reversal", -500m, false), (undo.Kind, undo.Amount, undo.CanReverse));
+        Assert.StartsWith("Reversal of the deposit", undo.Note);
+
+        // Another user's portfolio does not exist for them.
+        Assert.Equal(HttpStatusCode.NotFound, (await _bob.GetAsync($"/api/v1/portfolios/{p.Id}/activity")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await _alice.GetAsync($"/api/v1/portfolios/{p.Id}/activity?pageSize=501")).StatusCode);
+    }
 }

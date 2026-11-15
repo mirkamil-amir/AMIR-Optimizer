@@ -17,6 +17,7 @@ namespace PortfolioOptimizer.Api.Controllers;
 public sealed class PortfoliosController(
     PortfolioService portfolios,
     PortfolioTransactionService transactions,
+    PortfolioActivityService activity,
     OptimizationService optimization,
     TradingService trading,
     PortfolioAnalyticsService analytics,
@@ -116,6 +117,15 @@ public sealed class PortfoliosController(
     public Task<HoldingsResponse> Holdings(Guid id, [FromQuery, RegularExpression("^[A-Z]{3}$")] string? currency, CancellationToken ct) =>
         analytics.GetHoldingsAsync(id, ct, currency);
 
+    /// <summary>
+    /// Everything that added to or took from the portfolio, newest first (Ledger › Transactions): buys and sells with their
+    /// fees – booked by hand, from a confirmed proposal or by Matrix Pilot – and deposits, withdrawals, dividends and
+    /// standalone fees. Orders and a trade's own cash legs are not separate rows.
+    /// </summary>
+    [HttpGet("{id:guid}/activity")]
+    public Task<PagedResult<PortfolioActivityDto>> Activity(Guid id, CancellationToken ct, [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
+        activity.ListAsync(id, page, pageSize, ct);
+
     /// <summary>Simulated trade executions (immutable ledger), newest first.</summary>
     [HttpGet("{id:guid}/transactions")]
     public Task<PagedResult<TransactionDto>> Transactions(Guid id, [FromQuery] string? symbol, CancellationToken ct,
@@ -164,10 +174,10 @@ public sealed class PortfoliosController(
     public Task<PagedResult<CashEntryDto>> CashLedger(Guid id, CancellationToken ct, [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
         portfolios.GetCashLedgerAsync(id, page, pageSize, ct);
 
-    /// <summary>Simulated orders, newest first.</summary>
+    /// <summary>Simulated orders, newest first; with <paramref name="proposalId"/> only the orders of that proposal.</summary>
     [HttpGet("{id:guid}/orders")]
-    public Task<PagedResult<OrderDto>> Orders(Guid id, CancellationToken ct, [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
-        portfolios.GetOrdersAsync(id, page, pageSize, ct);
+    public Task<PagedResult<OrderDto>> Orders(Guid id, CancellationToken ct, [FromQuery] int page = 1, [FromQuery] int pageSize = 50, [FromQuery] Guid? proposalId = null) =>
+        portfolios.GetOrdersAsync(id, page, pageSize, ct, proposalId);
 
     /// <summary>Trade proposals (pending, executed and superseded), newest first.</summary>
     [HttpGet("{id:guid}/trade-proposals")]

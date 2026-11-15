@@ -83,3 +83,27 @@ describe('StoryRow entities', () => {
     expect(screen.getByRole('link', { name: 'European Central Bank · central bank' })).toHaveAttribute('href', '/news?view=macro&entity=ECB')
   })
 })
+
+describe('StoryRow in a portfolio (condensed)', () => {
+  it('puts each holding\'s weight on its tag, drops the "Why you see this" line and lines the Compare buttons up', () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const asset = (symbol: string) => ({ symbol, name: symbol, assetType: 'Equity', currency: 'USD', onWatchlist: false, held: true })
+    render(
+      <QueryClientProvider client={qc}><MemoryRouter>
+        <StoryRow story={{ ...story, assets: [asset('MSFT'), asset('T')], why: ['MSFT: 23.4% of this portfolio'] }} showWhy exposure={[
+          { kind: 'Holding', label: 'MSFT', weight: 0.234, basis: 'position value ÷ total value' },
+          { kind: 'Holding', label: 'T', weight: 0.05, basis: 'position value ÷ total value' },
+          { kind: 'Currency', label: 'EUR', weight: 0.3, basis: 'positions and cash in EUR ÷ total value' },
+        ]} />
+      </MemoryRouter></QueryClientProvider>,
+    )
+    expect(screen.getByRole('link', { name: /^MSFT/ })).toHaveTextContent('MSFT23.4%')
+    expect(screen.getByRole('link', { name: /^T/ })).toHaveTextContent('T5.0%')
+    expect(screen.getByText('EUR')).toBeInTheDocument()
+    expect(screen.queryByText(/Why you see this/)).not.toBeInTheDocument()
+    // Both Compare buttons sit in one row (one container), not stacked under each other.
+    const compares = screen.getAllByRole('button', { name: /^Compare .* price movement/ })
+    expect(compares).toHaveLength(2)
+    expect(compares[0].parentElement).toBe(compares[1].parentElement)
+  })
+})

@@ -6,10 +6,10 @@ import { EmptyState, ErrorState, InfoTip, LoadingBlock, ResultSection, Warnings 
 import { MatrixLoader } from '@/components/matrix-loader'
 import { EventComparisonDialog } from '@/components/news'
 import { QuoteCell } from '@/components/stock-selection'
-import { dateTime } from '@/lib/format'
+import { dateTime, pct } from '@/lib/format'
 import { publishedLabel, safeExternalUrl } from '@/lib/news'
 import { useNewsSources, usePortfolioNews, useStocksBySymbols, useStoryClassifications } from '@/lib/queries'
-import type { WireClassification, WireCompany, WireMarketSection, WireSourceStatus, WireStory } from '@/lib/types'
+import type { WireClassification, WireCompany, WireExposure, WireMarketSection, WireSourceStatus, WireStory } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { entityHref, regionLabel, sourcesLabel, utcTime, wireBenchmarks } from '@/lib/wire'
 
@@ -35,34 +35,47 @@ export function AttentionLabel({ story }: { story: WireStory }) {
 /**
  * One story as a dense row: time (relative and UTC), headline linking to the earliest report, what it concerns, why a
  * personal feed shows it, and every report on demand. Linked listings open their stock page; Compare opens the event
- * and price-movement comparison for the lead report.
+ * and price-movement comparison for the lead report. With `exposure` (a portfolio's news) each held stock's tag shows
+ * its weight and each currency its share, instead of a "Why you see this" line, and the row is condensed.
  */
-export function StoryRow({ story, showWhy = false }: { story: WireStory; showWhy?: boolean }) {
+export function StoryRow({ story, showWhy = false, exposure }: { story: WireStory; showWhy?: boolean; exposure?: WireExposure[] }) {
   const [open, setOpen] = useState(false)
   const [compare, setCompare] = useState<string | null>(null)
   const href = safeExternalUrl(story.url)
   const region = regionLabel(story.region)
   const leadId = story.sources[0]?.articleId
   const sourcesId = `sources-${story.id}`
+  const compact = !!exposure
+  const holding = (symbol: string) => exposure?.find((x) => x.kind === 'Holding' && x.label === symbol)
+  const currencies = exposure?.filter((x) => x.kind === 'Currency') ?? []
   return (
-    <article aria-label={story.headline} className="grid grid-cols-[4.5rem_minmax(0,1fr)] gap-x-3 border-b px-3 py-2.5 last:border-b-0 sm:grid-cols-[5.5rem_minmax(0,1fr)_auto]">
+    <article aria-label={story.headline} className={cn('grid grid-cols-[4.5rem_minmax(0,1fr)] gap-x-3 border-b px-3 last:border-b-0 sm:grid-cols-[5.5rem_minmax(0,1fr)_auto]', compact ? 'py-1.5' : 'py-2.5')}>
       <div className="text-xs text-muted-foreground tabular">
         <time dateTime={story.lastPublishedAtUtc} title={`Latest report ${dateTime(story.lastPublishedAtUtc)} · first report ${dateTime(story.firstPublishedAtUtc)}`}>
           <span className="block font-medium text-foreground">{utcTime(story.lastPublishedAtUtc)}</span>
           {publishedLabel(story.lastPublishedAtUtc)}
         </time>
       </div>
-      <div className="min-w-0 space-y-1">
+      <div className={cn('min-w-0', compact ? 'space-y-0.5' : 'space-y-1')}>
         <h3 className="text-sm leading-snug font-semibold">
           {href ? <a href={href} target="_blank" rel="noopener noreferrer nofollow" className="hover:underline">{story.headline}</a> : story.headline}
         </h3>
         <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted-foreground">
-          {story.assets.map((a) => (
-            <Link key={a.symbol} to={`/stocks/${encodeURIComponent(a.symbol)}`}
-              className={cn('rounded border px-1.5 py-0.5 font-medium text-foreground hover:bg-muted', (a.onWatchlist || a.held) && 'border-foreground/40')}
-              title={`${a.name ?? a.symbol}${a.onWatchlist ? ' · on your watchlist' : ''}${a.held ? ' · in one of your portfolios' : ''}`}>
-              {a.symbol}
-            </Link>
+          {story.assets.map((a) => {
+            const held = holding(a.symbol)
+            return (
+              <Link key={a.symbol} to={`/stocks/${encodeURIComponent(a.symbol)}`}
+                className={cn('rounded border px-1.5 py-0.5 font-medium text-foreground hover:bg-muted', (a.onWatchlist || a.held) && 'border-foreground/40')}
+                title={`${a.name ?? a.symbol}${a.onWatchlist ? ' · on your watchlist' : ''}${a.held ? ' · in one of your portfolios' : ''}${held ? ` · ${held.basis}` : ''}`}>
+                {a.symbol}
+                {held && <span className="ml-1 font-normal text-muted-foreground tabular">{held.weight == null ? '–' : pct(held.weight, 1)}</span>}
+              </Link>
+            )
+          })}
+          {currencies.map((c) => (
+            <span key={c.label} className="rounded border px-1.5 py-0.5 font-medium text-foreground" title={c.basis}>
+              {c.label}<span className="ml-1 font-normal text-muted-foreground tabular">{c.weight == null ? '–' : pct(c.weight, 1)}</span>
+            </span>
           ))}
           {story.entities.map((e) => (
             <Link key={e.key} to={entityHref(e)} className="rounded border px-1.5 py-0.5 text-foreground hover:bg-muted"
@@ -82,8 +95,8 @@ export function StoryRow({ story, showWhy = false }: { story: WireStory; showWhy
           {story.isOfficial && <Badge variant="outline">Official source</Badge>}
           {story.isSimulated && <Badge variant="outline" className="border-series-2/60 bg-series-2/10">SIMULATED</Badge>}
         </div>
-        {showWhy && story.why.length > 0 && <p className="text-xs text-muted-foreground">Why you see this: {story.why.join('; ')}</p>}
-        {story.summary && <p className="line-clamp-2 text-xs text-muted-foreground">{story.summary}</p>}
+        {showWhy && !compact && story.why.length > 0 && <p className="text-xs text-muted-foreground">Why you see this: {story.why.join('; ')}</p>}
+        {story.summary && <p className={cn('text-xs text-muted-foreground', compact ? 'line-clamp-1' : 'line-clamp-2')}>{story.summary}</p>}
         {open && (
           <ul id={sourcesId} className="space-y-0.5 border-l pl-2 text-xs">
             {story.sources.map((s) => {
@@ -101,14 +114,19 @@ export function StoryRow({ story, showWhy = false }: { story: WireStory; showWhy
           </ul>
         )}
       </div>
-      <div className="col-start-2 flex flex-wrap items-start gap-1 pt-1 sm:col-start-3 sm:flex-col sm:items-end sm:pt-0">
+      {/* Attention on top, the Compare buttons side by side below it (one short row instead of a stack). */}
+      <div className="col-start-2 flex flex-wrap items-center gap-1 pt-1 sm:col-start-3 sm:flex-col sm:items-end sm:pt-0">
         <AttentionLabel story={story} />
-        {leadId && story.assets.filter((a) => a.assetType !== 'Index').slice(0, 2).map((a) => (
-          <Button key={a.symbol} size="xs" variant="ghost" onClick={() => setCompare(a.symbol)} title="Event and price-movement comparison"
-            aria-label={`Compare ${a.symbol} price movement around this story`}>
-            Compare {a.symbol}
-          </Button>
-        ))}
+        {leadId && (
+          <div className="flex gap-1 sm:justify-end">
+            {story.assets.filter((a) => a.assetType !== 'Index').slice(0, 2).map((a) => (
+              <Button key={a.symbol} size="xs" variant="ghost" onClick={() => setCompare(a.symbol)} title="Event and price-movement comparison"
+                aria-label={`Compare ${a.symbol} price movement around this story`}>
+                Compare {a.symbol}
+              </Button>
+            ))}
+          </div>
+        )}
       </div>
       {compare && leadId && <EventComparisonDialog article={{ id: leadId, headline: story.headline }} symbol={compare} onClose={() => setCompare(null)} />}
     </article>
@@ -171,10 +189,11 @@ function ClassificationHistory({ storyId }: { storyId: string }) {
 }
 
 /** A dense list of stories on the map-safe surface. */
-export function StoryList({ stories, label, showWhy = false }: { stories: WireStory[]; label: string; showWhy?: boolean }) {
+/** `exposures` (story id → its holdings and currencies) turns the rows into the condensed portfolio form. */
+export function StoryList({ stories, label, showWhy = false, exposures }: { stories: WireStory[]; label: string; showWhy?: boolean; exposures?: Record<string, WireExposure[]> }) {
   return (
     <div className="map-surface overflow-hidden rounded-xl border" role="feed" aria-label={label}>
-      {stories.map((s) => <StoryRow key={s.id} story={s} showWhy={showWhy} />)}
+      {stories.map((s) => <StoryRow key={s.id} story={s} showWhy={showWhy} exposure={exposures?.[s.id]} />)}
     </div>
   )
 }
@@ -226,8 +245,8 @@ export function MarketSection({ section, onMore }: { section: WireMarketSection;
 }
 
 /**
- * Overview: news about this portfolio's holdings and currencies. "Why you see this" states each holding's weight (or the
- * currency's share) from the current valuation – a fact, never a predicted effect.
+ * Overview: news about this portfolio's holdings and currencies, condensed: each held stock's tag shows its weight (and each
+ * currency its share) from the current valuation – a fact, never a predicted effect.
  */
 export function PortfolioNewsSection({ portfolioId }: { portfolioId: string }) {
   const [hours, setHours] = useState(168)
@@ -257,7 +276,8 @@ export function PortfolioNewsSection({ portfolioId }: { portfolioId: string }) {
           {data.problems.length > 0 && <Warnings items={data.problems} title="Weights not available for every holding" />}
           {data.items.length === 0
             ? <EmptyState title="No news about your holdings in this window" description={data.notes[0]} />
-            : <StoryList stories={data.items.map((i) => i.story)} label="News about your holdings" showWhy />}
+            : <StoryList stories={data.items.map((i) => i.story)} label="News about your holdings"
+              exposures={Object.fromEntries(data.items.map((i) => [i.story.id, i.exposure]))} />}
           {(cursors.length > 0 || data.nextCursor) && (
             <div className="flex justify-between pt-1">
               <Button size="sm" variant="outline" disabled={cursors.length === 0} onClick={() => setCursors([])}>Newest stories</Button>
