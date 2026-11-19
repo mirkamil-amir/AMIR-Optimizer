@@ -91,6 +91,9 @@ these files.
 * ML: anything that uses time must prove it cannot see the future (change data after *t*, assert nothing at *t* moves).
 * API behaviour: `IntegrationTests` with `ApiFactory`; use `CreateApprovedUserAsync` for a second user and assert
   that other users' ids return 404.
+* Simulated prices follow one fixed path, so a window that ends "today" moves every day. A test whose assertion depends
+  on the prices themselves (not just on their shape) pins the API's clock and downloads history relative to that date –
+  see `RealityCheckTests.Shared` (maximum Sharpe failed on 2026-11-19 when no feasible portfolio beat the risk-free rate).
 * UI logic belongs in `src/lib/*.ts` (pure, Vitest-tested); components get light Testing Library tests; user journeys
   get Playwright specs with role-based locators.
 * Frontend fixtures: build typed objects; cast partial fixtures with `as unknown as T` only in tests.
