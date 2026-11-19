@@ -1,5 +1,14 @@
 # Implementation status
 
+## 2026-11-15 (6): Matrix Pilot in View (AMIR-37, D-67)
+
+* Pilot is a portfolio tab after Pattern (`/portfolios/:id/pilot/{performance,decisions,mandate,audit}`) and a sidebar entry
+  after Pattern; the top bar has no Pilot entry. Status and controls sit next to the sub-tabs; View's header shows a
+  "Matrix Pilot <STATUS>" badge on every tab while a pilot exists. Lens cards show each portfolio's pilot status (the Pilot
+  Status page is gone). `/pilot`, `/pilot/<sub-tab>` open the current portfolio's Pilot; old URLs redirect.
+* Tests: `navigation.test.ts` (sidebar order, sub-tab URLs), `portfolio-workspace.test.tsx` (tab list, header badge),
+  `app-shell.test.tsx`, `navigation.spec.ts` (seven top-bar entries), `pilot.spec.ts` (tab, sub-tabs, Lens row, sidebar, badge).
+
 ## 2026-11-15 (5): condensed holdings news, readable lists, one Ledger list (AMIR-36, D-66)
 
 * Core › News about your holdings: each held stock's tag shows its weight (currencies as tags with their share), no
@@ -33,6 +42,8 @@
   View when none is given) – and **Pilot Status** (`/pilot/status`, information only). No page title; the "At a glance"
   and "AI decision" headings are for screen readers only (`ResultSection titleHidden`).
 * API: `GET …/pilot/comparison` and `…/pilot/scorecard` take an optional `currency` (reporting view, dated rates).
+* Mandate form without free text: indexes, sector/country/currency limits by checkbox, allowed and excluded stocks in the
+  Forge stock chooser (own selection), benchmark from a list, frequency and effort as toggles (`lib/mandate.ts` + tests).
 * Redirects: `/research`, `/research/pilot` → `/pilot`; `/research/pilot/:id` and `/pilot/:id` → that portfolio's Performance.
 * Tests: `MatrixPilotTests.ReportingCurrency_ConvertsTheLiveRecordAndScorecard_AndSaysSo`, `navigation.test.ts`,
   `navigation.spec.ts`, `pilot.spec.ts` (header, all five tabs, EUR view, Pilot Status without links).

@@ -1,4 +1,5 @@
 using System.Net;
+using Microsoft.Extensions.DependencyInjection;
 using PortfolioOptimizer.Application.Dtos;
 using PortfolioOptimizer.Domain;
 
@@ -7,9 +8,29 @@ namespace PortfolioOptimizer.IntegrationTests;
 /// <summary>Portfolio Reality Check of a saved run: consistency with the run, sensitivity scenarios, ownership.</summary>
 public sealed class RealityCheckTests(RealityCheckTests.Shared shared) : IClassFixture<RealityCheckTests.Shared>, IAsyncLifetime
 {
+    /// <summary>
+    /// The simulated prices follow one fixed path, so a window ending "today" moves every day; on some days no feasible
+    /// portfolio of these six stocks beats the risk-free rate and maximum Sharpe is (rightly) refused. The API's clock is
+    /// therefore pinned to a date whose window is known to work, and the history is downloaded relative to it.
+    /// </summary>
     public sealed class Shared : SharedApi
     {
-        protected override Task SeedAsync(HttpClient admin) => SyncAsync(admin, 2, [.. Universe, "SPY"]);
+        public static readonly DateTimeOffset PinnedNow = new(2026, 11, 13, 21, 0, 0, TimeSpan.Zero);
+
+        protected override Task<ApiFactory> CreateFactoryAsync() =>
+            ApiFactory.CreateAsync(testServices: s => s.AddSingleton<TimeProvider>(new PinnedClock(PinnedNow)));
+
+        protected override Task SeedAsync(HttpClient admin) => admin.SyncAndWaitAsync(new SyncRequest
+        {
+            Symbols = [.. Universe, "SPY"], StartDate = DateOnly.FromDateTime(PinnedNow.UtcDateTime).AddYears(-2),
+        });
+    }
+
+    /// <summary>A clock that starts at <paramref name="start"/> and then runs with real time (timeouts and leases still elapse).</summary>
+    private sealed class PinnedClock(DateTimeOffset start) : TimeProvider
+    {
+        private readonly TimeSpan _offset = start - System.GetUtcNow();
+        public override DateTimeOffset GetUtcNow() => System.GetUtcNow() + _offset;
     }
 
     private static readonly string[] Universe = ["AAPL", "MSFT", "NVDA", "JPM", "XOM", "JNJ"];

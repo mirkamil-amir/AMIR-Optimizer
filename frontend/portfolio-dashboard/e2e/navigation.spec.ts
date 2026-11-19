@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { ADMIN_STATE, admin, approve, register, requireAdminCredentials, signIn, signOut, strongPassword, uniqueEmail } from './helpers'
 
 // Application navigation: eight primary areas in the top bar, View sections and administration in the sidebar.
-const PRIMARY = ['View', 'Pilot', 'Wire', 'Radar', 'Atlas', 'Codex', 'Lexicon', 'Settings']
+const PRIMARY = ['View', 'Wire', 'Radar', 'Atlas', 'Codex', 'Lexicon', 'Settings']
 
 const primary = (page: Page) => page.getByRole('navigation', { name: 'Primary' })
 const optimizer = (page: Page) => page.getByRole('navigation', { name: 'View sections' }).first()
@@ -24,8 +24,6 @@ test.describe('as administrator', () => {
     await expect(primary(page).getByRole('link', { name: 'View' })).toHaveAttribute('aria-current', 'page')
 
     for (const [name, heading, url] of [
-      // Pilot opens a portfolio's Performance (heading Performance) or, without a portfolio, the empty Matrix Pilot page.
-      ['Pilot', /^(Matrix Pilot|Performance)$/, /\/pilot(\/|$)/],
       ['Wire', 'Financial news', /\/news$/],
       ['Radar', 'Watchlist', /\/watchlist$/],
       ['Atlas', 'Market data', /\/market-data$/],
@@ -36,8 +34,7 @@ test.describe('as administrator', () => {
       await primary(page).getByRole('link', { name }).click()
       await expect(page).toHaveURL(url)
       await expect(page.getByRole('heading', { name: heading, exact: true }).first()).toBeVisible()
-      // 'page' on the area's own address, 'true' inside it (Pilot opens a portfolio's Performance when the user has one).
-      await expect(primary(page).getByRole('link', { name })).toHaveAttribute('aria-current', /^(page|true)$/)
+      await expect(primary(page).getByRole('link', { name })).toHaveAttribute('aria-current', 'page')
     }
     // Ordinary settings carry no administrator form.
     await expect(page.getByRole('main')).not.toContainText('Application settings')
@@ -137,7 +134,7 @@ test.describe('as administrator', () => {
       // Keyboard: the primary links are focusable in order.
       await primary(page).getByRole('link', { name: 'View' }).focus()
       await page.keyboard.press('Tab')
-      await expect(primary(page).getByRole('link', { name: 'Pilot' })).toBeFocused()
+      await expect(primary(page).getByRole('link', { name: 'Wire' })).toBeFocused()
     })
   }
 })

@@ -17,7 +17,7 @@ export interface NavEntry {
 
 export interface NavSection { title: string; items: NavEntry[] }
 
-export type PrimaryId = 'optimizer' | 'pilot' | 'news' | 'watchlist' | 'market-data' | 'strategy-guide' | 'glossary' | 'settings'
+export type PrimaryId = 'optimizer' | 'news' | 'watchlist' | 'market-data' | 'strategy-guide' | 'glossary' | 'settings'
 
 export interface PrimaryEntry extends NavEntry { id: PrimaryId }
 
@@ -31,6 +31,7 @@ export const SECTION_NAMES = {
   overview: { label: 'Core', hint: 'Overview: value, performance, holdings and positions of this portfolio' },
   math: { label: 'Solver', hint: 'Math Optimization: weights from a mean-variance optimizer' },
   ml: { label: 'Pattern', hint: 'ML Optimization: weights from a model that ranks stocks by patterns in past prices' },
+  pilot: { label: 'Pilot', hint: 'Matrix Pilot: AI-managed experimental portfolio – an AI model manages this paper portfolio under your mandate' },
   history: { label: 'Trace', hint: 'History: every Math and ML Optimization run so far' },
   backtest: { label: 'Rewind', hint: 'Backtesting: replay an optimization on past prices' },
   comparison: { label: 'Arena', hint: 'Comparison: several optimizations side by side over the same period' },
@@ -38,26 +39,23 @@ export const SECTION_NAMES = {
 } as const
 
 /**
- * Sub-sections of Pilot (Matrix Pilot, docs/matrix-pilot.md, D-64), left to right. Performance, Decisions, Mandate and
- * Audit show one portfolio (`/pilot/:portfolioId/<path>`; without one they open the current portfolio, like View);
- * Pilot Status, rightmost, is information only about every portfolio (`/pilot/status`).
+ * Sub-tabs of a portfolio's Pilot tab (Matrix Pilot, docs/matrix-pilot.md, D-67), left to right, at
+ * `/portfolios/:id/pilot/<path>`. Every portfolio's Matrix Pilot status is a column on Lens (no separate status page).
  */
 export const PILOT_SECTIONS = [
   { path: 'performance', label: 'Performance', hint: 'The live record, its comparison with another portfolio and the scorecard of each decision' },
   { path: 'decisions', label: 'Decisions', hint: 'What the AI decided, its unconstrained idea, every step it took and the timeline of decisions' },
   { path: 'mandate', label: 'Mandate', hint: 'The limits the AI works within, their versions and the model connection' },
   { path: 'audit', label: 'Audit', hint: 'Every switch-on, kill switch, pause, resume, mandate change and decision outcome, with who caused it and why' },
-  { path: 'status', label: 'Pilot Status', hint: 'Every portfolio with its Matrix Pilot status, last and next decision' },
 ] as const
 
 export type PilotSectionPath = (typeof PILOT_SECTIONS)[number]['path']
-/** The sub-sections that show one portfolio. */
-export type PilotPortfolioSection = Exclude<PilotSectionPath, 'status'>
+/** The sub-tabs (each shows one portfolio). */
+export type PilotPortfolioSection = PilotSectionPath
 
-/** URL of a Pilot sub-section: Pilot Status, or a portfolio's section (without an id: the current portfolio's). */
+/** URL of a portfolio's Pilot sub-tab; without an id the current portfolio's (resolved by the page, like View). */
 export function pilotPath(section: PilotSectionPath, portfolioId?: string): string {
-  if (section === 'status') return '/pilot/status'
-  return portfolioId ? `/pilot/${portfolioId}/${section}` : `/pilot/${section}`
+  return portfolioId ? `/portfolios/${portfolioId}/pilot/${section}` : `/pilot/${section}`
 }
 
 /** Sections of the Optimizer workspace, shown in the left sidebar. */
@@ -77,6 +75,8 @@ export const optimizerSections: NavSection[] = [
       { to: '/optimize', ...SECTION_NAMES.math, match: ['/portfolios/*/optimize'] },
       // Like Solver: the ML Optimization of the current portfolio (earlier /machine-learning URLs redirect).
       { to: '/ml-optimize', ...SECTION_NAMES.ml, match: ['/portfolios/*/ml-optimize', '/machine-learning'] },
+      // Matrix Pilot of the current portfolio (D-67): the AI decides here, while Solver and Pattern only propose.
+      { to: '/pilot', ...SECTION_NAMES.pilot, match: ['/portfolios/*/pilot', '/research'] },
       { to: '/history', ...SECTION_NAMES.history, match: ['/reality-check', '/portfolios/*/runs'] },
     ],
   },
@@ -109,7 +109,6 @@ export const primaryNav: PrimaryEntry[] = [
     // Earlier portfolio-less URLs (/holdings, /trades, /analytics) redirect into a portfolio workspace.
     match: [...optimizerEntries.flatMap((e) => [...(e.end ? [] : [e.to]), ...(e.match ?? [])]), '/holdings', '/trades', '/analytics'],
   },
-  { id: 'pilot', to: '/pilot', label: 'Pilot', hint: 'Matrix Pilot: AI-managed experimental portfolio – an AI model manages one paper portfolio under your mandate' },
   { id: 'news', to: '/news', label: 'Wire', hint: 'Financial News: articles from news providers, linked to stocks by the providers\' own tags' },
   { id: 'watchlist', to: '/watchlist', label: 'Radar', hint: 'Watchlist: stocks you follow without holding them' },
   { id: 'market-data', to: '/market-data', label: 'Atlas', hint: 'Market Data: stocks, ETFs, indexes and exchange rates of 35 markets' },

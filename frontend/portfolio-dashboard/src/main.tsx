@@ -14,8 +14,6 @@ import { ThemeProvider } from '@/lib/theme'
 import './index.css'
 
 // Route-level code splitting keeps the initial bundle small.
-const PilotLayout = lazy(() => import('@/pages/pilot').then((m) => ({ default: m.PilotLayout })))
-const PilotStatusPage = lazy(() => import('@/pages/pilot').then((m) => ({ default: m.PilotStatusPage })))
 const PilotToCurrent = lazy(() => import('@/pages/pilot').then((m) => ({ default: m.PilotToCurrent })))
 const PilotPortfolioPage = lazy(() => import('@/pages/pilot').then((m) => ({ default: m.PilotPortfolioPage })))
 const PilotPortfolioRedirect = lazy(() => import('@/pages/pilot').then((m) => ({ default: m.PilotPortfolioRedirect })))
@@ -87,6 +85,12 @@ const router = createBrowserRouter([
               { path: 'optimize/:runId', element: <OptimizePage /> },
               { path: 'ml-optimize', element: <MlOptimizePage /> },
               { path: 'ml-optimize/:experimentId', element: <MlOptimizePage /> },
+              // Matrix Pilot of this portfolio (D-67): Performance, Decisions, Mandate and Audit as sub-tabs.
+              { path: 'pilot', element: <Navigate to="performance" replace /> },
+              { path: 'pilot/performance', element: <PilotPortfolioPage section="performance" key="performance" /> },
+              { path: 'pilot/decisions', element: <PilotPortfolioPage section="decisions" key="decisions" /> },
+              { path: 'pilot/mandate', element: <PilotPortfolioPage section="mandate" key="mandate" /> },
+              { path: 'pilot/audit', element: <PilotPortfolioPage section="audit" key="audit" /> },
               { path: 'transactions', element: <TradesPage /> },
               { path: 'runs', element: <HistoryPage /> },
               { path: 'backtest', element: <BacktestPage /> },
@@ -99,26 +103,16 @@ const router = createBrowserRouter([
               { path: 'holdings', element: <Navigate to=".." relative="path" replace /> },
             ],
           },
-          // Pilot (Matrix Pilot, D-64): a portfolio's Performance, Decisions, Mandate and Audit (the current portfolio when the
-          // URL names none, like View), then Pilot Status (information only).
-          {
-            path: '/pilot',
-            element: <PilotLayout />,
-            children: [
-              { index: true, element: <PilotToCurrent section="performance" /> },
-              { path: 'status', element: <PilotStatusPage /> },
-              { path: 'decisions', element: <PilotToCurrent section="decisions" /> },
-              { path: 'performance', element: <PilotToCurrent section="performance" /> },
-              { path: 'mandate', element: <PilotToCurrent section="mandate" /> },
-              { path: 'audit', element: <PilotToCurrent section="audit" /> },
-              { path: ':portfolioId', element: <PilotPortfolioRedirect /> },
-              { path: ':portfolioId/decisions', element: <PilotPortfolioPage section="decisions" key="decisions" /> },
-              { path: ':portfolioId/performance', element: <PilotPortfolioPage section="performance" key="performance" /> },
-              { path: ':portfolioId/mandate', element: <PilotPortfolioPage section="mandate" key="mandate" /> },
-              { path: ':portfolioId/audit', element: <PilotPortfolioPage section="audit" key="audit" /> },
-            ],
-          },
-          // Earlier AI Probe URLs (renamed Pilot on 2026-11-15, D-64; the research assistant was removed on 2026-11-15, D-63; Matrix Pilot lived under /research/pilot).
+          // Matrix Pilot is a portfolio tab in View (D-67): /pilot opens the current portfolio's Pilot (its own pilot first);
+          // earlier Pilot and AI Probe URLs redirect there; the status of every portfolio's pilot is a column on Lens.
+          { path: '/pilot', element: <PilotToCurrent section="performance" /> },
+          { path: '/pilot/status', element: <Navigate to="/" replace /> },
+          { path: '/pilot/performance', element: <PilotToCurrent section="performance" /> },
+          { path: '/pilot/decisions', element: <PilotToCurrent section="decisions" /> },
+          { path: '/pilot/mandate', element: <PilotToCurrent section="mandate" /> },
+          { path: '/pilot/audit', element: <PilotToCurrent section="audit" /> },
+          { path: '/pilot/:portfolioId', element: <PilotPortfolioRedirect /> },
+          { path: '/pilot/:portfolioId/:section', element: <PilotPortfolioRedirect /> },
           { path: '/research', element: <Navigate to="/pilot" replace /> },
           { path: '/research/pilot', element: <Navigate to="/pilot" replace /> },
           { path: '/research/pilot/:portfolioId', element: <PilotPortfolioRedirect /> },

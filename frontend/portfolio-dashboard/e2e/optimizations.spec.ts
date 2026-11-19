@@ -41,9 +41,9 @@ async function expectAllSectionsVisible(page: Page, sections: string[], screensh
 
 test('optimizations of one portfolio: Math and ML pages alike, backtest any optimization, compare math vs math', async ({ page }) => {
   test.setTimeout(300_000)
-  // Sidebar: Mathematical and ML Optimization sit together, before the history; testing and comparing follow.
+  // Sidebar: Mathematical and ML Optimization and Matrix Pilot (D-67) sit together, before the history; testing and comparing follow.
   await page.goto('/')
-  await expect(sidebar(page).getByRole('link')).toHaveText(['Lens', 'Forge', 'Solver', 'Pattern',
+  await expect(sidebar(page).getByRole('link')).toHaveText(['Lens', 'Forge', 'Solver', 'Pattern', 'Pilot',
     'Trace', 'Rewind', 'Arena'])
 
   // A portfolio with two mathematical optimizations.

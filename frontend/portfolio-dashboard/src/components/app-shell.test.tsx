@@ -18,7 +18,7 @@ const user = (isAdministrator: boolean): CurrentUser => ({
   isAdministrator, createdAtUtc: '2026-01-01T00:00:00Z', credentialResetPending: false,
 })
 
-const PAGES = ['/', '/learn', '/learn/glossary', '/learn/:strategyId', '/pilot', '/news', '/watchlist', '/market-data', '/settings', '/stocks', '/stocks/:symbol', '/backtest', '/optimize', '/admin/settings']
+const PAGES = ['/', '/learn', '/learn/glossary', '/learn/:strategyId', '/news', '/watchlist', '/market-data', '/settings', '/stocks', '/stocks/:symbol', '/backtest', '/optimize', '/admin/settings']
 
 function renderAt(path: string) {
   const router = createMemoryRouter(
@@ -38,10 +38,10 @@ describe('application shell navigation', () => {
     auth.current = { user: user(false), isAdministrator: false, logout: async () => {} }
   })
 
-  it('shows the eight primary destinations in order and marks the current one', () => {
+  it('shows the seven primary destinations in order and marks the current one', () => {
     renderAt('/')
     expect(within(primary()).getAllByRole('link').map((a) => a.textContent)).toEqual(
-      ['View', 'Pilot', 'Wire', 'Radar', 'Atlas', 'Codex', 'Lexicon', 'Settings'],
+      ['View', 'Wire', 'Radar', 'Atlas', 'Codex', 'Lexicon', 'Settings'],
     )
     expect(link(primary(), 'View')).toHaveAttribute('aria-current', 'page')
     expect(link(optimizerNav(), 'Lens')).toHaveAttribute('aria-current', 'page')
@@ -56,7 +56,7 @@ describe('application shell navigation', () => {
 
   it('opens each primary destination, and back/forward keep the active item in step', async () => {
     const router = renderAt('/backtest')
-    for (const [name, path] of [['Pilot', '/pilot'], ['Wire', '/news'], ['Radar', '/watchlist'], ['Atlas', '/market-data'], ['Codex', '/learn'], ['Lexicon', '/learn/glossary'], ['Settings', '/settings']]) {
+    for (const [name, path] of [['Wire', '/news'], ['Radar', '/watchlist'], ['Atlas', '/market-data'], ['Codex', '/learn'], ['Lexicon', '/learn/glossary'], ['Settings', '/settings']]) {
       await userEvent.click(link(primary(), name))
       expect(screen.getByText(`page ${path}`)).toBeInTheDocument()
       expect(link(primary(), name)).toHaveAttribute('aria-current', 'page')
@@ -87,7 +87,7 @@ describe('application shell navigation', () => {
 
   it('does not list the moved destinations in the sidebar', () => {
     renderAt('/')
-    for (const name of [/Matrix Pilot/i, /Financial news/i, /Watchlist/i, /Market data/i, /Strategy guide/i, /Glossary/i, /^Settings$/i]) {
+    for (const name of [/Financial news/i, /Watchlist/i, /Market data/i, /Strategy guide/i, /Glossary/i, /^Settings$/i]) {
       expect(within(optimizerNav()).queryByRole('link', { name })).toBeNull()
     }
   })

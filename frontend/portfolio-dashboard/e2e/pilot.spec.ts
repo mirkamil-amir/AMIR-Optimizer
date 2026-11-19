@@ -44,27 +44,29 @@ test('Matrix Pilot: set up, confirm, decide, book, inspect, kill switch, live re
   await acceptDownloadIfAsked(page)
   await expect(page.getByText('What your result means')).toBeVisible({ timeout: 60_000 })
 
-  // Pilot opens Performance (leftmost) of the current portfolio – here the only one, not set up yet.
-  await page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Pilot', exact: true }).click()
-  await expect(page).toHaveURL(new RegExp(`/pilot/${id}/performance$`))
+  // Pilot is a tab of the portfolio in View, right after Pattern (D-67) – not in the top bar any more. It opens on
+  // Performance; this portfolio has no pilot yet.
+  const tabs = page.getByRole('navigation', { name: 'Portfolio sections' })
+  await expect(tabs.getByRole('link')).toHaveText(['Core', 'Solver', 'Pattern', 'Pilot', 'Trace', 'Rewind', 'Arena', 'Ledger'])
+  await expect(page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Pilot' })).toHaveCount(0)
+  await tabs.getByRole('link', { name: 'Pilot', exact: true }).click()
+  await expect(page).toHaveURL(new RegExp(`/portfolios/${id}/pilot/performance$`))
   const sections = page.getByRole('navigation', { name: 'Pilot sections' })
-  await expect(sections.getByRole('link')).toHaveText(['Performance', 'Decisions', 'Mandate', 'Audit', 'Pilot Status'])
+  await expect(sections.getByRole('link')).toHaveText(['Performance', 'Decisions', 'Mandate', 'Audit'])
   await expect(sections.getByRole('link', { name: 'Performance' })).toHaveAttribute('aria-current', 'page')
   await expect(page.getByRole('heading', { level: 1, name: 'Pilot E2E' })).toBeVisible()
-  await expect(page.getByLabel('Portfolio', { exact: true })).toContainText('Pilot E2E')
   await expect(page.getByText('Matrix Pilot not set up')).toBeVisible()
+  await expect(page.getByText(/deterministic test script/).first()).toBeVisible()
 
-  // Pilot Status (rightmost) is information only: every portfolio with its status, no links.
-  await sections.getByRole('link', { name: 'Pilot Status' }).click()
-  await expect(page).toHaveURL(/\/pilot\/status$/)
-  await expect(page.getByText(/deterministic test script/)).toBeVisible()
-  const row = page.getByRole('row', { name: /Pilot E2E/ })
-  await expect(row).toContainText('not set up')
-  await expect(row.getByRole('link')).toHaveCount(0)
+  // Lens shows every portfolio's Matrix Pilot status (the former Pilot Status page).
+  await page.goto('/')
+  await expect(page.getByLabel('Portfolio Pilot E2E', { exact: true })).toContainText(/Matrix Pilot\s*not set up/)
 
-  // Decisions opens the current portfolio again.
+  // The sidebar's Pilot opens the current portfolio's Pilot; Decisions is one of its sub-tabs.
+  await page.getByRole('navigation', { name: 'View sections' }).first().getByRole('link', { name: 'Pilot', exact: true }).click()
+  await expect(page).toHaveURL(new RegExp(`/portfolios/${id}/pilot/performance$`))
   await sections.getByRole('link', { name: 'Decisions' }).click()
-  await expect(page).toHaveURL(new RegExp(`/pilot/${id}/decisions$`))
+  await expect(page).toHaveURL(new RegExp(`/portfolios/${id}/pilot/decisions$`))
 
   // Set up with the suggested mandate (switched off), then the explicit confirmation.
   await expect(page.getByLabel('Max position %')).toHaveValue('25')
@@ -80,6 +82,8 @@ test('Matrix Pilot: set up, confirm, decide, book, inspect, kill switch, live re
   await confirm.getByRole('checkbox', { name: 'I understand' }).check()
   await go.click()
   await expect(page.getByText('ACTIVE').first()).toBeVisible()
+  // Every tab of the portfolio now says an AI manages it, linking to the Pilot tab (D-67).
+  await expect(page.getByRole('link', { name: 'Matrix Pilot ACTIVE' })).toHaveAttribute('href', `/portfolios/${id}/pilot/performance`)
 
   // One decision cycle: research with tools → decision → review → validation → simulated booking.
   await page.getByRole('button', { name: 'Run decision now' }).click()
@@ -121,7 +125,7 @@ test('Matrix Pilot: set up, confirm, decide, book, inspect, kill switch, live re
 
   // The other sub-sections keep the portfolio and its controls: Performance (record, scorecard, currency), Mandate, Audit.
   await sections.getByRole('link', { name: 'Performance' }).click()
-  await expect(page).toHaveURL(new RegExp(`/pilot/${id}/performance$`))
+  await expect(page).toHaveURL(new RegExp(`/portfolios/${id}/pilot/performance$`))
   await expect(page.getByRole('region', { name: 'At a glance' })).toBeVisible()
   await expect(page.getByRole('region', { name: 'Decision scorecard' })).toBeVisible()
   await expect(page.getByText('Stopped by the kill switch')).toBeVisible()
@@ -133,10 +137,27 @@ test('Matrix Pilot: set up, confirm, decide, book, inspect, kill switch, live re
   await expect(page.getByText(/Shown in EUR – converted from USD/)).toBeVisible()
   await expect(page.getByRole('columnheader', { name: /^EUR, from/ })).toBeVisible()
   await sections.getByRole('link', { name: 'Mandate', exact: true }).click()
-  await expect(page).toHaveURL(new RegExp(`/pilot/${id}/mandate$`))
+  await expect(page).toHaveURL(new RegExp(`/portfolios/${id}/pilot/mandate$`))
   await expect(page.getByRole('region', { name: 'Mandate', exact: true })).toBeVisible()
+  // Change the mandate by choosing, not typing: a sector limit by checkbox, a stock in the Forge stock chooser.
+  await page.getByRole('button', { name: 'Change mandate' }).click()
+  const mandate = page.getByRole('dialog', { name: 'Change the mandate' })
+  await mandate.getByRole('checkbox', { name: 'Limit Energy' }).check()
+  await expect(mandate.getByLabel('Largest share of Energy (%)')).toHaveValue('20')
+  await mandate.getByRole('group', { name: 'Allowed indexes' }).getByRole('checkbox').first().check()
+  await mandate.getByRole('button', { name: 'Choose stocks' }).first().click()
+  const chooser = page.getByRole('dialog', { name: 'Allowed stocks' })
+  await chooser.getByLabel('Search company name or ticker').fill('NVDA')
+  await chooser.getByRole('checkbox', { name: 'Select NVDA', exact: true }).check()
+  await chooser.getByRole('button', { name: /^Use \d+ stocks?$/ }).click()
+  await expect(chooser).toBeHidden()
+  await expect(mandate.getByRole('list', { name: 'Allowed stocks' })).toContainText('NVDA')
+  await mandate.getByLabel('Reason for the change').fill('E2E mandate by checkboxes')
+  await mandate.getByRole('button', { name: 'Confirm the new mandate' }).click()
+  await expect(page.getByText('New mandate version saved.')).toBeVisible()
+  await expect(page.getByRole('cell', { name: 'E2E mandate by checkboxes' })).toBeVisible()
   await sections.getByRole('link', { name: 'Audit', exact: true }).click()
-  await expect(page).toHaveURL(new RegExp(`/pilot/${id}/audit$`))
+  await expect(page).toHaveURL(new RegExp(`/portfolios/${id}/pilot/audit$`))
   await expect(page.getByRole('cell', { name: 'kill_switch', exact: true })).toBeVisible()
   await expect(page.getByRole('cell', { name: 'E2E stop', exact: true })).toBeVisible()
 
@@ -150,7 +171,7 @@ test('Matrix Pilot: set up, confirm, decide, book, inspect, kill switch, live re
   await expect(live).toContainText('Live record only')
   await expect(live.getByRole('cell', { name: 'Trades', exact: true })).toBeVisible()
   await page.getByRole('link', { name: 'Open Pilot' }).click()
-  await expect(page).toHaveURL(new RegExp(`/pilot/${id}/performance$`))
+  await expect(page).toHaveURL(new RegExp(`/portfolios/${id}/pilot/performance$`))
 
   expect(errors).toEqual([])
 })

@@ -210,7 +210,7 @@ test('overview and workspace fit narrow screens', async ({ page }) => {
     }
     // Every section of the workspace is reachable (the tab bar scrolls when narrow).
     await page.goto(`/portfolios/${id}`)
-    for (const name of ['Core', 'Solver', 'Pattern', 'Trace', 'Rewind', 'Arena', 'Ledger']) {
+    for (const name of ['Core', 'Solver', 'Pattern', 'Pilot', 'Trace', 'Rewind', 'Arena', 'Ledger']) {
       const link = sections(page).getByRole('link', { name, exact: true })
       await link.scrollIntoViewIfNeeded()
       await expect(link).toBeInViewport()

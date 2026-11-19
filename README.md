@@ -96,11 +96,11 @@ Offline demo: start with `MarketData__DefaultProvider=Mock` on a new database, o
 
 ## Using the platform
 
-Navigation: the top bar holds **View · Pilot · Wire · Radar · Atlas · Codex · Lexicon · Settings** (portfolio
-workspace, Matrix Pilot, financial news, watchlist, market data, strategy guide, glossary, settings); the left sidebar
+Navigation: the top bar holds **View · Wire · Radar · Atlas · Codex · Lexicon · Settings** (portfolio
+workspace, financial news, watchlist, market data, strategy guide, glossary, settings); the left sidebar
 lists the Matrix's sections (**Lens** – your portfolios, **Forge** – new portfolio, **Solver** and **Pattern** – the Math
-and ML Optimization, **Trace** – history, **Rewind** – backtesting, **Arena** – comparison) and, for administrators,
-**Administration** with **Admin settings**. A portfolio's tabs are Core · Solver · Pattern · Trace · Rewind · Arena ·
+and ML Optimization, **Pilot** – Matrix Pilot, **Trace** – history, **Rewind** – backtesting, **Arena** – comparison) and, for administrators,
+**Administration** with **Admin settings**. A portfolio's tabs are Core · Solver · Pattern · Pilot · Trace · Rewind · Arena ·
 Ledger. Every branded name shows its plain name on hover or focus.
 
 **Portfolios.** You can keep several independent portfolios. **Overview** (`/`) lists all of yours with value, cash,
@@ -117,9 +117,9 @@ on several continents open up a world view. Selecting a stock ripples its city, 
 in the header lists the markets in view and offers "Fit selected markets" and "World view". Headlines use Sora, text and
 figures Geist (both bundled with the app). Details: [portfolios.md](docs/portfolios.md).
 
-0. **Matrix Pilot** (Pilot, `/pilot`). Choose a portfolio in the small box, set up an AI-managed paper portfolio with a mandate,
+0. **Matrix Pilot** (a portfolio's **Pilot** tab, after Pattern). Set up an AI-managed paper portfolio with a mandate,
    confirm it, and follow it in **Decisions** (each decision, the tools the model used, the validation), **Performance** (the
-   forward-only live record, the scorecard, in any currency), **Mandate**, **Audit**, and see all portfolios in **Pilot Status**. Paper money only; see [matrix-pilot.md](docs/matrix-pilot.md).
+   forward-only live record, the scorecard, in any currency), **Mandate** and **Audit**; Lens shows every portfolio's pilot status. Paper money only; see [matrix-pilot.md](docs/matrix-pilot.md).
 0c. **Currency converter and themes.** The overview (My portfolios) has a currency converter: reference rates of the major currencies (plus any of the 29 published ones you add; BGN as history only since the euro changeover) against
    a selectable base (“1 USD =”, any published currency, default the currency of the totals) with 1-day changes, a 1M–5Y chart of
    the selected pair and a calculator (ECB daily reference rates, dated, never “live”; simulated with simulated prices).

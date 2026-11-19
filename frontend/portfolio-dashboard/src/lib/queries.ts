@@ -1092,7 +1092,7 @@ export const usePilotScorecard = (portfolioId: string | undefined, enabled: bool
     enabled: !!portfolioId && enabled,
   })
 
-/** Every pilot action invalidates the pilot's queries (status, journal, events) and the Pilot Status list. */
+/** Every pilot action invalidates the pilot's queries (status, journal, events) and the list behind Lens and the header badge. */
 function usePilotAction<TArgs, TResult>(portfolioId: string, call: (args: TArgs) => Promise<TResult>) {
   const qc = useQueryClient()
   return useMutation({

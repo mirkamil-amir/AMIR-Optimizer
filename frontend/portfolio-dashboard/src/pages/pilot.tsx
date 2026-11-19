@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { Link, Navigate, Outlet, useLocation, useNavigate, useParams } from 'react-router'
+import { Link, Navigate, useParams } from 'react-router'
 import { toast } from 'sonner'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -12,12 +12,14 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { EmptyState, ErrorState, InfoTip, LoadingBlock, MetricCard, MetricGroup, MetricValue, ResultSection, Warnings } from '@/components/common'
+import { EmptyState, ErrorState, LoadingBlock, MetricCard, MetricGroup, MetricValue, ResultSection, Warnings } from '@/components/common'
 import { SearchableTable, type Column } from '@/components/data-table'
 import { TimeSeriesChart, Legend, seriesColor } from '@/components/charts'
 import { MatrixLoader, WorkingPanel } from '@/components/matrix-loader'
 import { NavHint } from '@/components/nav-hint'
 import { ReportingCurrencySelect } from '@/components/currency'
+import { MandateForm } from '@/components/mandate-form'
+import { fromForm, toForm } from '@/lib/mandate'
 import { errorMessage } from '@/lib/api'
 import { PILOT_SECTIONS, pilotPath, type PilotPortfolioSection as PortfolioSection, type PilotSectionPath } from '@/lib/navigation'
 import { usePortfolioContext } from '@/lib/portfolio-context'
@@ -27,13 +29,13 @@ import {
   usePilotHome, usePilotMandates, usePilotScorecard, useResumePilot, useRunPilot, useUpdatePilotMandate, useCheckPilotModel,
 } from '@/lib/queries'
 import type {
-  Pilot, PilotComparison, PilotCycleDetail, PilotCycleSummary, PilotEvent, PilotFrequency, PilotMandate, PilotModel, PilotOutcome, PilotOverview,
-  PilotPortfolioRow, PilotStep,
+  Pilot, PilotComparison, PilotCycleDetail, PilotCycleSummary, PilotEvent, PilotMandate, PilotModel, PilotOutcome, PilotOverview,
+  PilotStep,
 } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
-// Pilot › Matrix Pilot (docs/matrix-pilot.md): an AI-managed experimental (paper) portfolio in four sub-sections – Performance, Decisions,
-// Mandate & Audit, Pilot Status. They show what the model decided and what the platform calculated, validated and booked – labelled apart.
+// View › Pilot (docs/matrix-pilot.md, D-67): a portfolio's AI-managed experimental (paper) portfolio, as sub-tabs Performance,
+// Decisions, Mandate and Audit. They show what the model decided and what the platform calculated, validated and booked – labelled apart.
 
 // ================================================================ outcome / status labels
 
@@ -65,48 +67,7 @@ function modelText(m: { provider: string; model: string }, isTest?: boolean) {
   return isTest || m.provider === 'Mock' ? `${m.provider} ${m.model} (test script – not an AI)` : `${m.provider} ${m.model}`
 }
 
-// ================================================================ Pilot: layout and sub-sections
-
-/**
- * Pilot's frame: the portfolio header (name, box, controls), the sub-section tabs (Performance leftmost, Pilot Status
- * rightmost) and the sub-section below. No page title – the top bar says Pilot; Pilot Status has a screen-reader heading.
- */
-export function PilotLayout() {
-  const { portfolioId } = useParams()
-  const { pathname } = useLocation()
-  const segments = pathname.split('/')
-  const current = PILOT_SECTIONS.find((s) => segments.includes(s.path))?.path ?? 'performance'
-  return (
-    <>
-      {portfolioId ? <PilotHeader portfolioId={portfolioId} section={current === 'status' ? 'performance' : current} /> : <h1 className="sr-only">Matrix Pilot</h1>}
-      <nav aria-label="Pilot sections" className="nav-scroll -mx-1 mb-6 overflow-x-auto border-b">
-        <ul className="flex min-w-max gap-0.5 px-1">
-          {PILOT_SECTIONS.map((s) => {
-            const active = s.path === current
-            return (
-              <li key={s.path}>
-                <NavHint hint={s.hint} side="bottom">
-                  <Link
-                    to={pilotPath(s.path, portfolioId)}
-                    aria-current={active ? 'page' : undefined}
-                    aria-description={s.hint}
-                    className={cn(
-                      'inline-flex border-b-2 px-3 py-2 text-sm whitespace-nowrap transition-colors focus-visible:rounded-t-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset',
-                      active ? 'border-primary font-semibold text-foreground' : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground',
-                    )}
-                  >
-                    {s.label}
-                  </Link>
-                </NavHint>
-              </li>
-            )
-          })}
-        </ul>
-      </nav>
-      <Outlet />
-    </>
-  )
-}
+// ================================================================ Pilot tab: sub-tabs and redirects
 
 const sectionLabel = (section: PilotSectionPath) => PILOT_SECTIONS.find((s) => s.path === section)!.label
 
@@ -132,39 +93,11 @@ export function PilotToCurrent({ section }: { section: PortfolioSection }) {
   return <Navigate to={pilotPath(section, target)} replace />
 }
 
-/** Pilot Status: information only – every portfolio of the user with its Matrix Pilot status (no links). */
-export function PilotStatusPage() {
-  const home = usePilotHome()
-  const columns: Column<PilotPortfolioRow>[] = [
-    { key: 'name', header: 'Portfolio', cell: (r) => <span className="font-medium">{r.name}</span>, sortValue: (r) => r.name },
-    { key: 'ccy', header: 'Currency', cell: (r) => r.baseCurrency, sortValue: (r) => r.baseCurrency },
-    {
-      key: 'pilot', header: 'Matrix Pilot', sortValue: (r) => r.pilotStatus ?? '',
-      cell: (r) => r.pilotStatus ? <StatusBadge status={r.running ? 'RUNNING' : r.pilotStatus === 'KillSwitched' ? 'KILL SWITCH' : r.pilotStatus.toUpperCase()} /> : <span className="text-muted-foreground">not set up</span>,
-    },
-    { key: 'last', header: 'Last decision', cell: (r) => r.lastDecisionAtUtc ? <span title={dateTime(r.lastDecisionAtUtc)}>{relativeTime(r.lastDecisionAtUtc)}</span> : '—', sortValue: (r) => r.lastDecisionAtUtc ?? '' },
-    { key: 'next', header: 'Next decision', cell: (r) => r.nextDecisionAtUtc ? dateTime(r.nextDecisionAtUtc) : '—', sortValue: (r) => r.nextDecisionAtUtc ?? '' },
-    { key: 'status', header: 'Portfolio', cell: (r) => r.status, sortValue: (r) => r.status },
-  ]
-  return (
-    <>
-      <h2 className="sr-only">Pilot Status</h2>
-      {home.error ? <ErrorState error={home.error} onRetry={() => home.refetch()} /> : !home.data ? <LoadingBlock height="h-40" /> : (
-        <div className="space-y-4">
-          <ModelNote model={home.data.configuredModel} />
-          <SearchableTable label="portfolios" rows={home.data.portfolios} columns={columns} rowKey={(r) => r.portfolioId} placeholder="Search portfolios"
-            matches={(r, q) => r.name.toLowerCase().includes(q)} empty="You have no portfolio yet. Create one with Forge, then set up Matrix Pilot for it."
-            initialSort={{ key: 'name', dir: 'asc' }} />
-        </div>
-      )}
-    </>
-  )
-}
-
-/** /pilot/:id (and the earlier control-room URL) opens the portfolio's Performance. */
+/** Earlier Pilot URLs (/pilot/:id[/<sub-tab>], /research/pilot/:id) open that portfolio's Pilot tab in View (D-67). */
 export function PilotPortfolioRedirect() {
-  const { portfolioId } = useParams()
-  return <Navigate to={pilotPath('performance', portfolioId)} replace />
+  const { portfolioId, section } = useParams()
+  const sub = PILOT_SECTIONS.find((s) => s.path === section)?.path ?? 'performance'
+  return <Navigate to={pilotPath(sub, portfolioId)} replace />
 }
 
 function ModelNote({ model }: { model: PilotModel }) {
@@ -211,56 +144,47 @@ function ModelCheck({ auto = false, onResult }: { auto?: boolean; onResult?: (ok
 
 // ================================================================ one portfolio's sub-sections
 
-/** A portfolio-bound Pilot sub-section (the header with the controls is in the layout); without a pilot each offers the setup. */
+/**
+ * A portfolio's Pilot tab in View (D-67), at `/portfolios/:id/pilot/<sub-tab>`: the sub-tabs on the left and the Matrix
+ * Pilot status with its controls on the right (the kill switch always one click away), then the sub-tab. View's own header
+ * names the portfolio and switches it. Without a pilot every sub-tab offers the setup.
+ */
 export function PilotPortfolioPage({ section }: { section: PortfolioSection }) {
   const { portfolioId } = useParams()
   const overview = usePilot(portfolioId)
   if (overview.error) return <ErrorState error={overview.error} onRetry={() => overview.refetch()} />
   if (!overview.data) return <LoadingBlock />
   const o = overview.data
-  return (
-    <>
-      <h2 className="sr-only">{sectionLabel(section)}</h2>
-      {!o.pilot ? <SetupCard overview={o} /> : <PilotSection overview={o} pilot={o.pilot} section={section} />}
-    </>
-  )
-}
-
-/**
- * The portfolio header above the tabs, styled like a portfolio's header in View: its name, currency and Matrix Pilot
- * status on the left; the portfolio box and the controls (kill switch always reachable) on the right.
- */
-function PilotHeader({ portfolioId, section }: { portfolioId: string; section: PortfolioSection }) {
-  const overview = usePilot(portfolioId)
-  const home = usePilotHome()
-  const { select } = usePortfolioContext()
-  const navigate = useNavigate()
-  const o = overview.data
-  if (!o) return <h1 className="sr-only">Matrix Pilot</h1>
-  const rows = home.data?.portfolios ?? []
-  // The box always lists this portfolio, also before the list has loaded.
-  const portfolios = rows.some((p) => p.portfolioId === o.portfolioId) ? rows : [{ portfolioId: o.portfolioId, name: o.portfolioName }, ...rows]
   const pilot = o.pilot
   return (
-    <section aria-label="Pilot portfolio" className="mb-4 flex flex-wrap items-start justify-between gap-3">
-      <div className="flex min-w-0 flex-wrap items-center gap-2">
-        <h1 className="heading-display truncate text-[1.8rem]">{o.portfolioName}</h1>
-        <Badge variant="outline" className="tabular">{o.baseCurrency}</Badge>
-        {pilot ? <StatusBadge status={pilot.displayStatus} /> : <span className="text-sm text-muted-foreground">Matrix Pilot not set up</span>}
+    <>
+      <h2 className="sr-only">Matrix Pilot · {sectionLabel(section)}</h2>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <nav aria-label="Pilot sections" className="nav-scroll max-w-full overflow-x-auto overflow-y-hidden">
+          <ul className="flex min-w-max items-center gap-1 rounded-lg bg-muted p-[3px]">
+            {PILOT_SECTIONS.map((s) => {
+              const active = s.path === section
+              return (
+                <li key={s.path}>
+                  <NavHint hint={s.hint} side="bottom">
+                    <Link to={pilotPath(s.path, o.portfolioId)} aria-current={active ? 'page' : undefined} aria-description={s.hint}
+                      className={cn('inline-flex rounded-md px-3 py-1 text-sm whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
+                        active ? 'bg-background font-medium text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
+                      {s.label}
+                    </Link>
+                  </NavHint>
+                </li>
+              )
+            })}
+          </ul>
+        </nav>
+        <div className="flex flex-wrap items-center gap-2">
+          {pilot ? <StatusBadge status={pilot.displayStatus} /> : <span className="text-sm text-muted-foreground">Matrix Pilot not set up</span>}
+          {pilot && <PilotActions overview={o} pilot={pilot} />}
+        </div>
       </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <Select value={o.portfolioId} items={portfolios.map((p) => ({ value: p.portfolioId, label: p.name }))}
-          onValueChange={(v) => {
-            if (!v || v === o.portfolioId) return
-            select(String(v)) // becomes the current portfolio, as in View
-            navigate(pilotPath(section, String(v)))
-          }}>
-          <SelectTrigger size="sm" className="w-48" aria-label="Portfolio"><SelectValue /></SelectTrigger>
-          <SelectContent>{portfolios.map((p) => <SelectItem key={p.portfolioId} value={p.portfolioId}>{p.name}</SelectItem>)}</SelectContent>
-        </Select>
-        {pilot && <PilotActions overview={o} pilot={pilot} />}
-      </div>
-    </section>
+      {!pilot ? <SetupCard overview={o} /> : <PilotSection overview={o} pilot={pilot} section={section} />}
+    </>
   )
 }
 
@@ -1052,7 +976,7 @@ function MandateDialog({ overview, pilot, onClose }: { overview: PilotOverview; 
   }
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle>Change the mandate</DialogTitle>
           <DialogDescription>Saving creates version {pilot.mandateVersion + 1}; version {pilot.mandateVersion} is kept with the changed fields. Applies from the next decision.</DialogDescription>
@@ -1074,116 +998,6 @@ function MandateDialog({ overview, pilot, onClose }: { overview: PilotOverview; 
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
-}
-
-interface MandateFormState {
-  universe: string; indexes: string; excluded: string; maxPos: string; minPos: string; minHoldings: string; maxHoldings: string
-  minCash: string; maxCash: string; maxTurnover: string; minTrade: string; maxVol: string; drawdown: string
-  sectors: string; currencies: string; countries: string; benchmark: string; frequency: PilotFrequency; effort: string
-}
-
-const p100 = (v: number) => String(Math.round(v * 10000) / 100)
-const limitsText = (r: Record<string, number>) => Object.entries(r).map(([k, v]) => `${k}=${p100(v)}`).join('\n')
-
-function toForm(m: PilotMandate, frequency: PilotFrequency, effort: string): MandateFormState {
-  return {
-    universe: m.universe.join(', '), indexes: m.indexes.join(', '), excluded: m.excludedSymbols.join(', '), maxPos: p100(m.maxPositionWeight),
-    minPos: p100(m.minPositionWeight), minHoldings: String(m.minHoldings), maxHoldings: String(m.maxHoldings), minCash: p100(m.minCashWeight),
-    maxCash: p100(m.maxCashWeight), maxTurnover: p100(m.maxTurnover), minTrade: String(m.minTradeValue), maxVol: m.maxVolatility == null ? '' : p100(m.maxVolatility),
-    drawdown: p100(m.drawdownPauseThreshold), sectors: limitsText(m.sectorLimits), currencies: limitsText(m.currencyLimits), countries: limitsText(m.countryLimits),
-    benchmark: m.benchmark ?? '', frequency, effort,
-  }
-}
-
-/** Parses the form; the server validates the mandate again (and rejects, never repairs). */
-function fromForm(f: MandateFormState): { mandate: PilotMandate } | { error: string } {
-  const list = (s: string) => s.split(/[\s,;]+/).map((x) => x.trim()).filter(Boolean)
-  const frac = (s: string, name: string) => {
-    const v = Number(s.replace('%', ''))
-    if (!Number.isFinite(v)) throw new Error(`${name} must be a number (percent).`)
-    return v / 100
-  }
-  const limits = (s: string, name: string) => Object.fromEntries(s.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
-    const [k, v] = l.split('=')
-    if (!k || v === undefined) throw new Error(`${name}: write one “Name=percent” per line.`)
-    return [k.trim(), frac(v.trim(), name)]
-  }))
-  try {
-    return {
-      mandate: {
-        universe: list(f.universe).map((s) => s.toUpperCase()), indexes: list(f.indexes), excludedSymbols: list(f.excluded).map((s) => s.toUpperCase()),
-        maxPositionWeight: frac(f.maxPos, 'Maximum position'), minPositionWeight: frac(f.minPos, 'Minimum position'),
-        minHoldings: Number(f.minHoldings), maxHoldings: Number(f.maxHoldings), minCashWeight: frac(f.minCash, 'Minimum cash'), maxCashWeight: frac(f.maxCash, 'Maximum cash'),
-        maxTurnover: frac(f.maxTurnover, 'Maximum turnover'), minTradeValue: Number(f.minTrade), maxVolatility: f.maxVol.trim() ? frac(f.maxVol, 'Maximum volatility') : null,
-        drawdownPauseThreshold: frac(f.drawdown, 'Drawdown pause'), sectorLimits: limits(f.sectors, 'Sector limits'), currencyLimits: limits(f.currencies, 'Currency limits'),
-        countryLimits: limits(f.countries, 'Country limits'), benchmark: f.benchmark.trim() || null,
-      },
-    }
-  } catch (e) {
-    return { error: (e as Error).message }
-  }
-}
-
-const textarea = 'min-h-16 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50'
-
-function MandateForm({ form, onChange }: { form: MandateFormState; onChange: (f: MandateFormState) => void }) {
-  const set = (k: keyof MandateFormState) => (e: { target: { value: string } }) => onChange({ ...form, [k]: e.target.value })
-  const field = (k: keyof MandateFormState, label: string, hint?: string) => (
-    <div className="space-y-1">
-      <Label htmlFor={`m-${k}`}><InfoTip of={label}>{hint}</InfoTip></Label>
-      <Input id={`m-${k}`} value={String(form[k])} onChange={set(k)} inputMode="decimal" />
-    </div>
-  )
-  const area = (k: keyof MandateFormState, label: string, placeholder: string, hint?: string) => (
-    <div className="space-y-1">
-      <Label htmlFor={`m-${k}`}><InfoTip of={label}>{hint}</InfoTip></Label>
-      <textarea id={`m-${k}`} className={textarea} value={String(form[k])} onChange={set(k)} placeholder={placeholder} />
-    </div>
-  )
-  const freq = [{ value: 'Daily', label: 'Daily' }, { value: 'Weekly', label: 'Weekly' }, { value: 'Monthly', label: 'Monthly' }]
-  const efforts = ['low', 'medium', 'high', 'xhigh', 'max'].map((e) => ({ value: e, label: e }))
-  return (
-    <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2">
-        {area('universe', 'Allowed symbols', 'AAPL, MSFT, …', 'Symbols the AI may hold (in addition to index members).')}
-        {area('indexes', 'Allowed indexes', 'e.g. SP500', 'Every current member of these indexes is investable.')}
-        {area('excluded', 'Excluded symbols', 'e.g. XOM', 'Never held, whatever the AI proposes.')}
-        <div className="space-y-1">
-          <Label>Decision frequency and effort</Label>
-          <div className="flex gap-2">
-            <Select value={form.frequency} onValueChange={(v) => v && onChange({ ...form, frequency: v as PilotFrequency })} items={freq}>
-              <SelectTrigger aria-label="Decision frequency" className="w-36"><SelectValue /></SelectTrigger>
-              <SelectContent>{freq.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
-            </Select>
-            <Select value={form.effort} onValueChange={(v) => v && onChange({ ...form, effort: String(v) })} items={efforts}>
-              <SelectTrigger aria-label="Model effort" className="w-28"><SelectValue /></SelectTrigger>
-              <SelectContent>{efforts.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
-          <p className="text-xs text-muted-foreground">Higher effort means more thorough model reasoning and higher cost per decision.</p>
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        {field('maxPos', 'Max position %')}
-        {field('minPos', 'Min position %')}
-        {field('minHoldings', 'Min holdings')}
-        {field('maxHoldings', 'Max holdings')}
-        {field('minCash', 'Min cash %')}
-        {field('maxCash', 'Max cash %')}
-        {field('maxTurnover', 'Max turnover %', 'One-way turnover per decision, once the portfolio holds positions.')}
-        {field('minTrade', 'Min trade value', 'Smallest order, in the portfolio currency.')}
-        {field('maxVol', 'Max volatility %', 'Ceiling for the proposal\'s ex-ante annualized volatility (empty = none).')}
-        {field('drawdown', 'Drawdown pause %', 'Matrix Pilot pauses itself when its live record falls this far from its peak.')}
-        {field('benchmark', 'Benchmark', 'Empty = the portfolio\'s benchmark.')}
-      </div>
-      <div className="grid gap-3 sm:grid-cols-3">
-        {area('sectors', 'Sector limits %', 'Energy=10')}
-        {area('currencies', 'Currency limits %', 'EUR=30')}
-        {area('countries', 'Country limits %', 'US=70')}
-      </div>
-      <p className="text-xs text-muted-foreground">Long-only, no leverage: the platform supports nothing else. The server rejects an impossible mandate instead of adjusting it.</p>
-    </div>
   )
 }
 
@@ -1211,7 +1025,7 @@ export function PilotInArena({ portfolioId }: { portfolioId: string }) {
     <p className="mb-6 text-sm text-muted-foreground">
       Matrix Pilot runs on {others.map((p, i) => (
         <span key={p.portfolioId}>{i > 0 && ', '}<Link className="font-medium text-foreground hover:underline" to={pilotPath('performance', p.portfolioId)}>{p.name}</Link></span>
-      ))}. Its live record can be compared with this portfolio under Pilot › Performance.
+      ))}. Its live record can be compared with this portfolio in that portfolio's Pilot tab (Performance).
     </p>
   )
 }
