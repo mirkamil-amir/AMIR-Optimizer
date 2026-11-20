@@ -124,7 +124,14 @@
 * **Providers:** the Anthropic provider has not been exercised against the live API (no key available; it compiles
   against the official SDK and is covered by mock-based tests). The Gemini provider answered live with `gemini-3.8-flash`
   on a free-tier key in 9–36 s and the free tier rate-limits bursts (HTTP 429) – for a pilot a failed call fails the
-  cycle (no fallback), so a paid tier is needed. The weekly live smoke test checks one structured Gemini answer.
+  cycle unless a fallback model takes over (D-68), so a paid tier is still the reliable choice. The weekly live smoke
+  test checks one structured Gemini answer.
+* **OpenAI-compatible providers (Groq, OpenRouter, Mistral, Cerebras, OpenAI) are untested against the live APIs**
+  (no keys; covered by tests on synthetic payloads in the documented shape). Whether a given free model follows the JSON
+  schema, and whether its free quota fits a cycle of ~280 000 input tokens, is unknown until it runs – the model check
+  only proves that the key and model id are accepted. Endpoints are fixed in `OpenAiCompatibleLanguageModel.Endpoints`.
+* **Fallback attribution:** one model decides each cycle, but a pilot's live record can mix decisions of several models;
+  the Decisions table names the model of each, the scorecard does not split by model.
 * **Data the AI does not have:** fundamentals, valuation ratios, earnings, factor exposures, macro series and transaction
   cost models beyond the portfolio's bps + minimum fee do not exist in the platform; the tools say so rather than
   approximate. News reaches the model only as counts by event type (no text, by design).

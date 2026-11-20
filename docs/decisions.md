@@ -2,6 +2,20 @@
 
 Short records of decisions that are not obvious from the code. Newest first. Format: context → decision → consequences.
 
+## D-68 Matrix Pilot: fallback models, one model per decision (2026-11-20)
+**Context:** on Gemini's free tier 18 of 20 cycles (2026-11-13 – 11-19) failed: HTTP 503 (overload), 429 (quota) and
+answers cut off because thinking used up the output limit; retries waited only 0.5 s and 1 s. The owner wants to use
+free tiers of several providers and move on to the next one when a model fails, with one model per decision cycle.
+**Decision:** an ordered fallback list (`MatrixPilot:Fallbacks`) after the primary; a cycle moves to the next model only
+while no model has answered, so the model that answered makes the whole decision and is recorded on the cycle; each
+switch is journaled. The list is part of what the owner confirms (stored on the pilot, a changed list stops cycles until
+adopted in the mandate). One key per provider, never sent to another; one OpenAI-compatible client covers Groq,
+OpenRouter, Mistral, Cerebras and OpenAI. Retries wait 5/15/45 s or the provider's own delay (not a used-up daily
+quota); Gemini's thinking budget is fixed per effort. Several free keys of one provider are not supported (its terms).
+**Consequences:** decisions of one pilot can come from different models – the Decisions table names each, and
+comparisons should be read per model; more providers receive the pilot's portfolio data (threat model); a cycle that
+falls back can take minutes longer.
+
 ## D-67 Matrix Pilot moves into View, as a portfolio tab after Pattern (2026-11-15)
 **Context:** Matrix Pilot always works on one portfolio, which is how View is organised; as a top-bar area of its own it
 needed its own portfolio header, box and status page. The owner asked to fit it into View next to Pattern. **Decision:**

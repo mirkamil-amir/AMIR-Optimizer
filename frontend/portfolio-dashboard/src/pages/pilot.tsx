@@ -20,6 +20,7 @@ import { NavHint } from '@/components/nav-hint'
 import { ReportingCurrencySelect } from '@/components/currency'
 import { MandateForm } from '@/components/mandate-form'
 import { fromForm, toForm } from '@/lib/mandate'
+import { fallbackKey, modelListText } from '@/lib/pilot-models'
 import { errorMessage } from '@/lib/api'
 import { PILOT_SECTIONS, pilotPath, type PilotPortfolioSection as PortfolioSection, type PilotSectionPath } from '@/lib/navigation'
 import { usePortfolioContext } from '@/lib/portfolio-context'
@@ -63,9 +64,7 @@ const phaseLabel: Record<string, string> = {
   Finalize: 'finalising the decision', Validate: 'validating', Execute: 'booking simulated trades', Journal: 'writing the journal', Complete: 'complete',
 }
 
-function modelText(m: { provider: string; model: string }, isTest?: boolean) {
-  return isTest || m.provider === 'Mock' ? `${m.provider} ${m.model} (test script – not an AI)` : `${m.provider} ${m.model}`
-}
+const modelText = modelListText
 
 // ================================================================ Pilot tab: sub-tabs and redirects
 
@@ -111,8 +110,9 @@ function ModelNote({ model }: { model: PilotModel }) {
   return (
     <div className="space-y-1">
       <p className="text-sm text-muted-foreground">
-        Configured model: <span className="font-medium text-foreground">{modelText(model, model.isTestModel)}</span>.
+        Configured {model.fallbacks.length > 0 ? 'models' : 'model'}: <span className="font-medium text-foreground">{modelText(model, model.isTestModel)}</span>.
         {model.isTestModel && ' This environment uses a deterministic test script; its decisions are not AI decisions.'}
+        {model.fallbacks.length > 0 && ' A decision moves to the next model only while no model has answered, so one model makes each decision.'}
       </p>
       <ModelCheck />
     </div>
@@ -122,23 +122,35 @@ function ModelNote({ model }: { model: PilotModel }) {
 /** Checks the configured key with one tiny model call (no portfolio data) – before switching on, or whenever in doubt. */
 function ModelCheck({ auto = false, onResult }: { auto?: boolean; onResult?: (ok: boolean) => void }) {
   const check = useCheckPilotModel()
-  const run = () => check.mutate(undefined, { onSuccess: (r) => onResult?.(r.ok), onError: () => onResult?.(false) })
+  const run = () => check.mutate(undefined, { onSuccess: (r) => onResult?.(r.usable), onError: () => onResult?.(false) })
   // The confirmation dialog checks once on opening; the result decides whether it can be confirmed.
   useEffect(() => { if (auto) run() }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const r = check.data
+  const results = r ? [r, ...r.fallbacks] : []
   return (
-    <div className="flex flex-wrap items-center gap-2 text-sm" role="status" aria-live="polite">
-      <Button type="button" size="xs" variant="outline" disabled={check.isPending} onClick={run}>
-        {check.isPending && <MatrixLoader />}{r ? 'Check again' : 'Check model connection'}
-      </Button>
-      {check.isPending && <span className="text-muted-foreground">Checking the key with one small request…</span>}
-      {!check.isPending && r && (
-        <span className={r.ok ? 'text-gain' : 'text-loss'}>
-          {r.ok ? 'Key valid' : 'Check failed'}: {r.message}{r.latencyMs != null && ` (${Math.round(r.latencyMs)} ms)`}
-        </span>
+    <div className="space-y-1 text-sm" role="status" aria-live="polite">
+      <div className="flex flex-wrap items-center gap-2">
+        <Button type="button" size="xs" variant="outline" disabled={check.isPending} onClick={run}>
+          {check.isPending && <MatrixLoader />}{r ? 'Check again' : 'Check model connection'}
+        </Button>
+        {check.isPending && <span className="text-muted-foreground">Checking each key with one small request…</span>}
+        {!check.isPending && r && results.length === 1 && <CheckLine r={r} />}
+        {!check.isPending && check.error && <span className="text-loss">Check failed: {errorMessage(check.error)}</span>}
+      </div>
+      {!check.isPending && results.length > 1 && (
+        <ol className="list-decimal space-y-0.5 pl-5">
+          {results.map((x, i) => <li key={i}><span className="font-medium">{x.provider} {x.model}</span> – <CheckLine r={x} /></li>)}
+        </ol>
       )}
-      {!check.isPending && check.error && <span className="text-loss">Check failed: {errorMessage(check.error)}</span>}
     </div>
+  )
+}
+
+function CheckLine({ r }: { r: { ok: boolean; message: string; latencyMs: number | null } }) {
+  return (
+    <span className={r.ok ? 'text-gain' : 'text-loss'}>
+      {r.ok ? 'Key valid' : 'Check failed'}: {r.message}{r.latencyMs != null && ` (${Math.round(r.latencyMs)} ms)`}
+    </span>
   )
 }
 
@@ -226,9 +238,9 @@ function PilotAlerts({ overview, pilot, section }: { overview: PilotOverview; pi
       ) : null}
       {!pilot.modelMatchesConfiguration && (
         <Alert>
-          <AlertTitle>The configured model changed</AlertTitle>
+          <AlertTitle>The configured models changed</AlertTitle>
           <AlertDescription>
-            This pilot was set up with {pilot.provider} {pilot.model}; the server now runs {overview.configuredModel.provider} {overview.configuredModel.model}. Cycles fail (no trade)
+            This pilot was set up with {modelText(pilot)}; the server now runs {modelText(overview.configuredModel)}. Cycles fail (no trade)
             until you confirm the change in the mandate, so decisions of different models are never mixed up.
           </AlertDescription>
         </Alert>
@@ -295,6 +307,7 @@ function cycleColumns(selected?: string): Column<PilotCycleSummary>[] {
     { key: 'at', header: 'Decision time', cell: (c) => <span className={cn(c.id === selected && 'font-semibold')}>{dateTime(c.asOfUtc)}</span>, sortValue: (c) => c.asOfUtc },
     { key: 'outcome', header: 'Outcome', cell: (c) => <OutcomeBadge outcome={c.outcome} label={c.outcomeLabel} />, sortValue: (c) => c.outcome },
     { key: 'approach', header: 'Approach', cell: (c) => c.approach ?? '—', sortValue: (c) => c.approach ?? '' },
+    { key: 'model', header: 'Model', cell: (c) => <span className="whitespace-nowrap">{modelText(c)}</span>, sortValue: (c) => `${c.provider} ${c.model}` },
     { key: 'trades', header: 'Trades', align: 'right', cell: (c) => c.tradesBooked, sortValue: (c) => c.tradesBooked },
     { key: 'tools', header: 'Tool calls', align: 'right', cell: (c) => c.toolCalls, sortValue: (c) => c.toolCalls },
     { key: 'why', header: 'Reason', cell: (c) => <span className="line-clamp-2 max-w-md text-muted-foreground">{c.outcomeReason ?? phaseLabel[c.phase]}</span> },
@@ -835,7 +848,7 @@ function ConfirmActivation({ overview, pilot, mode, onClose }: { overview: Pilot
   const [keyOk, setKeyOk] = useState(false)
   const m = overview.configuredModel
   const action = mode === 'enable' ? enable : resume
-  const submit = () => action.mutate({ confirm: true, provider: m.provider, model: m.model }, {
+  const submit = () => action.mutate({ confirm: true, provider: m.provider, model: m.model, fallbacks: fallbackKey(m) }, {
     onSuccess: () => { toast.success(mode === 'enable' ? 'Matrix Pilot is on.' : 'Matrix Pilot resumed.'); onClose() },
     onError: (e) => toast.error(errorMessage(e)),
   })
@@ -848,7 +861,11 @@ function ConfirmActivation({ overview, pilot, mode, onClose }: { overview: Pilot
         </DialogHeader>
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
           <dt className="text-muted-foreground">Portfolio</dt><dd>{overview.portfolioName} ({overview.baseCurrency})</dd>
-          <dt className="text-muted-foreground">AI</dt><dd>{modelText(m, m.isTestModel)}, effort {pilot.effort}</dd>
+          <dt className="text-muted-foreground">AI</dt>
+          <dd>
+            {modelText(m, m.isTestModel)}, effort {pilot.effort}
+            {m.fallbacks.length > 0 && <span className="block text-muted-foreground">Later models are used only when the earlier ones fail before answering; one model makes each decision.</span>}
+          </dd>
           <dt className="text-muted-foreground">Decision frequency</dt><dd>{pilot.frequency}</dd>
           <dt className="text-muted-foreground">Execution</dt><dd>Automatic (simulated) within the mandate, version {pilot.mandateVersion}</dd>
         </dl>
@@ -985,7 +1002,7 @@ function MandateDialog({ overview, pilot, onClose }: { overview: PilotOverview; 
         {!pilot.modelMatchesConfiguration && (
           <label className="flex items-start gap-2 text-sm">
             <Checkbox checked={adopt} onCheckedChange={(c) => setAdopt(c === true)} aria-label="Adopt the configured model" />
-            <span>Adopt the configured model {modelText(overview.configuredModel)} (decisions keep the model that made them).</span>
+            <span>Adopt the configured {overview.configuredModel.fallbacks.length > 0 ? 'models' : 'model'} {modelText(overview.configuredModel)} (decisions keep the model that made them).</span>
           </label>
         )}
         <div className="space-y-1">

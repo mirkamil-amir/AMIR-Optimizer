@@ -3,7 +3,8 @@ using PortfolioOptimizer.Domain;
 
 namespace PortfolioOptimizer.Application.Pilot;
 
-public sealed record PilotModelDto(string Provider, string Model, bool Available, bool IsTestModel);
+/// <summary>The configured models: the primary (<paramref name="Available"/>: whether any model of the list can be called) and the ordered fallbacks.</summary>
+public sealed record PilotModelDto(string Provider, string Model, bool Available, bool IsTestModel, IReadOnlyList<PilotFallbackModelDto> Fallbacks);
 
 /// <summary>A portfolio of the caller with its pilot (if any) – AI Probe's list.</summary>
 public sealed record PilotPortfolioRowDto(Guid PortfolioId, string Name, string BaseCurrency, string Status, PilotStatus? PilotStatus,
@@ -25,6 +26,7 @@ public sealed record PilotDto(
     PilotMandate Mandate,
     string Provider,
     string Model,
+    IReadOnlyList<PilotFallbackModelDto> Fallbacks,
     string Effort,
     bool ModelMatchesConfiguration,
     DateTime CreatedAtUtc,
@@ -147,6 +149,8 @@ public sealed record EnablePilotRequest
     /// <summary>The model the owner saw in the confirmation (must equal the configured one).</summary>
     public string? Provider { get; init; }
     public string? Model { get; init; }
+    /// <summary>The fallback list the owner saw (<c>Provider:model;…</c>); when given it must equal the configured one.</summary>
+    public string? Fallbacks { get; init; }
 }
 
 public sealed record PilotReasonRequest
@@ -242,4 +246,10 @@ public sealed record PilotScorecardDto(IReadOnlyList<PilotScoreRowDto> Rows, str
 /// model_not_found, rate_limited, timeout, unavailable or provider_error.
 /// </summary>
 public sealed record PilotModelCheckDto(string Provider, string Model, bool Ok, string Status, string Message, double? LatencyMs, string? ModelReported,
-    DateTime CheckedAtUtc);
+    DateTime CheckedAtUtc)
+{
+    /// <summary>The check of each fallback model, in order (empty for a fallback's own result).</summary>
+    public IReadOnlyList<PilotModelCheckDto> Fallbacks { get; init; } = [];
+    /// <summary>At least one model of the list answered: Matrix Pilot can decide.</summary>
+    public bool Usable => Ok || Fallbacks.Any(f => f.Ok);
+}

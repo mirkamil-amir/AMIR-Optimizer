@@ -74,10 +74,10 @@ public sealed class GeminiLanguageModel : ILanguageModel
                     return Parse(text, Model, sw.Elapsed.TotalMilliseconds);
 
                 var status = (int)response.StatusCode;
-                var retryable = response.StatusCode == HttpStatusCode.TooManyRequests || status >= 500;
-                if (retryable && attempt < _options.MaxRetries)
+                if (LlmRetry.Delay(response.StatusCode, response.Headers.RetryAfter, text, attempt, _options, DateTimeOffset.UtcNow) is { } wait)
                 {
-                    await Task.Delay(TimeSpan.FromMilliseconds(500 * Math.Pow(2, attempt)), ct);
+                    _logger.LogInformation("Language model call {Purpose}: HTTP {Status}, retry {Attempt} in {Seconds:0.#} s", request.Purpose, status, attempt + 1, wait.TotalSeconds);
+                    await Task.Delay(wait, ct);
                     continue;
                 }
                 // Status only – the body can echo request details.
@@ -96,19 +96,30 @@ public sealed class GeminiLanguageModel : ILanguageModel
         }
     }
 
+    /// <summary>Thinking tokens per call by effort (low: none – structured extraction and short explanations need no reasoning).</summary>
+    public static int ThinkingBudget(string? effort) => effort switch
+    {
+        "low" => 0,
+        "medium" => 2048,
+        "high" => 8192,
+        _ => 16384, // xhigh, max
+    };
+
     /// <summary>The generateContent body: instructions as system instruction, fenced user content, JSON schema output.</summary>
     public static JsonObject BuildRequest(LlmRequest request, string effort)
     {
         var schema = new JsonObject();
         foreach (var (k, v) in request.Schema) schema[k] = JsonNode.Parse(v.GetRawText());
+        // Thinking tokens count against maxOutputTokens: an unbounded budget once used it all and cut the JSON answer off
+        // (finishReason MAX_TOKENS). The budget is therefore fixed per effort and added on top of the answer's own limit.
+        var thinking = ThinkingBudget(effort);
         var generation = new JsonObject
         {
             ["responseMimeType"] = "application/json",
             ["responseJsonSchema"] = schema,
-            ["maxOutputTokens"] = request.MaxOutputTokens,
+            ["maxOutputTokens"] = request.MaxOutputTokens + thinking,
+            ["thinkingConfig"] = new JsonObject { ["thinkingBudget"] = thinking },
         };
-        // Structured extraction and short explanations need no extended reasoning.
-        if (effort == "low") generation["thinkingConfig"] = new JsonObject { ["thinkingBudget"] = 0 };
         return new JsonObject
         {
             ["systemInstruction"] = new JsonObject { ["parts"] = new JsonArray(new JsonObject { ["text"] = request.Instructions }) },

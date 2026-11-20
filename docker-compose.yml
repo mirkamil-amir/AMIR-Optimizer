@@ -69,6 +69,16 @@ services:
       # Matrix Pilot (docs/matrix-pilot.md): its own model provider and model id (empty = the shared model above).
       MatrixPilot__Provider: ${MATRIX_PILOT_PROVIDER:-}
       MatrixPilot__Model: ${MATRIX_PILOT_MODEL:-}
+      # Ordered fallbacks, used only while no model of a cycle has answered: "Groq:<model>; OpenRouter:<model>; ..."
+      MatrixPilot__Fallbacks: ${MATRIX_PILOT_FALLBACKS:-}
+      # One key per provider; a provider's key is only ever sent to that provider.
+      MatrixPilot__Keys__Gemini: ${GEMINI_API_KEY:-}
+      MatrixPilot__Keys__Anthropic: ${ANTHROPIC_API_KEY:-}
+      MatrixPilot__Keys__Groq: ${GROQ_API_KEY:-}
+      MatrixPilot__Keys__OpenRouter: ${OPENROUTER_API_KEY:-}
+      MatrixPilot__Keys__Mistral: ${MISTRAL_API_KEY:-}
+      MatrixPilot__Keys__Cerebras: ${CEREBRAS_API_KEY:-}
+      MatrixPilot__Keys__OpenAI: ${OPENAI_API_KEY:-}
       MatrixPilot__SchedulerEnabled: ${MATRIX_PILOT_SCHEDULER:-true}
       Admin__Email: ${ADMIN_EMAIL:-}
       Admin__Password: ${ADMIN_PASSWORD:-}

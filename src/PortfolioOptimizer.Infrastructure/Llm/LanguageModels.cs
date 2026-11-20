@@ -25,7 +25,12 @@ public sealed class LanguageModelOptions
     /// <summary>low, medium or high. Structured extraction and short explanations need little reasoning.</summary>
     public string Effort { get; set; } = "low";
     public int TimeoutSeconds { get; set; } = 60;
-    public int MaxRetries { get; set; } = 2;
+    /// <summary>Retries of an overloaded (5xx) or rate-limited (429) call before the model counts as failed.</summary>
+    public int MaxRetries { get; set; } = 3;
+    /// <summary>Wait before retry n (0-based) when the provider names none: base × 3ⁿ (5 s, 15 s, 45 s by default).</summary>
+    public double RetryBaseSeconds { get; set; } = 5;
+    /// <summary>A provider that asks for a longer wait (e.g. a daily quota) is not retried; Matrix Pilot moves to its next model.</summary>
+    public double MaxRetryWaitSeconds { get; set; } = 60;
 }
 
 /// <summary>No language model configured: every caller uses its deterministic path.</summary>
@@ -36,6 +41,17 @@ public sealed class DisabledLanguageModel : ILanguageModel
     public bool IsAvailable => false;
     public Task<LlmResponse> GenerateAsync(LlmRequest request, CancellationToken ct) =>
         throw new LanguageModelException(LlmFailure.Unavailable, "No language model is configured.");
+}
+
+/// <summary>A listed model that cannot be used (unknown provider or missing model id): shown with its reason, never called.</summary>
+public sealed class UnconfiguredLanguageModel(string provider, string model, string reason) : ILanguageModel
+{
+    public string Provider => provider;
+    public string Model => model;
+    public bool IsAvailable => false;
+    public string Reason => reason;
+    public Task<LlmResponse> GenerateAsync(LlmRequest request, CancellationToken ct) =>
+        throw new LanguageModelException(LlmFailure.Unavailable, reason);
 }
 
 /// <summary>
@@ -123,14 +139,14 @@ public sealed class AnthropicLanguageModel : ILanguageModel
 /// proposals) so the rule-based paths are exercised; tests enqueue specific outputs or failures, e.g. a narrative with a
 /// fabricated number to prove the validator rejects it.
 /// </summary>
-public sealed class MockLanguageModel : ILanguageModel
+public sealed class MockLanguageModel(string model = "mock-model") : ILanguageModel
 {
     // Scripted answers in order; an entry with a purpose answers only a call with that purpose (others pass it by).
     private readonly List<(string? Purpose, Func<LlmRequest, LlmResponse> Answer)> _scripted = [];
     private readonly Lock _gate = new();
 
     public string Provider => "Mock";
-    public string Model => "mock-model";
+    public string Model => model;
     public bool IsAvailable { get; set; } = true;
     public List<LlmRequest> Requests { get; } = [];
 
@@ -168,11 +184,13 @@ public sealed class MockLanguageModel : ILanguageModel
     private LlmResponse Ok(JsonElement json) => new(json, Model, 100, 50, 1);
 }
 
-/// <summary>Matrix Pilot's model (see <see cref="IPilotLanguageModel"/>): forwards to the configured instance.</summary>
-public sealed class PilotLanguageModel(ILanguageModel inner) : IPilotLanguageModel
+/// <summary>Matrix Pilot's models (see <see cref="IPilotLanguageModel"/>): the primary instance plus the ordered fallbacks.</summary>
+public sealed class PilotLanguageModel(ILanguageModel inner, IReadOnlyList<ILanguageModel>? fallbacks = null) : IPilotLanguageModel
 {
     public string Provider => inner.Provider;
     public string Model => inner.Model;
+    /// <summary>The primary's own availability (whether a cycle can run at all is decided over the whole list).</summary>
     public bool IsAvailable => inner.IsAvailable;
+    public IReadOnlyList<ILanguageModel> Fallbacks { get; } = fallbacks ?? [];
     public Task<LlmResponse> GenerateAsync(LlmRequest request, CancellationToken ct) => inner.GenerateAsync(request, ct);
 }
