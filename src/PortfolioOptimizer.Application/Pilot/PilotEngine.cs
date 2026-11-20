@@ -65,6 +65,12 @@ public sealed class PilotEngine(
 {
     private readonly PilotOptions _o = options.Value;
 
+    // The model of the running cycle: the primary until a call fails before any model has answered, then the next fallback
+    // (docs/matrix-pilot.md › Models). Once a model has answered it makes every remaining call, so one model decides.
+    private ILanguageModel _active = null!;
+    private int _nextFallback;
+    private bool _answered;
+
     /// <summary>Thrown inside the state machine to end a cycle with a specific, recorded outcome (no trade).</summary>
     private sealed class CycleStop(PilotCycleOutcome outcome, string reason, bool pausePilot = false) : Exception(reason)
     {
@@ -123,7 +129,9 @@ public sealed class PilotEngine(
         }
         catch (LanguageModelException ex)
         {
-            (outcome, outcomeReason) = (PilotCycleOutcome.Failed, $"Model call failed ({ex.Failure}): {ex.Message} Nothing was traded.");
+            (outcome, outcomeReason) = (PilotCycleOutcome.Failed, !_answered && model.Fallbacks.Count > 0
+                ? $"No model of the list answered; the last one tried ({cycle.Provider} {cycle.Model}) failed ({ex.Failure}): {ex.Message} Nothing was traded."
+                : $"Model call failed ({ex.Failure}): {ex.Message} Nothing was traded.");
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
@@ -149,11 +157,15 @@ public sealed class PilotEngine(
     {
         // ------------------------------------------------------------------------------------------------ OBSERVE
         await PhaseAsync(cycle, PilotCyclePhase.Observe, ct);
-        if (!model.IsAvailable)
+        if (!PilotModelChain.AnyAvailable(model))
             throw new CycleStop(PilotCycleOutcome.Failed, "No language model is configured (Agent:Llm:Provider). Matrix Pilot never falls back to fixed rules; nothing was traded.");
-        if (model.Provider != pilot.Provider || model.Model != pilot.Model)
+        if (!PilotModelChain.Matches(pilot, model))
             throw new CycleStop(PilotCycleOutcome.Failed,
-                $"The configured model is {model.Provider} {model.Model}, but this pilot was set up with {pilot.Provider} {pilot.Model}. The owner must confirm the model change in the mandate; nothing was traded.");
+                $"The configured models are {PilotModelChain.Describe(model)}, but this pilot was set up with {PilotModelChain.Describe(pilot)}. The owner must confirm the model change in the mandate; nothing was traded.");
+        _active = model;
+        _nextFallback = 0;
+        _answered = false;
+        if (!_active.IsAvailable) SwitchModel(cycle, "cannot be used (no API key)");
 
         var mandate = await MandateAsync(pilot, ct);
         var ctx = await ObserveAsync(cycle, pilot, mandate, ct);
@@ -445,19 +457,26 @@ public sealed class PilotEngine(
         IReadOnlyDictionary<string, JsonElement> schema, int maxTokens, string label, CancellationToken ct)
     {
         var sw = Stopwatch.StartNew();
-        cycle.ModelCalls++;
         LlmResponse response;
-        try
+        while (true)
         {
-            response = await model.GenerateAsync(new LlmRequest(purpose, instructions, content, schema, maxTokens, cycle.Effort,
-                TimeSpan.FromSeconds(_o.ModelTimeoutSeconds)), ct);
+            sw.Restart();
+            cycle.ModelCalls++;
+            try
+            {
+                response = await _active.GenerateAsync(new LlmRequest(purpose, instructions, content, schema, maxTokens, cycle.Effort,
+                    TimeSpan.FromSeconds(_o.ModelTimeoutSeconds)), ct);
+                break;
+            }
+            catch (LanguageModelException ex)
+            {
+                cycle.ModelMs += sw.Elapsed.TotalMilliseconds;
+                journal.Add(cycle, PilotStepKind.AiDecision, label, "error", sw.Elapsed.TotalMilliseconds, $"{_active.Provider} {_active.Model} – {ex.Failure}: {ex.Message}");
+                // Before any answer the cycle may move on to the next model; afterwards it stays with the one that answered.
+                if (_answered || !SwitchModel(cycle, $"failed before answering ({ex.Failure})")) throw;
+            }
         }
-        catch (LanguageModelException ex)
-        {
-            cycle.ModelMs += sw.Elapsed.TotalMilliseconds;
-            journal.Add(cycle, PilotStepKind.AiDecision, label, "error", sw.Elapsed.TotalMilliseconds, $"{ex.Failure}: {ex.Message}");
-            throw;
-        }
+        _answered = true;
         cycle.ModelMs += sw.Elapsed.TotalMilliseconds;
         cycle.InputTokens += response.InputTokens;
         cycle.OutputTokens += response.OutputTokens;
@@ -473,6 +492,32 @@ public sealed class PilotEngine(
         }
         journal.Add(cycle, PilotStepKind.AiDecision, label, "ok", sw.Elapsed.TotalMilliseconds, Summary(value), null, raw);
         return value;
+    }
+
+    /// <summary>
+    /// Moves the cycle to the next usable fallback model (skipping those without a key) and records it on the cycle and in the
+    /// journal. False when no model is left – the caller then fails the cycle (no trade).
+    /// </summary>
+    private bool SwitchModel(MatrixPilotCycle cycle, string why)
+    {
+        var from = _active;
+        while (_nextFallback < model.Fallbacks.Count)
+        {
+            var next = model.Fallbacks[_nextFallback++];
+            if (!next.IsAvailable)
+            {
+                journal.Add(cycle, PilotStepKind.Observation, "Model fallback", "skipped", 0,
+                    $"{next.Provider} {next.Model} skipped: it cannot be used (no API key, or an unknown provider or missing model id in the list).");
+                continue;
+            }
+            _active = next;
+            cycle.Provider = PilotText.Clip(next.Provider, 40);
+            cycle.Model = PilotText.Clip(next.Model, 100);
+            journal.Add(cycle, PilotStepKind.Observation, "Model fallback", "ok", 0,
+                $"{from.Provider} {from.Model} {why}; this cycle continues with {next.Provider} {next.Model}, which makes the whole decision.");
+            return true;
+        }
+        return false;
     }
 
     /// <summary>Every required top-level field is present (the provider enforces the schema, this re-checks it).</summary>
@@ -588,7 +633,7 @@ public sealed class PilotEngine(
             {
                 var csw = Stopwatch.StartNew();
                 cycle.ModelCalls++;
-                var r = await model.GenerateAsync(new LlmRequest("pilot.compare", PilotPrompts.Compare, $"<evidence>{evidence}</evidence>", PilotPrompts.CompareSchema,
+                var r = await _active.GenerateAsync(new LlmRequest("pilot.compare", PilotPrompts.Compare, $"<evidence>{evidence}</evidence>", PilotPrompts.CompareSchema,
                     2500, "low", TimeSpan.FromSeconds(_o.ModelTimeoutSeconds)), ct);
                 cycle.ModelMs += csw.Elapsed.TotalMilliseconds;
                 cycle.InputTokens += r.InputTokens;
@@ -736,13 +781,13 @@ public sealed class PilotEngine(
         var fallback = Deterministic(d, v, cycle, outcome);
         IReadOnlyList<InterpretationSection> sections = fallback;
         var source = "deterministic";
-        if (model.IsAvailable)
+        if (_active.IsAvailable)
         {
             try
             {
                 var sw = Stopwatch.StartNew();
                 cycle.ModelCalls++;
-                var r = await model.GenerateAsync(new LlmRequest("pilot.narrative", PilotPrompts.Narrative, $"<evidence>{evidenceJson}</evidence>",
+                var r = await _active.GenerateAsync(new LlmRequest("pilot.narrative", PilotPrompts.Narrative, $"<evidence>{evidenceJson}</evidence>",
                     PilotPrompts.NarrativeSchema, 2000, "low", TimeSpan.FromSeconds(_o.ModelTimeoutSeconds)), ct);
                 cycle.ModelMs += sw.Elapsed.TotalMilliseconds;
                 cycle.InputTokens += r.InputTokens;

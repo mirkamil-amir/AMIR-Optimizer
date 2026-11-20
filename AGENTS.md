@@ -122,7 +122,8 @@ updates its entry in [docs/quant/formula-reference.md](docs/quant/formula-refere
   writes data, none takes a user or portfolio id), every number comes from platform services, every price series ends at
   the decision date, and its structured decision passes `PilotDecisionValidator` + `AllocationValidator` and the owner's
   versioned mandate before `TradingService` books it (simulated); breaches go back to the model until the portfolio
-  fits (≤ 5 revisions, first proposal kept), and its own unconstrained portfolio is recorded for comparison – never traded. Fail closed (no fallback to rules), one decision per period (failed attempts retried ≤ 3),
+  fits (≤ 5 revisions, first proposal kept), and its own unconstrained portfolio is recorded for comparison – never traded. Fail closed (no fallback to rules; a fallback *model* of the owner-confirmed list takes over only before
+  any model answered, so one model decides a cycle – D-68), one decision per period (failed attempts retried ≤ 3),
   a lease per portfolio, kill switch and confirmed activation/resume by the owner only, journal of every step (no hidden
   reasoning), news text never sent, forward-only live record from the baseline – never backfilled or backtested.
   Background cycles act for the stored owner (`BackgroundActor`), never inside a request. Details: [matrix-pilot.md](docs/matrix-pilot.md).

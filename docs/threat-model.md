@@ -20,7 +20,7 @@ budget.
 | Fabricated numbers or promises in the explanation | `NarrativeValidator`: every number must come from the computed evidence, every ticker from the portfolio, no promise or advice language ("guarantee", "you should buy", …); otherwise the deterministic explanation is shown (tests `NarrativeValidatorTests`). |
 | Runaway cost or loops | Fixed state machine; ≤ 6 research rounds, ≤ 30 tool calls, ≤ 600k input tokens, 300 s per call, 20 min per cycle, one decision and at most three attempts per period, manual runs rate-limited (`Expensive`), three failures → pause. |
 | Model or provider failure, malformed output, refusal | Fail closed: FAILED, no trade, no rule-based fallback; schema re-checked server-side. |
-| Silent model change | Provider and model are fixed per pilot; a different configured model fails the cycle until the owner confirms the change (new mandate version); every cycle records the model, reported model, prompt/tool/schema versions. |
+| Silent model change | Provider, model and the ordered fallback list are fixed per pilot; a different configured list fails the cycle until the owner confirms the change (new mandate version); a fallback takes over only before any model answered, so one model decides a cycle; every cycle records the model that decided, reported model, prompt/tool/schema versions, and each switch is journaled. |
 | Chain-of-thought exposure | None requested or stored; only the structured outputs and a journal of every step are kept. |
 | Secret exposure | Keys stay server-side (`Agent:Llm:ApiKey`, passed as environment only); never in responses, logs or the browser bundle (Gemini: `x-goog-api-key` header, never in the URL); prompts contain portfolio figures and symbols of this portfolio only – no e-mail, name or account data. |
 
@@ -31,6 +31,9 @@ mandate, symbols/sectors/currencies of its universe, tool results (prices-derive
 estimates, news counts) and its own earlier decisions. This is portfolio data of the owner: state it in the privacy notice
 before real users switch a pilot on, with a data-processing agreement with the provider (Google's free Gemini tier may use
 inputs to improve its products – use a paid tier for real users; see [launch-readiness.md](launch-readiness.md)).
+With fallback models (D-68) every provider of the list can receive this data – each one the owner confirmed; free tiers
+of other providers (Groq, OpenRouter and the free models it routes to, Mistral, Cerebras) may also use inputs for
+training. Each provider's key is sent only to that provider; a fallback never uses the shared `LLM_API_KEY`.
 
 ## Residual risks
 

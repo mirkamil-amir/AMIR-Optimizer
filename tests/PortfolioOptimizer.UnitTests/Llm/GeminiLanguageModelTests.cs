@@ -38,8 +38,32 @@ public sealed class GeminiLanguageModelTests
     }
 
     private static GeminiLanguageModel Model(StubHandler handler, string? key = "test-key", string? model = null) =>
-        new(new Factory(handler), Options.Create(new LanguageModelOptions { Provider = "Gemini", ApiKey = key, Model = model, MaxRetries = 1 }),
+        new(new Factory(handler), Options.Create(new LanguageModelOptions { Provider = "Gemini", ApiKey = key, Model = model, MaxRetries = 1, RetryBaseSeconds = 0 }),
             NullLogger<GeminiLanguageModel>.Instance);
+
+    [Theory]
+    [InlineData("low", 0)]
+    [InlineData("medium", 2048)]
+    [InlineData("high", 8192)]
+    [InlineData("max", 16384)]
+    public void ThinkingBudget_IsFixedPerEffort_AndAddedOnTopOfTheAnswerLimit(string effort, int budget)
+    {
+        // An unbounded budget once used up maxOutputTokens and cut the JSON answer off (2026-11-15, finishReason MAX_TOKENS).
+        var body = GeminiLanguageModel.BuildRequest(Request, effort);
+        var generation = body["generationConfig"]!;
+        Assert.Equal(budget, (int)generation["thinkingConfig"]!["thinkingBudget"]!);
+        Assert.Equal(Request.MaxOutputTokens + budget, (int)generation["maxOutputTokens"]!);
+    }
+
+    [Fact]
+    public async Task UsedUpQuota_WithALongRetryDelay_IsNotWaitedFor()
+    {
+        const string quota = """{"error":{"code":429,"status":"RESOURCE_EXHAUSTED","details":[{"@type":"type.googleapis.com/google.rpc.RetryInfo","retryDelay":"3600s"}]}}""";
+        var handler = new StubHandler(_ => Json(HttpStatusCode.TooManyRequests, quota));
+        var ex = await Assert.ThrowsAsync<LanguageModelException>(() => Model(handler).GenerateAsync(Request, CancellationToken.None));
+        Assert.Equal(LlmFailure.RateLimited, ex.Failure);
+        Assert.Single(handler.Requests);
+    }
 
     private static HttpResponseMessage Json(HttpStatusCode status, string body) => new(status) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
 

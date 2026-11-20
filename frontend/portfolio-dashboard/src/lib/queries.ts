@@ -1106,10 +1106,12 @@ function usePilotAction<TArgs, TResult>(portfolioId: string, call: (args: TArgs)
 
 export const useCreatePilot = (portfolioId: string) =>
   usePilotAction(portfolioId, (body: { mandate: PilotMandate; frequency: PilotFrequency; effort: string }) => api.post<Pilot>(`${V1}/portfolios/${portfolioId}/pilot`, body))
+/** Switching on or resuming: the models the owner saw (`fallbacks` as `Provider:model;…`), checked against the configuration. */
+export interface PilotConfirmBody { confirm: boolean; provider: string; model: string; fallbacks: string }
 export const useEnablePilot = (portfolioId: string) =>
-  usePilotAction(portfolioId, (body: { confirm: boolean; provider: string; model: string }) => api.post<Pilot>(`${V1}/portfolios/${portfolioId}/pilot/enable`, body))
+  usePilotAction(portfolioId, (body: PilotConfirmBody) => api.post<Pilot>(`${V1}/portfolios/${portfolioId}/pilot/enable`, body))
 export const useResumePilot = (portfolioId: string) =>
-  usePilotAction(portfolioId, (body: { confirm: boolean; provider: string; model: string }) => api.post<Pilot>(`${V1}/portfolios/${portfolioId}/pilot/resume`, body))
+  usePilotAction(portfolioId, (body: PilotConfirmBody) => api.post<Pilot>(`${V1}/portfolios/${portfolioId}/pilot/resume`, body))
 export const useKillPilot = (portfolioId: string) =>
   usePilotAction(portfolioId, (reason: string) => api.post<Pilot>(`${V1}/portfolios/${portfolioId}/pilot/kill`, { reason }))
 export const useDisablePilot = (portfolioId: string) =>

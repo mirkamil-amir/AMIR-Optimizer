@@ -25,6 +25,8 @@ export PROFILES_WIKIPEDIA_ENABLED=false PROFILES_MOCK_ENABLED=true
 export AGENT_LLM_PROVIDER=None ANTHROPIC_API_KEY=
 # Matrix Pilot: the deterministic test script (provider Mock, labelled as a test model), cycles started by the specs only.
 export MATRIX_PILOT_PROVIDER=Mock MATRIX_PILOT_MODEL= MATRIX_PILOT_SCHEDULER=false
+# No fallback models and no provider keys: the disposable stack never calls a real model.
+export MATRIX_PILOT_FALLBACKS= GEMINI_API_KEY= GROQ_API_KEY= OPENROUTER_API_KEY= MISTRAL_API_KEY= CEREBRAS_API_KEY= OPENAI_API_KEY=
 
 COMPOSE="${COMPOSE:-podman compose}"
 cleanup() {
