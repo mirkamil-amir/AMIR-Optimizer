@@ -578,6 +578,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             e.Property(x => x.Frequency).HasConversion<string>().HasMaxLength(20);
             e.Property(x => x.Provider).HasMaxLength(40);
             e.Property(x => x.Model).HasMaxLength(100);
+            e.Property(x => x.FallbackModels).HasMaxLength(600).HasDefaultValue("");
             e.Property(x => x.Effort).HasMaxLength(10);
             e.Property(x => x.PauseReason).HasMaxLength(500);
             e.Property(x => x.BaselineJson).HasColumnType("jsonb");

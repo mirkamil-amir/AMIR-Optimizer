@@ -48,7 +48,7 @@ public sealed class PilotService(
     public const string Label = "Matrix Pilot – AI-managed experimental portfolio. Paper money only; results are measured, not promised.";
     private static readonly string[] Efforts = ["low", "medium", "high", "xhigh", "max"];
 
-    public PilotModelDto ConfiguredModel => new(model.Provider, model.Model, model.IsAvailable, model.Provider == "Mock");
+    public PilotModelDto ConfiguredModel => new(model.Provider, model.Model, PilotModelChain.AnyAvailable(model), model.Provider == "Mock", PilotModelChain.Dtos(model));
 
     // ==================================================================================================== reads
 
@@ -138,7 +138,8 @@ public sealed class PilotService(
         var pilot = new MatrixPilot
         {
             Id = Guid.NewGuid(), PortfolioId = portfolioId, OwnerId = owner, Status = PilotStatus.Disabled, Frequency = request.Frequency,
-            MandateVersion = 1, Provider = model.Provider, Model = model.Model, Effort = request.Effort, CreatedAtUtc = now, UpdatedAtUtc = now,
+            MandateVersion = 1, Provider = model.Provider, Model = model.Model, FallbackModels = PilotModelChain.Key(model.Fallbacks),
+            Effort = request.Effort, CreatedAtUtc = now, UpdatedAtUtc = now,
         };
         db.MatrixPilots.Add(pilot);
         db.MatrixPilotMandates.Add(new MatrixPilotMandateVersion
@@ -161,14 +162,13 @@ public sealed class PilotService(
         var pilot = await RequireAsync(portfolioId, ct, tracking: true);
         if (pilot.Status == PilotStatus.Active) throw new ConflictException("Matrix Pilot is already active.");
         if (pilot.Status is PilotStatus.Paused or PilotStatus.KillSwitched) throw new ConflictException("Matrix Pilot is stopped; use Resume.");
-        RequireModel(request.Provider, request.Model);
+        RequireModel(request);
         await RequirePassingCheckAsync(ct);
         var now = clock.GetUtcNow().UtcDateTime;
         var previous = pilot.Status;
-        if (pilot.Provider != model.Provider || pilot.Model != model.Model)
-            Event(pilot, "model.adopted", previous, previous, $"Model {pilot.Provider} {pilot.Model} → {model.Provider} {model.Model} (confirmed by the owner).");
-        pilot.Provider = model.Provider;
-        pilot.Model = model.Model;
+        if (!PilotModelChain.Matches(pilot, model))
+            Event(pilot, "model.adopted", previous, previous, $"Models {PilotModelChain.Describe(pilot)} → {PilotModelChain.Describe(model)} (confirmed by the owner).");
+        AdoptModels(pilot);
         pilot.Status = PilotStatus.Active;
         pilot.EnabledAtUtc = now;
         pilot.PausedAtUtc = null;
@@ -184,7 +184,7 @@ public sealed class PilotService(
         Touch(pilot, now);
         Event(pilot, "enabled", previous, PilotStatus.Active, "Autonomous management confirmed by the owner.");
         await SaveAsync(ct);
-        await audit.RecordAsync(AuditActions.PilotEnabled, "MatrixPilot", pilot.Id.ToString(), $"{pilot.Provider} {pilot.Model}, {pilot.Frequency}", ct: ct);
+        await audit.RecordAsync(AuditActions.PilotEnabled, "MatrixPilot", pilot.Id.ToString(), $"{PilotModelChain.Describe(pilot)}, {pilot.Frequency}", ct: ct);
         return await ToDtoAsync(pilot, portfolio, ct);
     }
 
@@ -215,10 +215,10 @@ public sealed class PilotService(
         portfolio.EnsureActive();
         var pilot = await RequireAsync(portfolioId, ct, tracking: true);
         if (pilot.Status is not (PilotStatus.Paused or PilotStatus.KillSwitched)) throw new ConflictException($"Matrix Pilot is {pilot.Status}; only a stopped pilot can be resumed.");
-        RequireModel(request.Provider, request.Model);
+        RequireModel(request);
         await RequirePassingCheckAsync(ct);
-        if (pilot.Provider != model.Provider || pilot.Model != model.Model)
-            throw new ConflictException($"The configured model ({model.Provider} {model.Model}) differs from this pilot's ({pilot.Provider} {pilot.Model}). Confirm the change in the mandate first.");
+        if (!PilotModelChain.Matches(pilot, model))
+            throw new ConflictException($"The configured models ({PilotModelChain.Describe(model)}) differ from this pilot's ({PilotModelChain.Describe(pilot)}). Confirm the change in the mandate first.");
         var previous = pilot.Status;
         var now = clock.GetUtcNow().UtcDateTime;
         pilot.Status = PilotStatus.Active;
@@ -264,11 +264,11 @@ public sealed class PilotService(
         var changes = PilotMandate.Diff(before, after).ToList();
         if (request.Frequency != pilot.Frequency) changes.Add(new PilotMandateChange("frequency", $"\"{pilot.Frequency}\"", $"\"{request.Frequency}\""));
         if (request.Effort != pilot.Effort) changes.Add(new PilotMandateChange("effort", $"\"{pilot.Effort}\"", $"\"{request.Effort}\""));
-        var adopt = request.AdoptConfiguredModel && (pilot.Provider != model.Provider || pilot.Model != model.Model);
+        var adopt = request.AdoptConfiguredModel && !PilotModelChain.Matches(pilot, model);
         if (adopt)
         {
-            if (!model.IsAvailable) throw new ConflictException("No language model is configured.");
-            changes.Add(new PilotMandateChange("model", $"\"{pilot.Provider} {pilot.Model}\"", $"\"{model.Provider} {model.Model}\""));
+            if (!PilotModelChain.AnyAvailable(model)) throw new ConflictException("No language model is configured.");
+            changes.Add(new PilotMandateChange("model", $"\"{PilotModelChain.Describe(pilot)}\"", $"\"{PilotModelChain.Describe(model)}\""));
         }
         if (changes.Count == 0) throw new ValidationException("mandate", "Nothing changed.");
 
@@ -281,11 +281,7 @@ public sealed class PilotService(
         });
         pilot.Frequency = request.Frequency;
         pilot.Effort = request.Effort;
-        if (adopt)
-        {
-            pilot.Provider = model.Provider;
-            pilot.Model = model.Model;
-        }
+        if (adopt) AdoptModels(pilot);
         if (pilot.Status == PilotStatus.Active) pilot.NextDecisionAtUtc = PilotSchedule.NextDecision(pilot.Frequency, now, options.Value.DecisionHourUtc);
         Touch(pilot, now);
         Event(pilot, "mandate.changed", pilot.Status, pilot.Status, $"Version {pilot.MandateVersion}: {string.Join(", ", changes.Select(c => c.Field))}. {request.Reason}".Trim());
@@ -603,25 +599,34 @@ public sealed class PilotService(
             .RootElement.EnumerateObject().ToDictionary(p => p.Name, p => p.Value.Clone());
 
     /// <summary>
-    /// Checks that the pilot's model answers with the configured key: one tiny call that contains no portfolio, account or
-    /// user data. <c>Ok</c> only when the model answered (the key and model are accepted).
+    /// Checks that each of the pilot's models answers with its configured key: one tiny call per model that contains no
+    /// portfolio, account or user data. <c>Ok</c> only when that model answered (key and model accepted); the result is
+    /// <see cref="PilotModelCheckDto.Usable"/> when at least one model of the list did.
     /// </summary>
     public async Task<PilotModelCheckDto> CheckModelAsync(CancellationToken ct)
     {
         currentUser.RequireUserId();
+        var primary = await CheckOneAsync(model, "MATRIX_PILOT_MODEL", ct);
+        var fallbacks = new List<PilotModelCheckDto>();
+        foreach (var fallback in model.Fallbacks) fallbacks.Add(await CheckOneAsync(fallback, "MATRIX_PILOT_FALLBACKS", ct));
+        return primary with { Fallbacks = fallbacks };
+    }
+
+    private async Task<PilotModelCheckDto> CheckOneAsync(ILanguageModel m, string setting, CancellationToken ct)
+    {
         var now = clock.GetUtcNow().UtcDateTime;
         PilotModelCheckDto Result(bool ok, string status, string message, double? ms = null, string? reported = null) =>
-            new(model.Provider, model.Model, ok, status, message, ms, reported, now);
-        if (!model.IsAvailable)
-            return Result(false, "not_configured", model.Provider == "None"
+            new(m.Provider, m.Model, ok, status, message, ms, reported, now);
+        if (!m.IsAvailable)
+            return Result(false, "not_configured", m.Provider == "None"
                 ? "No language model is configured for Matrix Pilot (MATRIX_PILOT_PROVIDER or AGENT_LLM_PROVIDER)."
-                : $"{model.Provider} is configured, but no API key was found.");
+                : $"{m.Provider} {m.Model} cannot be used: no API key was found ({m.Provider.ToUpperInvariant()}_API_KEY), or its entry in {setting} is incomplete.");
         var sw = System.Diagnostics.Stopwatch.StartNew();
         try
         {
-            var r = await model.GenerateAsync(new LlmRequest("pilot.check", "Connection check. Answer with the JSON object {\"ok\": true}.", "ping",
+            var r = await m.GenerateAsync(new LlmRequest("pilot.check", "Connection check. Answer with the JSON object {\"ok\": true}.", "ping",
                 CheckSchema, 1000, "low", TimeSpan.FromSeconds(45)), ct);
-            return Result(true, "ok", $"{model.Provider} accepted the key and {r.Model} answered.", Math.Round(sw.Elapsed.TotalMilliseconds), r.Model);
+            return Result(true, "ok", $"{m.Provider} accepted the key and {r.Model} answered.", Math.Round(sw.Elapsed.TotalMilliseconds), r.Model);
         }
         catch (LanguageModelException ex)
         {
@@ -629,13 +634,13 @@ public sealed class PilotService(
             return ex.Failure switch
             {
                 // The model answered, only not in the expected shape: the key and model work.
-                LlmFailure.InvalidOutput or LlmFailure.Refused => Result(true, "ok", $"{model.Provider} accepted the key (the test answer had an unexpected shape).", ms),
-                LlmFailure.Unauthorized => Result(false, "key_rejected", $"{model.Provider} rejected the API key: it is invalid, expired or lacks access. Put a valid key in .env and restart the API.", ms),
-                LlmFailure.ModelNotFound => Result(false, "model_not_found", $"The model {model.Model} is not available for this key. Check MATRIX_PILOT_MODEL.", ms),
-                LlmFailure.RateLimited => Result(false, "rate_limited", $"{model.Provider} is rate limiting or the quota is used up; the key itself may be valid. Try again later.", ms),
-                LlmFailure.Timeout => Result(false, "timeout", $"{model.Provider} did not answer within 45 seconds.", ms),
-                LlmFailure.Unavailable => Result(false, "unavailable", $"{model.Provider} could not be reached.", ms),
-                _ => Result(false, "provider_error", $"{model.Provider} returned an error: {ex.Message}", ms),
+                LlmFailure.InvalidOutput or LlmFailure.Refused => Result(true, "ok", $"{m.Provider} accepted the key (the test answer had an unexpected shape).", ms),
+                LlmFailure.Unauthorized => Result(false, "key_rejected", $"{m.Provider} rejected the API key: it is invalid, expired or lacks access. Put a valid key in .env and restart the API.", ms),
+                LlmFailure.ModelNotFound => Result(false, "model_not_found", $"The model {m.Model} is not available for this key. Check {setting}.", ms),
+                LlmFailure.RateLimited => Result(false, "rate_limited", $"{m.Provider} is rate limiting or the quota is used up; the key itself may be valid. Try again later.", ms),
+                LlmFailure.Timeout => Result(false, "timeout", $"{m.Provider} did not answer within 45 seconds.", ms),
+                LlmFailure.Unavailable => Result(false, "unavailable", $"{m.Provider} could not be reached.", ms),
+                _ => Result(false, "provider_error", $"{m.Provider} returned an error: {ex.Message}", ms),
             };
         }
     }
@@ -643,14 +648,23 @@ public sealed class PilotService(
     private async Task RequirePassingCheckAsync(CancellationToken ct)
     {
         var check = await CheckModelAsync(ct);
-        if (!check.Ok) throw new ConflictException($"Model check failed – {check.Message} Matrix Pilot was not switched on.");
+        if (!check.Usable) throw new ConflictException($"Model check failed – no model of the list answered ({check.Message}). Matrix Pilot was not switched on.");
     }
 
-    private void RequireModel(string? provider, string? modelId)
+    private void RequireModel(EnablePilotRequest request)
     {
-        if (!model.IsAvailable) throw new ConflictException("No language model is configured (Agent:Llm:Provider). Matrix Pilot needs one; it never falls back to fixed rules.");
-        if (provider is not null && (provider != model.Provider || modelId != model.Model))
-            throw new ConflictException($"The configured model changed to {model.Provider} {model.Model} since you opened the confirmation. Review and confirm again.");
+        if (!PilotModelChain.AnyAvailable(model)) throw new ConflictException("No language model is configured (Agent:Llm:Provider). Matrix Pilot needs one; it never falls back to fixed rules.");
+        var primaryChanged = request.Provider is not null && (request.Provider != model.Provider || request.Model != model.Model);
+        var fallbacksChanged = request.Fallbacks is not null && request.Fallbacks != PilotModelChain.Key(model.Fallbacks);
+        if (primaryChanged || fallbacksChanged)
+            throw new ConflictException($"The configured models changed to {PilotModelChain.Describe(model)} since you opened the confirmation. Review and confirm again.");
+    }
+
+    private void AdoptModels(MatrixPilot pilot)
+    {
+        pilot.Provider = model.Provider;
+        pilot.Model = model.Model;
+        pilot.FallbackModels = PilotModelChain.Key(model.Fallbacks);
     }
 
     private static void CheckEffort(string effort)
@@ -694,7 +708,7 @@ public sealed class PilotService(
             _ => "DISABLED",
         };
         return new PilotDto(p.Id, p.PortfolioId, portfolio.Name, portfolio.BaseCurrency, p.Status, display, running?.Phase, p.Frequency, p.MandateVersion, mandate,
-            p.Provider, p.Model, p.Effort, p.Provider == model.Provider && p.Model == model.Model, p.CreatedAtUtc, p.EnabledAtUtc, p.LastDecisionAtUtc,
+            p.Provider, p.Model, PilotModelChain.Dtos(p.FallbackModels, model), p.Effort, PilotModelChain.Matches(p, model), p.CreatedAtUtc, p.EnabledAtUtc, p.LastDecisionAtUtc,
             p.LastSuccessfulDecisionAtUtc, p.NextDecisionAtUtc, p.PausedAtUtc, p.PauseReason, p.ConsecutiveFailures, PilotJson.Deserialize<PilotBaseline>(p.BaselineJson),
             await EvaluateAsync(p, cycles, portfolio, ct), latest is null ? null : Summary(latest), latestDecision is null ? null : Summary(latestDecision));
     }

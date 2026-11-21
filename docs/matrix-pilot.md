@@ -236,15 +236,48 @@ live portfolio 1, 5 and 21 trading days later – measured afterwards, never fed
 | `Agent:Llm:Provider` (`AGENT_LLM_PROVIDER`) | `None` | shared model provider: `None`, `Anthropic`, `Gemini`, `Mock` (tests) |
 | `Agent:Llm:Model` (`AGENT_LLM_MODEL`) | provider default | `claude-opus-5-5` / `gemini-3.8-flash` |
 | `Agent:Llm:ApiKey` (`LLM_API_KEY`, or `ANTHROPIC_API_KEY`; Gemini also reads `GEMINI_API_KEY`) | empty | server-side only; never logged or sent to the browser (Gemini: `x-goog-api-key` header, never in the URL) |
-| `Agent:Llm:TimeoutSeconds` / `MaxRetries` / `Effort` | 60 / 2 / `low` | per request; retries on 429/5xx |
-| `MatrixPilot:Provider` / `Model` | empty | the pilot's own model (Anthropic, Gemini, Mock, None); empty = `Agent:Llm` |
+| `Agent:Llm:TimeoutSeconds` / `MaxRetries` / `Effort` | 60 / 3 / `low` | per request; retries only on 429/5xx |
+| `Agent:Llm:RetryBaseSeconds` / `MaxRetryWaitSeconds` | 5 / 60 | wait 5 s, 15 s, 45 s – or what the provider asks (`Retry-After`, Gemini `retryDelay`); a longer requested wait (used-up daily quota) is not waited for |
+| `MatrixPilot:Provider` / `Model` | empty | the pilot's own (primary) model: Gemini, Anthropic, Groq, OpenRouter, Mistral, Cerebras, OpenAI, Mock; empty = `Agent:Llm` |
+| `MatrixPilot:Fallbacks` (`MATRIX_PILOT_FALLBACKS`) | empty | ordered fallback models `Provider:model; Provider:model` – see [Models](#models-and-fallbacks) |
+| `MatrixPilot:Keys:<Provider>` (`GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, `GROQ_API_KEY`, `OPENROUTER_API_KEY`, `MISTRAL_API_KEY`, `CEREBRAS_API_KEY`, `OPENAI_API_KEY`) | empty | one key per provider, sent only to that provider; the shared `LLM_API_KEY` is only ever used for the primary |
 | `MatrixPilot:SchedulerEnabled` | true | create due cycles every `SchedulerIntervalMinutes` (15) |
 | `MatrixPilot:DecisionHourUtc` | 22 | after the trading day's closes are stored |
 | `MaxResearchRounds` / `MaxToolCallsPerRound` | 6 / 6 | model-tool rounds |
 | `ModelTimeoutSeconds` / `CycleTimeoutMinutes` | 300 / 20 | |
 | `MaxInputTokensPerCycle` / `MaxConsecutiveFailures` | 600 000 / 3 | cost and failure limits |
 
-Compose: `MATRIX_PILOT_PROVIDER`, `MATRIX_PILOT_MODEL`, `MATRIX_PILOT_SCHEDULER`. The e2e stack uses `Mock` (a
+### Models and fallbacks
+
+Free tiers fail often (2026-11-13 – 11-19: 18 of 20 cycles on Gemini's free tier failed with HTTP 503, 429 or a
+cut-off answer). A pilot can therefore name fallback models from other providers (D-68):
+
+* **One model per decision.** A cycle starts with the primary. Only while **no model has answered yet** does a failed
+  call (any `LanguageModelException`, after the client's own retries) move the cycle to the next model of the list, which
+  then makes every remaining call – research, decision, critique, comparison and report. Once a model has answered, a
+  later failure fails the cycle (no trade, retried later as before). A model without a key is skipped. The model that
+  decided is recorded on the cycle (`Provider`, `Model`, shown in the Decisions table); each switch and skip is a
+  journal step "Model fallback".
+* **The owner confirms the list.** The pilot stores its list (`MatrixPilot.FallbackModels`); a configured list that
+  differs (other models or another order) fails cycles until the owner adopts it in the mandate (a new version), as for a
+  changed primary. Switching on and resuming check that the list the owner saw is the configured one.
+* **Model check.** "Check model connection" calls each model once (no portfolio data) and lists the results; switching
+  on needs at least one model that answers.
+* **Providers.** Gemini (REST), Anthropic (SDK) and, through one OpenAI-compatible client
+  (`OpenAiCompatibleLanguageModel`, `POST …/chat/completions`), Groq, OpenRouter, Mistral, Cerebras and OpenAI. The
+  JSON schema is sent as `response_format` and in the instructions; a model that rejects schema output is asked once
+  for a plain JSON object; a reasoning block or code fence around the answer is removed; the answer is schema-checked
+  again by the engine. These providers need an explicit model id. OpenAI gets `max_completion_tokens` (its reasoning
+  models reject `max_tokens`); the others get `max_tokens`. Live check: `PO_LIVE_SMOKE=1 OPENAI_API_KEY=… dotnet test
+  --filter LiveOpenAiSmokeTests` (model `PO_LIVE_OPENAI_MODEL`, default `gpt-5.4-mini`).
+* **Limits.** Free tiers allow far fewer tokens per minute than a full cycle uses (about 280 000 input tokens over
+  10–11 calls on 2026-11-14/15), so a fallback can fail on its quota too. Use one account per provider – several free
+  keys of one provider to get around its limits break its terms.
+* **Gemini thinking.** Thinking tokens count against `maxOutputTokens`; an unbounded budget cut answers off. The budget
+  is fixed per effort (low 0, medium 2 048, high 8 192, xhigh/max 16 384) and added on top of the answer's own limit.
+
+Compose: `MATRIX_PILOT_PROVIDER`, `MATRIX_PILOT_MODEL`, `MATRIX_PILOT_FALLBACKS`, the provider keys above,
+`MATRIX_PILOT_SCHEDULER`. The e2e stack uses `Mock` (a
 deterministic script in `MockPilotScript` – equal weights over the platform's screen, labelled "test script – not an AI"
 everywhere) and no scheduler. Cost: a cycle makes 4–10 model calls; on Claude Opus 5.5 at high effort expect roughly
 $0.5–2 per cycle (estimate, not measured) – the cycle records its token counts.
@@ -261,6 +294,10 @@ $0.5–2 per cycle (estimate, not measured) – the cycle records its token coun
   audit; confirmed resume; mandate versions; unlisted tools denied (mandate, trades, validator, permissions, audit);
   news text never reaches the model; tool errors journaled; cross-user isolation (every route, comparison, list);
   comparison with another portfolio; portfolio deletion removes the pilot.
+* Fallback models (`MatrixPilotFallbackTests`): the next model takes the whole decision when the primary fails before
+  any answer; no switch after an answer; every model failing fails closed; a model without a key is skipped and shown in
+  the check; a changed list stops cycles until adopted. Unit: retry waits (`LlmRetry`), Gemini thinking budget and
+  quota delay, the OpenAI-compatible client (endpoint, key header, schema fallback, errors, wrapping), list parsing.
 * Browser (`e2e/pilot.spec.ts`): set up, confirm (checkbox required), decision cycle, journal and tool trace, refused
   second run, kill switch, audit trail, live record in the Arena tab.
 

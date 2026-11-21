@@ -1,5 +1,17 @@
 # Implementation status
 
+## 2026-11-20: Matrix Pilot fallback models (AMIR-38, D-68)
+
+* `MATRIX_PILOT_FALLBACKS` names ordered fallback models; a cycle moves on only while no model has answered, so one model
+  decides (recorded on the cycle, "Model" column in Decisions, "Model fallback" journal steps). The owner confirms the
+  list (`MatrixPilot.FallbackModels`, migration `PilotFallbackModels`); the model check lists every model.
+* New OpenAI-compatible client for Groq, OpenRouter, Mistral, Cerebras and OpenAI; one key per provider.
+* Retries wait 5/15/45 s or the provider's own delay (429/5xx only); Gemini's thinking budget is fixed per effort, so
+  answers are no longer cut off by thinking.
+* Tests: `MatrixPilotFallbackTests` (5), `LlmRetryTests`, `OpenAiCompatibleLanguageModelTests`, Gemini budget and quota
+  tests, `pilot-models.test.ts`. Live: one structured OpenAI call with `gpt-5.4-mini` passed (2026-11-21); Groq,
+  OpenRouter, Mistral and Cerebras not run live (no keys) – see limitations.
+
 ## 2026-11-15 (6): Matrix Pilot in View (AMIR-37, D-67)
 
 * Pilot is a portfolio tab after Pattern (`/portfolios/:id/pilot/{performance,decisions,mandate,audit}`) and a sidebar entry

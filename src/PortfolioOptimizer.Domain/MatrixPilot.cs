@@ -78,6 +78,11 @@ public class MatrixPilot
     /// <summary>Language-model provider and model chosen by the owner (recorded again on every cycle).</summary>
     public required string Provider { get; set; }
     public required string Model { get; set; }
+    /// <summary>
+    /// The fallback models confirmed by the owner, in order (<c>Provider:model;Provider:model</c>, empty = none). A cycle uses
+    /// the next one only while no model has answered; the model that decided is recorded on the cycle.
+    /// </summary>
+    public string FallbackModels { get; set; } = "";
     public string Effort { get; set; } = "high";
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }

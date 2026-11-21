@@ -886,6 +886,13 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                     b.Property<DateTime?>("EnabledAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("FallbackModels")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(600)
+                        .HasColumnType("character varying(600)")
+                        .HasDefaultValue("");
+
                     b.Property<string>("Frequency")
                         .IsRequired()
                         .HasMaxLength(20)

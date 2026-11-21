@@ -1806,7 +1806,11 @@ export interface PilotMandate {
   benchmark?: string | null
 }
 
-export interface PilotModel { provider: string; model: string; available: boolean; isTestModel: boolean }
+/** One fallback model of Matrix Pilot (used only while no model of a cycle has answered). */
+export interface PilotFallbackModel { provider: string; model: string; available: boolean }
+
+/** The configured models: `available` = at least one model of the list can be called. */
+export interface PilotModel { provider: string; model: string; available: boolean; isTestModel: boolean; fallbacks: PilotFallbackModel[] }
 
 export interface PilotPortfolioRow {
   portfolioId: string; name: string; baseCurrency: string; status: string; pilotStatus: PilotStatus | null; running: boolean
@@ -1840,7 +1844,7 @@ export interface PilotCycleSummary {
 export interface Pilot {
   id: string; portfolioId: string; portfolioName: string; baseCurrency: string; status: PilotStatus; displayStatus: string
   runningPhase: PilotPhase | null; frequency: PilotFrequency; mandateVersion: number; mandate: PilotMandate
-  provider: string; model: string; effort: string; modelMatchesConfiguration: boolean
+  provider: string; model: string; fallbacks: PilotFallbackModel[]; effort: string; modelMatchesConfiguration: boolean
   createdAtUtc: string; enabledAtUtc: string | null; lastDecisionAtUtc: string | null; lastSuccessfulDecisionAtUtc: string | null
   nextDecisionAtUtc: string | null; pausedAtUtc: string | null; pauseReason: string | null; consecutiveFailures: number
   baseline: PilotBaseline | null; evaluation: PilotEvaluation; latestCycle: PilotCycleSummary | null; latestDecision: PilotCycleSummary | null
@@ -1968,6 +1972,10 @@ export interface PilotModelCheck {
   provider: string; model: string; ok: boolean
   status: 'ok' | 'not_configured' | 'key_rejected' | 'model_not_found' | 'rate_limited' | 'timeout' | 'unavailable' | 'provider_error'
   message: string; latencyMs: number | null; modelReported: string | null; checkedAtUtc: string
+  /** Each fallback model's own check, in order. */
+  fallbacks: PilotModelCheck[]
+  /** At least one model of the list answered. */
+  usable: boolean
 }
 
 /** Where a Ledger › Transactions row came from (D-66). */

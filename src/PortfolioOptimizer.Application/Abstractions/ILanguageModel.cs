@@ -40,7 +40,14 @@ public interface ILanguageModel
 }
 
 /// <summary>
-/// The language model Matrix Pilot decides with: its own provider and model when <c>MatrixPilot:Provider</c> is set (so a
-/// pilot can run on a different model than the shared one), otherwise the shared <see cref="ILanguageModel"/>.
+/// The language models Matrix Pilot decides with: the primary (its own provider and model when <c>MatrixPilot:Provider</c>
+/// is set, otherwise the shared <see cref="ILanguageModel"/>) and, in order, the fallbacks of <c>MatrixPilot:Fallbacks</c>.
+/// A cycle moves to the next model only while no model has answered, so one model makes each decision (docs/matrix-pilot.md).
+/// <see cref="ILanguageModel.Provider"/> and <see cref="ILanguageModel.Model"/> name the primary; calling this instance
+/// directly calls the primary only.
 /// </summary>
-public interface IPilotLanguageModel : ILanguageModel;
+public interface IPilotLanguageModel : ILanguageModel
+{
+    /// <summary>The models tried after the primary, in order (empty when none is configured).</summary>
+    IReadOnlyList<ILanguageModel> Fallbacks { get; }
+}

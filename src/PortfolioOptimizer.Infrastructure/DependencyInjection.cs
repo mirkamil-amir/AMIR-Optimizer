@@ -98,25 +98,10 @@ public static class DependencyInjection
                 _ => new DisabledLanguageModel(),
             };
         });
-        // Matrix Pilot: its own provider/model (MatrixPilot:Provider, MatrixPilot:Model) or, when unset, the shared model above.
-        services.AddSingleton<IPilotLanguageModel>(sp =>
-        {
-            var provider = configuration["MatrixPilot:Provider"];
-            if (string.IsNullOrWhiteSpace(provider)) return new PilotLanguageModel(sp.GetRequiredService<ILanguageModel>());
-            var shared = sp.GetRequiredService<IOptions<LanguageModelOptions>>().Value;
-            var own = Options.Create(new LanguageModelOptions
-            {
-                Provider = provider, Model = configuration["MatrixPilot:Model"] is { Length: > 0 } m ? m : shared.Model, ApiKey = shared.ApiKey,
-                Effort = shared.Effort, TimeoutSeconds = shared.TimeoutSeconds, MaxRetries = shared.MaxRetries,
-            });
-            return new PilotLanguageModel(provider switch
-            {
-                "Anthropic" => ActivatorUtilities.CreateInstance<AnthropicLanguageModel>(sp, own),
-                "Gemini" => ActivatorUtilities.CreateInstance<GeminiLanguageModel>(sp, own),
-                "Mock" => sp.GetRequiredService<MockLanguageModel>(),
-                _ => new DisabledLanguageModel(),
-            });
-        });
+        // Matrix Pilot: its own provider/model (MatrixPilot:Provider, MatrixPilot:Model) or, when unset, the shared model above,
+        // then the ordered fallbacks of MatrixPilot:Fallbacks (Groq, OpenRouter, Mistral, Cerebras, OpenAI, Gemini, Anthropic).
+        services.AddHttpClient(OpenAiCompatibleLanguageModel.HttpClientName, c => c.Timeout = Timeout.InfiniteTimeSpan); // per-request timeout
+        services.AddSingleton<IPilotLanguageModel>(sp => PilotModelFactory.Create(sp, configuration));
 
         // Company descriptions: Wikipedia summary API (article from the catalogue), simulated provider for tests only.
         // The simulated provider is registered first so a test configuration that enables it takes precedence.
