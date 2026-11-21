@@ -64,6 +64,17 @@ public sealed class OpenAiCompatibleLanguageModelTests
     }
 
     [Fact]
+    public async Task OpenAI_GetsMaxCompletionTokens_WhichItsReasoningModelsRequire()
+    {
+        var handler = new StubHandler(_ => Json(HttpStatusCode.OK, Ok));
+        await Model(handler, provider: "OpenAI").GenerateAsync(Request(), CancellationToken.None);
+        var body = JsonDocument.Parse(handler.Bodies.Single()).RootElement;
+        Assert.Equal("https://api.openai.com/v1/chat/completions", handler.Requests.Single().RequestUri!.ToString());
+        Assert.Equal(1000 + 4096, body.GetProperty("max_completion_tokens").GetInt32());
+        Assert.False(body.TryGetProperty("max_tokens", out _));
+    }
+
+    [Fact]
     public async Task AModelWithoutSchemaSupport_IsAskedOnceMoreForAPlainJsonObject()
     {
         var handler = new StubHandler(n => n == 1
@@ -137,5 +148,33 @@ public sealed class OpenAiCompatibleLanguageModelTests
         Assert.Equal([("Mock", "a:free"), ("Mock", "b")], PilotModelChain.Parse(key));
         Assert.Equal("Gemini g, then Mock a:free, then Mock b", PilotModelChain.Describe("Gemini", "g", key));
         Assert.Equal("Gemini g", PilotModelChain.Describe("Gemini", "g", ""));
+    }
+}
+
+/// <summary>
+/// Opt-in (PO_LIVE_SMOKE=1 and OPENAI_API_KEY; model from PO_LIVE_OPENAI_MODEL, default gpt-5.4-mini): one structured call
+/// against the real OpenAI API through the OpenAI-compatible client. Costs a few hundred tokens.
+/// </summary>
+public sealed class LiveOpenAiSmokeTests
+{
+    [PortfolioOptimizer.UnitTests.MarketData.LiveSmokeFact]
+    public async Task StructuredAnswer_FollowsTheSchema()
+    {
+        var key = Environment.GetEnvironmentVariable("OPENAI_API_KEY");
+        Assert.False(string.IsNullOrWhiteSpace(key), "Set OPENAI_API_KEY.");
+        var modelId = Environment.GetEnvironmentVariable("PO_LIVE_OPENAI_MODEL") is { Length: > 0 } m ? m : "gpt-5.4-mini";
+        var model = new OpenAiCompatibleLanguageModel("OpenAI", modelId, key, new HttpClient(), new LanguageModelOptions { MaxRetries = 1 },
+            NullLogger<OpenAiCompatibleLanguageModel>.Instance);
+        var schema = new Dictionary<string, JsonElement>
+        {
+            ["type"] = JsonSerializer.SerializeToElement("object"),
+            ["additionalProperties"] = JsonSerializer.SerializeToElement(false),
+            ["properties"] = JsonSerializer.SerializeToElement(new { currency = new { type = "string" } }),
+            ["required"] = JsonSerializer.SerializeToElement(new[] { "currency" }),
+        };
+        var r = await model.GenerateAsync(new LlmRequest("pilot.live", "Name the ISO 4217 code of the currency asked for.", "The currency of Japan.",
+            schema, 1000, "high", TimeSpan.FromSeconds(120)), CancellationToken.None);
+        Assert.Equal("JPY", r.Output.GetProperty("currency").GetString());
+        Assert.True(r.InputTokens > 0);
     }
 }

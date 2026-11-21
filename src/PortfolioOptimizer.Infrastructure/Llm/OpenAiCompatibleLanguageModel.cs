@@ -69,7 +69,7 @@ public sealed partial class OpenAiCompatibleLanguageModel : ILanguageModel
             HttpResponseMessage response;
             try
             {
-                using var message = new HttpRequestMessage(HttpMethod.Post, _endpoint) { Content = JsonContent.Create(BuildRequest(request, Model, effort, schemaFormat)) };
+                using var message = new HttpRequestMessage(HttpMethod.Post, _endpoint) { Content = JsonContent.Create(BuildRequest(request, Model, effort, schemaFormat, Provider)) };
                 message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _key);
                 response = await _http.SendAsync(message, timeout.Token);
             }
@@ -123,8 +123,11 @@ public sealed partial class OpenAiCompatibleLanguageModel : ILanguageModel
     /// The chat-completions body. The schema goes into the instructions as well, because not every model enforces
     /// <c>response_format</c>. Reasoning models count their reasoning as output, so above effort "low" the limit gets room for it.
     /// </summary>
-    public static JsonObject BuildRequest(LlmRequest request, string model, string effort, bool schemaFormat = true)
+    public static JsonObject BuildRequest(LlmRequest request, string model, string effort, bool schemaFormat = true, string provider = "")
     {
+        // OpenAI's reasoning models (o-series, gpt-5 and later) reject max_tokens and count reasoning in
+        // max_completion_tokens; the other providers take max_tokens.
+        var limitName = provider == "OpenAI" ? "max_completion_tokens" : "max_tokens";
         var schema = new JsonObject();
         foreach (var (k, v) in request.Schema) schema[k] = JsonNode.Parse(v.GetRawText());
         var instructions = $"{request.Instructions}\n\nAnswer with exactly one JSON object (no prose, no code fence) that matches this JSON schema:\n{schema.ToJsonString()}";
@@ -134,7 +137,7 @@ public sealed partial class OpenAiCompatibleLanguageModel : ILanguageModel
             ["messages"] = new JsonArray(
                 new JsonObject { ["role"] = "system", ["content"] = instructions },
                 new JsonObject { ["role"] = "user", ["content"] = request.UserContent }),
-            ["max_tokens"] = request.MaxOutputTokens + (effort == "low" ? 0 : 4096),
+            [limitName] = request.MaxOutputTokens + (effort == "low" ? 0 : 4096),
             ["response_format"] = schemaFormat
                 ? new JsonObject { ["type"] = "json_schema", ["json_schema"] = new JsonObject { ["name"] = "answer", ["schema"] = schema, ["strict"] = false } }
                 : new JsonObject { ["type"] = "json_object" },

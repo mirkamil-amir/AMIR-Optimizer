@@ -126,8 +126,9 @@
   on a free-tier key in 9–36 s and the free tier rate-limits bursts (HTTP 429) – for a pilot a failed call fails the
   cycle unless a fallback model takes over (D-68), so a paid tier is still the reliable choice. The weekly live smoke
   test checks one structured Gemini answer.
-* **OpenAI-compatible providers (Groq, OpenRouter, Mistral, Cerebras, OpenAI) are untested against the live APIs**
-  (no keys; covered by tests on synthetic payloads in the documented shape). Whether a given free model follows the JSON
+* **OpenAI-compatible providers:** OpenAI answered one structured call live with `gpt-5.4-mini` on 2026-11-21
+  (`LiveOpenAiSmokeTests`, opt-in); a full Pilot cycle on it has not run yet. Groq, OpenRouter, Mistral and Cerebras are
+  untested against the live APIs (no keys; covered by tests on synthetic payloads in the documented shape). Whether a given free model follows the JSON
   schema, and whether its free quota fits a cycle of ~280 000 input tokens, is unknown until it runs – the model check
   only proves that the key and model id are accepted. Endpoints are fixed in `OpenAiCompatibleLanguageModel.Endpoints`.
 * **Fallback attribution:** one model decides each cycle, but a pilot's live record can mix decisions of several models;

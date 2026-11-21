@@ -267,7 +267,9 @@ cut-off answer). A pilot can therefore name fallback models from other providers
   (`OpenAiCompatibleLanguageModel`, `POST …/chat/completions`), Groq, OpenRouter, Mistral, Cerebras and OpenAI. The
   JSON schema is sent as `response_format` and in the instructions; a model that rejects schema output is asked once
   for a plain JSON object; a reasoning block or code fence around the answer is removed; the answer is schema-checked
-  again by the engine. These providers need an explicit model id.
+  again by the engine. These providers need an explicit model id. OpenAI gets `max_completion_tokens` (its reasoning
+  models reject `max_tokens`); the others get `max_tokens`. Live check: `PO_LIVE_SMOKE=1 OPENAI_API_KEY=… dotnet test
+  --filter LiveOpenAiSmokeTests` (model `PO_LIVE_OPENAI_MODEL`, default `gpt-5.4-mini`).
 * **Limits.** Free tiers allow far fewer tokens per minute than a full cycle uses (about 280 000 input tokens over
   10–11 calls on 2026-11-14/15), so a fallback can fail on its quota too. Use one account per provider – several free
   keys of one provider to get around its limits break its terms.

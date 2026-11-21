@@ -9,7 +9,8 @@
 * Retries wait 5/15/45 s or the provider's own delay (429/5xx only); Gemini's thinking budget is fixed per effort, so
   answers are no longer cut off by thinking.
 * Tests: `MatrixPilotFallbackTests` (5), `LlmRetryTests`, `OpenAiCompatibleLanguageModelTests`, Gemini budget and quota
-  tests, `pilot-models.test.ts`. Not run against the new providers' live APIs (no keys) – see limitations.
+  tests, `pilot-models.test.ts`. Live: one structured OpenAI call with `gpt-5.4-mini` passed (2026-11-21); Groq,
+  OpenRouter, Mistral and Cerebras not run live (no keys) – see limitations.
 
 ## 2026-11-15 (6): Matrix Pilot in View (AMIR-37, D-67)
 
