@@ -654,8 +654,9 @@ public sealed class PilotService(
     private void RequireModel(EnablePilotRequest request)
     {
         if (!PilotModelChain.AnyAvailable(model)) throw new ConflictException("No language model is configured (Agent:Llm:Provider). Matrix Pilot needs one; it never falls back to fixed rules.");
-        if ((request.Provider is not null && (request.Provider != model.Provider || request.Model != model.Model)) ||
-            (request.Fallbacks is not null && request.Fallbacks != PilotModelChain.Key(model.Fallbacks)))
+        var primaryChanged = request.Provider is not null && (request.Provider != model.Provider || request.Model != model.Model);
+        var fallbacksChanged = request.Fallbacks is not null && request.Fallbacks != PilotModelChain.Key(model.Fallbacks);
+        if (primaryChanged || fallbacksChanged)
             throw new ConflictException($"The configured models changed to {PilotModelChain.Describe(model)} since you opened the confirmation. Review and confirm again.");
     }
 
