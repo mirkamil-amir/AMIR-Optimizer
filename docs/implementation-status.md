@@ -394,6 +394,8 @@
   with the reason when a metric is not meaningful. Inline they join as width allows; Full screen shows them next to the
   charts. The "Price history" column was folded into "Max": the years of stored prices ("5.0 years available", days and
   span on hover, "too short" below 61 prices). See market-data.md › Company figures.
+* Stock list "Sector/Industry" column right after Company (2026-11-23): the GICS-style sector with the source's own
+  industry under it (e.g. Information Technology / Semiconductors); the Company cell shows only the name.
 * Columns adapt to the list's real width and content: each sizes itself from its content between a minimum and a
   maximum (text wraps, numbers never), and the list shows as many columns as fit its measured width in priority order
   (`lib/column-fit.ts`: tick box, Ticker and both prices always; then 1 month, Company, Sector, Index – in full screen

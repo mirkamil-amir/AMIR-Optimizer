@@ -216,9 +216,19 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
         header: 'Company',
         className: 'min-w-[10rem]',
         cell: (s) => (
-          <div className="max-w-[22rem] whitespace-normal">
-            <div>{s.name ?? '—'}</div>
-            <div className="text-[11px] text-muted-foreground">{s.industry ?? s.sector ?? 'Unclassified'}</div>
+          <div className="max-w-[22rem] whitespace-normal">{s.name ?? '—'}</div>
+        ),
+      },
+    },
+    {
+      // Sector (one GICS-style classification across markets) with the source's own industry under it (owner, 2026-11-23).
+      priority: full ? 8 : 4, minWidth: 112,
+      column: {
+        key: 'sector', header: 'Sector/Industry', className: 'min-w-[7rem]',
+        cell: (s) => (
+          <div className="max-w-[12rem] whitespace-normal">
+            <div className="text-xs">{s.sector ?? 'Unclassified'}</div>
+            {s.industry && s.industry !== s.sector && <div className="text-[11px] text-muted-foreground">{s.industry}</div>}
           </div>
         ),
       },
@@ -244,10 +254,6 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
     ]),
     // Full screen shows them all next to the charts; inline they join as width allows (CAP first).
     ...FUNDAMENTAL_KEYS.map((key, i) => fundamentalColumn(key, full ? 3 + i / 10 : key === 'marketCap' ? 3 : 6 + i)),
-    {
-      priority: full ? 8 : 4, minWidth: 112,
-      column: { key: 'sector', header: 'Sector', className: 'min-w-[7rem]', cell: (s) => <span className="block max-w-[11rem] text-xs whitespace-normal">{s.sector ?? 'Unclassified'}</span> },
-    },
     {
       priority: full ? 9 : 5, minWidth: 96,
       column: {
