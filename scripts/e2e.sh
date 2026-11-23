@@ -21,6 +21,7 @@ export RATE_LIMIT_PER_MINUTE=6000
 export NEWS_YAHOO_ENABLED=false NEWS_OFFICIAL_FEEDS_ENABLED=false NEWS_MOCK_ENABLED=true
 export NEWS_STATISTICS_ENABLED=false NEWS_SEC_CONTACT= NEWS_SCHEDULE_ENABLED=false
 export PROFILES_WIKIPEDIA_ENABLED=false PROFILES_MOCK_ENABLED=true
+export FUNDAMENTALS_YAHOO_ENABLED=false FUNDAMENTALS_MOCK_ENABLED=true FUNDAMENTALS_SCHEDULED_ENABLED=false
 # Shared language model off (no key); Matrix Pilot uses its own Mock provider below.
 export AGENT_LLM_PROVIDER=None ANTHROPIC_API_KEY=
 # Matrix Pilot: the deterministic test script (provider Mock, labelled as a test model), cycles started by the specs only.

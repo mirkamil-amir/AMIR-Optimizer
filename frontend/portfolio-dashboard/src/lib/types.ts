@@ -1217,6 +1217,40 @@ export interface StockTrend {
   period: PeriodChange
 }
 
+/** One reported-figure metric: an amount in `currency` or a fraction (ROIC, growth) for the period ending `asOf`; null with the reason otherwise. */
+export interface FundamentalMetric {
+  value: number | null
+  currency: string | null
+  asOf: string | null
+  basis: string
+  limitation: string | null
+  /** Set when a growth rate is annualised over more than one fiscal year (the source skipped the year between). */
+  spanYears?: number | null
+}
+
+/** Company figures of a stock for the stock list (`GET /stocks/fundamentals`); amounts in the company's reporting currency (the list converts them). */
+export interface StockFundamentals {
+  symbol: string
+  status: 'Available' | 'Pending' | 'NotFound' | 'Error' | 'NotApplicable' | 'NotConfigured'
+  marketCap: FundamentalMetric | null
+  freeCashFlow: FundamentalMetric | null
+  roic: FundamentalMetric | null
+  revenueGrowth: FundamentalMetric | null
+  ebit: FundamentalMetric | null
+  ebitda: FundamentalMetric | null
+  peRatio: FundamentalMetric | null
+  revenue: FundamentalMetric | null
+  /** Banks, insurers and other financials: pre-tax income, pre-provision operating profit and return on equity. */
+  ebt: FundamentalMetric | null
+  ppop: FundamentalMetric | null
+  roe: FundamentalMetric | null
+  /** Financials sector: the list shows EBT/PPOP instead of EBIT/EBITDA and ROE instead of ROIC. */
+  usesFinancialMeasures: boolean
+  retrievedAtUtc: string | null
+  isSimulated: boolean
+  message: string | null
+}
+
 export interface PeriodChange {
   range: HistoryRange
   change: number | null

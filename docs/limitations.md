@@ -57,6 +57,15 @@
   and is refreshed at most every 30 days. 28 Nikkei 225 members and Insulet (PODD) have no linked article and show
   "currently unavailable". The stock-detail panel navigates within the current page of the stock list (50 rows).
 
+## Company figures (fundamentals)
+- From the unofficial Yahoo fundamentals API (personal, non-commercial use): about four fiscal years, no publication
+  dates – fine for display, but any later use in backtests or ML must assume a reporting lag to avoid look-ahead.
+- Amounts are converted into the list's price currency with the latest reference rate, also for past fiscal years (a
+  comparison, not the rate of the period). Currencies without an ECB rate (e.g. GEL) stay unconverted, so those rows are
+  not directly comparable. Columns are not sortable. P/E is the source's trailing figure and can lag the latest close.
+- ROIC uses book invested capital (debt + equity, cash not deducted) and the effective tax rate; not meaningful for banks
+  and insurers (shown as "—"). Market cap is the source's figure and can lag the latest close.
+
 ## News
 - Company news comes from Yahoo's unofficial search (personal, non-commercial use) and is linked to stocks only via
   Yahoo's own ticker tags: non-US coverage is sparse and untagged articles are missing. No summaries from that source.

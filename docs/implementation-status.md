@@ -387,7 +387,22 @@
 * The stock list adds a "1 month" column – change and sparkline as on the watchlist, from `GET /stocks/trends` (one
   request per page, same calculation as the watchlist, integration-tested against it). Full screen replaces it with
   "3 months" and "Max" (all stored history, range `MAX`; both loaded only while it is open; no 1-month or 1-year column
-  there, owner 2026-11-23) and adds "Price history" (stored days and span, "too short" below the 61 prices analyses need).
+  there, owner 2026-11-23).
+* Company-figure columns **Revenue**, **Revenue growth**, **CAP** (market capitalization), **EBIT/EBITDA**, **ROIC**,
+  **PE** and **FCF**, in this order after the charts (2026-11-23, AMIR-40): `GET /stocks/fundamentals`, figures fetched in the background from the Yahoo
+  fundamentals time series and stored in `FundamentalFacts`; amounts shown in the list's price currency (latest rate), "—"
+  with the reason when a metric is not meaningful. Inline they join as width allows; Full screen shows them next to the
+  charts. The "Price history" column was folded into "Max": the years of stored prices ("5.0 years available", days and
+  span on hover, "too short" below 61 prices). See market-data.md › Company figures.
+* Stock list "Sector/Industry" column right after Company (2026-11-23): the GICS-style sector with the source's own
+  industry under it (e.g. Information Technology / Semiconductors); the Company cell shows only the name.
+* Company figures for the whole catalogue (2026-11-23): a scheduled background run fetches every company (≈ 10 minutes
+  after start, then daily refreshes); pages someone is looking at go first. Cells show "…" while a page loads instead of "—".
+* Financials in the company-figure columns (2026-11-23): EBT/PPOP instead of EBIT/EBITDA and ROE instead of ROIC,
+  labelled in the cell ("EBT $9.7B/PPOP $11.8B", "ROE 8.8%"), with the reason on hover.
+* Revenue growth when the source skips the previous fiscal year (2026-11-23): annualised growth over the last two reported
+  years, marked "p.a. (2 yrs)" (F-FUN-003); the remaining "—" are zero/negative bases, currency changes in the source data
+  and one company without figures.
 * Columns adapt to the list's real width and content: each sizes itself from its content between a minimum and a
   maximum (text wraps, numbers never), and the list shows as many columns as fit its measured width in priority order
   (`lib/column-fit.ts`: tick box, Ticker and both prices always; then 1 month, Company, Sector, Index – in full screen
