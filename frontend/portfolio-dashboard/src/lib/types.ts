@@ -1238,6 +1238,12 @@ export interface StockFundamentals {
   ebitda: FundamentalMetric | null
   peRatio: FundamentalMetric | null
   revenue: FundamentalMetric | null
+  /** Banks, insurers and other financials: pre-tax income, pre-provision operating profit and return on equity. */
+  ebt: FundamentalMetric | null
+  ppop: FundamentalMetric | null
+  roe: FundamentalMetric | null
+  /** Financials sector: the list shows EBT/PPOP instead of EBIT/EBITDA and ROE instead of ROIC. */
+  usesFinancialMeasures: boolean
   retrievedAtUtc: string | null
   isSimulated: boolean
   message: string | null

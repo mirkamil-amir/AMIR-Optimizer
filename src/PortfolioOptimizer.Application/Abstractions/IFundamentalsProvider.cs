@@ -17,6 +17,11 @@ public interface IFundamentalsProvider
     string SourceName { get; }
     bool IsConfigured { get; }
     bool IsSimulated { get; }
+    /// <summary>
+    /// When the provider's set of requested figures last changed: figures fetched before it lack the new ones and are
+    /// fetched again once (must lie in the past, otherwise a listing would be re-fetched until then).
+    /// </summary>
+    DateTime ConceptsChangedAtUtc { get; }
     Task<ProviderFundamentals> GetAsync(string symbol, CancellationToken ct);
 }
 

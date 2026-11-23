@@ -1020,6 +1020,39 @@
       "verified": "2026-11-23"
     },
     {
+      "id": "F-FUN-007",
+      "name": "EBT and pre-provision operating profit of financials (stock list \"EBIT/EBITDA\" column)",
+      "status": "Correct under documented assumptions",
+      "severity": null,
+      "code": [
+        "src/PortfolioOptimizer.Application/MarketData/FundamentalMetrics.cs#Ppop",
+        "src/PortfolioOptimizer.Application/MarketData/FundamentalMetrics.cs#LatestFiscalYear"
+      ],
+      "tests": [
+        "FundamentalsTests.Bank_Ebt_IsPreTaxIncome_AndPpop_IsOperatingRevenueMinusNonInterestExpense"
+      ],
+      "skills": [
+        "market-data-fx"
+      ],
+      "verified": "2026-11-23"
+    },
+    {
+      "id": "F-FUN-008",
+      "name": "Return on equity of financials (stock list \"ROIC\" column)",
+      "status": "Correct under documented assumptions",
+      "severity": null,
+      "code": [
+        "src/PortfolioOptimizer.Application/MarketData/FundamentalMetrics.cs#Roe"
+      ],
+      "tests": [
+        "FundamentalsTests.Roe_IsNetIncomeOverAverageEquity"
+      ],
+      "skills": [
+        "market-data-fx"
+      ],
+      "verified": "2026-11-23"
+    },
+    {
       "id": "F-TRD-001",
       "name": "Trade proposal sizing",
       "status": "Verified correct",

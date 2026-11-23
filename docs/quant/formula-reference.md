@@ -835,6 +835,37 @@ currency; nothing is computed. Banks and insurers report no EBIT/EBITDA → null
 Latest trailing $P/E = P / \text{EPS}_{TTM}$ as published by the source on its as-of date (not recomputed from our
 prices); $P/E \le 0$ or missing (losses) → null with the reason.
 
+### F-FUN-007 · EBT and pre-provision operating profit of financials (stock list "EBIT/EBITDA" column)
+
+| Field | Value |
+|---|---|
+| Status | Correct under documented assumptions |
+| Code | `src/PortfolioOptimizer.Application/MarketData/FundamentalMetrics.cs#Ppop`; `src/PortfolioOptimizer.Application/MarketData/FundamentalMetrics.cs#LatestFiscalYear` |
+| Tests | `FundamentalsTests.Bank_Ebt_IsPreTaxIncome_AndPpop_IsOperatingRevenueMinusNonInterestExpense` |
+| Skills | market-data-fx |
+| Verified | 2026-11-23 |
+
+For Financials-sector companies (banks, insurers, exchanges; `FundamentalsService.IsFinancial`) the column shows
+EBT = reported pre-tax income and $\text{PPOP} = \text{operating revenue} - \text{non-interest expense}$ of the latest
+fiscal year with both inputs in one currency, labelled "EBT …/PPOP …". For banks interest is an operating cost, so EBT plays
+the role of EBIT and PPOP (profit before loan-loss provisions) that of EBITDA. Insurers and non-bank financials often report
+no non-interest expense → PPOP null with the reason.
+
+### F-FUN-008 · Return on equity of financials (stock list "ROIC" column)
+
+| Field | Value |
+|---|---|
+| Status | Correct under documented assumptions |
+| Code | `src/PortfolioOptimizer.Application/MarketData/FundamentalMetrics.cs#Roe` |
+| Tests | `FundamentalsTests.Roe_IsNetIncomeOverAverageEquity` |
+| Skills | market-data-fx |
+| Verified | 2026-11-23 |
+
+$\text{ROE} = \text{net income} / \overline{E}$, $\overline{E}$ = mean of shareholders' equity at the previous and this
+fiscal-year end (the year-end value alone when the previous one is missing); $\overline{E} \le 0$ → null. Shown as "ROE …"
+for Financials-sector companies instead of ROIC (debt is their raw material, so invested capital is not meaningful).
+Net income includes minority interests as reported by the source.
+
 ---
 
 ## Portfolio accounting and trading

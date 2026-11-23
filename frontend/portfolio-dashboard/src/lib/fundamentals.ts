@@ -2,6 +2,7 @@ import { date, money, num, pct } from './format'
 import type { FundamentalMetric, StockFundamentals } from './types'
 
 export type FundamentalKey = 'marketCap' | 'ebitEbitda' | 'roic' | 'peRatio' | 'freeCashFlow' | 'revenue' | 'revenueGrowth'
+type MetricKey = Exclude<FundamentalKey, 'ebitEbitda'>
 
 /** Column order of the stock list: revenue first, right after the charts (owner, 2026-11-23). */
 export const FUNDAMENTAL_KEYS: FundamentalKey[] = ['revenue', 'revenueGrowth', 'marketCap', 'ebitEbitda', 'roic', 'peRatio', 'freeCashFlow']
@@ -15,12 +16,12 @@ export const FUNDAMENTAL_COLUMNS: Record<FundamentalKey, { header: string; expla
   ebitEbitda: {
     header: 'EBIT/EBITDA',
     explanation:
-      'Earnings before interest and taxes / earnings before interest, taxes, depreciation and amortization, latest fiscal year. Banks and insurers report neither (—).',
+      'Earnings before interest and taxes / earnings before interest, taxes, depreciation and amortization, latest fiscal year. Financials (banks, insurers) report neither, so their row shows EBT (pre-tax income) / PPOP (pre-provision operating profit: operating revenue − non-interest expense) instead, marked in the cell.',
   },
   roic: {
     header: 'ROIC',
     explanation:
-      'Return on invested capital, latest fiscal year: EBIT × (1 − tax rate) ÷ average invested capital (debt + equity) at the start and end of the year. Not meaningful for banks and insurers, so shown as —.',
+      'Return on invested capital, latest fiscal year: EBIT × (1 − tax rate) ÷ average invested capital (debt + equity) at the start and end of the year. Not meaningful for financials, so their row shows ROE (net income ÷ average shareholders\' equity) instead, marked in the cell.',
   },
   peRatio: {
     header: 'PE',
@@ -68,21 +69,33 @@ export function fundamentalCell(f: StockFundamentals | undefined, key: Fundament
   if (f.status === 'Pending') return { text: '…', title: f.message ?? 'Company figures are being retrieved.', tone: 'muted' }
 
   if (key === 'ebitEbitda') {
-    const ebit = f.ebit
-    const ebitda = f.ebitda
-    if (ebit?.value == null && ebitda?.value == null) return unavailable(ebit ?? ebitda, f)
-    const a = ebit?.value != null ? convertAmount(ebit.value, ebit.currency, fx) : null
-    const b = ebitda?.value != null ? convertAmount(ebitda.value, ebitda.currency, fx) : null
+    // Financials: EBT / PPOP, labelled in the cell so they are not read as EBIT / EBITDA.
+    const bank = f.usesFinancialMeasures
+    const [first, second] = bank ? [f.ebt, f.ppop] : [f.ebit, f.ebitda]
+    const [l1, l2] = bank ? ['EBT ', 'PPOP '] : ['', '']
+    if (first?.value == null && second?.value == null) return unavailable(first ?? second, f)
+    const a = first?.value != null ? convertAmount(first.value, first.currency, fx) : null
+    const b = second?.value != null ? convertAmount(second.value, second.currency, fx) : null
     const notes = [
-      `EBIT / EBITDA, fiscal year ending ${date((ebit?.value != null ? ebit : ebitda)!.asOf)}.`,
-      ebit?.value == null ? ebit?.limitation : null,
-      ebitda?.value == null ? ebitda?.limitation : null,
+      bank
+        ? `Financials report no EBIT/EBITDA: EBT (pre-tax income) / PPOP (operating revenue − non-interest expense), fiscal year ending ${date((first?.value != null ? first : second)!.asOf)}.`
+        : `EBIT / EBITDA, fiscal year ending ${date((first?.value != null ? first : second)!.asOf)}.`,
+      first?.value == null ? first?.limitation : null,
+      second?.value == null ? second?.limitation : null,
       a?.note ?? b?.note,
     ]
-    return finish(f, `${a?.text ?? '—'}/${b?.text ?? '—'}`, notes, tone(ebit?.value ?? ebitda!.value!))
+    return finish(f, `${l1}${a?.text ?? '—'}/${l2}${b?.text ?? '—'}`, notes, tone(first?.value ?? second!.value!))
   }
 
-  const m: FundamentalMetric | null = f[key]
+  if (key === 'roic' && f.usesFinancialMeasures) {
+    const roe = f.roe
+    if (!roe || roe.value === null) return unavailable(roe, f)
+    return finish(f, `ROE ${pct(roe.value, 1)}`,
+      [`Financials: ROIC is not meaningful, so this is the return on equity (net income ÷ average shareholders' equity), fiscal year ending ${date(roe.asOf)}.`],
+      tone(roe.value))
+  }
+
+  const m: FundamentalMetric | null = f[key as MetricKey]
   if (!m || m.value === null) return unavailable(m, f)
   const period = key === 'marketCap' || key === 'peRatio' ? `as of ${date(m.asOf)}` : `fiscal year ending ${date(m.asOf)}`
   if (key === 'roic' || key === 'revenueGrowth') return finish(f, pct(m.value, 1), [`${m.basis}, ${period}.`], tone(m.value))

@@ -93,7 +93,7 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
   // Latest reference rates for the page's trading currencies and the companies' reporting currencies against the chosen
   // currency (one request per page).
   const fxInfo = useFxInfo()
-  const reported = (fundamentals.data ?? []).flatMap((f) => [f.marketCap, f.ebit, f.ebitda, f.freeCashFlow, f.revenue].map((m) => m?.currency ?? ''))
+  const reported = (fundamentals.data ?? []).flatMap((f) => [f.marketCap, f.ebit, f.ebitda, f.ebt, f.ppop, f.freeCashFlow, f.revenue].map((m) => m?.currency ?? ''))
   const foreign = [...new Set([...items.map((s) => s.quote.currency || s.currency), ...reported])].filter((c) => c && c !== priceCurrency).sort()
   const board = useFxBoard(priceCurrency, foreign)
   const boardRate = (c: string) => board.data?.rows.find((r) => r.quote === c)
@@ -108,9 +108,9 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
   const trends3m = useStockTrends(items.map((s) => s.symbol), '3M', fullScreen)
   const trendsMax = useStockTrends(items.map((s) => s.symbol), 'MAX', fullScreen)
   const fundamentalColumn = (key: FundamentalKey, priority: number) => ({
-    priority, minWidth: key === 'ebitEbitda' ? 120 : 88,
+    priority, minWidth: key === 'ebitEbitda' ? 136 : 88,
     column: {
-      key: `fundamental-${key}`, align: 'right' as const, className: key === 'ebitEbitda' ? 'min-w-[7rem]' : 'min-w-[5rem]',
+      key: `fundamental-${key}`, align: 'right' as const, className: key === 'ebitEbitda' ? 'min-w-[8rem]' : 'min-w-[5rem]',
       header: <InfoTip of={FUNDAMENTAL_COLUMNS[key].header}>{FUNDAMENTAL_COLUMNS[key].explanation}</InfoTip>,
       cell: (s: StockListItem) => (
         <FundamentalValue figures={fundamentals.data?.find((f) => f.symbol === s.symbol)} metric={key} loading={fundamentals.isLoading || fundamentals.isPlaceholderData} fx={amountFx} />

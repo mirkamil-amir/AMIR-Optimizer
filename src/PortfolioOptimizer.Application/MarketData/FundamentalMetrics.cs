@@ -14,7 +14,8 @@ public sealed record FundamentalMetric(double? Value, string? Currency, DateOnly
 
 public sealed record FundamentalMetricSet(
     FundamentalMetric MarketCap, FundamentalMetric FreeCashFlow, FundamentalMetric Roic, FundamentalMetric RevenueGrowth,
-    FundamentalMetric Ebit, FundamentalMetric Ebitda, FundamentalMetric PeRatio, FundamentalMetric Revenue);
+    FundamentalMetric Ebit, FundamentalMetric Ebitda, FundamentalMetric PeRatio, FundamentalMetric Revenue,
+    FundamentalMetric Ebt, FundamentalMetric Ppop, FundamentalMetric Roe);
 
 /// <summary>
 /// Metrics of the stock list computed from reported figures (formula reference F-FUN-001..004). Pure: no I/O, no
@@ -34,6 +35,10 @@ public static class FundamentalMetrics
         public const string Ebit = "EBIT";
         public const string Ebitda = "EBITDA";
         public const string PeRatio = "PeRatio";
+        public const string NetIncome = "NetIncome";
+        public const string StockholdersEquity = "StockholdersEquity";
+        public const string OperatingRevenue = "OperatingRevenue";
+        public const string NonInterestExpense = "NonInterestExpense";
         public const string PretaxIncome = "PretaxIncome";
         public const string TaxProvision = "TaxProvision";
         public const string InvestedCapital = "InvestedCapital";
@@ -49,7 +54,45 @@ public static class FundamentalMetrics
             LatestFiscalYear(facts, Concepts.Ebit, "EBIT, latest fiscal year", "EBIT is not reported (usual for banks and insurers)."),
             LatestFiscalYear(facts, Concepts.Ebitda, "EBITDA, latest fiscal year", "EBITDA is not reported (usual for banks and insurers)."),
             PeRatio(facts),
-            LatestFiscalYear(facts, Concepts.TotalRevenue, "Revenue, latest fiscal year", "The source reports no revenue."));
+            LatestFiscalYear(facts, Concepts.TotalRevenue, "Revenue, latest fiscal year", "The source reports no revenue."),
+            LatestFiscalYear(facts, Concepts.PretaxIncome, "EBT (pre-tax income), latest fiscal year", "The source reports no pre-tax income."),
+            Ppop(facts), Roe(facts));
+
+    /// <summary>
+    /// F-FUN-007: pre-provision operating profit of the latest fiscal year with both inputs: operating revenue − non-interest
+    /// expense (the bank equivalent of EBITDA: profit before loan-loss provisions and taxes).
+    /// </summary>
+    public static FundamentalMetric Ppop(IReadOnlyList<FactPoint> facts)
+    {
+        const string basis = "PPOP (operating revenue − non-interest expense), latest fiscal year";
+        foreach (var expense in Enumerable.Reverse(Series(facts, Concepts.NonInterestExpense, FiscalYear)))
+        {
+            var revenue = At(facts, Concepts.OperatingRevenue, expense.PeriodEnd);
+            if (revenue is null || revenue.Currency != expense.Currency) continue;
+            return new FundamentalMetric(revenue.Value - expense.Value, revenue.Currency, expense.PeriodEnd, basis, null);
+        }
+        return FundamentalMetric.Unavailable(basis, "Operating revenue or non-interest expense is not reported (usual for insurers and non-bank financials).");
+    }
+
+    /// <summary>
+    /// F-FUN-008: return on equity of the latest fiscal year: net income ÷ average shareholders' equity at the previous and
+    /// this year end (the year-end value alone when the previous one is missing); equity ≤ 0 → null.
+    /// </summary>
+    public static FundamentalMetric Roe(IReadOnlyList<FactPoint> facts)
+    {
+        const string basis = "Return on equity, latest fiscal year";
+        var equity = Series(facts, Concepts.StockholdersEquity, FiscalYear);
+        foreach (var income in Enumerable.Reverse(Series(facts, Concepts.NetIncome, FiscalYear)))
+        {
+            var end = equity.FirstOrDefault(e => e.PeriodEnd == income.PeriodEnd);
+            if (end is null || end.Currency != income.Currency) continue;
+            var start = PriorYear(equity, end);
+            var average = start is not null && start.Currency == end.Currency ? (start.Value + end.Value) / 2 : end.Value;
+            if (average <= 0) return FundamentalMetric.Unavailable(basis, "Shareholders' equity is zero or negative.");
+            return new FundamentalMetric(income.Value / average, null, income.PeriodEnd, basis, null);
+        }
+        return FundamentalMetric.Unavailable(basis, "Net income or shareholders' equity is not reported.");
+    }
 
     /// <summary>F-FUN-005: a reported figure of the latest fiscal year as published (revenue, EBIT, EBITDA), with its currency.</summary>
     public static FundamentalMetric LatestFiscalYear(IReadOnlyList<FactPoint> facts, string concept, string basis, string missing)

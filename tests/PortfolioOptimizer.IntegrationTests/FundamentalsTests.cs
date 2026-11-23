@@ -60,6 +60,7 @@ public sealed class FundamentalsTests : IAsyncLifetime
         Assert.Equal("USD", aapl.MarketCap!.Currency);
         Assert.Equal(new DateOnly(2025, 12, 31), aapl.FreeCashFlow!.AsOf);
         Assert.Equal(25, aapl.PeRatio!.Value);
+        Assert.False(aapl.UsesFinancialMeasures); // Information Technology
         Assert.True(aapl.Ebitda!.Value > aapl.Ebit!.Value);
         Assert.NotNull(aapl.Revenue!.Value);
 
@@ -75,7 +76,7 @@ public sealed class FundamentalsTests : IAsyncLifetime
     {
         (await _admin.PostJsonAsync("/api/v1/admin/catalogue/universes/FUNDTEST", new ImportUniverseRequest
         {
-            Csv = "symbol,name,country,currency\nBANKQ,Bank Co,US,USD\nMISSINGQ,Missing Co,US,USD\nFAILQ,Failing Co,US,USD",
+            Csv = "symbol,name,country,currency,sector\nBANKQ,Bank Co,US,USD,Financials\nMISSINGQ,Missing Co,US,USD,Industrials\nFAILQ,Failing Co,US,USD,Industrials",
             Name = "Fundamentals test", Country = "US", Currency = "USD", Source = "integration test",
         })).EnsureStatus(HttpStatusCode.OK);
 
@@ -86,6 +87,10 @@ public sealed class FundamentalsTests : IAsyncLifetime
         Assert.Contains("banks", bank.Roic.Limitation);
         Assert.Null(bank.Ebit!.Value);
         Assert.Null(bank.Ebitda!.Value);
+        // Financials show the bank measures instead: EBT 200, PPOP 1100 − 800, ROE 150 / ((900 + 1100) / 2) (scaled alike).
+        Assert.True(bank.UsesFinancialMeasures);
+        Assert.Equal(0.15, bank.Roe!.Value!.Value, 9);
+        Assert.Equal(bank.Ppop!.Value!.Value * 2 / 3, bank.Ebt!.Value!.Value, 3);
         Assert.NotNull(bank.RevenueGrowth!.Value);
 
         var missing = r.Single(x => x.Symbol == "MISSINGQ");

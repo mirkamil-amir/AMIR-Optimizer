@@ -13,6 +13,8 @@ public sealed record FundamentalMetricDto(double? Value, string? Currency, DateO
 /// Reported-figure metrics of one stock for the stock list. <see cref="Status"/>: Available, Pending (being fetched – ask
 /// again shortly), NotFound (the source has no figures), Error (the source failed and nothing is stored), NotApplicable
 /// (ETFs and indices), NotConfigured (no source enabled). Amounts are in the currency the company reports in, not converted.
+/// <see cref="UsesFinancialMeasures"/>: a Financials-sector company (banks, insurers, exchanges), for which the stock list
+/// shows EBT/PPOP instead of EBIT/EBITDA and ROE instead of ROIC.
 /// </summary>
 public sealed record StockFundamentalsDto(
     string Symbol,
@@ -25,6 +27,10 @@ public sealed record StockFundamentalsDto(
     FundamentalMetricDto? Ebitda,
     FundamentalMetricDto? PeRatio,
     FundamentalMetricDto? Revenue,
+    FundamentalMetricDto? Ebt,
+    FundamentalMetricDto? Ppop,
+    FundamentalMetricDto? Roe,
+    bool UsesFinancialMeasures,
     DateTime? RetrievedAtUtc,
     bool IsSimulated,
     string? Message);
@@ -56,7 +62,7 @@ public sealed class FundamentalsService(
         if (list.Count > MaxSymbols) throw new ValidationException("symbols", $"At most {MaxSymbols} symbols per request.");
         if (list.Count == 0) return [];
         var assets = await db.Assets.AsNoTracking().Where(a => list.Contains(a.Symbol))
-            .Select(a => new { a.Id, a.Symbol, a.AssetType }).ToDictionaryAsync(a => a.Symbol, ct);
+            .Select(a => new { a.Id, a.Symbol, a.AssetType, a.Sector }).ToDictionaryAsync(a => a.Symbol, ct);
         var provider = Provider;
         if (provider is null)
             return list.Where(assets.ContainsKey).Select(s => Empty(s, "NotConfigured", "Company figures are unavailable: no source is enabled.")).ToList();
@@ -68,7 +74,7 @@ public sealed class FundamentalsService(
             .GroupBy(f => f.AssetId)
             .ToDictionary(g => g.Key, g => g.Select(f => new FactPoint(f.Concept, f.PeriodType, f.PeriodEnd, (double)f.Value, f.Currency)).ToList());
 
-        var due = ids.Where(id => !states.TryGetValue(id, out var st) || st.Source != provider.Name || IsDue(st)).ToList();
+        var due = ids.Where(id => !states.TryGetValue(id, out var st) || st.Source != provider.Name || IsDue(st, provider)).ToList();
         if (due.Count > 0) scheduler.Schedule(due);
 
         return list.Where(assets.ContainsKey).Select(symbol =>
@@ -85,9 +91,10 @@ public sealed class FundamentalsService(
                     ? $"Showing figures retrieved on {state.RetrievedAtUtc:yyyy-MM-dd}; the latest refresh failed ({err})."
                     : null;
                 return new StockFundamentalsDto(symbol, "Available", Dto(m.MarketCap), Dto(m.FreeCashFlow), Dto(m.Roic), Dto(m.RevenueGrowth),
-                    Dto(m.Ebit), Dto(m.Ebitda), Dto(m.PeRatio), Dto(m.Revenue), state?.RetrievedAtUtc, provider.IsSimulated, message);
+                    Dto(m.Ebit), Dto(m.Ebitda), Dto(m.PeRatio), Dto(m.Revenue), Dto(m.Ebt), Dto(m.Ppop), Dto(m.Roe),
+                    IsFinancial(asset.Sector), state?.RetrievedAtUtc, provider.IsSimulated, message);
             }
-            if (state is null || scheduler.IsQueued(asset.Id) || (state.Status == FundamentalsFetchStatus.Available && IsDue(state)))
+            if (state is null || scheduler.IsQueued(asset.Id) || (state.Status == FundamentalsFetchStatus.Available && IsDue(state, provider)))
                 return Empty(symbol, "Pending", "Company figures are being retrieved.", provider.IsSimulated);
             return state.Status == FundamentalsFetchStatus.NotFound
                 ? Empty(symbol, "NotFound", $"Company figures are unavailable: {state.LastError ?? "the source has none for this listing."}", provider.IsSimulated)
@@ -105,7 +112,7 @@ public sealed class FundamentalsService(
         if (provider is null) return 0;
         var ids = await db.Assets.AsNoTracking().Where(a => a.AssetType == AssetType.Equity).OrderBy(a => a.Symbol).Select(a => a.Id).ToListAsync(ct);
         var states = await db.FundamentalsFetchStates.AsNoTracking().ToDictionaryAsync(s => s.AssetId, ct);
-        var due = ids.Where(id => !states.TryGetValue(id, out var st) || st.Source != provider.Name || IsDue(st)).ToList();
+        var due = ids.Where(id => !states.TryGetValue(id, out var st) || st.Source != provider.Name || IsDue(st, provider)).ToList();
         if (due.Count > 0) scheduler.Schedule(due, background: true);
         return due.Count;
     }
@@ -118,7 +125,7 @@ public sealed class FundamentalsService(
         var asset = await db.Assets.AsNoTracking().SingleOrDefaultAsync(a => a.Id == assetId, ct);
         if (asset is null || asset.AssetType != AssetType.Equity) return;
         var state = await db.FundamentalsFetchStates.SingleOrDefaultAsync(s => s.AssetId == assetId, ct);
-        if (state is not null && state.Source == provider.Name && !IsDue(state)) return;
+        if (state is not null && state.Source == provider.Name && !IsDue(state, provider)) return;
         if (state is null)
         {
             state = new FundamentalsFetchState { AssetId = assetId, Source = provider.Name, Status = FundamentalsFetchStatus.Error };
@@ -170,8 +177,13 @@ public sealed class FundamentalsService(
         await db.SaveChangesAsync(ct);
     }
 
-    private bool IsDue(FundamentalsFetchState s)
+    /// <summary>Banks, insurers and other financials: EBIT/EBITDA and ROIC are not meaningful for them.</summary>
+    public static bool IsFinancial(string? sector) => string.Equals(sector, "Financials", StringComparison.OrdinalIgnoreCase);
+
+    private bool IsDue(FundamentalsFetchState s, IFundamentalsProvider provider)
     {
+        // Fetched before the provider added figures: fetch once more (ConceptsChangedAtUtc lies in the past).
+        if (s.AttemptedAtUtc < provider.ConceptsChangedAtUtc) return true;
         var age = clock.GetUtcNow().UtcDateTime - s.AttemptedAtUtc;
         if (s.LastError is not null && s.Status != FundamentalsFetchStatus.NotFound) return age >= ErrorRetry;
         return s.Status switch
@@ -185,7 +197,7 @@ public sealed class FundamentalsService(
     private static FundamentalMetricDto Dto(FundamentalMetric m) => new(m.Value, m.Currency, m.AsOf, m.Basis, m.Limitation);
 
     private static StockFundamentalsDto Empty(string symbol, string status, string message, bool simulated = false) =>
-        new(symbol, status, null, null, null, null, null, null, null, null, null, simulated, message);
+        new(symbol, status, null, null, null, null, null, null, null, null, null, null, null, false, null, simulated, message);
 
     private static string Truncate(string s, int max) => s.Length <= max ? s : s[..max];
 }

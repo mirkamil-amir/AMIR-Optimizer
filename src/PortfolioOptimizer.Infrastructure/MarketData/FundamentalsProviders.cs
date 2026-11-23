@@ -41,6 +41,8 @@ public sealed class YahooFundamentalsProvider(HttpClient http, IOptions<YahooFun
         "TotalRevenue", "GrossProfit", "EBITDA", "EBIT", "PretaxIncome", "TaxProvision", "NetIncome", "DilutedEPS",
         "InvestedCapital", "TotalDebt", "StockholdersEquity", "CashAndCashEquivalents", "TotalAssets", "CurrentAssets",
         "CurrentLiabilities", "OrdinarySharesNumber", "OperatingCashFlow", "CapitalExpenditure", "FreeCashFlow", "CashDividendsPaid",
+        // Banks and insurers (EBT/PPOP and ROE instead of EBIT/EBITDA and ROIC; later cards: cost/income, net interest income).
+        "OperatingRevenue", "NonInterestExpense", "NetInterestIncome", "TangibleBookValue", "CreditLossesProvision",
     ];
 
     /// <summary>Trailing figures requested (dated values, e.g. the market capitalization on the day it was computed).</summary>
@@ -53,6 +55,8 @@ public sealed class YahooFundamentalsProvider(HttpClient http, IOptions<YahooFun
     public string SourceName => "Yahoo Finance (unofficial fundamentals API)";
     public bool IsConfigured => options.Value.Enabled;
     public bool IsSimulated => false;
+    /// <summary>Bank and insurer figures were added to <see cref="AnnualConcepts"/> (AMIR-40).</summary>
+    public DateTime ConceptsChangedAtUtc { get; } = new(2026, 11, 23, 17, 45, 0, DateTimeKind.Utc);
 
     public async Task<ProviderFundamentals> GetAsync(string symbol, CancellationToken ct)
     {
@@ -145,6 +149,7 @@ public sealed class MockFundamentalsProvider(IOptions<MockFundamentalsOptions> o
     public string SourceName => "Simulated figures (tests only)";
     public bool IsConfigured => options.Value.Enabled;
     public bool IsSimulated => true;
+    public DateTime ConceptsChangedAtUtc => DateTime.MinValue;
     public int Calls => _calls;
 
     public Task<ProviderFundamentals> GetAsync(string symbol, CancellationToken ct)
@@ -169,6 +174,11 @@ public sealed class MockFundamentalsProvider(IOptions<MockFundamentalsOptions> o
             new("TaxProvision", FundamentalMetrics.FiscalYear, y2, M(50), ccy),
             new("InvestedCapital", FundamentalMetrics.FiscalYear, y1, M(1400), ccy),
             new("InvestedCapital", FundamentalMetrics.FiscalYear, y2, M(1600), ccy),
+            new("NetIncome", FundamentalMetrics.FiscalYear, y2, M(150), ccy),
+            new("StockholdersEquity", FundamentalMetrics.FiscalYear, y1, M(900), ccy),
+            new("StockholdersEquity", FundamentalMetrics.FiscalYear, y2, M(1100), ccy),
+            new("OperatingRevenue", FundamentalMetrics.FiscalYear, y2, M(1100), ccy),
+            new("NonInterestExpense", FundamentalMetrics.FiscalYear, y2, M(800), ccy),
         };
         if (!symbol.StartsWith("BANK", StringComparison.OrdinalIgnoreCase))
         {

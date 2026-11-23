@@ -16,6 +16,10 @@ const base: StockFundamentals = {
   ebitda: metric(50e6, 'USD'),
   peRatio: metric(39.19, null, '2026-11-17'),
   revenue: metric(4.788e11, 'USD'),
+  ebt: metric(9.7e9, 'USD'),
+  ppop: metric(11.8e9, 'USD'),
+  roe: metric(0.088, null),
+  usesFinancialMeasures: false,
   retrievedAtUtc: '2026-11-23T10:00:00Z',
   isSimulated: false,
   message: null,
@@ -39,6 +43,19 @@ describe('fundamentalCell', () => {
     expect(fundamentalCell({ ...base, ebit: metric(null, null, undefined, 'No EBIT.') }, 'ebitEbitda', false).text).toBe('—/$50M')
     const bank = fundamentalCell({ ...base, ebit: metric(null, null, undefined, 'No EBIT (banks).'), ebitda: metric(null, null) }, 'ebitEbitda', false)
     expect(bank).toEqual({ text: '—', title: 'No EBIT (banks).', tone: 'muted' })
+  })
+
+  it('shows EBT/PPOP and ROE for financials, labelled in the cell', () => {
+    const bank = { ...base, usesFinancialMeasures: true, ebit: metric(null, null), ebitda: metric(null, null) }
+    const e = fundamentalCell(bank, 'ebitEbitda', false, toUsd)
+    expect(e.text).toBe('EBT $9.7B/PPOP $11.8B')
+    expect(e.title).toContain('Financials report no EBIT/EBITDA')
+    const r = fundamentalCell(bank, 'roic', false)
+    expect(r).toMatchObject({ text: 'ROE 8.8%', tone: 'positive' })
+    expect(r.title).toContain('return on equity')
+    const insurer = fundamentalCell({ ...bank, ppop: metric(null, null, undefined, 'Not reported by insurers.') }, 'ebitEbitda', false)
+    expect(insurer.text).toBe('EBT $9.7B/PPOP —')
+    expect(insurer.title).toContain('Not reported by insurers.')
   })
 
   it('converts amounts into the price currency with the latest rate, and says when there is none', () => {

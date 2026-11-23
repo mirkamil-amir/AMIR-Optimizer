@@ -131,11 +131,41 @@ public sealed class FundamentalsTests
         Assert.Contains("negative", FundamentalMetrics.PeRatio([]).Limitation);
     }
 
+    private static List<FactPoint> Bank() =>
+    [
+        Fy("PretaxIncome", Y25, 9.7), Fy("NetIncome", Y25, 6.9),
+        Fy("StockholdersEquity", Y24, 74.0), Fy("StockholdersEquity", Y25, 78.0),
+        Fy("OperatingRevenue", Y25, 32.1), Fy("NonInterestExpense", Y25, 20.3),
+    ];
+
+    [Fact]
+    public void Bank_Ebt_IsPreTaxIncome_AndPpop_IsOperatingRevenueMinusNonInterestExpense()
+    {
+        var m = FundamentalMetrics.Compute(Bank());
+        Assert.Equal(9.7, m.Ebt.Value);
+        Assert.Equal(32.1 - 20.3, m.Ppop.Value!.Value, 12);
+        Assert.Equal("EUR", m.Ppop.Currency);
+        Assert.Equal(Y25, m.Ppop.AsOf);
+        var insurer = Bank().Where(f => f.Concept != "NonInterestExpense").ToList();
+        Assert.Contains("insurers", FundamentalMetrics.Ppop(insurer).Limitation);
+    }
+
+    [Fact]
+    public void Roe_IsNetIncomeOverAverageEquity()
+    {
+        Assert.Equal(6.9 / 76.0, FundamentalMetrics.Roe(Bank()).Value!.Value, 12); // (74 + 78) / 2 = 76
+        var oneYear = Bank().Where(f => !(f.Concept == "StockholdersEquity" && f.PeriodEnd == Y24)).ToList();
+        Assert.Equal(6.9 / 78.0, FundamentalMetrics.Roe(oneYear).Value!.Value, 12);
+        var negative = Bank().Where(f => f.Concept != "StockholdersEquity").Append(Fy("StockholdersEquity", Y25, -3)).ToList();
+        Assert.Null(FundamentalMetrics.Roe(negative).Value);
+        Assert.Null(FundamentalMetrics.Roe(Bank().Where(f => f.Concept != "NetIncome").ToList()).Value);
+    }
+
     [Fact]
     public void NoFigures_EveryMetricIsUnavailable_NeverZero()
     {
         var m = FundamentalMetrics.Compute([]);
-        Assert.All(new[] { m.MarketCap, m.FreeCashFlow, m.Roic, m.RevenueGrowth, m.Ebit, m.Ebitda, m.PeRatio, m.Revenue }, x =>
+        Assert.All(new[] { m.MarketCap, m.FreeCashFlow, m.Roic, m.RevenueGrowth, m.Ebit, m.Ebitda, m.PeRatio, m.Revenue, m.Ebt, m.Ppop, m.Roe }, x =>
         {
             Assert.Null(x.Value);
             Assert.False(string.IsNullOrEmpty(x.Limitation));

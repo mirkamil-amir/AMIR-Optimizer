@@ -376,6 +376,11 @@ allows and always in Full screen), served by `GET /api/v1/stocks/fundamentals?sy
   FCF and Revenue in its price currency with the latest ECB reference rate (the same `GET /fx/board` rates as the
   converted price column; a comparison only, not the fiscal-year rate); without a rate (e.g. GEL) the amount stays in its
   own currency and the hover says why. London pence are normalized to pounds.
+* **Financials:** banks, insurers and exchanges (sector Financials) report no EBIT/EBITDA and ROIC is not meaningful for
+  them, so their row shows **EBT/PPOP** (pre-tax income / operating revenue − non-interest expense) and **ROE**, labelled
+  in the cell (F-FUN-007/008). Bank figures (operating revenue, non-interest expense, net interest income, tangible book
+  value, credit-loss provisions) were added on 2026-11-23; `IFundamentalsProvider.ConceptsChangedAtUtc` makes the scheduled
+  run fetch every listing fetched before that once more.
 * **Statuses:** `Available`, `Pending`, `NotFound`, `Error`, `NotApplicable` (ETFs, indices), `NotConfigured`. A metric
   without inputs is `null` with the reason (e.g. ROIC of banks and insurers, which report no EBIT) – shown as "—" with the
   reason on hover, never 0.
