@@ -3,8 +3,8 @@ import type { FundamentalMetric, StockFundamentals } from './types'
 
 export type FundamentalKey = 'marketCap' | 'ebitEbitda' | 'roic' | 'peRatio' | 'freeCashFlow' | 'revenue' | 'revenueGrowth'
 
-/** Column order of the stock list. */
-export const FUNDAMENTAL_KEYS: FundamentalKey[] = ['marketCap', 'ebitEbitda', 'roic', 'peRatio', 'freeCashFlow', 'revenue', 'revenueGrowth']
+/** Column order of the stock list: revenue first, right after the charts (owner, 2026-11-23). */
+export const FUNDAMENTAL_KEYS: FundamentalKey[] = ['revenue', 'revenueGrowth', 'marketCap', 'ebitEbitda', 'roic', 'peRatio', 'freeCashFlow']
 
 /** Column header and the explanation shown on it. */
 export const FUNDAMENTAL_COLUMNS: Record<FundamentalKey, { header: string; explanation: string }> = {

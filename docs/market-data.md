@@ -351,7 +351,7 @@ Shown in the stock-detail panel and on `/stocks/{symbol}` (`CompanyOverview`), s
 
 ## Company figures (fundamentals)
 
-Columns **CAP**, **EBIT/EBITDA** (one column, "$56M/$50M"), **ROIC**, **PE**, **FCF**, **Revenue** and **Revenue growth** of the stock list (Choose stocks / New portfolio, inline as width
+Columns **Revenue**, **Revenue growth**, **CAP**, **EBIT/EBITDA** (one column, "$56M/$50M"), **ROIC**, **PE** and **FCF** of the stock list (Choose stocks / New portfolio, inline as width
 allows and always in Full screen), served by `GET /api/v1/stocks/fundamentals?symbols=…` (≤ 200, one page;
 `FundamentalsService`). Formulas: F-FUN-001..006 in [formula-reference.md](quant/formula-reference.md).
 

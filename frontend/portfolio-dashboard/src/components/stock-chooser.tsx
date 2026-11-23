@@ -243,7 +243,7 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
       { priority: 2, minWidth: 120, column: { key: 'trend', header: '1 month', align: 'right' as const, className: CHART_COLUMN, cell: (s: StockListItem) => trendCell(s.symbol, trends, 'one month') } },
     ]),
     // Full screen shows them all next to the charts; inline they join as width allows (CAP first).
-    ...FUNDAMENTAL_KEYS.map((key, i) => fundamentalColumn(key, full ? 3 + i / 10 : i === 0 ? 3 : 6 + i)),
+    ...FUNDAMENTAL_KEYS.map((key, i) => fundamentalColumn(key, full ? 3 + i / 10 : key === 'marketCap' ? 3 : 6 + i)),
     {
       priority: full ? 8 : 4, minWidth: 112,
       column: { key: 'sector', header: 'Sector', className: 'min-w-[7rem]', cell: (s) => <span className="block max-w-[11rem] text-xs whitespace-normal">{s.sector ?? 'Unclassified'}</span> },
