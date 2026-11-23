@@ -960,7 +960,8 @@
       ],
       "tests": [
         "FundamentalsTests.RevenueGrowth_IsLatestOverPreviousYearMinusOne",
-        "FundamentalsTests.RevenueGrowth_NeedsConsecutiveYears_InOneCurrency_WithPositiveBase"
+        "FundamentalsTests.RevenueGrowth_NeedsConsecutiveYears_InOneCurrency_WithPositiveBase",
+        "FundamentalsTests.RevenueGrowth_SkippedYear_FallsBackToTwoYearAnnualisedGrowth"
       ],
       "skills": [
         "market-data-fx"

@@ -45,6 +45,12 @@ describe('fundamentalCell', () => {
     expect(bank).toEqual({ text: '—', title: 'No EBIT (banks).', tone: 'muted' })
   })
 
+  it('marks revenue growth annualised over two years', () => {
+    const g = fundamentalCell({ ...base, revenueGrowth: { ...metric(0.0322, null), basis: 'Revenue growth per year, 2024-09-30 to 2026-09-30', spanYears: 2 } }, 'revenueGrowth', false)
+    expect(g).toMatchObject({ text: '3.2% p.a. (2 yrs)', tone: 'positive' })
+    expect(g.title).toContain('2024-09-30 to 2026-09-30')
+  })
+
   it('shows EBT/PPOP and ROE for financials, labelled in the cell', () => {
     const bank = { ...base, usesFinancialMeasures: true, ebit: metric(null, null), ebitda: metric(null, null) }
     const e = fundamentalCell(bank, 'ebitEbitda', false, toUsd)

@@ -5,9 +5,10 @@ public sealed record FactPoint(string Concept, string PeriodType, DateOnly Perio
 
 /// <summary>
 /// A metric of the stock list: <see cref="Value"/> (an amount in <see cref="Currency"/>, or a fraction for ratios) for the
-/// period ending <see cref="AsOf"/>, or null with the reason in <see cref="Limitation"/>.
+/// period ending <see cref="AsOf"/>, or null with the reason in <see cref="Limitation"/>. <see cref="SpanYears"/> is set
+/// when a growth rate is annualised over more than one year (null = one year).
 /// </summary>
-public sealed record FundamentalMetric(double? Value, string? Currency, DateOnly? AsOf, string Basis, string? Limitation)
+public sealed record FundamentalMetric(double? Value, string? Currency, DateOnly? AsOf, string Basis, string? Limitation, int? SpanYears = null)
 {
     public static FundamentalMetric Unavailable(string basis, string reason) => new(null, null, null, basis, reason);
 }
@@ -48,6 +49,9 @@ public static class FundamentalMetrics
     /// <summary>Two fiscal-year ends count as consecutive years when 300–430 days apart (allows shifted year ends).</summary>
     public const int MinYearGapDays = 300;
     public const int MaxYearGapDays = 430;
+    /// <summary>Two fiscal-year ends count as two years apart when 665–795 days apart (the revenue-growth fallback).</summary>
+    public const int MinTwoYearGapDays = 665;
+    public const int MaxTwoYearGapDays = 795;
 
     public static FundamentalMetricSet Compute(IReadOnlyList<FactPoint> facts) =>
         new(MarketCap(facts), FreeCashFlow(facts), Roic(facts), RevenueGrowth(facts),
@@ -132,7 +136,11 @@ public static class FundamentalMetrics
         return new FundamentalMetric(latest.Value, latest.Currency, latest.PeriodEnd, basis, null);
     }
 
-    /// <summary>F-FUN-003: revenue of the latest fiscal year ÷ revenue of the year before − 1.</summary>
+    /// <summary>
+    /// F-FUN-003: revenue of the latest fiscal year ÷ revenue of the year before − 1. When the source skips the year before
+    /// but reports the one two years earlier, the annualised growth over those two years, √(R_FY ÷ R_FY−2) − 1, marked
+    /// with <see cref="FundamentalMetric.SpanYears"/> = 2.
+    /// </summary>
     public static FundamentalMetric RevenueGrowth(IReadOnlyList<FactPoint> facts)
     {
         const string basis = "Revenue growth, latest fiscal year over the year before";
@@ -140,7 +148,16 @@ public static class FundamentalMetrics
         if (revenue.Count == 0) return FundamentalMetric.Unavailable(basis, "The source reports no revenue.");
         var latest = revenue[^1];
         var prior = PriorYear(revenue, latest);
-        if (prior is null) return FundamentalMetric.Unavailable(basis, "Revenue of the previous fiscal year is not reported.");
+        if (prior is null)
+        {
+            var twoBack = revenue.LastOrDefault(f => latest.PeriodEnd.DayNumber - f.PeriodEnd.DayNumber is >= MinTwoYearGapDays and <= MaxTwoYearGapDays);
+            if (twoBack is null) return FundamentalMetric.Unavailable(basis, "Revenue of the previous fiscal year is not reported.");
+            var twoYearBasis = $"Revenue growth per year, fiscal year ending {twoBack.PeriodEnd:yyyy-MM-dd} to {latest.PeriodEnd:yyyy-MM-dd}, annualised over 2 years (the source does not report the year between)";
+            if (twoBack.Currency != latest.Currency) return FundamentalMetric.Unavailable(twoYearBasis, "The two years are reported in different currencies.");
+            if (twoBack.Value <= 0) return FundamentalMetric.Unavailable(twoYearBasis, "Revenue two fiscal years earlier is zero or negative.");
+            if (latest.Value < 0) return FundamentalMetric.Unavailable(twoYearBasis, "Revenue of the latest fiscal year is negative.");
+            return new FundamentalMetric(Math.Sqrt(latest.Value / twoBack.Value) - 1, null, latest.PeriodEnd, twoYearBasis, null, 2);
+        }
         if (prior.Currency != latest.Currency) return FundamentalMetric.Unavailable(basis, "The two years are reported in different currencies.");
         if (prior.Value <= 0) return FundamentalMetric.Unavailable(basis, "Revenue of the previous fiscal year is zero or negative.");
         return new FundamentalMetric(latest.Value / prior.Value - 1, null, latest.PeriodEnd, basis, null);

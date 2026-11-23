@@ -1224,6 +1224,8 @@ export interface FundamentalMetric {
   asOf: string | null
   basis: string
   limitation: string | null
+  /** Set when a growth rate is annualised over more than one fiscal year (the source skipped the year between). */
+  spanYears?: number | null
 }
 
 /** Company figures of a stock for the stock list (`GET /stocks/fundamentals`); amounts in the company's reporting currency (the list converts them). */

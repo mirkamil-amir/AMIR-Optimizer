@@ -37,7 +37,8 @@ export const FUNDAMENTAL_COLUMNS: Record<FundamentalKey, { header: string; expla
   },
   revenueGrowth: {
     header: 'Revenue growth',
-    explanation: 'Revenue of the latest fiscal year compared with the year before.',
+    explanation:
+      'Revenue of the latest fiscal year compared with the year before. When the source skips the year before, the growth per year over the last two reported years, marked "p.a. (2 yrs)".',
   },
 }
 
@@ -98,6 +99,8 @@ export function fundamentalCell(f: StockFundamentals | undefined, key: Fundament
   const m: FundamentalMetric | null = f[key as MetricKey]
   if (!m || m.value === null) return unavailable(m, f)
   const period = key === 'marketCap' || key === 'peRatio' ? `as of ${date(m.asOf)}` : `fiscal year ending ${date(m.asOf)}`
+  if (key === 'revenueGrowth' && m.spanYears && m.spanYears > 1)
+    return finish(f, `${pct(m.value, 1)} p.a. (${m.spanYears} yrs)`, [`${m.basis}.`], tone(m.value))
   if (key === 'roic' || key === 'revenueGrowth') return finish(f, pct(m.value, 1), [`${m.basis}, ${period}.`], tone(m.value))
   if (key === 'peRatio') return finish(f, num(m.value, 1), [`${m.basis}, ${period}.`], 'neutral')
   const a = convertAmount(m.value, m.currency, fx)

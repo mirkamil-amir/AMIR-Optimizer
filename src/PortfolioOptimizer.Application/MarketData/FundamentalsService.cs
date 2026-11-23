@@ -7,7 +7,7 @@ using PortfolioOptimizer.Domain;
 namespace PortfolioOptimizer.Application.MarketData;
 
 /// <summary>One metric of a stock: an amount in <see cref="Currency"/> or a fraction, for the period ending <see cref="AsOf"/>; null with the reason otherwise.</summary>
-public sealed record FundamentalMetricDto(double? Value, string? Currency, DateOnly? AsOf, string Basis, string? Limitation);
+public sealed record FundamentalMetricDto(double? Value, string? Currency, DateOnly? AsOf, string Basis, string? Limitation, int? SpanYears = null);
 
 /// <summary>
 /// Reported-figure metrics of one stock for the stock list. <see cref="Status"/>: Available, Pending (being fetched – ask
@@ -194,7 +194,7 @@ public sealed class FundamentalsService(
         };
     }
 
-    private static FundamentalMetricDto Dto(FundamentalMetric m) => new(m.Value, m.Currency, m.AsOf, m.Basis, m.Limitation);
+    private static FundamentalMetricDto Dto(FundamentalMetric m) => new(m.Value, m.Currency, m.AsOf, m.Basis, m.Limitation, m.SpanYears);
 
     private static StockFundamentalsDto Empty(string symbol, string status, string message, bool simulated = false) =>
         new(symbol, status, null, null, null, null, null, null, null, null, null, null, null, false, null, simulated, message);

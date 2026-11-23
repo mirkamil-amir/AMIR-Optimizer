@@ -52,6 +52,27 @@ public sealed class FundamentalsTests
     }
 
     [Fact]
+    public void RevenueGrowth_SkippedYear_FallsBackToTwoYearAnnualisedGrowth()
+    {
+        // Logista as reported by the source: FY2024 €12,986M, FY2025 missing, FY2026 €13,837M.
+        var facts = new List<FactPoint>
+        {
+            Fy("TotalRevenue", new DateOnly(2023, 9, 30), 12428), Fy("TotalRevenue", new DateOnly(2024, 9, 30), 12986),
+            Fy("TotalRevenue", new DateOnly(2026, 9, 30), 13837),
+        };
+        var m = FundamentalMetrics.RevenueGrowth(facts);
+        Assert.Equal(Math.Sqrt(13837.0 / 12986) - 1, m.Value!.Value, 12); // ≈ 3.2 % per year
+        Assert.Equal(2, m.SpanYears);
+        Assert.Contains("annualised over 2 years", m.Basis);
+        Assert.Contains("2024-09-30", m.Basis);
+        // The one-year rate is used whenever the year before exists.
+        Assert.Null(FundamentalMetrics.RevenueGrowth(Company()).SpanYears);
+        // Fallback base zero or in another currency: unavailable with the reason.
+        Assert.Null(FundamentalMetrics.RevenueGrowth([Fy("TotalRevenue", new DateOnly(2024, 9, 30), 0), Fy("TotalRevenue", new DateOnly(2026, 9, 30), 5)]).Value);
+        Assert.Null(FundamentalMetrics.RevenueGrowth([Fy("TotalRevenue", new DateOnly(2024, 9, 30), 5, "TRY"), Fy("TotalRevenue", new DateOnly(2026, 9, 30), 5)]).Value);
+    }
+
+    [Fact]
     public void Roic_UsesEffectiveTaxRate_AndAverageInvestedCapital()
     {
         // t = 45 / 180 = 0.25; NOPAT = 200 × 0.75 = 150; average IC = (900 + 1100) / 2 = 1000 → 15 %.
@@ -98,8 +119,8 @@ public sealed class FundamentalsTests
     public void RevenueGrowth_NeedsConsecutiveYears_InOneCurrency_WithPositiveBase()
     {
         Assert.Null(FundamentalMetrics.RevenueGrowth([Fy("TotalRevenue", Y25, 1000)]).Value);
-        // Two years apart: not "the year before".
-        Assert.Null(FundamentalMetrics.RevenueGrowth([Fy("TotalRevenue", new DateOnly(2023, 12, 31), 800), Fy("TotalRevenue", Y25, 1000)]).Value);
+        // Three years apart: neither the year before nor the two-year fallback.
+        Assert.Null(FundamentalMetrics.RevenueGrowth([Fy("TotalRevenue", new DateOnly(2022, 12, 31), 800), Fy("TotalRevenue", Y25, 1000)]).Value);
         Assert.Null(FundamentalMetrics.RevenueGrowth([Fy("TotalRevenue", Y24, 800, "USD"), Fy("TotalRevenue", Y25, 1000)]).Value);
         Assert.Null(FundamentalMetrics.RevenueGrowth([Fy("TotalRevenue", Y24, 0), Fy("TotalRevenue", Y25, 1000)]).Value);
         // A shifted year end (e.g. 52/53-week years) still counts.

@@ -786,12 +786,15 @@ reported but not comparable with industrial companies.
 |---|---|
 | Status | Correct under documented assumptions |
 | Code | `src/PortfolioOptimizer.Application/MarketData/FundamentalMetrics.cs#RevenueGrowth` |
-| Tests | `FundamentalsTests.RevenueGrowth_IsLatestOverPreviousYearMinusOne`; `FundamentalsTests.RevenueGrowth_NeedsConsecutiveYears_InOneCurrency_WithPositiveBase` |
+| Tests | `FundamentalsTests.RevenueGrowth_IsLatestOverPreviousYearMinusOne`; `FundamentalsTests.RevenueGrowth_NeedsConsecutiveYears_InOneCurrency_WithPositiveBase`; `FundamentalsTests.RevenueGrowth_SkippedYear_FallsBackToTwoYearAnnualisedGrowth` |
 | Skills | market-data-fx |
 | Verified | 2026-11-23 |
 
 $g = R_{FY} / R_{FY-1} - 1$ for the latest fiscal year and the one before (year ends 300–430 days apart, same currency,
-$R_{FY-1} > 0$); otherwise null with the reason. Nominal growth in the reporting currency (includes inflation, acquisitions).
+$R_{FY-1} > 0$). When the source skips the year before but reports the one two years earlier (665–795 days, same currency,
+$R_{FY-2} > 0$, $R_{FY} \ge 0$): $g = \sqrt{R_{FY}/R_{FY-2}} - 1$ per year, shown as "… p.a. (2 yrs)" with both year ends
+on hover (17 of 2,221 companies on 2026-11-23, mostly June/September year ends). Otherwise null with the reason.
+Nominal growth in the reporting currency (includes inflation, acquisitions).
 
 ### F-FUN-004 · Return on invested capital (stock list "ROIC")
 
