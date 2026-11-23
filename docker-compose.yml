@@ -61,6 +61,8 @@ services:
       # Company descriptions (docs/market-data.md#company-descriptions).
       MarketData__Profiles__Wikipedia__Enabled: ${PROFILES_WIKIPEDIA_ENABLED:-true}
       MarketData__Profiles__Mock__Enabled: ${PROFILES_MOCK_ENABLED:-false}
+      MarketData__Fundamentals__Yahoo__Enabled: ${FUNDAMENTALS_YAHOO_ENABLED:-true}
+      MarketData__Fundamentals__Mock__Enabled: ${FUNDAMENTALS_MOCK_ENABLED:-false}
       # Shared language model (docs/matrix-pilot.md). None = no model; Matrix Pilot then cannot decide.
       Agent__Llm__Provider: ${AGENT_LLM_PROVIDER:-None}
       # Empty model = the provider's default. The key comes from LLM_API_KEY (any provider) or ANTHROPIC_API_KEY.

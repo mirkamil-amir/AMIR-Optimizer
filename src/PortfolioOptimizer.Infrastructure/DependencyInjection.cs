@@ -113,6 +113,22 @@ public static class DependencyInjection
         services.AddTransient<ICompanyProfileProvider>(sp => sp.GetRequiredService<MockProfileProvider>());
         services.AddTransient<ICompanyProfileProvider>(sp => sp.GetRequiredService<WikipediaProfileProvider>());
 
+        // Reported figures (fundamentals): Yahoo fundamentals time series (unofficial), simulated provider for tests only
+        // (registered first so a test configuration that enables it takes precedence). Fetched by a background worker.
+        services.Configure<YahooFundamentalsOptions>(configuration.GetSection(YahooFundamentalsOptions.Section));
+        services.Configure<MockFundamentalsOptions>(configuration.GetSection(MockFundamentalsOptions.Section));
+        AddProviderClient<YahooFundamentalsProvider, YahooFundamentalsOptions>(services, (o, c) =>
+        {
+            c.BaseAddress = new Uri(o.BaseUrl);
+            c.Timeout = Timeout.InfiniteTimeSpan;
+        }, o => o.MinRequestIntervalMs, o => o.TimeoutSeconds);
+        services.AddSingleton<MockFundamentalsProvider>();
+        services.AddTransient<IFundamentalsProvider>(sp => sp.GetRequiredService<MockFundamentalsProvider>());
+        services.AddTransient<IFundamentalsProvider>(sp => sp.GetRequiredService<YahooFundamentalsProvider>());
+        services.AddSingleton<FundamentalsRefreshWorker>();
+        services.AddSingleton<IFundamentalsRefreshScheduler>(sp => sp.GetRequiredService<FundamentalsRefreshWorker>());
+        services.AddHostedService(sp => sp.GetRequiredService<FundamentalsRefreshWorker>());
+
         // News: Yahoo company news (unofficial), official central-bank RSS feeds, and a simulated provider for tests only.
         services.Configure<NewsOptions>(configuration.GetSection(NewsOptions.Section));
         services.Configure<YahooNewsOptions>(configuration.GetSection(YahooNewsOptions.Section));

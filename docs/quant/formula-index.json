@@ -919,6 +919,107 @@
       "verified": "2026-10-28"
     },
     {
+      "id": "F-FUN-001",
+      "name": "Market capitalization (stock list \"CAP\")",
+      "status": "Correct under documented assumptions",
+      "severity": null,
+      "code": [
+        "src/PortfolioOptimizer.Application/MarketData/FundamentalMetrics.cs#MarketCap"
+      ],
+      "tests": [
+        "FundamentalsTests.MarketCap_IsTheLatestTrailingValue_WithItsDateAndCurrency"
+      ],
+      "skills": [
+        "market-data-fx"
+      ],
+      "verified": "2026-11-23"
+    },
+    {
+      "id": "F-FUN-002",
+      "name": "Free cash flow (stock list \"FCF\")",
+      "status": "Correct under documented assumptions",
+      "severity": null,
+      "code": [
+        "src/PortfolioOptimizer.Application/MarketData/FundamentalMetrics.cs#FreeCashFlow"
+      ],
+      "tests": [
+        "FundamentalsTests.FreeCashFlow_IsTheLatestFiscalYear"
+      ],
+      "skills": [
+        "market-data-fx"
+      ],
+      "verified": "2026-11-23"
+    },
+    {
+      "id": "F-FUN-003",
+      "name": "Revenue growth (stock list)",
+      "status": "Correct under documented assumptions",
+      "severity": null,
+      "code": [
+        "src/PortfolioOptimizer.Application/MarketData/FundamentalMetrics.cs#RevenueGrowth"
+      ],
+      "tests": [
+        "FundamentalsTests.RevenueGrowth_IsLatestOverPreviousYearMinusOne",
+        "FundamentalsTests.RevenueGrowth_NeedsConsecutiveYears_InOneCurrency_WithPositiveBase"
+      ],
+      "skills": [
+        "market-data-fx"
+      ],
+      "verified": "2026-11-23"
+    },
+    {
+      "id": "F-FUN-004",
+      "name": "Return on invested capital (stock list \"ROIC\")",
+      "status": "Correct under documented assumptions",
+      "severity": null,
+      "code": [
+        "src/PortfolioOptimizer.Application/MarketData/FundamentalMetrics.cs#Roic"
+      ],
+      "tests": [
+        "FundamentalsTests.Roic_UsesEffectiveTaxRate_AndAverageInvestedCapital",
+        "FundamentalsTests.Roic_WithoutPreviousYear_UsesYearEndCapital",
+        "FundamentalsTests.Roic_PreTaxLoss_AssumesNoTax_AndTaxRateIsClamped",
+        "FundamentalsTests.Roic_Bank_WithoutEbit_IsUnavailableWithReason",
+        "FundamentalsTests.Roic_NonPositiveCapital_OrMissingTax_IsUnavailable"
+      ],
+      "skills": [
+        "market-data-fx"
+      ],
+      "verified": "2026-11-23"
+    },
+    {
+      "id": "F-FUN-005",
+      "name": "Reported figures of the latest fiscal year (stock list \"Revenue\", \"EBIT/EBITDA\")",
+      "status": "Correct under documented assumptions",
+      "severity": null,
+      "code": [
+        "src/PortfolioOptimizer.Application/MarketData/FundamentalMetrics.cs#LatestFiscalYear"
+      ],
+      "tests": [
+        "FundamentalsTests.ReportedFigures_AreTheLatestFiscalYear_AsPublished"
+      ],
+      "skills": [
+        "market-data-fx"
+      ],
+      "verified": "2026-11-23"
+    },
+    {
+      "id": "F-FUN-006",
+      "name": "Price/earnings ratio (stock list \"PE\")",
+      "status": "Correct under documented assumptions",
+      "severity": null,
+      "code": [
+        "src/PortfolioOptimizer.Application/MarketData/FundamentalMetrics.cs#PeRatio"
+      ],
+      "tests": [
+        "FundamentalsTests.PeRatio_IsTheLatestTrailingValue_AndNotShownForLosses"
+      ],
+      "skills": [
+        "market-data-fx"
+      ],
+      "verified": "2026-11-23"
+    },
+    {
       "id": "F-TRD-001",
       "name": "Trade proposal sizing",
       "status": "Verified correct",

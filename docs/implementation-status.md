@@ -387,7 +387,13 @@
 * The stock list adds a "1 month" column – change and sparkline as on the watchlist, from `GET /stocks/trends` (one
   request per page, same calculation as the watchlist, integration-tested against it). Full screen replaces it with
   "3 months" and "Max" (all stored history, range `MAX`; both loaded only while it is open; no 1-month or 1-year column
-  there, owner 2026-11-23) and adds "Price history" (stored days and span, "too short" below the 61 prices analyses need).
+  there, owner 2026-11-23).
+* Company-figure columns **CAP** (market capitalization), **EBIT/EBITDA**, **ROIC**, **PE**, **FCF**, **Revenue** and
+  **Revenue growth** (2026-11-23, AMIR-40): `GET /stocks/fundamentals`, figures fetched in the background from the Yahoo
+  fundamentals time series and stored in `FundamentalFacts`; amounts shown in the list's price currency (latest rate), "—"
+  with the reason when a metric is not meaningful. Inline they join as width allows; Full screen shows them next to the
+  charts. The "Price history" column was folded into "Max": the years of stored prices ("5.0 years available", days and
+  span on hover, "too short" below 61 prices). See market-data.md › Company figures.
 * Columns adapt to the list's real width and content: each sizes itself from its content between a minimum and a
   maximum (text wraps, numbers never), and the list shows as many columns as fit its measured width in priority order
   (`lib/column-fit.ts`: tick box, Ticker and both prices always; then 1 month, Company, Sector, Index – in full screen

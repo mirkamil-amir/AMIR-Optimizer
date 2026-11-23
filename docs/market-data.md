@@ -348,3 +348,31 @@ Shown in the stock-detail panel and on `/stocks/{symbol}` (`CompanyOverview`), s
   `MarketData:Profiles:Mock:Enabled` (simulated text for tests/e2e only; compose `PROFILES_MOCK_ENABLED`). Requests send a
   descriptive User-Agent as Wikimedia asks and are throttled to one per 200 ms.
 * `Asset.Description` is a legacy column that was never populated; it is no longer exposed.
+
+## Company figures (fundamentals)
+
+Columns **CAP**, **EBIT/EBITDA** (one column, "$56M/$50M"), **ROIC**, **PE**, **FCF**, **Revenue** and **Revenue growth** of the stock list (Choose stocks / New portfolio, inline as width
+allows and always in Full screen), served by `GET /api/v1/stocks/fundamentals?symbols=…` (≤ 200, one page;
+`FundamentalsService`). Formulas: F-FUN-001..006 in [formula-reference.md](quant/formula-reference.md).
+
+* **Source:** Yahoo Finance fundamentals time series (`/ws/fundamentals-timeseries/v1/finance/timeseries/{symbol}`,
+  `YahooFundamentalsProvider`), no key and no session crumb – unofficial like the chart API (personal, non-commercial use
+  only). About four fiscal years of annual figures plus dated trailing values (market cap, EV, P/E, P/B, P/S,
+  EV/EBITDA) for all markets tested (US, DE, CH, GB). One request per listing, one at a time, 250 ms apart. Figures the
+  stock list does not use yet (EBITDA, net income, assets, debt, cash, shares, dividends, …) are stored for later cards.
+* **Not used (verified 2026-11-23):** Alpha Vantage `OVERVIEW` is premium-only for the configured key; SEC EDGAR XBRL
+  `companyfacts` works (US filers only, with filing dates) but is not wired in yet.
+* **Fetching:** reads never wait for the source. Missing or due listings of the requested page are queued in
+  `FundamentalsRefreshWorker` (in memory, ≤ 2,000) and reported as `Pending`; the UI shows "…" and asks again every 2 s.
+  Figures are refreshed after 1 day, "not found" after 7 days, errors after 15 minutes; a failed refresh keeps the earlier
+  figures (served with a note). A successful fetch replaces the listing's figures of that source.
+* **Currencies:** the API returns amounts in the currency the source reports – the trading currency for CAP, the
+  reporting currency for statement figures (Bank of Georgia: GEL, listed in GBP). The stock list shows CAP, EBIT/EBITDA,
+  FCF and Revenue in its price currency with the latest ECB reference rate (the same `GET /fx/board` rates as the
+  converted price column; a comparison only, not the fiscal-year rate); without a rate (e.g. GEL) the amount stays in its
+  own currency and the hover says why. London pence are normalized to pounds.
+* **Statuses:** `Available`, `Pending`, `NotFound`, `Error`, `NotApplicable` (ETFs, indices), `NotConfigured`. A metric
+  without inputs is `null` with the reason (e.g. ROIC of banks and insurers, which report no EBIT) – shown as "—" with the
+  reason on hover, never 0.
+* **Configuration:** `MarketData:Fundamentals:Yahoo:Enabled` (default true; compose `FUNDAMENTALS_YAHOO_ENABLED`),
+  `MarketData:Fundamentals:Mock:Enabled` (simulated figures for tests/e2e only; compose `FUNDAMENTALS_MOCK_ENABLED`).

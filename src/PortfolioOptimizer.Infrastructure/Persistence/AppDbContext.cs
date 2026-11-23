@@ -45,6 +45,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<StrategyComparison> StrategyComparisons => Set<StrategyComparison>();
     public DbSet<WatchlistEntry> WatchlistEntries => Set<WatchlistEntry>();
     public DbSet<CompanyProfile> CompanyProfiles => Set<CompanyProfile>();
+    public DbSet<FundamentalFact> FundamentalFacts => Set<FundamentalFact>();
+    public DbSet<FundamentalsFetchState> FundamentalsFetchStates => Set<FundamentalsFetchState>();
     public DbSet<NewsArticle> NewsArticles => Set<NewsArticle>();
     public DbSet<NewsArticleAsset> NewsArticleAssets => Set<NewsArticleAsset>();
     public DbSet<NewsArticleClassification> NewsArticleClassifications => Set<NewsArticleClassification>();
@@ -172,6 +174,27 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             e.Property(x => x.LastError).HasMaxLength(300);
             // Shared reference data: removing an asset removes its cached description.
             e.HasOne(x => x.Asset).WithOne().HasForeignKey<CompanyProfile>(x => x.AssetId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<FundamentalFact>(e =>
+        {
+            e.Property(x => x.Source).HasMaxLength(40);
+            e.Property(x => x.Concept).HasMaxLength(80);
+            e.Property(x => x.PeriodType).HasMaxLength(8);
+            e.Property(x => x.Currency).HasMaxLength(3);
+            e.Property(x => x.Value).HasPrecision(28, 8);
+            e.HasIndex(x => new { x.AssetId, x.Source, x.Concept, x.PeriodType, x.PeriodEnd }).IsUnique();
+            // Shared reference data: removing an asset removes its figures.
+            e.HasOne(x => x.Asset).WithMany().HasForeignKey(x => x.AssetId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<FundamentalsFetchState>(e =>
+        {
+            e.HasKey(x => x.AssetId);
+            e.Property(x => x.Source).HasMaxLength(40);
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(16);
+            e.Property(x => x.LastError).HasMaxLength(300);
+            e.HasOne(x => x.Asset).WithOne().HasForeignKey<FundamentalsFetchState>(x => x.AssetId).OnDelete(DeleteBehavior.Cascade);
         });
 
         b.Entity<NewsArticle>(e =>
