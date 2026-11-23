@@ -93,11 +93,11 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
   const board = useFxBoard(priceCurrency, foreign)
   const boardRate = (c: string) => board.data?.rows.find((r) => r.quote === c)
   // One-month change and sparkline of the page's stocks, as on the watchlist (one batched request per page).
+  // Inline column only: full screen shows "3 months" and "Max" instead (owner, 2026-11-23).
   const trends = useStockTrends(items.map((s) => s.symbol))
   // The longer ranges are full-screen columns: loaded only while full screen is open.
   const trends3m = useStockTrends(items.map((s) => s.symbol), '3M', fullScreen)
-  const trends1y = useStockTrends(items.map((s) => s.symbol), '1Y', fullScreen)
-  const trends5y = useStockTrends(items.map((s) => s.symbol), '5Y', fullScreen)
+  const trendsMax = useStockTrends(items.map((s) => s.symbol), 'MAX', fullScreen)
   const pageSymbols = items.map((s) => s.symbol)
   const allOnPageSelected = pageSymbols.length > 0 && pageSymbols.every(selection.has)
   const cycleRunning = cycle.data?.status === 'Queued' || cycle.data?.status === 'Running'
@@ -217,13 +217,13 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
       },
     }] : []),
     { priority: 1, minWidth: 120, column: { key: 'price', header: priceCurrency ? 'Original price' : 'Latest price', align: 'right', className: `min-w-[7rem] ${PHONE_PAD}`, cell: (s) => <QuoteCell quote={s.quote} /> } },
-    { priority: 2, minWidth: 120, column: { key: 'trend', header: '1 month', align: 'right', className: CHART_COLUMN, cell: (s) => trendCell(s.symbol, trends, 'one month') } },
     ...(full ? [
-      { priority: 4, minWidth: 120, column: { key: 'trend3m', header: '3 months', align: 'right' as const, className: CHART_COLUMN, cell: (s: StockListItem) => trendCell(s.symbol, trends3m, 'three months') } },
-      { priority: 5, minWidth: 120, column: { key: 'trend1y', header: '1 year', align: 'right' as const, className: CHART_COLUMN, cell: (s: StockListItem) => trendCell(s.symbol, trends1y, 'one year') } },
-      { priority: 7, minWidth: 120, column: { key: 'trend5y', header: '5 years', align: 'right' as const, className: CHART_COLUMN, cell: (s: StockListItem) => trendCell(s.symbol, trends5y, 'five years') } },
+      { priority: 2, minWidth: 120, column: { key: 'trend3m', header: '3 months', align: 'right' as const, className: CHART_COLUMN, cell: (s: StockListItem) => trendCell(s.symbol, trends3m, 'three months') } },
+      { priority: 4, minWidth: 120, column: { key: 'trendMax', header: 'Max', align: 'right' as const, className: CHART_COLUMN, cell: (s: StockListItem) => trendCell(s.symbol, trendsMax, 'all stored history') } },
       { priority: 6, minWidth: 144, column: { key: 'history', header: 'Price history', className: 'min-w-[9rem]', cell: (s: StockListItem) => <HistoryCell stock={s} /> } },
-    ] : []),
+    ] : [
+      { priority: 2, minWidth: 120, column: { key: 'trend', header: '1 month', align: 'right' as const, className: CHART_COLUMN, cell: (s: StockListItem) => trendCell(s.symbol, trends, 'one month') } },
+    ]),
     {
       priority: full ? 8 : 4, minWidth: 112,
       column: { key: 'sector', header: 'Sector', className: 'min-w-[7rem]', cell: (s) => <span className="block max-w-[11rem] text-xs whitespace-normal">{s.sector ?? 'Unclassified'}</span> },

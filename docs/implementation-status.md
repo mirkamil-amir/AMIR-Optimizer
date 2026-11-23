@@ -385,9 +385,9 @@
   Full screen with the same search, filters and pager. Choose stocks of Math/ML Optimization shows the same column in
   the portfolio's fixed currency (no picker).
 * The stock list adds a "1 month" column – change and sparkline as on the watchlist, from `GET /stocks/trends` (one
-  request per page, same calculation as the watchlist, integration-tested against it). Full screen adds "3 months",
-  "1 year", "5 years" (loaded only while it is open) and "Price history" (stored days and span, "too short" below the 61
-  prices analyses need).
+  request per page, same calculation as the watchlist, integration-tested against it). Full screen replaces it with
+  "3 months" and "Max" (all stored history, range `MAX`; both loaded only while it is open; no 1-month or 1-year column
+  there, owner 2026-11-23) and adds "Price history" (stored days and span, "too short" below the 61 prices analyses need).
 * Columns adapt to the list's real width and content: each sizes itself from its content between a minimum and a
   maximum (text wraps, numbers never), and the list shows as many columns as fit its measured width in priority order
   (`lib/column-fit.ts`: tick box, Ticker and both prices always; then 1 month, Company, Sector, Index – in full screen
