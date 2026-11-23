@@ -362,8 +362,13 @@ allows and always in Full screen), served by `GET /api/v1/stocks/fundamentals?sy
   stock list does not use yet (EBITDA, net income, assets, debt, cash, shares, dividends, …) are stored for later cards.
 * **Not used (verified 2026-11-23):** Alpha Vantage `OVERVIEW` is premium-only for the configured key; SEC EDGAR XBRL
   `companyfacts` works (US filers only, with filing dates) but is not wired in yet.
-* **Fetching:** reads never wait for the source. Missing or due listings of the requested page are queued in
-  `FundamentalsRefreshWorker` (in memory, ≤ 2,000) and reported as `Pending`; the UI shows "…" and asks again every 2 s.
+* **Fetching:** reads never wait for the source. `ScheduledFundamentalsRefresh` queues every company whose figures are
+  missing or due one minute after start and then every 6 hours (the first run covers the whole catalogue, about 2,200
+  companies ≈ 10 minutes; later runs only figures older than a day). Missing or due listings of a page someone is looking
+  at go to a second queue that `FundamentalsRefreshWorker` always serves first (a listing waiting in the full run is moved
+  ahead, never fetched twice); they are reported as `Pending`, the UI shows "…" (also while a new page loads) and asks
+  again every 2 s. Config `MarketData:Fundamentals:ScheduledRefresh:Enabled` (default true; compose
+  `FUNDAMENTALS_SCHEDULED_ENABLED`, off in tests and e2e), `InitialDelaySeconds` (60), `IntervalHours` (6).
   Figures are refreshed after 1 day, "not found" after 7 days, errors after 15 minutes; a failed refresh keeps the earlier
   figures (served with a note). A successful fetch replaces the listing's figures of that source.
 * **Currencies:** the API returns amounts in the currency the source reports – the trading currency for CAP, the

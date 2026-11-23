@@ -26,10 +26,13 @@ public sealed class FundamentalsProviderException(string provider, string messag
     public bool IsRateLimit { get; } = isRateLimit;
 }
 
-/// <summary>Queues listings whose figures are missing or due; a background worker fetches them one after another.</summary>
+/// <summary>
+/// Queues listings whose figures are missing or due; a background worker fetches them one after another. Listings of a
+/// page someone is looking at go before those of the scheduled full refresh (background = true).
+/// </summary>
 public interface IFundamentalsRefreshScheduler
 {
-    void Schedule(IEnumerable<int> assetIds);
+    void Schedule(IEnumerable<int> assetIds, bool background = false);
     /// <summary>True while the listing waits in the queue or is being fetched.</summary>
     bool IsQueued(int assetId);
 }

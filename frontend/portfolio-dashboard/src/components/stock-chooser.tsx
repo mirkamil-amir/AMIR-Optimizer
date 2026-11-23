@@ -113,7 +113,7 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
       key: `fundamental-${key}`, align: 'right' as const, className: key === 'ebitEbitda' ? 'min-w-[7rem]' : 'min-w-[5rem]',
       header: <InfoTip of={FUNDAMENTAL_COLUMNS[key].header}>{FUNDAMENTAL_COLUMNS[key].explanation}</InfoTip>,
       cell: (s: StockListItem) => (
-        <FundamentalValue figures={fundamentals.data?.find((f) => f.symbol === s.symbol)} metric={key} loading={fundamentals.isLoading} fx={amountFx} />
+        <FundamentalValue figures={fundamentals.data?.find((f) => f.symbol === s.symbol)} metric={key} loading={fundamentals.isLoading || fundamentals.isPlaceholderData} fx={amountFx} />
       ),
     },
   })

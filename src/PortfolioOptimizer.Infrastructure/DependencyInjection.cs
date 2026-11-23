@@ -128,6 +128,8 @@ public static class DependencyInjection
         services.AddSingleton<FundamentalsRefreshWorker>();
         services.AddSingleton<IFundamentalsRefreshScheduler>(sp => sp.GetRequiredService<FundamentalsRefreshWorker>());
         services.AddHostedService(sp => sp.GetRequiredService<FundamentalsRefreshWorker>());
+        services.Configure<ScheduledFundamentalsOptions>(configuration.GetSection(ScheduledFundamentalsOptions.Section));
+        services.AddHostedService<ScheduledFundamentalsRefresh>();
 
         // News: Yahoo company news (unofficial), official central-bank RSS feeds, and a simulated provider for tests only.
         services.Configure<NewsOptions>(configuration.GetSection(NewsOptions.Section));

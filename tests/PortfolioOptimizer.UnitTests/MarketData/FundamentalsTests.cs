@@ -170,3 +170,39 @@ public sealed class FundamentalsTests
         Assert.Throws<FundamentalsProviderException>(() => YahooFundamentalsProvider.Parse(JsonDocument.Parse("""{"chart":{}}""").RootElement));
     }
 }
+
+/// <summary>Queue order of the fundamentals worker: page requests before the scheduled full refresh, each listing once.</summary>
+public sealed class FundamentalsQueueTests
+{
+    private static FundamentalsRefreshWorker Worker() =>
+        new(null!, Microsoft.Extensions.Logging.Abstractions.NullLogger<FundamentalsRefreshWorker>.Instance);
+
+    private static List<int> Drain(FundamentalsRefreshWorker w)
+    {
+        var order = new List<int>();
+        while (w.TryTakeNext(out var id)) order.Add(id);
+        return order;
+    }
+
+    [Fact]
+    public void PageRequests_GoBeforeTheFullRefresh_AndArePromotedOutOfIt()
+    {
+        var w = Worker();
+        w.Schedule([1, 2, 3, 4], background: true);
+        w.Schedule([9, 3]); // 3 already waits in the background queue: moved ahead, not fetched twice
+        w.Schedule([2], background: true); // already queued: ignored
+        Assert.True(w.IsQueued(3));
+        Assert.Equal([9, 3, 1, 2, 4], Drain(w));
+    }
+
+    [Fact]
+    public void AListingBeingFetched_IsNotQueuedAgain()
+    {
+        var w = Worker();
+        w.Schedule([5], background: true);
+        Assert.True(w.TryTakeNext(out var id));
+        Assert.Equal(5, id);
+        w.Schedule([5]); // a page view while it is being fetched
+        Assert.False(w.TryTakeNext(out _));
+    }
+}

@@ -95,6 +95,21 @@ public sealed class FundamentalsService(
         }).ToList();
     }
 
+    /// <summary>
+    /// Queues every individual company whose figures are missing or due behind page requests (the scheduled full refresh),
+    /// so the stock list shows figures without waiting. Returns how many were queued.
+    /// </summary>
+    public async Task<int> ScheduleDueAsync(CancellationToken ct)
+    {
+        var provider = Provider;
+        if (provider is null) return 0;
+        var ids = await db.Assets.AsNoTracking().Where(a => a.AssetType == AssetType.Equity).OrderBy(a => a.Symbol).Select(a => a.Id).ToListAsync(ct);
+        var states = await db.FundamentalsFetchStates.AsNoTracking().ToDictionaryAsync(s => s.AssetId, ct);
+        var due = ids.Where(id => !states.TryGetValue(id, out var st) || st.Source != provider.Name || IsDue(st)).ToList();
+        if (due.Count > 0) scheduler.Schedule(due, background: true);
+        return due.Count;
+    }
+
     /// <summary>Fetches one listing's figures if they are missing or due (called by the background worker).</summary>
     public async Task RefreshAsync(int assetId, CancellationToken ct)
     {

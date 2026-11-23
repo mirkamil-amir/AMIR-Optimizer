@@ -100,6 +100,24 @@ public sealed class FundamentalsTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ScheduledRefresh_QueuesEveryCompanyWithoutFigures_AndNotFetchedOnesAgain()
+    {
+        async Task<int> Run()
+        {
+            using var scope = _factory.Services.CreateScope();
+            return await scope.ServiceProvider.GetRequiredService<FundamentalsService>().ScheduleDueAsync(CancellationToken.None);
+        }
+        var first = await Run();
+        Assert.True(first > 10, $"queued {first}"); // every seeded company, no ETFs or indices
+
+        // Page requests go ahead of the run and are served once fetched.
+        var r = await Settled("AAPL,MSFT,NVDA");
+        Assert.All(r, x => Assert.Equal("Available", x.Status));
+        // Stored figures are not due again: a later run queues fewer companies (independent of how far the run got).
+        Assert.True(await Run() < first);
+    }
+
+    [Fact]
     public async Task RequiresSignIn_AndLimitsThePageSize()
     {
         using var anonymous = _factory.CreateClient();

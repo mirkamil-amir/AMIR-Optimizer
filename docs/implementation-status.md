@@ -396,6 +396,8 @@
   span on hover, "too short" below 61 prices). See market-data.md › Company figures.
 * Stock list "Sector/Industry" column right after Company (2026-11-23): the GICS-style sector with the source's own
   industry under it (e.g. Information Technology / Semiconductors); the Company cell shows only the name.
+* Company figures for the whole catalogue (2026-11-23): a scheduled background run fetches every company (≈ 10 minutes
+  after start, then daily refreshes); pages someone is looking at go first. Cells show "…" while a page loads instead of "—".
 * Columns adapt to the list's real width and content: each sizes itself from its content between a minimum and a
   maximum (text wraps, numbers never), and the list shows as many columns as fit its measured width in priority order
   (`lib/column-fit.ts`: tick box, Ticker and both prices always; then 1 month, Company, Sector, Index – in full screen

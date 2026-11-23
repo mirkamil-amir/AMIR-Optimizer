@@ -59,6 +59,7 @@ public sealed class ApiFactory(string connectionString) : WebApplicationFactory<
         builder.UseSetting("MarketData:Profiles:Mock:Enabled", "true");
         builder.UseSetting("MarketData:Fundamentals:Yahoo:Enabled", "false");
         builder.UseSetting("MarketData:Fundamentals:Mock:Enabled", "true");
+        builder.UseSetting("MarketData:Fundamentals:ScheduledRefresh:Enabled", "false");
         // Shared language model off unless a test injects a scripted mock model (Matrix Pilot tests do).
         builder.UseSetting("Agent:Llm:Provider", "None");
         // Matrix Pilot: tests start cycles themselves (no timer).
