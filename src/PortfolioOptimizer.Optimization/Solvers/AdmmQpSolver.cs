@@ -24,6 +24,10 @@ public sealed class AdmmQpSolver : IQuadraticProgramSolver
         var p = problem.P;
         var q = problem.Q;
         var a = problem.A;
+        // The iteration's products A·x and Aᵀ·v use a sparse copy when A is mostly zeros – portfolio problems are mostly
+        // bound rows with one entry each (228 stocks: 30 µs instead of 278 µs per iteration, docs/performance.md #19).
+        // The KKT factorization and the polish keep the dense matrix.
+        var aOp = MostlyZero(a) ? Matrix<double>.Build.SparseOfMatrix(a) : a;
         var l = problem.Lower;
         var u = problem.Upper;
 
@@ -46,7 +50,7 @@ public sealed class AdmmQpSolver : IQuadraticProgramSolver
         {
             x = Vector<double>.Build.DenseOfArray(wx);
             y = Vector<double>.Build.DenseOfArray(wy);
-            z = Project(a * x, l, u);
+            z = Project(aOp * x, l, u);
         }
         double primRes = double.PositiveInfinity, dualRes = double.PositiveInfinity;
         var status = QpStatus.MaxIterationsReached;
@@ -60,9 +64,9 @@ public sealed class AdmmQpSolver : IQuadraticProgramSolver
             var xPrev = x;
             var yPrev = y;
 
-            var rhs = s.Sigma * x - q + a.TransposeThisAndMultiply(rho.PointwiseMultiply(z) - y);
+            var rhs = s.Sigma * x - q + aOp.TransposeThisAndMultiply(rho.PointwiseMultiply(z) - y);
             var xTilde = factor.Solve(rhs);
-            var zTilde = a * xTilde;
+            var zTilde = aOp * xTilde;
 
             x = s.Alpha * xTilde + (1 - s.Alpha) * x;
             var zHat = s.Alpha * zTilde + (1 - s.Alpha) * z;
@@ -77,9 +81,9 @@ public sealed class AdmmQpSolver : IQuadraticProgramSolver
             if (!AllFinite(x) || !AllFinite(y))
                 return Fail(QpStatus.NumericalError, n, m, "Iterates diverged to non-finite values.");
 
-            var ax = a * x;
+            var ax = aOp * x;
             var px = p * x;
-            var aty = a.TransposeThisAndMultiply(y);
+            var aty = aOp.TransposeThisAndMultiply(y);
             primRes = m == 0 ? 0 : (ax - z).InfinityNorm();
             dualRes = (px + q + aty).InfinityNorm();
 
@@ -94,13 +98,13 @@ public sealed class AdmmQpSolver : IQuadraticProgramSolver
                 break;
             }
 
-            if (IsPrimalInfeasible(a, l, u, y - yPrev, s.EpsInfeasible))
+            if (IsPrimalInfeasible(aOp, l, u, y - yPrev, s.EpsInfeasible))
             {
                 status = QpStatus.PrimalInfeasible;
                 break;
             }
 
-            if (IsDualInfeasible(p, q, a, l, u, x - xPrev, s.EpsInfeasible))
+            if (IsDualInfeasible(p, q, aOp, l, u, x - xPrev, s.EpsInfeasible))
             {
                 status = QpStatus.DualInfeasible;
                 break;
@@ -183,12 +187,17 @@ public sealed class AdmmQpSolver : IQuadraticProgramSolver
     {
         var n = problem.Variables;
         var (active, lowCount) = (set.Rows, set.LowCount);
-        var (kkt, kktReg, rhs) = BuildKkt(problem, active, lowCount, s.PolishDelta);
-        if (SolveRefined(kkt, kktReg, rhs, s.PolishRefinementSteps) is not { } sol) return null;
-
-        var xPol = sol.SubVector(0, n);
-        var yPol = Vector<double>.Build.Dense(problem.Constraints);
-        for (var r = 0; r < active.Length; r++) yPol[active[r]] = sol[n + r];
+        Vector<double> xPol, yPol;
+        if (SolveReduced(problem, active, lowCount, s) is { } reduced)
+            (xPol, yPol) = reduced;
+        else
+        {
+            var (kkt, kktReg, rhs) = BuildKkt(problem, active, lowCount, s.PolishDelta);
+            if (SolveRefined(kkt, kktReg, rhs, s.PolishRefinementSteps) is not { } sol) return null;
+            xPol = sol.SubVector(0, n);
+            yPol = Vector<double>.Build.Dense(problem.Constraints);
+            for (var r = 0; r < active.Length; r++) yPol[active[r]] = sol[n + r];
+        }
         if (!DualSignsHold(problem, active, lowCount, yPol)) return null;
 
         var prim = PrimalResidual(problem, problem.A * xPol);
@@ -265,6 +274,89 @@ public sealed class AdmmQpSolver : IQuadraticProgramSolver
         return (kkt, kktReg, rhs);
     }
 
+    /// <summary>
+    /// The polish KKT system with the variables pinned by active single-entry rows (bounds) eliminated (AMIR-46): an active
+    /// row c·x_j = b fixes x_j = b/c, the free variables and the other active rows solve
+    /// [P_ff, A_Gfᵀ; A_Gf, 0]·[x_f; y_G] = [−q_f − P_fF·x_F; b_G − A_GF·x_F] (same regularization and refinement as the
+    /// full system), and each pinned row's multiplier follows from its variable's stationarity:
+    /// y_r = −(P·x + q + A_Gᵀ·y_G)_j / c. Exactly the full system's solution, but of the size of the free variables
+    /// (~30 instead of ~460 on a 228-stock frontier). Null – use the full system – when a variable is pinned by two active
+    /// rows, no variable is free, or the reduced solve fails.
+    /// </summary>
+    private static (Vector<double> X, Vector<double> Y)? SolveReduced(QuadraticProgram problem, int[] active, int lowCount, QpSettings s)
+    {
+        var n = problem.Variables;
+        var a = problem.A;
+        var fixedValue = new double?[n];
+        var pinRow = new int[n];
+        var general = new List<int>(); // active rows with several entries, in active-set order
+        var generalLow = new List<bool>();
+        for (var r = 0; r < active.Length; r++)
+        {
+            var row = active[r];
+            var bound = r < lowCount ? problem.Lower[row] : problem.Upper[row];
+            var column = -1;
+            for (var j = 0; j < n; j++)
+            {
+                if (a[row, j] == 0) continue;
+                if (column >= 0) { column = -2; break; }
+                column = j;
+            }
+            if (column == -1) return null; // an empty active row: leave it to the full system
+            if (column == -2)
+            {
+                general.Add(row);
+                generalLow.Add(r < lowCount);
+                continue;
+            }
+            if (fixedValue[column] is not null) return null; // pinned twice
+            fixedValue[column] = bound / a[row, column];
+            pinRow[column] = row;
+        }
+        var free = Enumerable.Range(0, n).Where(j => fixedValue[j] is null).ToArray();
+        if (free.Length == 0) return null;
+
+        var nf = free.Length;
+        var size = nf + general.Count;
+        var kkt = Matrix<double>.Build.Dense(size, size);
+        var kktReg = Matrix<double>.Build.Dense(size, size);
+        var rhs = Vector<double>.Build.Dense(size);
+        for (var i = 0; i < nf; i++)
+        {
+            var fi = free[i];
+            var r0 = -problem.Q[fi];
+            for (var j = 0; j < n; j++)
+                if (fixedValue[j] is { } v) r0 -= problem.P[fi, j] * v;
+            rhs[i] = r0;
+            for (var k = 0; k < nf; k++)
+                kkt[i, k] = kktReg[i, k] = problem.P[fi, free[k]];
+            kktReg[i, i] += s.PolishDelta;
+        }
+        for (var g = 0; g < general.Count; g++)
+        {
+            var row = general[g];
+            var b = generalLow[g] ? problem.Lower[row] : problem.Upper[row];
+            for (var j = 0; j < n; j++)
+                if (fixedValue[j] is { } v) b -= a[row, j] * v;
+            for (var k = 0; k < nf; k++)
+                kkt[nf + g, k] = kkt[k, nf + g] = kktReg[nf + g, k] = kktReg[k, nf + g] = a[row, free[k]];
+            kktReg[nf + g, nf + g] = -s.PolishDelta;
+            rhs[nf + g] = b;
+        }
+        if (SolveRefined(kkt, kktReg, rhs, s.PolishRefinementSteps) is not { } sol) return null;
+
+        var x = Vector<double>.Build.Dense(n);
+        for (var j = 0; j < n; j++) x[j] = fixedValue[j] ?? 0;
+        for (var k = 0; k < nf; k++) x[free[k]] = sol[k];
+        var y = Vector<double>.Build.Dense(problem.Constraints);
+        for (var g = 0; g < general.Count; g++) y[general[g]] = sol[nf + g];
+        // Stationarity of each pinned variable gives its row's multiplier.
+        var gradient = problem.P * x + problem.Q + a.TransposeThisAndMultiply(y);
+        for (var j = 0; j < n; j++)
+            if (fixedValue[j] is not null) y[pinRow[j]] = -gradient[j] / a[pinRow[j], j];
+        return AllFinite(x) && AllFinite(y) ? (x, y) : null;
+    }
+
     /// <summary>Solves the regularized system and refines against the plain one; null when it fails or is not finite.</summary>
     private static Vector<double>? SolveRefined(Matrix<double> kkt, Matrix<double> kktReg, Vector<double> rhs, int refinementSteps)
     {
@@ -308,6 +400,17 @@ public sealed class AdmmQpSolver : IQuadraticProgramSolver
         for (var i = 0; i < problem.Constraints; i++)
             prim = Math.Max(prim, Math.Max(problem.Lower[i] - ax[i], ax[i] - problem.Upper[i]));
         return prim;
+    }
+
+    /// <summary>At most a quarter of the entries are non-zero (then sparse products are cheaper than dense ones).</summary>
+    private static bool MostlyZero(Matrix<double> a)
+    {
+        if (a.RowCount == 0 || a.ColumnCount == 0) return false;
+        var nonZero = 0L;
+        for (var i = 0; i < a.RowCount; i++)
+            for (var j = 0; j < a.ColumnCount; j++)
+                if (a[i, j] != 0) nonZero++;
+        return nonZero * 4 <= (long)a.RowCount * a.ColumnCount;
     }
 
     private static Cholesky<double> Factor(Matrix<double> p, Matrix<double> a, Vector<double> rho, double sigma)
