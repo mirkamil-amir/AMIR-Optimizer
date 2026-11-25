@@ -576,7 +576,7 @@ with polished solutions (~1e-9).
 |---|---|
 | Status | Correct under documented assumptions |
 | Code | `src/PortfolioOptimizer.Optimization/Solvers/AdmmQpSolver.cs#Solve`; `src/PortfolioOptimizer.Optimization/Solvers/QuadraticProgram.cs#QuadraticProgram` |
-| Tests | `OptimizerTests.QpSolver_SolvesSimpleBoxProblem`; `OptimizerTests.QpSolver_DetectsInfeasibleConstraints`; `OptimizerTests.HighlyCorrelatedAssets_ProduceValidWeights`; `LargeUniverseTests.Universe120_MaxSharpeAndFrontier_ArePinned_AndEveryPointIsValid` |
+| Tests | `OptimizerTests.QpSolver_SolvesSimpleBoxProblem`; `OptimizerTests.QpSolver_DetectsInfeasibleConstraints`; `OptimizerTests.HighlyCorrelatedAssets_ProduceValidWeights`; `LargeUniverseTests.Universe120_MaxSharpeAndFrontier_ArePinned_AndEveryPointIsValid`; `OptimizerTests.QpSolver_PolishWithBoundsAndBudget_GivesTheClosedFormAndMultipliers`; `OptimizerTests.QpSolver_VariablePinnedTwice_AndEveryVariablePinned_StillSolve` |
 | Skills | optimization-backtesting |
 | Verified | 2026-11-25 |
 
@@ -587,7 +587,10 @@ closed forms and an independent validator). Speed-ups without a change of the al
 weights, statistics and frontiers on a real 228-stock universe and the pinned 120-stock universe): an early polish whose
 active set already failed in the same solve is not tried again – its outcome is a function of the active set (AMIR-44);
 the iteration's products A·x and Aᵀ·v use a sparse copy of A when at most a quarter of its entries are non-zero – the
-same non-zero terms in the same order (AMIR-45). See docs/performance.md #17 and #19.
+same non-zero terms in the same order (AMIR-45). The polish solves the KKT system with the weights pinned by active
+bound rows eliminated (x_j = b/c; multipliers of those rows from stationarity) – algebraically the full system's
+solution, of the size of the free weights; results within 3·10⁻¹⁵ of the full system on the real universe, the pins
+unchanged; closed-form test incl. multipliers (AMIR-46). See docs/performance.md #17, #19 and #20.
 
 ---
 
