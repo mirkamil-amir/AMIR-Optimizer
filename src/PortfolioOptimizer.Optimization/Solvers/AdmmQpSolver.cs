@@ -24,6 +24,10 @@ public sealed class AdmmQpSolver : IQuadraticProgramSolver
         var p = problem.P;
         var q = problem.Q;
         var a = problem.A;
+        // The iteration's products A·x and Aᵀ·v use a sparse copy when A is mostly zeros – portfolio problems are mostly
+        // bound rows with one entry each (228 stocks: 30 µs instead of 278 µs per iteration, docs/performance.md #19).
+        // The KKT factorization and the polish keep the dense matrix.
+        var aOp = MostlyZero(a) ? Matrix<double>.Build.SparseOfMatrix(a) : a;
         var l = problem.Lower;
         var u = problem.Upper;
 
@@ -46,7 +50,7 @@ public sealed class AdmmQpSolver : IQuadraticProgramSolver
         {
             x = Vector<double>.Build.DenseOfArray(wx);
             y = Vector<double>.Build.DenseOfArray(wy);
-            z = Project(a * x, l, u);
+            z = Project(aOp * x, l, u);
         }
         double primRes = double.PositiveInfinity, dualRes = double.PositiveInfinity;
         var status = QpStatus.MaxIterationsReached;
@@ -60,9 +64,9 @@ public sealed class AdmmQpSolver : IQuadraticProgramSolver
             var xPrev = x;
             var yPrev = y;
 
-            var rhs = s.Sigma * x - q + a.TransposeThisAndMultiply(rho.PointwiseMultiply(z) - y);
+            var rhs = s.Sigma * x - q + aOp.TransposeThisAndMultiply(rho.PointwiseMultiply(z) - y);
             var xTilde = factor.Solve(rhs);
-            var zTilde = a * xTilde;
+            var zTilde = aOp * xTilde;
 
             x = s.Alpha * xTilde + (1 - s.Alpha) * x;
             var zHat = s.Alpha * zTilde + (1 - s.Alpha) * z;
@@ -77,9 +81,9 @@ public sealed class AdmmQpSolver : IQuadraticProgramSolver
             if (!AllFinite(x) || !AllFinite(y))
                 return Fail(QpStatus.NumericalError, n, m, "Iterates diverged to non-finite values.");
 
-            var ax = a * x;
+            var ax = aOp * x;
             var px = p * x;
-            var aty = a.TransposeThisAndMultiply(y);
+            var aty = aOp.TransposeThisAndMultiply(y);
             primRes = m == 0 ? 0 : (ax - z).InfinityNorm();
             dualRes = (px + q + aty).InfinityNorm();
 
@@ -94,13 +98,13 @@ public sealed class AdmmQpSolver : IQuadraticProgramSolver
                 break;
             }
 
-            if (IsPrimalInfeasible(a, l, u, y - yPrev, s.EpsInfeasible))
+            if (IsPrimalInfeasible(aOp, l, u, y - yPrev, s.EpsInfeasible))
             {
                 status = QpStatus.PrimalInfeasible;
                 break;
             }
 
-            if (IsDualInfeasible(p, q, a, l, u, x - xPrev, s.EpsInfeasible))
+            if (IsDualInfeasible(p, q, aOp, l, u, x - xPrev, s.EpsInfeasible))
             {
                 status = QpStatus.DualInfeasible;
                 break;
@@ -308,6 +312,17 @@ public sealed class AdmmQpSolver : IQuadraticProgramSolver
         for (var i = 0; i < problem.Constraints; i++)
             prim = Math.Max(prim, Math.Max(problem.Lower[i] - ax[i], ax[i] - problem.Upper[i]));
         return prim;
+    }
+
+    /// <summary>At most a quarter of the entries are non-zero (then sparse products are cheaper than dense ones).</summary>
+    private static bool MostlyZero(Matrix<double> a)
+    {
+        if (a.RowCount == 0 || a.ColumnCount == 0) return false;
+        var nonZero = 0L;
+        for (var i = 0; i < a.RowCount; i++)
+            for (var j = 0; j < a.ColumnCount; j++)
+                if (a[i, j] != 0) nonZero++;
+        return nonZero * 4 <= (long)a.RowCount * a.ColumnCount;
     }
 
     private static Cholesky<double> Factor(Matrix<double> p, Matrix<double> a, Vector<double> rho, double sigma)
