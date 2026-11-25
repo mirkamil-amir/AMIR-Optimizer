@@ -396,6 +396,8 @@
   span on hover, "too short" below 61 prices). See market-data.md › Company figures.
 * Stock list "Sector/Industry" column right after Company (2026-11-23): the GICS-style sector with the source's own
   industry under it (e.g. Information Technology / Semiconductors); the Company cell shows only the name.
+* Accounting card on the stock page opened from Radar (2026-11-25, AMIR-42): the same card and draggable edge as in the
+  stock-detail panel, beside the price history; overview and news below.
 * Accounting card in the stock-detail panel (2026-11-25, AMIR-41): beside the price history, years or quarters of income
   statement, balance sheet, cash flow and ratios plus valuation, from `GET /stocks/{symbol}/financials`; company overview
   and key facts moved under the two cards. See market-data.md › Company figures.

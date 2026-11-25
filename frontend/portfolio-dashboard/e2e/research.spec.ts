@@ -87,12 +87,16 @@ test('watchlist: a row opens the stock; previous/next step through the watchlist
   const nav = page.getByRole('navigation', { name: 'Watchlist navigation' })
   await expect(nav.getByText('1 of 2')).toBeVisible()
   await expect(nav.getByRole('button', { name: 'Previous stock' })).toBeDisabled()
+  // Price history and the accounting card side by side, with the draggable edge between them (simulated figures).
+  await expect(page.getByRole('table', { name: new RegExp(`^Income statement of ${first}, fiscal years`) })).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByRole('separator', { name: 'Resize price history and accounting' })).toBeVisible()
 
   await nav.getByRole('link', { name: `Next stock: ${second}` }).click()
   await expect(page).toHaveURL(new RegExp(`/stocks/${second}$`))
   await expect(page.getByRole('heading', { name: new RegExp(`^${second} ·`) })).toBeVisible()
   await expect(nav.getByText('2 of 2')).toBeVisible()
   await expect(nav.getByRole('button', { name: 'Next stock' })).toBeDisabled()
+  await expect(page.getByRole('table', { name: new RegExp(`^Income statement of ${second}, fiscal years`) })).toBeVisible({ timeout: 30_000 })
 
   await nav.getByRole('link', { name: `Previous stock: ${first}` }).click()
   await expect(page).toHaveURL(new RegExp(`/stocks/${first}$`))

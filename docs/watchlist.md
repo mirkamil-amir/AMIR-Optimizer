@@ -19,6 +19,13 @@ orders, never changes a portfolio, optimization run or the temporary stock selec
 There is no background refresh per watchlist: quotes are refreshed by the existing sign-in/scheduled cycle and by the
 explicit actions above, so opening the page never triggers uncontrolled provider requests.
 
+## Stock page
+
+A row opens `/stocks/:symbol`: latest price with provenance, then the price history and the **Accounting** card side by
+side (stacked on narrower screens) with a draggable edge between them – the same card and edge as in the stock browser's
+detail panel (see [market-data.md](market-data.md#company-figures-fundamentals)) – then the company overview and company
+news. Previous/next step through the watchlist order.
+
 ## Price history and period change
 
 `GET /api/v1/stocks/{symbol}/history?range=…` returns stored daily bars of the active source (`PriceHistory.Slice`,
