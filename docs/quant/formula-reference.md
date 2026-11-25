@@ -576,14 +576,18 @@ with polished solutions (~1e-9).
 |---|---|
 | Status | Correct under documented assumptions |
 | Code | `src/PortfolioOptimizer.Optimization/Solvers/AdmmQpSolver.cs#Solve`; `src/PortfolioOptimizer.Optimization/Solvers/QuadraticProgram.cs#QuadraticProgram` |
-| Tests | `OptimizerTests.QpSolver_SolvesSimpleBoxProblem`; `OptimizerTests.QpSolver_DetectsInfeasibleConstraints`; `OptimizerTests.HighlyCorrelatedAssets_ProduceValidWeights` |
+| Tests | `OptimizerTests.QpSolver_SolvesSimpleBoxProblem`; `OptimizerTests.QpSolver_DetectsInfeasibleConstraints`; `OptimizerTests.HighlyCorrelatedAssets_ProduceValidWeights`; `LargeUniverseTests.Universe120_MaxSharpeAndFrontier_ArePinned_AndEveryPointIsValid` |
 | Skills | optimization-backtesting |
-| Verified | 2026-10-28 |
+| Verified | 2026-11-25 |
 
 $\min \tfrac12 x^\top Px + q^\top x$ s.t. $l \le Ax \le u$; Stellato et al. (2020), "OSQP: an operator splitting solver for
 quadratic programs", *Math. Programming Computation* 12: dense KKT with Cholesky, α = 1.6, adaptive ρ, infeasibility
 certificates, active-set polish. The solver internals were not re-derived in this audit (tests check results against
-closed forms and an independent validator).
+closed forms and an independent validator). Speed-ups without a change of the algorithm or its results (bit-identical
+weights, statistics and frontiers on a real 228-stock universe and the pinned 120-stock universe): an early polish whose
+active set already failed in the same solve is not tried again – its outcome is a function of the active set (AMIR-44);
+the iteration's products A·x and Aᵀ·v use a sparse copy of A when at most a quarter of its entries are non-zero – the
+same non-zero terms in the same order (AMIR-45). See docs/performance.md #17 and #19.
 
 ---
 

@@ -698,12 +698,13 @@
       "tests": [
         "OptimizerTests.QpSolver_SolvesSimpleBoxProblem",
         "OptimizerTests.QpSolver_DetectsInfeasibleConstraints",
-        "OptimizerTests.HighlyCorrelatedAssets_ProduceValidWeights"
+        "OptimizerTests.HighlyCorrelatedAssets_ProduceValidWeights",
+        "LargeUniverseTests.Universe120_MaxSharpeAndFrontier_ArePinned_AndEveryPointIsValid"
       ],
       "skills": [
         "optimization-backtesting"
       ],
-      "verified": "2026-10-28"
+      "verified": "2026-11-25"
     },
     {
       "id": "F-BT-001",
