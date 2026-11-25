@@ -21,11 +21,12 @@ import { UniverseNav } from '@/components/universe-nav'
 import { describeScope, emptyScope, scopeParts, type UniverseScope } from '@/lib/universe-scope'
 import { errorMessage } from '@/lib/api'
 import {
-  useFxBoard, useFxInfo, useMarkets, useStockTrends, useQuoteRefreshCycle, useRefreshQuotes, useSectors, useStocks, type StockSort,
+  useFxBoard, useFxInfo, useMarkets, useStockFundamentals, useStockTrends, useQuoteRefreshCycle, useRefreshQuotes, useSectors, useStocks, type StockSort,
 } from '@/lib/queries'
 import { age, symbolsNeedingRefresh } from '@/lib/quote-status'
 import { useSelection } from '@/lib/selection'
-import type { Market, QuoteRefreshRun, StockListItem, StockTrend } from '@/lib/types'
+import type { Market, QuoteRefreshRun, StockFundamentals, StockListItem, StockTrend } from '@/lib/types'
+import { FUNDAMENTAL_COLUMNS, FUNDAMENTAL_KEYS, fundamentalCell, historyYears, type AmountConversion, type FundamentalKey } from '@/lib/fundamentals'
 import { date, num } from '@/lib/format'
 import { countryOfSymbol, indexName } from '@/lib/markets'
 import { fitColumns } from '@/lib/column-fit'
@@ -87,17 +88,35 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
   const qc = useQueryClient()
 
   const items = stocks.data?.items ?? []
-  // Latest reference rates for the page's trading currencies against the chosen currency (one request per page).
+  // Company figures (CAP, EBIT/EBITDA, ROIC, PE, FCF, revenue, growth) of the page; fetched in the background, polled while pending.
+  const fundamentals = useStockFundamentals(items.map((s) => s.symbol))
+  // Latest reference rates for the page's trading currencies and the companies' reporting currencies against the chosen
+  // currency (one request per page).
   const fxInfo = useFxInfo()
-  const foreign = [...new Set(items.map((s) => s.quote.currency || s.currency))].filter((c) => c && c !== priceCurrency).sort()
+  const reported = (fundamentals.data ?? []).flatMap((f) => [f.marketCap, f.ebit, f.ebitda, f.ebt, f.ppop, f.freeCashFlow, f.revenue].map((m) => m?.currency ?? ''))
+  const foreign = [...new Set([...items.map((s) => s.quote.currency || s.currency), ...reported])].filter((c) => c && c !== priceCurrency).sort()
   const board = useFxBoard(priceCurrency, foreign)
   const boardRate = (c: string) => board.data?.rows.find((r) => r.quote === c)
+  // Amounts of the company-figure columns in the price currency, like the converted price (latest rate, a comparison only).
+  const amountFx: AmountConversion | undefined = priceCurrency
+    ? { to: priceCurrency, rate: (c) => { const r = boardRate(c); return r?.rate ? { rate: r.rate, date: r.observationDate } : null } }
+    : undefined
   // One-month change and sparkline of the page's stocks, as on the watchlist (one batched request per page).
   // Inline column only: full screen shows "3 months" and "Max" instead (owner, 2026-11-23).
   const trends = useStockTrends(items.map((s) => s.symbol))
   // The longer ranges are full-screen columns: loaded only while full screen is open.
   const trends3m = useStockTrends(items.map((s) => s.symbol), '3M', fullScreen)
   const trendsMax = useStockTrends(items.map((s) => s.symbol), 'MAX', fullScreen)
+  const fundamentalColumn = (key: FundamentalKey, priority: number) => ({
+    priority, minWidth: key === 'ebitEbitda' ? 136 : 88,
+    column: {
+      key: `fundamental-${key}`, align: 'right' as const, className: key === 'ebitEbitda' ? 'min-w-[8rem]' : 'min-w-[5rem]',
+      header: <InfoTip of={FUNDAMENTAL_COLUMNS[key].header}>{FUNDAMENTAL_COLUMNS[key].explanation}</InfoTip>,
+      cell: (s: StockListItem) => (
+        <FundamentalValue figures={fundamentals.data?.find((f) => f.symbol === s.symbol)} metric={key} loading={fundamentals.isLoading || fundamentals.isPlaceholderData} fx={amountFx} />
+      ),
+    },
+  })
   const pageSymbols = items.map((s) => s.symbol)
   const allOnPageSelected = pageSymbols.length > 0 && pageSymbols.every(selection.has)
   const cycleRunning = cycle.data?.status === 'Queued' || cycle.data?.status === 'Running'
@@ -197,9 +216,19 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
         header: 'Company',
         className: 'min-w-[10rem]',
         cell: (s) => (
-          <div className="max-w-[22rem] whitespace-normal">
-            <div>{s.name ?? '—'}</div>
-            <div className="text-[11px] text-muted-foreground">{s.industry ?? s.sector ?? 'Unclassified'}</div>
+          <div className="max-w-[22rem] whitespace-normal">{s.name ?? '—'}</div>
+        ),
+      },
+    },
+    {
+      // Sector (one GICS-style classification across markets) with the source's own industry under it (owner, 2026-11-23).
+      priority: full ? 8 : 4, minWidth: 112,
+      column: {
+        key: 'sector', header: 'Sector/Industry', className: 'min-w-[7rem]',
+        cell: (s) => (
+          <div className="max-w-[12rem] whitespace-normal">
+            <div className="text-xs">{s.sector ?? 'Unclassified'}</div>
+            {s.industry && s.industry !== s.sector && <div className="text-[11px] text-muted-foreground">{s.industry}</div>}
           </div>
         ),
       },
@@ -219,15 +248,12 @@ export function StockChooser({ trayActions, priceCurrency, onPriceCurrencyChange
     { priority: 1, minWidth: 120, column: { key: 'price', header: priceCurrency ? 'Original price' : 'Latest price', align: 'right', className: `min-w-[7rem] ${PHONE_PAD}`, cell: (s) => <QuoteCell quote={s.quote} /> } },
     ...(full ? [
       { priority: 2, minWidth: 120, column: { key: 'trend3m', header: '3 months', align: 'right' as const, className: CHART_COLUMN, cell: (s: StockListItem) => trendCell(s.symbol, trends3m, 'three months') } },
-      { priority: 4, minWidth: 120, column: { key: 'trendMax', header: 'Max', align: 'right' as const, className: CHART_COLUMN, cell: (s: StockListItem) => trendCell(s.symbol, trendsMax, 'all stored history') } },
-      { priority: 6, minWidth: 144, column: { key: 'history', header: 'Price history', className: 'min-w-[9rem]', cell: (s: StockListItem) => <HistoryCell stock={s} /> } },
+      { priority: 4, minWidth: 120, column: { key: 'trendMax', header: 'Max', align: 'right' as const, className: CHART_COLUMN, cell: (s: StockListItem) => trendCell(s.symbol, trendsMax, 'all stored history', <HistorySpan stock={s} />) } },
     ] : [
       { priority: 2, minWidth: 120, column: { key: 'trend', header: '1 month', align: 'right' as const, className: CHART_COLUMN, cell: (s: StockListItem) => trendCell(s.symbol, trends, 'one month') } },
     ]),
-    {
-      priority: full ? 8 : 4, minWidth: 112,
-      column: { key: 'sector', header: 'Sector', className: 'min-w-[7rem]', cell: (s) => <span className="block max-w-[11rem] text-xs whitespace-normal">{s.sector ?? 'Unclassified'}</span> },
-    },
+    // Full screen shows them all next to the charts; inline they join as width allows (CAP first).
+    ...FUNDAMENTAL_KEYS.map((key, i) => fundamentalColumn(key, full ? 3 + i / 10 : key === 'marketCap' ? 3 : 6 + i)),
     {
       priority: full ? 9 : 5, minWidth: 96,
       column: {
@@ -450,15 +476,36 @@ function PriceStatus({ run, pageRefreshing }: { run: QuoteRefreshRun | undefined
 const indexLabel = (markets: Market[] | undefined, code: string) => indexName(markets, code)
 
 /** Change and sparkline of one stock over a range (as on the watchlist), stretched to its column; "—" with the reason when history is missing. */
-function trendCell(symbol: string, query: { data?: StockTrend[]; isLoading: boolean }, rangeLabel: string) {
+function trendCell(symbol: string, query: { data?: StockTrend[]; isLoading: boolean }, rangeLabel: string, extra?: ReactNode) {
   const t = query.data?.find((x) => x.symbol === symbol)?.period
-  if (!t) return query.isLoading ? null : <span className="text-xs text-muted-foreground">—</span>
-  if (t.change === null && t.sparkline.length < 2) return <span className="text-xs text-muted-foreground" title={t.limitation ?? 'Not enough stored history'}>—</span>
+  const missing = !t || (t.change === null && t.sparkline.length < 2)
+  if (missing && !extra) {
+    if (!t) return query.isLoading ? null : <span className="text-xs text-muted-foreground">—</span>
+    return <span className="text-xs text-muted-foreground" title={t.limitation ?? 'Not enough stored history'}>—</span>
+  }
   return (
-    <div className="flex w-full flex-col items-end gap-0.5" title={t.change !== null ? `${t.basis}: ${t.baseDate} → ${t.endDate}` : t.limitation ?? undefined}>
-      <ChangeText value={t.change} className="text-xs" />
-      <Sparkline points={t.sparkline} label={`${symbol} ${t.basis.toLowerCase()} over ${rangeLabel}`} width={160} height={28} fluid />
+    <div className="flex w-full flex-col items-end gap-0.5" title={t && t.change !== null ? `${t.basis}: ${t.baseDate} → ${t.endDate}` : t?.limitation ?? undefined}>
+      {!missing && t && (
+        <>
+          <ChangeText value={t.change} className="text-xs" />
+          <Sparkline points={t.sparkline} label={`${symbol} ${t.basis.toLowerCase()} over ${rangeLabel}`} width={160} height={28} fluid />
+        </>
+      )}
+      {extra}
     </div>
+  )
+}
+
+/** One company-figure cell: compact amount or percentage, the basis and period (or why there is none) on hover. */
+function FundamentalValue({ figures, metric, loading, fx }: { figures: StockFundamentals | undefined; metric: FundamentalKey; loading: boolean; fx?: AmountConversion }) {
+  const c = fundamentalCell(figures, metric, loading, fx)
+  return (
+    <span
+      className={cn('tabular text-xs whitespace-nowrap', c.tone === 'muted' && 'text-muted-foreground', c.tone === 'positive' && 'text-gain', c.tone === 'negative' && 'text-loss')}
+      title={c.title}
+    >
+      {c.text}
+    </span>
   )
 }
 
@@ -471,15 +518,18 @@ function HiddenColumnsNote({ count, inDialog, onFullScreen }: { count: number; i
     : <p className="text-xs text-muted-foreground">{columns} in <button type="button" className="font-medium text-foreground underline-offset-2 hover:underline" onClick={onFullScreen}>Full screen</button>.</p>
 }
 
-/** Stored daily prices of a stock and their span; fewer than 61 means analyses would exclude it until prices are fetched. */
-function HistoryCell({ stock }: { stock: StockListItem }) {
-  if (stock.observations === 0) return <span className="text-xs text-warn">None stored</span>
+/** Years of stored daily prices under the Max chart (days and span on hover); fewer than 61 prices means analyses exclude the stock. */
+function HistorySpan({ stock }: { stock: StockListItem }) {
+  if (stock.observations === 0) return <span className="text-[11px] text-warn">No prices stored</span>
   const short = stock.observations < MIN_ANALYSIS_PRICES
+  const years = historyYears(stock.firstDate, stock.lastDate)
   return (
-    <div className="text-xs" title={short ? `Fewer than ${MIN_ANALYSIS_PRICES} stored prices: excluded from analyses until prices are fetched.` : undefined}>
-      <div className={cn('tabular', short ? 'font-medium text-warn' : 'text-foreground')}>{num(stock.observations, 0)} days{short ? ' · too short' : ''}</div>
-      <div className="text-[11px] whitespace-nowrap text-muted-foreground">{date(stock.firstDate)} – {date(stock.lastDate)}</div>
-    </div>
+    <span
+      className={cn('tabular text-[11px] whitespace-nowrap', short ? 'font-medium text-warn' : 'text-muted-foreground')}
+      title={`${num(stock.observations, 0)} stored daily prices, ${date(stock.firstDate)} – ${date(stock.lastDate)}${short ? `. Fewer than ${MIN_ANALYSIS_PRICES}: excluded from analyses until prices are fetched.` : ''}`}
+    >
+      {years ?? '—'} available{short ? ' · too short' : ''}
+    </span>
   )
 }
 

@@ -6,7 +6,9 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ErrorState } from '@/components/common'
+import { AccountingCard } from '@/components/accounting-card'
 import { CompanyOverview } from '@/components/company-overview'
+import { SplitRow } from '@/components/split-row'
 import { QuoteProvenance, RefreshQuoteButton } from '@/components/stock-selection'
 import { ChangeText, PriceHistoryCard, WatchToggle } from '@/components/watchlist'
 import { errorMessage } from '@/lib/api'
@@ -56,7 +58,7 @@ export function StockDetailDialog({ symbol, items, markets, onNavigate, onClose 
         onKeyDown={(e) => {
           // ←/→ switch stocks unless the user is typing or using a control that needs the arrow keys.
           const t = e.target as HTMLElement
-          if (t.closest('input, textarea, select, [role="radiogroup"], [role="slider"]')) return
+          if (t.closest('input, textarea, select, [role="radiogroup"], [role="slider"], [role="separator"]')) return
           if (e.key === 'ArrowLeft') { e.preventDefault(); go(position.previous) }
           if (e.key === 'ArrowRight') { e.preventDefault(); go(position.next) }
         }}
@@ -167,11 +169,11 @@ function StockDetailBody({ symbol, listItem, markets, position, range, onRangeCh
       {/* One scroll area for the whole panel body (no nested scrolling). */}
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-5">
         {detail.error && !listItem ? <ErrorState error={detail.error} onRetry={() => detail.refetch()} /> : (
-          <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_18rem]">
-            {/* Chart first, the company overview directly below it; key facts alongside on wide screens. */}
-            <div className="min-w-0 space-y-5">
-              {s && s.observations === 0 ? (
-                <div className="flex flex-col items-start gap-3 rounded-xl border border-dashed p-6 text-sm">
+          <div className="space-y-5">
+            {/* Price history and accounting side by side on wide screens (stacked below), the edge between them draggable;
+                company overview and key facts under them. */}
+            <SplitRow label="Resize price history and accounting" left={s && s.observations === 0 ? (
+                <div className="flex min-w-0 flex-col items-start gap-3 rounded-xl border border-dashed p-6 text-sm">
                   <p><strong>No daily prices are stored for {symbol} yet.</strong> The chart needs its history from the configured provider.</p>
                   <Button variant="outline" size="sm" onClick={fetchHistory} disabled={fetchPrices.isPending}>
                     {fetchPrices.isPending && <MatrixLoader />} Download price history
@@ -179,10 +181,11 @@ function StockDetailBody({ symbol, listItem, markets, position, range, onRangeCh
                 </div>
               ) : (
                 <PriceHistoryCard symbol={symbol} range={range} onRangeChange={onRangeChange} height={chartHeight} />
-              )}
-              <CompanyOverview symbol={symbol} />
+              )} right={<AccountingCard symbol={symbol} />} />
+            <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_18rem]">
+              <CompanyOverview className="min-w-0" symbol={symbol} />
+              <KeyFacts symbol={symbol} s={s} d={d} markets={markets} />
             </div>
-            <KeyFacts symbol={symbol} s={s} d={d} markets={markets} />
           </div>
         )}
       </div>

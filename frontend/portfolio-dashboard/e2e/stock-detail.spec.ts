@@ -42,6 +42,26 @@ test('detail panel: large layout, Previous/Next/Close, ranges, description and s
   await dialog.getByRole('radiogroup', { name: 'Time range' }).getByRole('radio', { name: '3M' }).click()
   await expect(dialog.getByText(/Change 3M:/)).toBeVisible()
 
+  // Accounting card beside the chart (e2e stack: simulated company figures, fetched in the background).
+  const income = dialog.getByRole('table', { name: new RegExp(`^Income statement of ${first.replace('.', '\\.')}, fiscal years`) })
+  await expect(income).toBeVisible({ timeout: 30_000 })
+  await expect(income.getByRole('columnheader', { name: 'FY 2025' })).toBeVisible()
+  await expect(income.getByRole('rowheader', { name: 'Revenue' })).toBeVisible()
+  await expect(dialog.getByText('Reported in USD')).toBeVisible()
+  await dialog.getByRole('radiogroup', { name: 'Statement' }).getByRole('radio', { name: 'Ratios' }).click()
+  await expect(dialog.getByRole('table', { name: /^Ratios of / }).getByRole('rowheader', { name: 'Revenue growth' })).toBeVisible()
+  await dialog.getByRole('radiogroup', { name: 'Periods' }).getByRole('radio', { name: 'Quarters' }).click()
+  await expect(dialog.getByRole('table', { name: /quarters, newest first$/ })).toBeVisible()
+  // Side by side at this width; the edge between the cards moves with the keyboard without switching the stock.
+  const edge = dialog.getByRole('separator', { name: 'Resize price history and accounting' })
+  await expect(edge).toHaveAttribute('aria-valuenow', '50')
+  await edge.focus()
+  await page.keyboard.press('ArrowRight')
+  await expect(edge).toHaveAttribute('aria-valuenow', '55')
+  await expect(dialog.getByRole('heading', { name: new RegExp(`· ${first.replace('.', '\\.')}$`) })).toBeVisible()
+  await page.keyboard.press('Enter') // back to 50/50
+  await expect(edge).toHaveAttribute('aria-valuenow', '50')
+
   await dialog.getByRole('button', { name: 'Next' }).click()
   await expect(dialog.getByRole('heading', { name: new RegExp(`· ${second.replace('.', '\\.')}$`) })).toBeVisible()
   await expect(dialog.getByText(/^2 of 40 in the current list$/)).toBeVisible()

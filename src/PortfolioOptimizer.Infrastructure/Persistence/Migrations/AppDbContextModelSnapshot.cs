@@ -551,6 +551,91 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                     b.ToTable("SyncLogs");
                 });
 
+            modelBuilder.Entity("PortfolioOptimizer.Domain.FundamentalFact", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("AssetId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Concept")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("Currency")
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<DateTime>("FirstSeenAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly>("PeriodEnd")
+                        .HasColumnType("date");
+
+                    b.Property<string>("PeriodType")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<DateTime>("RetrievedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<DateTime?>("SupersededAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("Value")
+                        .HasPrecision(28, 8)
+                        .HasColumnType("numeric(28,8)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssetId", "Source", "Concept", "PeriodType", "PeriodEnd")
+                        .IsUnique()
+                        .HasFilter("\"SupersededAtUtc\" IS NULL");
+
+                    b.ToTable("FundamentalFacts");
+                });
+
+            modelBuilder.Entity("PortfolioOptimizer.Domain.FundamentalsFetchState", b =>
+                {
+                    b.Property<int>("AssetId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("AttemptedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<DateTime?>("RetrievedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.HasKey("AssetId");
+
+                    b.ToTable("FundamentalsFetchStates");
+                });
+
             modelBuilder.Entity("PortfolioOptimizer.Domain.FxRate", b =>
                 {
                     b.Property<string>("Source")
@@ -2984,6 +3069,28 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                         .WithMany("Logs")
                         .HasForeignKey("JobId")
                         .OnDelete(DeleteBehavior.Cascade);
+                });
+
+            modelBuilder.Entity("PortfolioOptimizer.Domain.FundamentalFact", b =>
+                {
+                    b.HasOne("PortfolioOptimizer.Domain.Asset", "Asset")
+                        .WithMany()
+                        .HasForeignKey("AssetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Asset");
+                });
+
+            modelBuilder.Entity("PortfolioOptimizer.Domain.FundamentalsFetchState", b =>
+                {
+                    b.HasOne("PortfolioOptimizer.Domain.Asset", "Asset")
+                        .WithOne()
+                        .HasForeignKey("PortfolioOptimizer.Domain.FundamentalsFetchState", "AssetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Asset");
                 });
 
             modelBuilder.Entity("PortfolioOptimizer.Domain.HistoricalPrice", b =>

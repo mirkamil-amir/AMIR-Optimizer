@@ -919,6 +919,242 @@
       "verified": "2026-10-28"
     },
     {
+      "id": "F-FUN-001",
+      "name": "Market capitalization (stock list \"CAP\")",
+      "status": "Correct under documented assumptions",
+      "severity": null,
+      "code": [
+        "src/PortfolioOptimizer.Application/MarketData/FundamentalMetrics.cs#MarketCap"
+      ],
+      "tests": [
+        "FundamentalsTests.MarketCap_IsTheLatestTrailingValue_WithItsDateAndCurrency"
+      ],
+      "skills": [
+        "market-data-fx"
+      ],
+      "verified": "2026-11-23"
+    },
+    {
+      "id": "F-FUN-002",
+      "name": "Free cash flow (stock list \"FCF\")",
+      "status": "Correct under documented assumptions",
+      "severity": null,
+      "code": [
+        "src/PortfolioOptimizer.Application/MarketData/FundamentalMetrics.cs#FreeCashFlow"
+      ],
+      "tests": [
+        "FundamentalsTests.FreeCashFlow_IsTheLatestFiscalYear"
+      ],
+      "skills": [
+        "market-data-fx"
+      ],
+      "verified": "2026-11-23"
+    },
+    {
+      "id": "F-FUN-003",
+      "name": "Revenue growth (stock list)",
+      "status": "Correct under documented assumptions",
+      "severity": null,
+      "code": [
+        "src/PortfolioOptimizer.Application/MarketData/FundamentalMetrics.cs#RevenueGrowth"
+      ],
+      "tests": [
+        "FundamentalsTests.RevenueGrowth_IsLatestOverPreviousYearMinusOne",
+        "FundamentalsTests.RevenueGrowth_NeedsConsecutiveYears_InOneCurrency_WithPositiveBase",
+        "FundamentalsTests.RevenueGrowth_SkippedYear_FallsBackToTwoYearAnnualisedGrowth"
+      ],
+      "skills": [
+        "market-data-fx"
+      ],
+      "verified": "2026-11-23"
+    },
+    {
+      "id": "F-FUN-004",
+      "name": "Return on invested capital (stock list \"ROIC\")",
+      "status": "Correct under documented assumptions",
+      "severity": null,
+      "code": [
+        "src/PortfolioOptimizer.Application/MarketData/FundamentalMetrics.cs#Roic",
+        "src/PortfolioOptimizer.Application/MarketData/FundamentalMetrics.cs#RoicAt"
+      ],
+      "tests": [
+        "FundamentalsTests.Roic_UsesEffectiveTaxRate_AndAverageInvestedCapital",
+        "FundamentalsTests.Roic_WithoutPreviousYear_UsesYearEndCapital",
+        "FundamentalsTests.Roic_PreTaxLoss_AssumesNoTax_AndTaxRateIsClamped",
+        "FundamentalsTests.Roic_Bank_WithoutEbit_IsUnavailableWithReason",
+        "FundamentalsTests.Roic_NonPositiveCapital_OrMissingTax_IsUnavailable"
+      ],
+      "skills": [
+        "market-data-fx"
+      ],
+      "verified": "2026-11-23"
+    },
+    {
+      "id": "F-FUN-005",
+      "name": "Reported figures of the latest fiscal year (stock list \"Revenue\", \"EBIT/EBITDA\")",
+      "status": "Correct under documented assumptions",
+      "severity": null,
+      "code": [
+        "src/PortfolioOptimizer.Application/MarketData/FundamentalMetrics.cs#LatestFiscalYear"
+      ],
+      "tests": [
+        "FundamentalsTests.ReportedFigures_AreTheLatestFiscalYear_AsPublished"
+      ],
+      "skills": [
+        "market-data-fx"
+      ],
+      "verified": "2026-11-23"
+    },
+    {
+      "id": "F-FUN-006",
+      "name": "Price/earnings ratio (stock list \"PE\")",
+      "status": "Correct under documented assumptions",
+      "severity": null,
+      "code": [
+        "src/PortfolioOptimizer.Application/MarketData/FundamentalMetrics.cs#PeRatio"
+      ],
+      "tests": [
+        "FundamentalsTests.PeRatio_IsTheLatestTrailingValue_AndNotShownForLosses"
+      ],
+      "skills": [
+        "market-data-fx"
+      ],
+      "verified": "2026-11-23"
+    },
+    {
+      "id": "F-FUN-007",
+      "name": "EBT and pre-provision operating profit of financials (stock list \"EBIT/EBITDA\" column)",
+      "status": "Correct under documented assumptions",
+      "severity": null,
+      "code": [
+        "src/PortfolioOptimizer.Application/MarketData/FundamentalMetrics.cs#Ppop",
+        "src/PortfolioOptimizer.Application/MarketData/FundamentalMetrics.cs#LatestFiscalYear"
+      ],
+      "tests": [
+        "FundamentalsTests.Bank_Ebt_IsPreTaxIncome_AndPpop_IsOperatingRevenueMinusNonInterestExpense"
+      ],
+      "skills": [
+        "market-data-fx"
+      ],
+      "verified": "2026-11-23"
+    },
+    {
+      "id": "F-FUN-008",
+      "name": "Return on equity of financials (stock list \"ROIC\" column)",
+      "status": "Correct under documented assumptions",
+      "severity": null,
+      "code": [
+        "src/PortfolioOptimizer.Application/MarketData/FundamentalMetrics.cs#Roe",
+        "src/PortfolioOptimizer.Application/MarketData/FundamentalMetrics.cs#RoeAt"
+      ],
+      "tests": [
+        "FundamentalsTests.Roe_IsNetIncomeOverAverageEquity"
+      ],
+      "skills": [
+        "market-data-fx"
+      ],
+      "verified": "2026-11-23"
+    },
+    {
+      "id": "F-FUN-009",
+      "name": "Margins per period (accounting card)",
+      "status": "Correct under documented assumptions",
+      "severity": null,
+      "code": [
+        "src/PortfolioOptimizer.Application/MarketData/FinancialStatements.cs#Ratios"
+      ],
+      "tests": [
+        "FinancialStatementsTests.Ratios_PerYear_HandComputed",
+        "FinancialStatementsTests.Ratios_AreNullWithANote_WhenNotMeaningful"
+      ],
+      "skills": [
+        "market-data-fx"
+      ],
+      "verified": "2026-11-25"
+    },
+    {
+      "id": "F-FUN-010",
+      "name": "Revenue growth per period (accounting card)",
+      "status": "Correct under documented assumptions",
+      "severity": null,
+      "code": [
+        "src/PortfolioOptimizer.Application/MarketData/FinancialStatements.cs#Ratios"
+      ],
+      "tests": [
+        "FinancialStatementsTests.Ratios_PerYear_HandComputed",
+        "FinancialStatementsTests.Quarters_OneGrowthRow_AgainstThePreviousQuarter_NoAnnualReturns"
+      ],
+      "skills": [
+        "market-data-fx"
+      ],
+      "verified": "2026-11-25"
+    },
+    {
+      "id": "F-FUN-014",
+      "name": "ROE and ROIC of a quarter (accounting card)",
+      "status": "Correct under documented assumptions",
+      "severity": null,
+      "code": [
+        "src/PortfolioOptimizer.Application/MarketData/FinancialStatements.cs#Ratios"
+      ],
+      "tests": [
+        "FinancialStatementsTests.Quarters_RoeAndRoic_AreTheQuarterOwnReturn_NotAnnualised"
+      ],
+      "skills": [
+        "market-data-fx"
+      ],
+      "verified": "2026-11-25"
+    },
+    {
+      "id": "F-FUN-011",
+      "name": "Debt/equity per period (accounting card)",
+      "status": "Correct under documented assumptions",
+      "severity": null,
+      "code": [
+        "src/PortfolioOptimizer.Application/MarketData/FinancialStatements.cs#Ratios"
+      ],
+      "tests": [
+        "FinancialStatementsTests.Ratios_PerYear_HandComputed",
+        "FinancialStatementsTests.Ratios_AreNullWithANote_WhenNotMeaningful"
+      ],
+      "skills": [
+        "market-data-fx"
+      ],
+      "verified": "2026-11-25"
+    },
+    {
+      "id": "F-FUN-012",
+      "name": "Current ratio per period (accounting card)",
+      "status": "Correct under documented assumptions",
+      "severity": null,
+      "code": [
+        "src/PortfolioOptimizer.Application/MarketData/FinancialStatements.cs#Ratios"
+      ],
+      "tests": [
+        "FinancialStatementsTests.Ratios_PerYear_HandComputed"
+      ],
+      "skills": [
+        "market-data-fx"
+      ],
+      "verified": "2026-11-25"
+    },
+    {
+      "id": "F-FUN-013",
+      "name": "Cost/income of financials (accounting card)",
+      "status": "Correct under documented assumptions",
+      "severity": null,
+      "code": [
+        "src/PortfolioOptimizer.Application/MarketData/FinancialStatements.cs#Ratios"
+      ],
+      "tests": [
+        "FinancialStatementsTests.Financials_ShowBankLines_CostIncome_AndNoRoic"
+      ],
+      "skills": [
+        "market-data-fx"
+      ],
+      "verified": "2026-11-25"
+    },
+    {
       "id": "F-TRD-001",
       "name": "Trade proposal sizing",
       "status": "Verified correct",

@@ -3,7 +3,7 @@ import { api } from './api'
 import type {
   AppSettings, Asset, AuditEvent, Backtest, BacktestRequest, BacktestSummary, CashEntry, CatalogueImportResult, HoldingsResponse,
   FxSync, MarketDataStatus, OptimizationRun, OptimizationRunSummary, Order, PagedResult, PaperTradeResult, Performance, Portfolio,
-  PortfolioSettings, PortfolioSummary, PriceBar, Risk, RunStatus, Sector, StockDetail, StockListItem, StockTrend, SyncJob, TradeProposal,
+  PortfolioSettings, PortfolioSummary, PriceBar, Risk, RunStatus, Sector, StockDetail, StockFinancials, StockFundamentals, StockListItem, StockTrend, SyncJob, TradeProposal,
   Transaction, UserAccountStatus, UserSummary, OneTimeCredential, MlCatalog, MlExperiment, MlExperimentRequest, MlExperimentSummary, MlBacktest,
   MlPredictionSet, StrategyComparison, StrategyComparisonRequest, StrategyComparisonSummary, Market, QuoteRefreshRun, QuoteRefreshResult,
   AdminOverview, HistoryRange, PriceHistory, Watchlist, WatchlistAddResult, NewsFeed, NewsFilters, EventComparison, RealityCheck, CompanyProfile,
@@ -817,6 +817,26 @@ export const useStockTrends = (symbols: string[], range: HistoryRange = '1M', en
     enabled: enabled && symbols.length > 0,
     staleTime: 5 * 60_000,
     placeholderData: keepPreviousData,
+  })
+
+/** Market cap, EBIT/EBITDA, ROIC, P/E, FCF, revenue and revenue growth for one page of the stock list; asks again every 2 s while figures are being fetched. */
+export const useStockFundamentals = (symbols: string[], enabled = true) =>
+  useQuery({
+    queryKey: ['stock-fundamentals', symbols.join(',')] as const,
+    queryFn: ({ signal }) => api.get<StockFundamentals[]>(`${V1}/stocks/fundamentals?symbols=${encodeURIComponent(symbols.join(','))}`, signal),
+    enabled: enabled && symbols.length > 0,
+    staleTime: 5 * 60_000,
+    placeholderData: keepPreviousData,
+    refetchInterval: (q) => (q.state.data?.some((f) => f.status === 'Pending') ? 2000 : false),
+  })
+
+/** Accounting card of one stock; asks again every 2 s while its figures are being fetched. */
+export const useStockFinancials = (symbol: string) =>
+  useQuery({
+    queryKey: ['stock-financials', symbol] as const,
+    queryFn: ({ signal }) => api.get<StockFinancials>(`${V1}/stocks/${encodeURIComponent(symbol)}/financials`, signal),
+    staleTime: 5 * 60_000,
+    refetchInterval: (q) => (q.state.data?.status === 'Pending' ? 2000 : false),
   })
 
 export const useWatchlist = (range: HistoryRange = '1M') =>

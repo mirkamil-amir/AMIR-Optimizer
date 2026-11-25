@@ -16,7 +16,7 @@ namespace PortfolioOptimizer.Api.Controllers;
 [ApiController]
 [Route("api/v1")]
 public sealed class StocksController(StockDiscoveryService stocks, MarketDataService marketData, QuoteRefreshService quoteRefresh,
-    CompanyProfileService profiles) : ControllerBase
+    CompanyProfileService profiles, FundamentalsService fundamentals) : ControllerBase
 {
     /// <summary>Markets (countries) with their index universes, provenance and price coverage.</summary>
     [HttpGet("markets")]
@@ -55,6 +55,27 @@ public sealed class StocksController(StockDiscoveryService stocks, MarketDataSer
     [HttpGet("stocks/trends")]
     public Task<IReadOnlyList<StockTrendDto>> Trends([FromQuery] string? symbols, [FromQuery] string? range, CancellationToken ct) =>
         stocks.GetTrendsAsync((symbols ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries), range, ct);
+
+    /// <summary>
+    /// Market capitalization, EBIT/EBITDA, ROIC, P/E, free cash flow, revenue and revenue growth per stock from reported figures, for one page of the
+    /// stock list (up to 200 symbols). Never waits for the source: missing figures are fetched in the background and
+    /// reported as "Pending" until stored.
+    /// </summary>
+    /// <param name="symbols">Comma-separated symbols.</param>
+    /// <param name="ct">Cancels the request.</param>
+    [HttpGet("stocks/fundamentals")]
+    public Task<IReadOnlyList<StockFundamentalsDto>> Fundamentals([FromQuery] string? symbols, CancellationToken ct) =>
+        fundamentals.GetAsync((symbols ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries), ct);
+
+    /// <summary>
+    /// Accounting card of one stock: fiscal-year and quarterly income statement, balance sheet, cash flow and ratios, plus
+    /// the latest valuation figures, in the company's reporting currency. Never waits for the source ("Pending" while the
+    /// figures are fetched in the background). Unknown symbol → 404.
+    /// </summary>
+    /// <param name="symbol">The stock's symbol.</param>
+    /// <param name="ct">Cancels the request.</param>
+    [HttpGet("stocks/{symbol}/financials")]
+    public Task<StockFinancialsDto> Financials(string symbol, CancellationToken ct) => fundamentals.GetFinancialsAsync(symbol, ct);
 
     /// <summary>
     /// Stored daily prices per symbol for a whole selection (up to 3,000 symbols, in the body so a long list fits); the
