@@ -402,16 +402,18 @@ construction (rank ≤ T−1, so singular when N ≥ T – the optimizer copes, 
 |---|---|
 | Status | Verified correct |
 | Code | `src/PortfolioOptimizer.Optimization/Statistics/CovarianceEstimator.cs#LedoitWolf` |
-| Tests | `MetricsTests.LedoitWolf_ShrinkageIsBoundedAndKeepsMatrixPositiveDefinite`; `IndependentFormulaTests.LedoitWolf_MatchesThePaperWithNormalizedNorm` |
+| Tests | `MetricsTests.LedoitWolf_ShrinkageIsBoundedAndKeepsMatrixPositiveDefinite`; `IndependentFormulaTests.LedoitWolf_MatchesThePaperWithNormalizedNorm`; `LargeUniverseTests.LedoitWolf_EqualsTheDirectDayByDaySum` |
 | Skills | quant-formulas; optimization-backtesting |
-| Verified | 2026-10-28 |
+| Verified | 2026-11-25 |
 
 Ledoit & Wolf (2004), "A well-conditioned estimator for large-dimensional covariance matrices", *J. Multivariate
 Analysis* 88(2): $S = X_c^\top X_c/T$, $m = \text{tr}(S)/N$, $d^2 = \|S-mI\|^2$,
 $\bar b^2 = \frac{1}{T^2}\sum_k \|x_kx_k^\top - S\|^2$, $\delta = \min(\bar b^2,d^2)/d^2$,
 $\hat\Sigma = \frac{T}{T-1}\,A\,(\delta mI + (1-\delta)S)$. The code uses the plain Frobenius norm; the ratio δ is
 invariant to the paper's 1/N normalization (checked). The $T/(T-1)$ rescaling (so δ = 0 equals F-COV-001) is an
-implementation choice. Target: scaled identity (not constant correlation).
+implementation choice. Target: scaled identity (not constant correlation). $\bar b^2$ is summed element by element over
+the symmetric matrix (diagonal once, upper triangle twice) without building $x_kx_k^\top - S$ per day (AMIR-44: 840 →
+26 ms on 378 days × 228 stocks; results equal to the previous code within 3·10⁻¹⁵).
 
 ### F-COV-003 · Correlation from covariance
 

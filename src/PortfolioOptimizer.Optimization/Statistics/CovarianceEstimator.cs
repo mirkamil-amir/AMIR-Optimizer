@@ -81,13 +81,31 @@ public static class CovarianceEstimator
         var d2 = (s - target).FrobeniusNorm();
         d2 *= d2;
 
+        // b̄² = (1/t²) Σ_k ‖x_k x_kᵀ − S‖²_F, summed element by element over the symmetric matrix (diagonal once, the
+        // upper triangle twice). Building x_k x_kᵀ − S as a matrix per day allocated 2·t·n² doubles (≈ 320 MB and 0.8 s
+        // for 378 days × 228 stocks); the sum is the same up to rounding (docs/performance.md #18).
+        var sArr = s.ToArray();
+        var xArr = centered.ToArray();
+        var row = new double[n];
         var b2Bar = 0d;
         for (var k = 0; k < t; k++)
         {
-            var row = centered.Row(k);
-            var diff = row.OuterProduct(row) - s;
-            var f = diff.FrobeniusNorm();
-            b2Bar += f * f;
+            for (var i = 0; i < n; i++) row[i] = xArr[k, i];
+            var sum = 0d;
+            for (var i = 0; i < n; i++)
+            {
+                var xi = row[i];
+                var dii = xi * xi - sArr[i, i];
+                sum += dii * dii;
+                var off = 0d;
+                for (var j = i + 1; j < n; j++)
+                {
+                    var dij = xi * row[j] - sArr[i, j];
+                    off += dij * dij;
+                }
+                sum += 2 * off;
+            }
+            b2Bar += sum;
         }
         b2Bar /= (double)t * t;
 

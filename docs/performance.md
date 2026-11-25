@@ -129,9 +129,10 @@ were not modified; the news change does not add fetches, it moves them out of th
 
 ## Remaining work (prioritized)
 
-1. **Optimization analytics** (~95 % of a run): warm-start the ADMM solver from the neighbouring frontier point, or reduce
-   the frontier points for the first view and compute more on demand. Needs numerical regression tests against the current
-   frontier.
+1. **Optimization analytics**: after #17/#18 a 228-stock run takes ~7.1 s in the harness (frontier 6.7 s, ~95 %). The rest
+   is ADMM iterations (dense constraint matrix, mostly bound rows: a sparse/structured A would cut the per-iteration cost)
+   and 3 of 30 frontier points that end without a point. Numerical guard: `LargeUniverseTests` (pinned to 1e-9);
+   timing: `PERF_BENCH=1 dotnet test tests/PortfolioOptimizer.UnitTests --filter Benchmark_Universe230`.
 2. **Queries that still read every price**: the universe import (`UniverseService`, only when a constituents file changed)
    and the coverage rebuild after the start (#13/#16, ~1.5–6 s on 5.3M prices, in the background since AMIR-43). Per-instrument counts come from
    `PriceCoverage`. Never add a query whose cost grows with the number of stored prices to a request every page makes.

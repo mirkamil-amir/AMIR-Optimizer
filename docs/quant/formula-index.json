@@ -481,13 +481,14 @@
       ],
       "tests": [
         "MetricsTests.LedoitWolf_ShrinkageIsBoundedAndKeepsMatrixPositiveDefinite",
-        "IndependentFormulaTests.LedoitWolf_MatchesThePaperWithNormalizedNorm"
+        "IndependentFormulaTests.LedoitWolf_MatchesThePaperWithNormalizedNorm",
+        "LargeUniverseTests.LedoitWolf_EqualsTheDirectDayByDaySum"
       ],
       "skills": [
         "quant-formulas",
         "optimization-backtesting"
       ],
-      "verified": "2026-10-28"
+      "verified": "2026-11-25"
     },
     {
       "id": "F-COV-003",
