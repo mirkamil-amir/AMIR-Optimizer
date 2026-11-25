@@ -699,7 +699,9 @@
         "OptimizerTests.QpSolver_SolvesSimpleBoxProblem",
         "OptimizerTests.QpSolver_DetectsInfeasibleConstraints",
         "OptimizerTests.HighlyCorrelatedAssets_ProduceValidWeights",
-        "LargeUniverseTests.Universe120_MaxSharpeAndFrontier_ArePinned_AndEveryPointIsValid"
+        "LargeUniverseTests.Universe120_MaxSharpeAndFrontier_ArePinned_AndEveryPointIsValid",
+        "OptimizerTests.QpSolver_PolishWithBoundsAndBudget_GivesTheClosedFormAndMultipliers",
+        "OptimizerTests.QpSolver_VariablePinnedTwice_AndEveryVariablePinned_StillSolve"
       ],
       "skills": [
         "optimization-backtesting"

@@ -312,4 +312,49 @@ public class OptimizerTests
         Assert.Equal(1, sol.X[0], 8);
         Assert.Equal(0, sol.X[1], 8);
     }
+
+    [Fact]
+    public void QpSolver_PolishWithBoundsAndBudget_GivesTheClosedFormAndMultipliers()
+    {
+        // min Σ (x_i − c_i)² s.t. Σx = 1, 0 ≤ x ≤ 0.6, c = (0.9, 0.6, −0.4, −0.6): x_3, x_4 sit at 0 and x_1 at its cap
+        // (pinned by their bound rows, eliminated in the polish), x_2 = 0.4 is free. Stationarity 2(x − c) + ν + λ·1 = 0
+        // (P·x + q + Aᵀy = 0): budget λ = −2(0.4 − 0.6) = 0.4, cap ν_1 = 2(0.9 − 0.6) − 0.4 = 0.2 (upper-active: ≥ 0),
+        // bounds ν_3 = −2(0 + 0.4) − 0.4 = −1.2 and ν_4 = −2(0 + 0.6) − 0.4 = −1.6 (lower-active: ≤ 0).
+        var c = new[] { 0.9, 0.6, -0.4, -0.6 };
+        var p = Matrix<double>.Build.DenseIdentity(4) * 2;
+        var q = Vector<double>.Build.DenseOfArray(c.Select(v => -2 * v).ToArray());
+        var a = Matrix<double>.Build.DenseIdentity(4).Stack(Matrix<double>.Build.Dense(1, 4, 1));
+        var l = Vector<double>.Build.DenseOfArray([0, 0, 0, 0, 1]);
+        var u = Vector<double>.Build.DenseOfArray([0.6, 0.6, 0.6, 0.6, 1]);
+        var sol = new AdmmQpSolver().Solve(new QuadraticProgram(p, q, a, l, u));
+        Assert.Equal(QpStatus.Solved, sol.Status);
+        Assert.True(sol.Polished);
+        Assert.Equal([0.6, 0.4, 0, 0], sol.X.Select(v => Math.Round(v, 9)).ToArray());
+        Assert.Equal(0.2, sol.Y[0], 8);
+        Assert.Equal(0, sol.Y[1], 8);
+        Assert.Equal(-1.2, sol.Y[2], 8);
+        Assert.Equal(-1.6, sol.Y[3], 8);
+        Assert.Equal(0.4, sol.Y[4], 8);
+    }
+
+    [Fact]
+    public void QpSolver_VariablePinnedTwice_AndEveryVariablePinned_StillSolve()
+    {
+        // x_1 has two identical bound rows (both active at 0): the polish uses the full system for such sets.
+        var p = Matrix<double>.Build.DenseIdentity(2) * 2;
+        var q = Vector<double>.Build.DenseOfArray([2, -1]); // unconstrained optimum (−1, 0.5)
+        var a = Matrix<double>.Build.DenseOfArray(new double[,] { { 1, 0 }, { 1, 0 }, { 0, 1 } });
+        var twice = new AdmmQpSolver().Solve(new QuadraticProgram(p, q, a,
+            Vector<double>.Build.DenseOfArray([0, 0, 0]), Vector<double>.Build.DenseOfArray([1, 1, 1])));
+        Assert.Equal(QpStatus.Solved, twice.Status);
+        Assert.Equal(0, twice.X[0], 8);
+        Assert.Equal(0.5, twice.X[1], 8);
+
+        // Every variable fixed by an equality bound: nothing is left free.
+        var all = new AdmmQpSolver().Solve(new QuadraticProgram(p, q, Matrix<double>.Build.DenseIdentity(2),
+            Vector<double>.Build.DenseOfArray([0.25, 0.75]), Vector<double>.Build.DenseOfArray([0.25, 0.75])));
+        Assert.Equal(QpStatus.Solved, all.Status);
+        Assert.Equal(0.25, all.X[0], 8);
+        Assert.Equal(0.75, all.X[1], 8);
+    }
 }
