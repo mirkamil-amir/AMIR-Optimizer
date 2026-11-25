@@ -133,20 +133,62 @@ were not modified; the news change does not add fetches, it moves them out of th
 
 ## Remaining work (prioritized)
 
-1. **Optimization analytics**: after #17–#20 a 228-stock run takes ~1.7 s in the harness (frontier 1.6 s, 12.0 s before
-   AMIR-44). Per iteration the dense residual product P·x (~96 µs per check) and the two triangular solves (~60 µs) remain;
-   3 of 30 frontier points are dropped because their solve stops at the 1,500-iteration cap (`FrontierSettings`,
-   `if (!sol.IsOptimal) continue`; unchanged since before AMIR-44). Runs of ~14 stocks took 2–8 s in October:
-   measure them through the API – the solver is not their cost. Numerical guard: `LargeUniverseTests` (pinned to 1e-9);
-   timing: `PERF_BENCH=1 dotnet test tests/PortfolioOptimizer.UnitTests --filter Benchmark_Universe230`.
-2. **Queries that still read every price**: the universe import (`UniverseService`, only when a constituents file changed)
-   and the coverage rebuild after the start (#13/#16, ~1.5–6 s on 5.3M prices, in the background since AMIR-43). Per-instrument counts come from
-   `PriceCoverage`. Never add a query whose cost grows with the number of stored prices to a request every page makes.
-3. Reality check: measure without the rate limit on a larger universe; it reuses the batched series.
-4. `PortfolioService.ListAsync` values each portfolio separately (~6 queries per portfolio): fine for a few portfolios; batch
-   prices/FX across portfolios when users keep many.
-5. The settings row is read 2–3 times per request (≈1 ms each); a per-request memo is possible but low value.
-6. Multi-instance deployment: distributed rate limits, news single-flight and job queue (then Redis becomes reasonable).
+Open after AMIR-43…46 (2026-11-25). Each item says what is known and what was **not yet checked**; measure before fixing.
+
+**Next (correctness and the biggest unknowns)**
+
+1. **All objectives before/after on real data** – AMIR-46 (reduced polish) affects every objective, but the before/after
+   comparison on the real 228-stock universe covered maximum Sharpe and the frontier only. Compare minimum variance, target
+   return, maximum return for a volatility limit, the max-holdings/minimum-position heuristic, sector caps and the turnover
+   limit (old vs new code, stated tolerance), like `LargeUniverseTests`.
+2. **Optimizations through the API** – all AMIR-44…46 timings are from the pure engine (harness). Not measured: a run
+   end to end (data loading, FX conversion, analytics JSON, storage), and why runs of ~14 stocks took 2–8 s in October
+   (the solver needs milliseconds for them – profile `GetSeriesInCurrencyAsync`/`CommonWindow`/benchmark series).
+3. **Universes up to 500 stocks** (`MaxUniverse`) – only 228 measured; check time and memory of the dense KKT and frontier.
+4. **Dropped frontier points** – 3 of 30 points are left out because their solve stops at the 1,500-iteration cap
+   (`FrontierSettings`, `if (!sol.IsOptimal) continue` in `EfficientFrontier`). Raising the cap for those points or
+   keeping the unpolished point changes what users see – needs a decision.
+5. **Deploy and verify AMIR-44…46** – not rebuilt into the development stack and not checked in the browser; AMIR-46's CI
+   pending at the time of writing (PRs #109 → #110 → #111, stacked).
+
+**Calculations not profiled yet**
+
+6. Backtests and strategy comparisons (re-run the optimizer per rebalance – should benefit, unmeasured), ML Optimization
+   training, the reality check (rate-limited endpoint: measure in-process on a larger universe), Matrix Pilot cycles.
+7. Remaining solver cost: per iteration the dense residual product P·x (~96 µs per check) and the two triangular solves
+   (~60 µs); a 228-stock run ≈ 1.7 s in the harness (frontier 1.6 s). Numerical guard: `LargeUniverseTests` (pinned to
+   1e-9); timing: `PERF_BENCH=1 dotnet test tests/PortfolioOptimizer.UnitTests --filter Benchmark_Universe230`.
+
+**Database and data**
+
+8. PostgreSQL memory: `shared_buffers` is the default 128 MB for a 1.8 GB database (cache hit ratio 96.1 %) – measure
+   page and query latency before/after a larger value; not changed.
+9. Company figures: 3.3M rows (727 MB) and a daily refresh of ~8,900 Yahoo requests although statements change quarterly –
+   refresh statements weekly/after reporting dates, valuation daily (AMIR-41 follow-up).
+10. Table growth: `SyncLogs` 202k rows (39 MB) – check whether old logs are ever removed; review other append-only tables.
+11. `PortfolioService.ListAsync` values each portfolio separately (~6 queries each; `/portfolios` ~380 ms for 4 portfolios
+    in the browser): batch prices/FX across portfolios.
+12. Queries that still read every price: the universe import (`UniverseService`, only when a constituents file changed)
+    and the coverage rebuild after the start (#13/#16, ~1.5–6 s, in the background since AMIR-43). Never add a query whose
+    cost grows with the number of stored prices to a request every page makes.
+
+**Frontend**
+
+13. Rendering not profiled: re-renders and long tasks on the stock list (fundamentals columns), large tables and charts.
+14. Browser memory over a long session (heap 44–65 MB per page measured once; no leak test).
+15. Bundle contents: `charts` chunk 432 KB (120 KB gzipped) not examined for splitting; dependency audit (unused npm/NuGet
+    packages) not done.
+
+**Memory, startup, footprint**
+
+16. API memory 106 MB after a restart, 252 MB after some hours – not investigated (may be normal caches/GC).
+17. Cold start after AMIR-43 not measured (warm: 2.1 s; cold before: 8.4 s).
+18. Disk footprint not audited: dead code, the Podman VM disk, `node_modules`, old `.claude/worktrees`.
+
+**Low value / later**
+
+19. The settings row is read 2–3 times per request (≈1 ms each); a per-request memo is possible.
+20. Multi-instance deployment: distributed rate limits, news single-flight and job queue (then Redis becomes reasonable).
 
 ## How to measure
 
