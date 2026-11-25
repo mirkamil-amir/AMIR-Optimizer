@@ -392,8 +392,8 @@ allows and always in Full screen), served by `GET /api/v1/stocks/fundamentals?sy
   in the cell (F-FUN-007/008). Bank figures (operating revenue, non-interest expense, net interest income, tangible book
   value, credit-loss provisions) were added on 2026-11-23; `IFundamentalsProvider.ConceptsChangedAtUtc` makes the scheduled
   run fetch every listing fetched before that once more.
-* **Accounting card (AMIR-41):** the stock-detail panel shows an **Accounting** card beside the price history (side by
-  side on wide screens, stacked below), served by `GET /api/v1/stocks/{symbol}/financials` (`GetFinancialsAsync`,
+* **Accounting card (AMIR-41):** the stock-detail panel and the stock page opened from Radar (`/stocks/:symbol`, AMIR-42)
+  show an **Accounting** card beside the price history (side by side on wide screens, stacked below), served by `GET /api/v1/stocks/{symbol}/financials` (`GetFinancialsAsync`,
   `FinancialStatements`; unknown symbol → 404). Years or quarters (newest first) × Income / Balance sheet / Cash flow /
   Ratios, plus the latest valuation figures (market cap, EV, P/E, forward P/E – analyst estimates –, P/B, P/S,
   EV/EBITDA) with their date. Amounts stay in the company's reporting currency (no conversion: rates of different years

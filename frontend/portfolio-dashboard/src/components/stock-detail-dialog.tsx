@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
@@ -16,20 +16,9 @@ import { date, dateTime, money, num } from '@/lib/format'
 import { useFetchPrices, useStock } from '@/lib/queries'
 import { useSelection } from '@/lib/selection'
 import { stockPosition } from '@/lib/stock-navigation'
+import { useChartHeight } from '@/lib/use-chart-height'
 import type { HistoryRange, Market, StockListItem } from '@/lib/types'
 import { MatrixLoader } from '@/components/matrix-loader'
-
-/** Chart height follows the viewport so the chart fills the panel on large screens and stays usable on small ones. */
-function useChartHeight() {
-  const compute = () => (typeof window === 'undefined' ? 360 : Math.round(Math.min(520, Math.max(240, window.innerHeight * 0.42))))
-  const [height, setHeight] = useState(compute)
-  useEffect(() => {
-    const onResize = () => setHeight(compute())
-    window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
-  }, [])
-  return height
-}
 
 /**
  * Large stock-detail panel opened from the stock list (about two thirds of the screen on desktop, full screen on

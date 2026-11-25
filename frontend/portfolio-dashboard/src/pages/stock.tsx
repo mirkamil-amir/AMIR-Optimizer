@@ -5,21 +5,28 @@ import { Card, CardContent } from '@/components/ui/card'
 import { ErrorState, LoadingBlock, PageHeader } from '@/components/common'
 import { QuoteProvenance, RefreshQuoteButton } from '@/components/stock-selection'
 import { ChangeText, PriceHistoryCard, WatchToggle } from '@/components/watchlist'
+import { AccountingCard } from '@/components/accounting-card'
 import { CompanyNews } from '@/components/news'
 import { CompanyOverview } from '@/components/company-overview'
+import { SplitRow } from '@/components/split-row'
 import { date, dateTime, money, num } from '@/lib/format'
 import { useStock, useWatchlist } from '@/lib/queries'
 import { useSelection } from '@/lib/selection'
 import type { HistoryRange } from '@/lib/types'
 import { countryOfSymbol } from '@/lib/markets'
 import { useMapSignal } from '@/lib/world-map'
+import { useChartHeight } from '@/lib/use-chart-height'
 
-/** Security page: latest price with provenance, price history by range, metadata and company news. */
+/**
+ * Security page (opened from Radar): latest price with provenance, price history and accounting side by side (the edge
+ * between them draggable, as in the stock-detail panel), company overview and company news.
+ */
 export function StockPage() {
   const { symbol = '' } = useParams()
   const detail = useStock(symbol)
   const selection = useSelection()
   const [range, setRange] = useState<HistoryRange>('1Y')
+  const chartHeight = useChartHeight()
   const s = detail.data?.stock
   const signal = useMapSignal()
   useEffect(() => { if (symbol) signal(countryOfSymbol(symbol), 'blink') }, [symbol, signal])
@@ -72,7 +79,9 @@ export function StockPage() {
         </CardContent>
       </Card>
 
-      <PriceHistoryCard symbol={s.symbol} range={range} onRangeChange={setRange} />
+      <SplitRow label="Resize price history and accounting"
+        left={<PriceHistoryCard symbol={s.symbol} range={range} onRangeChange={setRange} height={chartHeight} />}
+        right={<AccountingCard symbol={s.symbol} />} />
 
       <CompanyOverview symbol={s.symbol} />
 
