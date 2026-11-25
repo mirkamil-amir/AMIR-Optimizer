@@ -52,6 +52,8 @@ public sealed class AdmmQpSolver : IQuadraticProgramSolver
         var status = QpStatus.MaxIterationsReached;
         var iter = 0;
         var earlyPolished = false;
+        // Active sets whose early polish failed in this solve (deterministic: trying one again would fail again).
+        var failedEarly = new HashSet<ActiveRows>();
 
         for (iter = 1; iter <= s.MaxIterations; iter++)
         {
@@ -119,14 +121,23 @@ public sealed class AdmmQpSolver : IQuadraticProgramSolver
 
             // Early polish: once the iterates are roughly right, the active set is usually already correct and the polish
             // step solves the problem exactly. Accepted only when it meets the strict tolerance (10·EpsAbs) on its own.
+            // Its outcome depends only on the active set, so a set that already failed is not tried again (identical
+            // result; on frontiers of ~230 stocks 183 of 209 attempts failed, mostly repeats – docs/performance.md #17).
             if (s.Polish && s.EarlyPolishInterval > 0 && iter % s.EarlyPolishInterval == 0 &&
-                primRes <= s.EarlyPolishTolerance && dualRes <= s.EarlyPolishTolerance &&
-                Polish(problem, x, z, y, s, 0, 0) is { } early)
+                primRes <= s.EarlyPolishTolerance && dualRes <= s.EarlyPolishTolerance)
             {
-                (x, y, primRes, dualRes) = early;
-                status = QpStatus.Solved;
-                earlyPolished = true;
-                break;
+                var candidate = ActiveSet(problem, z, y);
+                if (!failedEarly.Contains(candidate))
+                {
+                    if (Polish(problem, candidate, s, 0, 0) is { } early)
+                    {
+                        (x, y, primRes, dualRes) = early;
+                        status = QpStatus.Solved;
+                        earlyPolished = true;
+                        break;
+                    }
+                    failedEarly.Add(candidate);
+                }
             }
         }
 
@@ -143,7 +154,7 @@ public sealed class AdmmQpSolver : IQuadraticProgramSolver
         var polished = earlyPolished;
         if (!earlyPolished && s.Polish && status is QpStatus.Solved or QpStatus.SolvedInaccurate)
         {
-            var pol = Polish(problem, x, z, y, s, primRes, dualRes);
+            var pol = Polish(problem, ActiveSet(problem, z, y), s, primRes, dualRes);
             if (pol is not null)
             {
                 (x, y, primRes, dualRes) = pol.Value;
@@ -163,11 +174,15 @@ public sealed class AdmmQpSolver : IQuadraticProgramSolver
         return new QpSolution(status, x.ToArray(), y.ToArray(), problem.Objective(x), iter, primRes, dualRes, polished, message);
     }
 
+    /// <summary>
+    /// Solves the KKT system of <paramref name="set"/> as equalities; null when it is singular, a dual sign is wrong or
+    /// the result misses the tolerance. A function of the active set alone (plus the problem and settings).
+    /// </summary>
     private static (Vector<double> X, Vector<double> Y, double Prim, double Dual)? Polish(
-        QuadraticProgram problem, Vector<double> x, Vector<double> z, Vector<double> y, QpSettings s, double primAdmm, double dualAdmm)
+        QuadraticProgram problem, ActiveRows set, QpSettings s, double primAdmm, double dualAdmm)
     {
         var n = problem.Variables;
-        var (active, lowCount) = ActiveSet(problem, z, y);
+        var (active, lowCount) = (set.Rows, set.LowCount);
         var (kkt, kktReg, rhs) = BuildKkt(problem, active, lowCount, s.PolishDelta);
         if (SolveRefined(kkt, kktReg, rhs, s.PolishRefinementSteps) is not { } sol) return null;
 
@@ -184,8 +199,21 @@ public sealed class AdmmQpSolver : IQuadraticProgramSolver
         return primOk && dualOk ? (xPol, yPol, Math.Max(prim, 0), dual) : null;
     }
 
+    /// <summary>Active constraint rows (lower-active first, then upper-active) with value equality, so failed sets can be remembered.</summary>
+    private sealed record ActiveRows(int[] Rows, int LowCount)
+    {
+        public bool Equals(ActiveRows? other) => other is not null && LowCount == other.LowCount && Rows.AsSpan().SequenceEqual(other.Rows);
+        public override int GetHashCode()
+        {
+            var h = new HashCode();
+            h.Add(LowCount);
+            foreach (var r in Rows) h.Add(r);
+            return h.ToHashCode();
+        }
+    }
+
     /// <summary>Constraints the ADMM iterate treats as active: lower-active rows first, then upper-active rows.</summary>
-    private static (int[] Active, int LowCount) ActiveSet(QuadraticProgram problem, Vector<double> z, Vector<double> y)
+    private static ActiveRows ActiveSet(QuadraticProgram problem, Vector<double> z, Vector<double> y)
     {
         var l = problem.Lower;
         var u = problem.Upper;
@@ -196,7 +224,7 @@ public sealed class AdmmQpSolver : IQuadraticProgramSolver
             if (z[i] - l[i] < -y[i]) lowActive.Add(i);
             else if (u[i] - z[i] < y[i]) upActive.Add(i);
         }
-        return (lowActive.Concat(upActive).ToArray(), lowActive.Count);
+        return new ActiveRows(lowActive.Concat(upActive).ToArray(), lowActive.Count);
     }
 
     /// <summary>
