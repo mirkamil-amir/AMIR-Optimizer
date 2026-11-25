@@ -12,7 +12,7 @@ PostgreSQL 17 via EF Core 10 + Npgsql. Context: `src/PortfolioOptimizer.Infrastr
 | Catalogue | `Assets` | symbol (unique, canonical), name, sector, industry, country, MIC, ISIN, currency, type (Equity/Etf/Index), tracked flag, metadata source |
 | Universes | `MarketIndices`, `IndexMemberships` | index metadata with source/revision/licence/verified date/content hash; membership = (index, asset) |
 | Prices | `HistoricalPrices`, `LatestQuotes`, `PriceCoverage` | daily bars unique per (asset, date, source) in the asset's own currency, indexed by (asset, source, date) and (source, retrieval time); latest quote per (asset, source) incl. previous close; coverage per (asset, source) – bars, first/last date, latest retrieval, adjusted bars – derived from the bars only (rewritten per asset by every upsert, rebuilt on start; never edit it by hand) |
-| Company figures | `FundamentalFacts`, `FundamentalsFetchStates` | reported figures (income statement, balance sheet, cash flow, trailing market cap and ratios) unique per (asset, source, concept, period type `FY`/`TTM`, period end), `numeric(28,8)` in ISO major units of the reporting currency; one fetch state per asset (status, attempt, retrieval, last error). Shared reference data, cascade-deleted with the asset; migration `CompanyFundamentals` (additive). See [market-data.md](market-data.md#company-figures-fundamentals) |
+| Company figures | `FundamentalFacts`, `FundamentalsFetchStates` | reported figures (income statement, balance sheet, cash flow, trailing market cap and ratios) with one current value per (asset, source, concept, period type `FY`/`Q`/`TTM`, period end) – a unique index filtered on `SupersededAtUtc IS NULL`; superseded values stay as history with `FirstSeenAtUtc`/`SupersededAtUtc` (AMIR-41), `numeric(28,8)` in ISO major units of the reporting currency; one fetch state per asset (status, attempt, retrieval, last error). Shared reference data, cascade-deleted with the asset; migration `CompanyFundamentals` (additive). See [market-data.md](market-data.md#company-figures-fundamentals) |
 | Exchange rates | `FxRates` | units of a currency per 1 EUR per (source, currency, date); checks rate > 0 and currency ≠ EUR; shared, fetched on demand. See [currency.md](currency.md) |
 | Data jobs | `SyncJobs` + `SyncLogs`, `QuoteRefreshRuns` | history downloads with per-asset logs; quote refresh cycles (trigger, counts, message) |
 | Settings | `Settings` | single row: active provider, defaults, staleness threshold |
@@ -53,7 +53,9 @@ are grouped by the next scheduled run), `NewsProviderTags` (additive: `NewsArtic
 (additive: `NewsArticleClassifications` filled with every stored article's current classification, `NewsArticles.SourceCategory`,
 `SourceEventType`, `SourceEventTypeBasis` recovered from stored rows, index on `NewsArticles.RuleVersion`), `NewsEntityLinks` (additive: `NewsArticleEntities`, `NewsStoryEntities`,
 `NewsArticles.EntityRuleVersion` default 0; links stored official central-bank items, the scheduled run links the rest)), `CompanyFundamentals`
-(additive: `FundamentalFacts`, `FundamentalsFetchStates`; filled on demand by the stock list).
+(additive: `FundamentalFacts`, `FundamentalsFetchStates`; filled on demand by the stock list), `FundamentalsHistory` (additive:
+`FundamentalFacts.FirstSeenAtUtc` backfilled from `RetrievedAtUtc`, `SupersededAtUtc`, unique index filtered to current values;
+going down deletes superseded values).
 
 ```bash
 set -a; . ./.env; set +a

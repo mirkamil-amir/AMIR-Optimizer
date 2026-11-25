@@ -1,8 +1,11 @@
 using System.Net;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using PortfolioOptimizer.Application.Dtos;
 using PortfolioOptimizer.Application.MarketData;
+using PortfolioOptimizer.Domain;
 using PortfolioOptimizer.Infrastructure.MarketData;
+using PortfolioOptimizer.Infrastructure.Persistence;
 
 namespace PortfolioOptimizer.IntegrationTests;
 
@@ -120,6 +123,79 @@ public sealed class FundamentalsTests : IAsyncLifetime
         Assert.All(r, x => Assert.Equal("Available", x.Status));
         // Stored figures are not due again: a later run queues fewer companies (independent of how far the run got).
         Assert.True(await Run() < first);
+    }
+
+    [Fact]
+    public async Task Refresh_KeepsHistory_OldYearsStay_RestatedValuesAreSuperseded()
+    {
+        Assert.Equal("Available", (await Settled("AAPL")).Single().Status);
+        var fy25 = new DateOnly(2025, 12, 31);
+        var fy19 = new DateOnly(2019, 12, 31);
+        int assetId;
+        decimal reported;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            assetId = await db.Assets.Where(a => a.Symbol == "AAPL").Select(a => a.Id).SingleAsync();
+            var revenue = await db.FundamentalFacts.SingleAsync(f => f.AssetId == assetId && f.Concept == "TotalRevenue" && f.PeriodType == "FY" && f.PeriodEnd == fy25);
+            reported = revenue.Value;
+            // As if the source had reported another 2025 revenue before (now restated) and a 2019 year it no longer returns.
+            revenue.Value = reported - 1m;
+            db.FundamentalFacts.Add(new FundamentalFact
+            {
+                AssetId = assetId, Source = revenue.Source, Concept = "TotalRevenue", PeriodType = "FY", PeriodEnd = fy19, Value = 1m,
+                Currency = "USD", RetrievedAtUtc = revenue.RetrievedAtUtc, FirstSeenAtUtc = revenue.RetrievedAtUtc,
+            });
+            (await db.FundamentalsFetchStates.SingleAsync(s => s.AssetId == assetId)).AttemptedAtUtc = DateTime.UtcNow.AddDays(-2); // due
+            await db.SaveChangesAsync();
+        }
+        using (var scope = _factory.Services.CreateScope())
+            await scope.ServiceProvider.GetRequiredService<FundamentalsService>().RefreshAsync(assetId, CancellationToken.None);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var rows = await db.FundamentalFacts.AsNoTracking().Where(f => f.AssetId == assetId && f.Concept == "TotalRevenue").ToListAsync();
+            var y25 = rows.Where(f => f.PeriodType == "FY" && f.PeriodEnd == fy25).ToList();
+            Assert.Equal(2, y25.Count);
+            Assert.Equal(reported - 1m, y25.Single(f => f.SupersededAtUtc is not null).Value);
+            Assert.Equal(reported, y25.Single(f => f.SupersededAtUtc is null).Value);
+            Assert.Null(rows.Single(f => f.PeriodEnd == fy19).SupersededAtUtc); // kept although the source no longer returns it
+            Assert.Equal(2, rows.Count(f => f.PeriodType == "Q")); // quarters are stored
+            Assert.Single(rows, f => f.PeriodType == "TTM");
+            Assert.All(rows, f => Assert.True(f.FirstSeenAtUtc > DateTime.MinValue));
+        }
+        // The list reads current values only: growth is still 1100/1000 − 1 (the 2019 year and the old value change nothing).
+        Assert.Equal(0.1, (await Get("AAPL")).Single().RevenueGrowth!.Value!.Value, 9);
+    }
+
+    [Fact]
+    public async Task Financials_ServeTheAccountingCard_WithTheUnavailablePaths()
+    {
+        async Task<StockFinancialsDto> Card(string symbol)
+        {
+            for (var i = 0; i < 100; i++)
+            {
+                var r = await (await _user.GetAsync($"/api/v1/stocks/{symbol}/financials")).ReadAsync<StockFinancialsDto>();
+                if (r.Status != "Pending") return r;
+                await Task.Delay(100);
+            }
+            throw new TimeoutException("Financials stayed pending.");
+        }
+        var aapl = await Card("aapl");
+        Assert.Equal("Available", aapl.Status);
+        Assert.True(aapl.IsSimulated);
+        Assert.Equal([new DateOnly(2025, 12, 31), new DateOnly(2024, 12, 31)], aapl.Annual!.PeriodEnds);
+        var rows = aapl.Annual.Sections.SelectMany(s => s.Rows).ToList();
+        Assert.Equal(0.1, rows.Single(r => r.Key == "revenueGrowth").Values[0]!.Value, 9); // 1100 / 1000 − 1
+        Assert.Equal(0.12, rows.Single(r => r.Key == "roic").Values[0]!.Value, 9); // as in the stock list
+        Assert.Equal(2, aapl.Quarterly!.PeriodEnds.Count);
+        Assert.Contains(aapl.Valuation, v => v.Key == "MarketCap");
+
+        Assert.Equal("NotApplicable", (await Card("SPY")).Status);
+        Assert.Equal(HttpStatusCode.NotFound, (await _user.GetAsync("/api/v1/stocks/NOSUCHSTOCK/financials")).StatusCode);
+        using var anonymous = _factory.CreateClient();
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync("/api/v1/stocks/AAPL/financials")).StatusCode);
     }
 
     [Fact]

@@ -357,20 +357,31 @@ allows and always in Full screen), served by `GET /api/v1/stocks/fundamentals?sy
 
 * **Source:** Yahoo Finance fundamentals time series (`/ws/fundamentals-timeseries/v1/finance/timeseries/{symbol}`,
   `YahooFundamentalsProvider`), no key and no session crumb – unofficial like the chart API (personal, non-commercial use
-  only). About four fiscal years of annual figures plus dated trailing values (market cap, EV, P/E, P/B, P/S,
-  EV/EBITDA) for all markets tested (US, DE, CH, GB). One request per listing, one at a time, 250 ms apart. Figures the
-  stock list does not use yet (EBITDA, net income, assets, debt, cash, shares, dividends, …) are stored for later cards.
+  only). Since 2026-11-25 (AMIR-41) every concept the source knows (`YahooFundamentalsConcepts`: 105 income-statement,
+  145 balance-sheet, 123 cash-flow) for fiscal years (`FY`), fiscal quarters (`Q`) and trailing twelve months (`TTM`),
+  plus dated trailing valuation values (market cap, EV, P/E, P/B, P/S, EV/EBITDA). Four requests per listing (one per
+  statement, one for valuation), one at a time, 250 ms apart – about 1 listing per second, ≈ 37 minutes for the
+  catalogue. Probe of 2026-11-25 (AAPL, JPM, 7203.T, SAP.DE, 005930.KS, 25 years requested): 138–194 concepts reported
+  per company, **at most 4 fiscal years and 5 quarters** (the source keeps no more), about 1,650 values per company
+  (≈ 12× the 25 concepts fetched before). Figures the stock list does not use are stored for later cards and ML.
 * **Not used (verified 2026-11-23):** Alpha Vantage `OVERVIEW` is premium-only for the configured key; SEC EDGAR XBRL
   `companyfacts` works (US filers only, with filing dates) but is not wired in yet.
 * **Fetching:** reads never wait for the source. `ScheduledFundamentalsRefresh` queues every company whose figures are
   missing or due one minute after start and then every 6 hours (the first run covers the whole catalogue, about 2,200
-  companies ≈ 10 minutes; later runs only figures older than a day). Missing or due listings of a page someone is looking
+  companies ≈ 37 minutes at four requests each; later runs only figures older than a day). Missing or due listings of a page someone is looking
   at go to a second queue that `FundamentalsRefreshWorker` always serves first (a listing waiting in the full run is moved
   ahead, never fetched twice); they are reported as `Pending`, the UI shows "…" (also while a new page loads) and asks
   again every 2 s. Config `MarketData:Fundamentals:ScheduledRefresh:Enabled` (default true; compose
   `FUNDAMENTALS_SCHEDULED_ENABLED`, off in tests and e2e), `InitialDelaySeconds` (60), `IntervalHours` (6).
   Figures are refreshed after 1 day, "not found" after 7 days, errors after 15 minutes; a failed refresh keeps the earlier
-  figures (served with a note). A successful fetch replaces the listing's figures of that source.
+  figures (served with a note).
+* **History is kept (AMIR-41):** a fetch never deletes figures (`FundamentalsHistory.Merge`). An unchanged value is
+  confirmed (`RetrievedAtUtc`), a changed value or currency (a restatement) closes the stored row (`SupersededAtUtc`) and
+  adds a new current one, and periods the source no longer returns stay. Because the source keeps only about four years
+  and five quarters, this is the only way older periods accumulate. `FirstSeenAtUtc` records when a value was first
+  retrieved here (rows from before 2026-11-25: their last retrieval) – a point in time for later analyses, not the
+  publication date. "Not found" after earlier figures keeps them, served with a note. The stock list reads only current
+  values of the 13 concepts it computes from (`FundamentalMetrics.Concepts.All`, years and trailing values).
 * **Currencies:** the API returns amounts in the currency the source reports – the trading currency for CAP, the
   reporting currency for statement figures (Bank of Georgia: GEL, listed in GBP). The stock list shows CAP, EBIT/EBITDA,
   FCF and Revenue in its price currency with the latest ECB reference rate (the same `GET /fx/board` rates as the
@@ -381,6 +392,19 @@ allows and always in Full screen), served by `GET /api/v1/stocks/fundamentals?sy
   in the cell (F-FUN-007/008). Bank figures (operating revenue, non-interest expense, net interest income, tangible book
   value, credit-loss provisions) were added on 2026-11-23; `IFundamentalsProvider.ConceptsChangedAtUtc` makes the scheduled
   run fetch every listing fetched before that once more.
+* **Accounting card (AMIR-41):** the stock-detail panel shows an **Accounting** card beside the price history (side by
+  side on wide screens, stacked below), served by `GET /api/v1/stocks/{symbol}/financials` (`GetFinancialsAsync`,
+  `FinancialStatements`; unknown symbol → 404). Years or quarters (newest first) × Income / Balance sheet / Cash flow /
+  Ratios, plus the latest valuation figures (market cap, EV, P/E, forward P/E – analyst estimates –, P/B, P/S,
+  EV/EBITDA) with their date. Amounts stay in the company's reporting currency (no conversion: rates of different years
+  would mix); a figure reported in another currency than its row is shown as "—" with the reason. Reported rows are as
+  published; rows never reported are left out; ratios (F-FUN-009..013, per-year ROE/ROIC) are null with the reason on
+  hover. Financials get bank lines (net interest income, non-interest expense, credit-loss provisions) and cost/income
+  instead of gross/EBIT margins, ROIC and the current ratio. One "Revenue growth" row: against the year before in
+  the Years view, against the previous quarter in the Quarters view (seasonal swings included). ROE and ROIC
+  in the Quarters view are the quarter's own return, not annualised (F-FUN-014). Period columns empty in the chosen statement are hidden. The edge between the two cards can be dragged
+  (25–75 %, double-click or Enter resets, arrow keys while focused; `SplitRow`, remembered in the browser's local
+  storage). Pending figures are asked for again every 2 s.
 * **Statuses:** `Available`, `Pending`, `NotFound`, `Error`, `NotApplicable` (ETFs, indices), `NotConfigured`. A metric
   without inputs is `null` with the reason (e.g. ROIC of banks and insurers, which report no EBIT) – shown as "—" with the
   reason on hover, never 0.

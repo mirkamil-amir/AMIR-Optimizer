@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { SelectionProvider } from '@/lib/selection'
 import { stockPosition } from '@/lib/stock-navigation'
-import type { CompanyProfile, PriceHistory, StockListItem, StockQuote } from '@/lib/types'
+import type { CompanyProfile, PriceHistory, StockFinancials, StockListItem, StockQuote } from '@/lib/types'
 import { StockDetailDialog } from './stock-detail-dialog'
 
 // ------------------------------------------------------------------ fixtures
@@ -38,6 +38,13 @@ const history = (symbol: string): PriceHistory => ({
   lastRetrievedAtUtc: '2026-10-15T00:00:00Z', supportedRanges: ['1M', '3M', '6M', '1Y', '5Y', 'MAX'],
 })
 
+const financials = (symbol: string): StockFinancials => ({
+  symbol, status: 'Available', usesFinancialMeasures: false, retrievedAtUtc: '2026-10-15T00:00:00Z', isSimulated: true, message: null,
+  annual: { periodType: 'FY', periodEnds: ['2025-12-31'], sections: [{ key: 'income', title: 'Income statement', rows: [
+    { key: 'TotalRevenue', label: 'Revenue', kind: 'amount', currency: 'USD', values: [1e9], notes: [null] }] }] },
+  quarterly: null, valuation: [],
+})
+
 // ------------------------------------------------------------------ fetch stub routed by URL
 
 type Handler = (url: string) => Promise<Response> | Response
@@ -47,6 +54,7 @@ const fail = (status: number) => new Response(JSON.stringify({ title: 'Provider 
 
 function defaultRoute(url: string): Response {
   const symbol = decodeURIComponent(url.split('/stocks/')[1]?.split(/[/?]/)[0] ?? '')
+  if (url.includes('/financials')) return ok(financials(symbol))
   if (url.includes('/profile')) return ok(profile(symbol))
   if (url.includes('/history')) return ok(history(symbol))
   if (url.includes('/watchlist')) return ok({ items: [], range: '1M', maxEntries: 100, note: '' })

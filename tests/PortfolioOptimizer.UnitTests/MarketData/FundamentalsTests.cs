@@ -222,6 +222,131 @@ public sealed class FundamentalsTests
     }
 }
 
+/// <summary>History of reported figures (AMIR-41): a refresh confirms, supersedes or adds rows and never removes one.</summary>
+public sealed class FundamentalsHistoryTests
+{
+    private static readonly DateTime Before = new(2026, 11, 1, 6, 0, 0, DateTimeKind.Utc);
+    private static readonly DateTime Now = new(2026, 11, 25, 6, 0, 0, DateTimeKind.Utc);
+    private static readonly DateOnly Fy21 = new(2021, 12, 31);
+    private static readonly DateOnly Fy25 = new(2025, 12, 31);
+
+    private static Domain.FundamentalFact Stored(string concept, DateOnly end, decimal value, string? ccy = "USD", string period = "FY") => new()
+    {
+        AssetId = 7, Source = "Yahoo", Concept = concept, PeriodType = period, PeriodEnd = end, Value = value, Currency = ccy,
+        RetrievedAtUtc = Before, FirstSeenAtUtc = Before,
+    };
+
+    [Fact]
+    public void UnchangedValue_IsConfirmed_NotDuplicated()
+    {
+        var row = Stored("TotalRevenue", Fy25, 1000m);
+        var r = FundamentalsHistory.Merge(7, "Yahoo", [row], [new("TotalRevenue", "FY", Fy25, 1000m, "USD")], Now);
+        Assert.Empty(r.Added);
+        Assert.Equal(1, r.Confirmed);
+        Assert.Equal(Now, row.RetrievedAtUtc);
+        Assert.Equal(Before, row.FirstSeenAtUtc);
+        Assert.Null(row.SupersededAtUtc);
+    }
+
+    [Fact]
+    public void ChangedValueOrCurrency_SupersedesTheOldRow_AndAddsTheNewOne()
+    {
+        var revenue = Stored("TotalRevenue", Fy25, 1000m);
+        var eps = Stored("DilutedEPS", Fy25, 2.5m);
+        var r = FundamentalsHistory.Merge(7, "Yahoo", [revenue, eps],
+            [new("TotalRevenue", "FY", Fy25, 1010m, "USD"), new("DilutedEPS", "FY", Fy25, 2.5m, "EUR")], Now);
+        Assert.Equal(2, r.Superseded);
+        Assert.Equal(Now, revenue.SupersededAtUtc);
+        Assert.Equal(Before, revenue.RetrievedAtUtc); // the old value keeps its own dates
+        var added = r.Added.Single(f => f.Concept == "TotalRevenue");
+        Assert.Equal(1010m, added.Value);
+        Assert.Equal(Now, added.FirstSeenAtUtc);
+        Assert.Null(added.SupersededAtUtc);
+        Assert.Equal("EUR", r.Added.Single(f => f.Concept == "DilutedEPS").Currency);
+    }
+
+    [Fact]
+    public void PeriodsTheSourceNoLongerReturns_AreLeftAsTheyAre()
+    {
+        var old = Stored("TotalRevenue", Fy21, 700m);
+        var r = FundamentalsHistory.Merge(7, "Yahoo", [old], [new("TotalRevenue", "FY", Fy25, 1000m, "USD")], Now);
+        Assert.Single(r.Added);
+        Assert.Equal(0, r.Confirmed + r.Superseded);
+        Assert.Null(old.SupersededAtUtc);
+        Assert.Equal(Before, old.RetrievedAtUtc);
+    }
+
+    [Fact]
+    public void ValuesAreComparedAtStoredPrecision_SoRoundingIsNoRestatement()
+    {
+        var eps = Stored("DilutedEPS", Fy25, 6.08123457m); // stored with 8 decimals
+        var r = FundamentalsHistory.Merge(7, "Yahoo", [eps], [new("DilutedEPS", "FY", Fy25, 6.081234567891m, "USD")], Now);
+        Assert.Equal(1, r.Confirmed);
+        Assert.Empty(r.Added);
+    }
+
+    [Fact]
+    public void PeriodTypesAreSeparate_AndARepeatedPeriodCountsOnce()
+    {
+        var fy = Stored("TotalRevenue", Fy25, 1000m);
+        var r = FundamentalsHistory.Merge(7, "Yahoo", [fy],
+            [new("TotalRevenue", "Q", Fy25, 290m, "USD"), new("TotalRevenue", "Q", Fy25, 291m, "USD"), new("TotalRevenue", "TTM", Fy25, 1000m, "USD")], Now);
+        Assert.Equal(2, r.Added.Count);
+        Assert.Equal(291m, r.Added.Single(f => f.PeriodType == "Q").Value); // the source's last value of the period
+        Assert.Null(fy.SupersededAtUtc);
+    }
+
+    [Fact]
+    public void SupersededRows_AreNotMatchedAgain()
+    {
+        var closed = Stored("TotalRevenue", Fy25, 900m);
+        closed.SupersededAtUtc = Before;
+        var current = Stored("TotalRevenue", Fy25, 1000m);
+        var r = FundamentalsHistory.Merge(7, "Yahoo", [closed, current], [new("TotalRevenue", "FY", Fy25, 1000m, "USD")], Now);
+        Assert.Equal(1, r.Confirmed);
+        Assert.Equal(Before, closed.RetrievedAtUtc);
+    }
+}
+
+/// <summary>Request layout and parsing of the Yahoo fundamentals time series for every concept (AMIR-41).</summary>
+public sealed class YahooFundamentalsRequestTests
+{
+    [Fact]
+    public void FourRequestsPerListing_EachStatementWithYearsQuartersAndTrailing()
+    {
+        var requests = YahooFundamentalsProvider.RequestTypes();
+        Assert.Equal(4, requests.Count);
+        var income = requests[0].Split(',');
+        Assert.Equal(YahooFundamentalsConcepts.IncomeStatement.Length * 3, income.Length);
+        Assert.Contains("annualTotalRevenue", income);
+        Assert.Contains("quarterlyTotalRevenue", income);
+        Assert.Contains("trailingTotalRevenue", income);
+        Assert.Contains("annualNonInterestExpense", income);
+        Assert.Contains("trailingMarketCap", requests[3].Split(','));
+        // Every concept the stock list computes from is requested.
+        var all = requests.SelectMany(r => r.Split(',')).ToHashSet();
+        Assert.All(FundamentalMetrics.Concepts.All, c => Assert.True(all.Contains("annual" + c) || all.Contains("trailing" + c), c));
+        // No concept twice within a statement (a duplicate would be sent twice and stored once).
+        Assert.All(YahooFundamentalsConcepts.Statements, s => Assert.Equal(s.Concepts.Length, s.Concepts.Distinct().Count()));
+    }
+
+    [Fact]
+    public void Parse_MapsQuarterlyToQ()
+    {
+        var root = JsonDocument.Parse("""
+            {"timeseries":{"result":[
+              {"meta":{"symbol":["AAPL"],"type":["quarterlyTotalRevenue"]},"timestamp":[1],
+               "quarterlyTotalRevenue":[{"asOfDate":"2026-09-30","periodType":"3M","currencyCode":"USD","reportedValue":{"raw":102466000000.0}}]},
+              {"meta":{"symbol":["AAPL"],"type":["trailingDilutedEPS"]},"timestamp":[2],
+               "trailingDilutedEPS":[{"asOfDate":"2026-09-30","periodType":"TTM","currencyCode":"USD","reportedValue":{"raw":7.46}}]}
+            ],"error":null}}
+            """).RootElement;
+        var p = YahooFundamentalsProvider.Parse(root);
+        Assert.Contains(new ProviderFundamentalFact("TotalRevenue", "Q", new DateOnly(2026, 9, 30), 102466000000m, "USD"), p.Facts);
+        Assert.Contains(new ProviderFundamentalFact("DilutedEPS", "TTM", new DateOnly(2026, 9, 30), 7.46m, "USD"), p.Facts);
+    }
+}
+
 /// <summary>Queue order of the fundamentals worker: page requests before the scheduled full refresh, each listing once.</summary>
 public sealed class FundamentalsQueueTests
 {

@@ -974,7 +974,8 @@
       "status": "Correct under documented assumptions",
       "severity": null,
       "code": [
-        "src/PortfolioOptimizer.Application/MarketData/FundamentalMetrics.cs#Roic"
+        "src/PortfolioOptimizer.Application/MarketData/FundamentalMetrics.cs#Roic",
+        "src/PortfolioOptimizer.Application/MarketData/FundamentalMetrics.cs#RoicAt"
       ],
       "tests": [
         "FundamentalsTests.Roic_UsesEffectiveTaxRate_AndAverageInvestedCapital",
@@ -1043,7 +1044,8 @@
       "status": "Correct under documented assumptions",
       "severity": null,
       "code": [
-        "src/PortfolioOptimizer.Application/MarketData/FundamentalMetrics.cs#Roe"
+        "src/PortfolioOptimizer.Application/MarketData/FundamentalMetrics.cs#Roe",
+        "src/PortfolioOptimizer.Application/MarketData/FundamentalMetrics.cs#RoeAt"
       ],
       "tests": [
         "FundamentalsTests.Roe_IsNetIncomeOverAverageEquity"
@@ -1052,6 +1054,105 @@
         "market-data-fx"
       ],
       "verified": "2026-11-23"
+    },
+    {
+      "id": "F-FUN-009",
+      "name": "Margins per period (accounting card)",
+      "status": "Correct under documented assumptions",
+      "severity": null,
+      "code": [
+        "src/PortfolioOptimizer.Application/MarketData/FinancialStatements.cs#Ratios"
+      ],
+      "tests": [
+        "FinancialStatementsTests.Ratios_PerYear_HandComputed",
+        "FinancialStatementsTests.Ratios_AreNullWithANote_WhenNotMeaningful"
+      ],
+      "skills": [
+        "market-data-fx"
+      ],
+      "verified": "2026-11-25"
+    },
+    {
+      "id": "F-FUN-010",
+      "name": "Revenue growth per period (accounting card)",
+      "status": "Correct under documented assumptions",
+      "severity": null,
+      "code": [
+        "src/PortfolioOptimizer.Application/MarketData/FinancialStatements.cs#Ratios"
+      ],
+      "tests": [
+        "FinancialStatementsTests.Ratios_PerYear_HandComputed",
+        "FinancialStatementsTests.Quarters_OneGrowthRow_AgainstThePreviousQuarter_NoAnnualReturns"
+      ],
+      "skills": [
+        "market-data-fx"
+      ],
+      "verified": "2026-11-25"
+    },
+    {
+      "id": "F-FUN-014",
+      "name": "ROE and ROIC of a quarter (accounting card)",
+      "status": "Correct under documented assumptions",
+      "severity": null,
+      "code": [
+        "src/PortfolioOptimizer.Application/MarketData/FinancialStatements.cs#Ratios"
+      ],
+      "tests": [
+        "FinancialStatementsTests.Quarters_RoeAndRoic_AreTheQuarterOwnReturn_NotAnnualised"
+      ],
+      "skills": [
+        "market-data-fx"
+      ],
+      "verified": "2026-11-25"
+    },
+    {
+      "id": "F-FUN-011",
+      "name": "Debt/equity per period (accounting card)",
+      "status": "Correct under documented assumptions",
+      "severity": null,
+      "code": [
+        "src/PortfolioOptimizer.Application/MarketData/FinancialStatements.cs#Ratios"
+      ],
+      "tests": [
+        "FinancialStatementsTests.Ratios_PerYear_HandComputed",
+        "FinancialStatementsTests.Ratios_AreNullWithANote_WhenNotMeaningful"
+      ],
+      "skills": [
+        "market-data-fx"
+      ],
+      "verified": "2026-11-25"
+    },
+    {
+      "id": "F-FUN-012",
+      "name": "Current ratio per period (accounting card)",
+      "status": "Correct under documented assumptions",
+      "severity": null,
+      "code": [
+        "src/PortfolioOptimizer.Application/MarketData/FinancialStatements.cs#Ratios"
+      ],
+      "tests": [
+        "FinancialStatementsTests.Ratios_PerYear_HandComputed"
+      ],
+      "skills": [
+        "market-data-fx"
+      ],
+      "verified": "2026-11-25"
+    },
+    {
+      "id": "F-FUN-013",
+      "name": "Cost/income of financials (accounting card)",
+      "status": "Correct under documented assumptions",
+      "severity": null,
+      "code": [
+        "src/PortfolioOptimizer.Application/MarketData/FinancialStatements.cs#Ratios"
+      ],
+      "tests": [
+        "FinancialStatementsTests.Financials_ShowBankLines_CostIncome_AndNoRoic"
+      ],
+      "skills": [
+        "market-data-fx"
+      ],
+      "verified": "2026-11-25"
     },
     {
       "id": "F-TRD-001",

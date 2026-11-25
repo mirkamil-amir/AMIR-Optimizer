@@ -27,6 +27,8 @@ public static class FundamentalMetrics
 {
     public const string FiscalYear = "FY";
     public const string Trailing = "TTM";
+    /// <summary>A fiscal quarter (stored for later cards and ML; the stock list does not use quarters).</summary>
+    public const string Quarter = "Q";
 
     /// <summary>Concepts the stock list needs; providers may deliver more (kept for later cards).</summary>
     public static class Concepts
@@ -44,6 +46,13 @@ public static class FundamentalMetrics
         public const string TaxProvision = "TaxProvision";
         public const string InvestedCapital = "InvestedCapital";
         public const string FreeCashFlow = "FreeCashFlow";
+
+        /// <summary>Every concept above: the stock list loads only these (a listing stores far more).</summary>
+        public static readonly string[] All =
+        [
+            MarketCap, TotalRevenue, Ebit, Ebitda, PeRatio, NetIncome, StockholdersEquity, OperatingRevenue,
+            NonInterestExpense, PretaxIncome, TaxProvision, InvestedCapital, FreeCashFlow,
+        ];
     }
 
     /// <summary>Two fiscal-year ends count as consecutive years when 300–430 days apart (allows shifted year ends).</summary>
@@ -85,17 +94,22 @@ public static class FundamentalMetrics
     public static FundamentalMetric Roe(IReadOnlyList<FactPoint> facts)
     {
         const string basis = "Return on equity, latest fiscal year";
-        var equity = Series(facts, Concepts.StockholdersEquity, FiscalYear);
         foreach (var income in Enumerable.Reverse(Series(facts, Concepts.NetIncome, FiscalYear)))
-        {
-            var end = equity.FirstOrDefault(e => e.PeriodEnd == income.PeriodEnd);
-            if (end is null || end.Currency != income.Currency) continue;
-            var start = PriorYear(equity, end);
-            var average = start is not null && start.Currency == end.Currency ? (start.Value + end.Value) / 2 : end.Value;
-            if (average <= 0) return FundamentalMetric.Unavailable(basis, "Shareholders' equity is zero or negative.");
-            return new FundamentalMetric(income.Value / average, null, income.PeriodEnd, basis, null);
-        }
+            if (RoeAt(facts, income.PeriodEnd, basis) is { } m) return m;
         return FundamentalMetric.Unavailable(basis, "Net income or shareholders' equity is not reported.");
+    }
+
+    /// <summary>F-FUN-008 for the fiscal year ending <paramref name="end"/>; null when that year lacks net income or year-end equity in one currency.</summary>
+    public static FundamentalMetric? RoeAt(IReadOnlyList<FactPoint> facts, DateOnly end, string basis = "Return on equity")
+    {
+        var income = At(facts, Concepts.NetIncome, end);
+        var equity = Series(facts, Concepts.StockholdersEquity, FiscalYear);
+        var close = equity.FirstOrDefault(e => e.PeriodEnd == end);
+        if (income is null || close is null || close.Currency != income.Currency) return null;
+        var start = PriorYear(equity, close);
+        var average = start is not null && start.Currency == close.Currency ? (start.Value + close.Value) / 2 : close.Value;
+        if (average <= 0) return FundamentalMetric.Unavailable(basis, "Shareholders' equity is zero or negative.");
+        return new FundamentalMetric(income.Value / average, null, end, basis, null);
     }
 
     /// <summary>F-FUN-005: a reported figure of the latest fiscal year as published (revenue, EBIT, EBITDA), with its currency.</summary>
@@ -175,23 +189,28 @@ public static class FundamentalMetrics
         var ebit = Series(facts, Concepts.Ebit, FiscalYear);
         if (ebit.Count == 0)
             return FundamentalMetric.Unavailable(basis, "EBIT is not reported (usual for banks and insurers, where ROIC is not meaningful).");
-        var capital = Series(facts, Concepts.InvestedCapital, FiscalYear);
         // Latest year with both EBIT and year-end invested capital in the same currency.
         foreach (var e in Enumerable.Reverse(ebit))
-        {
-            var end = capital.FirstOrDefault(c => c.PeriodEnd == e.PeriodEnd);
-            if (end is null || end.Currency != e.Currency) continue;
-            var pretax = At(facts, Concepts.PretaxIncome, e.PeriodEnd);
-            var tax = At(facts, Concepts.TaxProvision, e.PeriodEnd);
-            if (pretax is null || tax is null)
-                return FundamentalMetric.Unavailable(basis, "Pre-tax income or tax provision is not reported, so the tax rate is unknown.");
-            var rate = pretax.Value <= 0 ? 0 : Math.Clamp(tax.Value / pretax.Value, 0, 1);
-            var start = PriorYear(capital, end);
-            var invested = start is not null && start.Currency == end.Currency ? (start.Value + end.Value) / 2 : end.Value;
-            if (invested <= 0) return FundamentalMetric.Unavailable(basis, "Invested capital is zero or negative.");
-            return new FundamentalMetric(e.Value * (1 - rate) / invested, null, e.PeriodEnd, basis, null);
-        }
+            if (RoicAt(facts, e.PeriodEnd, basis) is { } m) return m;
         return FundamentalMetric.Unavailable(basis, "Invested capital is not reported for a year with EBIT.");
+    }
+
+    /// <summary>F-FUN-004 for the fiscal year ending <paramref name="end"/>; null when that year lacks EBIT or year-end invested capital in one currency.</summary>
+    public static FundamentalMetric? RoicAt(IReadOnlyList<FactPoint> facts, DateOnly end, string basis = "Return on invested capital")
+    {
+        var e = At(facts, Concepts.Ebit, end);
+        var capital = Series(facts, Concepts.InvestedCapital, FiscalYear);
+        var close = capital.FirstOrDefault(c => c.PeriodEnd == end);
+        if (e is null || close is null || close.Currency != e.Currency) return null;
+        var pretax = At(facts, Concepts.PretaxIncome, end);
+        var tax = At(facts, Concepts.TaxProvision, end);
+        if (pretax is null || tax is null)
+            return FundamentalMetric.Unavailable(basis, "Pre-tax income or tax provision is not reported, so the tax rate is unknown.");
+        var rate = pretax.Value <= 0 ? 0 : Math.Clamp(tax.Value / pretax.Value, 0, 1);
+        var start = PriorYear(capital, close);
+        var invested = start is not null && start.Currency == close.Currency ? (start.Value + close.Value) / 2 : close.Value;
+        if (invested <= 0) return FundamentalMetric.Unavailable(basis, "Invested capital is zero or negative.");
+        return new FundamentalMetric(e.Value * (1 - rate) / invested, null, end, basis, null);
     }
 
     private static List<FactPoint> Series(IReadOnlyList<FactPoint> facts, string concept, string periodType) =>

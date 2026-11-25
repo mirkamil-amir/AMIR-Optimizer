@@ -58,8 +58,16 @@
   "currently unavailable". The stock-detail panel navigates within the current page of the stock list (50 rows).
 
 ## Company figures (fundamentals)
-- From the unofficial Yahoo fundamentals API (personal, non-commercial use): about four fiscal years, no publication
-  dates – fine for display, but any later use in backtests or ML must assume a reporting lag to avoid look-ahead.
+- From the unofficial Yahoo fundamentals API (personal, non-commercial use): at most four fiscal years and five quarters
+  per request, no publication dates – fine for display, but any later use in backtests or ML must assume a reporting lag
+  to avoid look-ahead. History is kept from 2026-11-25 on (AMIR-41), so older periods only accumulate from then;
+  `FirstSeenAtUtc` is when Matrix first retrieved a value, not when it was published. Long history (≈ 10 years, with
+  filing dates) would need SEC EDGAR (US companies only), which is not wired in.
+- The accounting card shows amounts in the reporting currency only (no conversion), so companies reporting in different
+  currencies are not directly comparable there; quarterly figures cover about five quarters, so quarterly revenue growth
+  is against the previous quarter (seasonal swings included) rather than the same quarter a year earlier. Forward P/E is the source's analyst estimate.
+- About 3.7 M stored values for the catalogue (≈ 0.9 GB estimated, from the 2026-11-25 probe) and four requests per
+  listing; refreshed daily like before, although statements change quarterly.
 - Amounts are converted into the list's price currency with the latest reference rate, also for past fiscal years (a
   comparison, not the rate of the period). Currencies without an ECB rate (e.g. GEL) stay unconverted, so those rows are
   not directly comparable. Columns are not sortable. P/E is the source's trailing figure and can lag the latest close.

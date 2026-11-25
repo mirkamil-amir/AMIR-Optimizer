@@ -13,8 +13,15 @@ public enum FundamentalsFetchStatus
 
 /// <summary>
 /// One reported figure of a listing as supplied by the source (never computed or estimated): a concept such as
-/// "TotalRevenue" for a fiscal year (<c>FY</c>) or a trailing value (<c>TTM</c>, e.g. the market capitalization on a date).
-/// Shared reference data like prices; derived metrics (ROIC, growth) are computed from these when read.
+/// "TotalRevenue" for a fiscal year (<c>FY</c>), a fiscal quarter (<c>Q</c>) or a trailing value (<c>TTM</c>, e.g. the
+/// market capitalization on a date). Shared reference data like prices; derived metrics (ROIC, growth) are computed from
+/// these when read.
+/// <para>
+/// History is kept (AMIR-41): a refresh never deletes figures. Periods the source no longer returns stay, and a value the
+/// source changes (a restatement) is closed with <see cref="SupersededAtUtc"/> and followed by a new row, so
+/// <see cref="FirstSeenAtUtc"/> records when each value became known here. Current figures have no
+/// <see cref="SupersededAtUtc"/>; at most one per (listing, source, concept, period type, period end).
+/// </para>
 /// </summary>
 public class FundamentalFact
 {
@@ -32,7 +39,12 @@ public class FundamentalFact
     /// <summary>Value in ISO major units of <see cref="Currency"/> (ratios such as a tax rate have no currency).</summary>
     public decimal Value { get; set; }
     public string? Currency { get; set; }
+    /// <summary>When the source last reported this value (updated by every refresh that returns it unchanged).</summary>
     public DateTime RetrievedAtUtc { get; set; }
+    /// <summary>When this value was first retrieved here (point in time for later analyses; not the publication date).</summary>
+    public DateTime FirstSeenAtUtc { get; set; }
+    /// <summary>When the source reported a different value for the same period (null = current value).</summary>
+    public DateTime? SupersededAtUtc { get; set; }
 }
 
 /// <summary>Last fetch attempt of a listing's figures (one row per listing); drives refresh timing and error reporting.</summary>

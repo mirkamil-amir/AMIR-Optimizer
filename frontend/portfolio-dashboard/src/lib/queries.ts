@@ -3,7 +3,7 @@ import { api } from './api'
 import type {
   AppSettings, Asset, AuditEvent, Backtest, BacktestRequest, BacktestSummary, CashEntry, CatalogueImportResult, HoldingsResponse,
   FxSync, MarketDataStatus, OptimizationRun, OptimizationRunSummary, Order, PagedResult, PaperTradeResult, Performance, Portfolio,
-  PortfolioSettings, PortfolioSummary, PriceBar, Risk, RunStatus, Sector, StockDetail, StockFundamentals, StockListItem, StockTrend, SyncJob, TradeProposal,
+  PortfolioSettings, PortfolioSummary, PriceBar, Risk, RunStatus, Sector, StockDetail, StockFinancials, StockFundamentals, StockListItem, StockTrend, SyncJob, TradeProposal,
   Transaction, UserAccountStatus, UserSummary, OneTimeCredential, MlCatalog, MlExperiment, MlExperimentRequest, MlExperimentSummary, MlBacktest,
   MlPredictionSet, StrategyComparison, StrategyComparisonRequest, StrategyComparisonSummary, Market, QuoteRefreshRun, QuoteRefreshResult,
   AdminOverview, HistoryRange, PriceHistory, Watchlist, WatchlistAddResult, NewsFeed, NewsFilters, EventComparison, RealityCheck, CompanyProfile,
@@ -828,6 +828,15 @@ export const useStockFundamentals = (symbols: string[], enabled = true) =>
     staleTime: 5 * 60_000,
     placeholderData: keepPreviousData,
     refetchInterval: (q) => (q.state.data?.some((f) => f.status === 'Pending') ? 2000 : false),
+  })
+
+/** Accounting card of one stock; asks again every 2 s while its figures are being fetched. */
+export const useStockFinancials = (symbol: string) =>
+  useQuery({
+    queryKey: ['stock-financials', symbol] as const,
+    queryFn: ({ signal }) => api.get<StockFinancials>(`${V1}/stocks/${encodeURIComponent(symbol)}/financials`, signal),
+    staleTime: 5 * 60_000,
+    refetchInterval: (q) => (q.state.data?.status === 'Pending' ? 2000 : false),
   })
 
 export const useWatchlist = (range: HistoryRange = '1M') =>

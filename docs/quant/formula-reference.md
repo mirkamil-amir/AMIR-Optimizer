@@ -801,7 +801,7 @@ Nominal growth in the reporting currency (includes inflation, acquisitions).
 | Field | Value |
 |---|---|
 | Status | Correct under documented assumptions |
-| Code | `src/PortfolioOptimizer.Application/MarketData/FundamentalMetrics.cs#Roic` |
+| Code | `src/PortfolioOptimizer.Application/MarketData/FundamentalMetrics.cs#Roic`; `src/PortfolioOptimizer.Application/MarketData/FundamentalMetrics.cs#RoicAt` |
 | Tests | `FundamentalsTests.Roic_UsesEffectiveTaxRate_AndAverageInvestedCapital`; `FundamentalsTests.Roic_WithoutPreviousYear_UsesYearEndCapital`; `FundamentalsTests.Roic_PreTaxLoss_AssumesNoTax_AndTaxRateIsClamped`; `FundamentalsTests.Roic_Bank_WithoutEbit_IsUnavailableWithReason`; `FundamentalsTests.Roic_NonPositiveCapital_OrMissingTax_IsUnavailable` |
 | Skills | market-data-fx |
 | Verified | 2026-11-23 |
@@ -859,7 +859,7 @@ no non-interest expense → PPOP null with the reason.
 | Field | Value |
 |---|---|
 | Status | Correct under documented assumptions |
-| Code | `src/PortfolioOptimizer.Application/MarketData/FundamentalMetrics.cs#Roe` |
+| Code | `src/PortfolioOptimizer.Application/MarketData/FundamentalMetrics.cs#Roe`; `src/PortfolioOptimizer.Application/MarketData/FundamentalMetrics.cs#RoeAt` |
 | Tests | `FundamentalsTests.Roe_IsNetIncomeOverAverageEquity` |
 | Skills | market-data-fx |
 | Verified | 2026-11-23 |
@@ -868,6 +868,92 @@ $\text{ROE} = \text{net income} / \overline{E}$, $\overline{E}$ = mean of shareh
 fiscal-year end (the year-end value alone when the previous one is missing); $\overline{E} \le 0$ → null. Shown as "ROE …"
 for Financials-sector companies instead of ROIC (debt is their raw material, so invested capital is not meaningful).
 Net income includes minority interests as reported by the source.
+
+### F-FUN-009 · Margins per period (accounting card)
+
+| Field | Value |
+|---|---|
+| Status | Correct under documented assumptions |
+| Code | `src/PortfolioOptimizer.Application/MarketData/FinancialStatements.cs#Ratios` |
+| Tests | `FinancialStatementsTests.Ratios_PerYear_HandComputed`; `FinancialStatementsTests.Ratios_AreNullWithANote_WhenNotMeaningful` |
+| Skills | market-data-fx |
+| Verified | 2026-11-25 |
+
+Gross, EBIT, net and FCF margin of each fiscal year or quarter: $m = X_p / R_p$ with $X$ = gross profit, EBIT, net
+income or free cash flow and $R$ = revenue of the same period. Null with a note when an input is missing, the two are
+reported in different currencies, or $R_p \le 0$. Banks and insurers: net margin only (with cost/income, F-FUN-013).
+
+### F-FUN-010 · Revenue growth per period (accounting card)
+
+| Field | Value |
+|---|---|
+| Status | Correct under documented assumptions |
+| Code | `src/PortfolioOptimizer.Application/MarketData/FinancialStatements.cs#Ratios` |
+| Tests | `FinancialStatementsTests.Ratios_PerYear_HandComputed`; `FinancialStatementsTests.Quarters_OneGrowthRow_AgainstThePreviousQuarter_NoAnnualReturns` |
+| Skills | market-data-fx |
+| Verified | 2026-11-25 |
+
+One "Revenue growth" row per view. Fiscal years: $g_p = R_p / R_{p-1} - 1$ against the fiscal year ending 300–430 days
+earlier. Quarters: $g_p = R_p / R_{p-1q} - 1$ against the previous quarter (ending 60–120 days earlier) – the source keeps
+only about five quarters, so a year-earlier quarter would exist for the newest one only; quarter-on-quarter growth
+includes seasonal swings and is not annualised. Null without the earlier period, with different currencies, or with an
+earlier revenue ≤ 0. Unlike F-FUN-003 there is no two-year fallback.
+
+### F-FUN-014 · ROE and ROIC of a quarter (accounting card)
+
+| Field | Value |
+|---|---|
+| Status | Correct under documented assumptions |
+| Code | `src/PortfolioOptimizer.Application/MarketData/FinancialStatements.cs#Ratios` |
+| Tests | `FinancialStatementsTests.Quarters_RoeAndRoic_AreTheQuarterOwnReturn_NotAnnualised` |
+| Skills | market-data-fx |
+| Verified | 2026-11-25 |
+
+The quarter's own return, **not annualised** (annual returns are in the Years view, F-FUN-004/008):
+$\text{ROE}_q = \text{net income}_q / \overline{E}$ and $\text{ROIC}_q = \text{EBIT}_q (1 - t_q) / \overline{IC}$, with
+$\overline{X}$ = mean of the previous quarter end (60–120 days earlier) and this quarter end, or the quarter-end value
+alone; $t_q$ = tax provision ÷ pre-tax income of the quarter clamped to [0, 1] (0 for a pre-tax loss). Null with the
+reason when capital ≤ 0, the tax inputs are missing or the currencies differ. ROIC not for financials.
+
+### F-FUN-011 · Debt/equity per period (accounting card)
+
+| Field | Value |
+|---|---|
+| Status | Correct under documented assumptions |
+| Code | `src/PortfolioOptimizer.Application/MarketData/FinancialStatements.cs#Ratios` |
+| Tests | `FinancialStatementsTests.Ratios_PerYear_HandComputed`; `FinancialStatementsTests.Ratios_AreNullWithANote_WhenNotMeaningful` |
+| Skills | market-data-fx |
+| Verified | 2026-11-25 |
+
+$D/E = \text{total debt}_p / \text{shareholders' equity}_p$ at the period end, shown as a multiple ("0.5×"). Null with a
+note when equity ≤ 0. Total debt as reported (may include leases).
+
+### F-FUN-012 · Current ratio per period (accounting card)
+
+| Field | Value |
+|---|---|
+| Status | Correct under documented assumptions |
+| Code | `src/PortfolioOptimizer.Application/MarketData/FinancialStatements.cs#Ratios` |
+| Tests | `FinancialStatementsTests.Ratios_PerYear_HandComputed` |
+| Skills | market-data-fx |
+| Verified | 2026-11-25 |
+
+$\text{current assets}_p / \text{current liabilities}_p$ at the period end, as a multiple; null when liabilities ≤ 0.
+Not shown for banks and insurers (their balance sheets are not split into current and non-current).
+
+### F-FUN-013 · Cost/income of financials (accounting card)
+
+| Field | Value |
+|---|---|
+| Status | Correct under documented assumptions |
+| Code | `src/PortfolioOptimizer.Application/MarketData/FinancialStatements.cs#Ratios` |
+| Tests | `FinancialStatementsTests.Financials_ShowBankLines_CostIncome_AndNoRoic` |
+| Skills | market-data-fx |
+| Verified | 2026-11-25 |
+
+$\text{non-interest expense}_p / \text{operating revenue}_p$ for Financials-sector companies; null when operating
+revenue ≤ 0 or not reported (usual for insurers). Per fiscal year the card also shows ROE (F-FUN-008, `RoeAt`) and, for
+non-financials, ROIC (F-FUN-004, `RoicAt`) of every year, with the same formulas as the stock list.
 
 ---
 

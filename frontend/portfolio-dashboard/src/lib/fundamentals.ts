@@ -130,7 +130,7 @@ export function convertAmount(value: number, currency: string | null, fx?: Amoun
 }
 
 /** Compact amount with its currency ("$5.1T", "€62.7B", "GEL 4.3B"); a code the browser does not know is shown as text. */
-function compactMoney(value: number, currency: string | null): string {
+export function compactMoney(value: number, currency: string | null): string {
   const plain = () => new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(value)
   if (!currency) return plain()
   try {

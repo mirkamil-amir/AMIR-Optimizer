@@ -571,6 +571,9 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                         .HasMaxLength(3)
                         .HasColumnType("character varying(3)");
 
+                    b.Property<DateTime>("FirstSeenAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateOnly>("PeriodEnd")
                         .HasColumnType("date");
 
@@ -587,6 +590,9 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)");
 
+                    b.Property<DateTime?>("SupersededAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<decimal>("Value")
                         .HasPrecision(28, 8)
                         .HasColumnType("numeric(28,8)");
@@ -594,7 +600,8 @@ namespace PortfolioOptimizer.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AssetId", "Source", "Concept", "PeriodType", "PeriodEnd")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("\"SupersededAtUtc\" IS NULL");
 
                     b.ToTable("FundamentalFacts");
                 });

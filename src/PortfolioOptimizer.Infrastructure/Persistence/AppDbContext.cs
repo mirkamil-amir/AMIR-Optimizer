@@ -183,7 +183,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             e.Property(x => x.PeriodType).HasMaxLength(8);
             e.Property(x => x.Currency).HasMaxLength(3);
             e.Property(x => x.Value).HasPrecision(28, 8);
-            e.HasIndex(x => new { x.AssetId, x.Source, x.Concept, x.PeriodType, x.PeriodEnd }).IsUnique();
+            // One current value per period; superseded values (history) are kept beside it.
+            e.HasIndex(x => new { x.AssetId, x.Source, x.Concept, x.PeriodType, x.PeriodEnd }).IsUnique()
+                .HasFilter("\"SupersededAtUtc\" IS NULL");
             // Shared reference data: removing an asset removes its figures.
             e.HasOne(x => x.Asset).WithMany().HasForeignKey(x => x.AssetId).OnDelete(DeleteBehavior.Cascade);
         });

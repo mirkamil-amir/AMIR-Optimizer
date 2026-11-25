@@ -26,26 +26,23 @@ public sealed class MockFundamentalsOptions
 }
 
 /// <summary>
-/// Yahoo Finance fundamentals time series (<c>/ws/fundamentals-timeseries/v1/finance/timeseries/{symbol}</c>): annual
-/// income-statement, balance-sheet and cash-flow figures (about four fiscal years) and trailing valuation figures, in the
-/// currency the company reports in. Unofficial and undocumented like the chart API: personal, non-commercial use only per
+/// Yahoo Finance fundamentals time series (<c>/ws/fundamentals-timeseries/v1/finance/timeseries/{symbol}</c>): every
+/// income-statement, balance-sheet and cash-flow concept (<see cref="YahooFundamentalsConcepts"/>) for fiscal years (the
+/// source keeps about four), fiscal quarters (about five) and trailing twelve months, plus trailing valuation figures, in
+/// the currency the company reports in. One request per statement and one for valuation: four per listing. Unofficial and undocumented like the chart API: personal, non-commercial use only per
 /// Yahoo's terms; the response carries period ends but no publication dates.
 /// </summary>
 public sealed class YahooFundamentalsProvider(HttpClient http, IOptions<YahooFundamentalsOptions> options) : IFundamentalsProvider
 {
     public const string ProviderName = "Yahoo";
 
-    /// <summary>Annual figures requested (also those later cards need); the stock list uses <see cref="FundamentalMetrics.Concepts"/>.</summary>
-    public static readonly string[] AnnualConcepts =
+    /// <summary>Period prefixes requested for every statement concept, with the stored period type.</summary>
+    public static readonly IReadOnlyList<(string Prefix, string PeriodType)> StatementPeriods =
     [
-        "TotalRevenue", "GrossProfit", "EBITDA", "EBIT", "PretaxIncome", "TaxProvision", "NetIncome", "DilutedEPS",
-        "InvestedCapital", "TotalDebt", "StockholdersEquity", "CashAndCashEquivalents", "TotalAssets", "CurrentAssets",
-        "CurrentLiabilities", "OrdinarySharesNumber", "OperatingCashFlow", "CapitalExpenditure", "FreeCashFlow", "CashDividendsPaid",
-        // Banks and insurers (EBT/PPOP and ROE instead of EBIT/EBITDA and ROIC; later cards: cost/income, net interest income).
-        "OperatingRevenue", "NonInterestExpense", "NetInterestIncome", "TangibleBookValue", "CreditLossesProvision",
+        ("annual", FundamentalMetrics.FiscalYear), ("quarterly", FundamentalMetrics.Quarter), ("trailing", FundamentalMetrics.Trailing),
     ];
 
-    /// <summary>Trailing figures requested (dated values, e.g. the market capitalization on the day it was computed).</summary>
+    /// <summary>Trailing valuation figures requested (dated values, e.g. the market capitalization on the day it was computed).</summary>
     public static readonly string[] TrailingConcepts =
     [
         "MarketCap", "EnterpriseValue", "PeRatio", "ForwardPeRatio", "PbRatio", "PsRatio", "EnterprisesValueEBITDARatio",
@@ -55,15 +52,38 @@ public sealed class YahooFundamentalsProvider(HttpClient http, IOptions<YahooFun
     public string SourceName => "Yahoo Finance (unofficial fundamentals API)";
     public bool IsConfigured => options.Value.Enabled;
     public bool IsSimulated => false;
-    /// <summary>Bank and insurer figures were added to <see cref="AnnualConcepts"/> (AMIR-40).</summary>
-    public DateTime ConceptsChangedAtUtc { get; } = new(2026, 11, 23, 17, 45, 0, DateTimeKind.Utc);
+    /// <summary>
+    /// Every statement concept with quarters and trailing twelve months (AMIR-41): every listing is fetched once more. After
+    /// the last fetch with the old concepts (the daily refresh of 2026-11-25 ended 12:14 UTC), so that run counts as old.
+    /// </summary>
+    public DateTime ConceptsChangedAtUtc { get; } = new(2026, 11, 25, 12, 40, 0, DateTimeKind.Utc);
+
+    /// <summary>The request type lists: one per statement (all period prefixes), then valuation.</summary>
+    public static IReadOnlyList<string> RequestTypes() =>
+        YahooFundamentalsConcepts.Statements
+            .Select(s => string.Join(',', StatementPeriods.SelectMany(p => s.Concepts.Select(c => p.Prefix + c))))
+            .Append(string.Join(',', TrailingConcepts.Select(c => "trailing" + c)))
+            .ToList();
 
     public async Task<ProviderFundamentals> GetAsync(string symbol, CancellationToken ct)
     {
-        var types = string.Join(',', AnnualConcepts.Select(c => "annual" + c).Concat(TrailingConcepts.Select(c => "trailing" + c)));
-        // Ten years back; the source returns what it has (about four fiscal years).
+        // All-or-nothing: a failed request fails the listing, so stored figures are never merged with half a response.
+        var facts = new List<ProviderFundamentalFact>();
+        foreach (var types in RequestTypes())
+        {
+            var part = await GetPartAsync(symbol, types, ct);
+            if (part is null) return new ProviderFundamentals(false, [], "the source does not know this listing.");
+            facts.AddRange(part.Facts);
+        }
+        return facts.Count == 0 ? new ProviderFundamentals(false, [], "the source has no figures for this listing.") : new ProviderFundamentals(true, facts);
+    }
+
+    /// <summary>One request; null when the source does not know the listing (HTTP 404).</summary>
+    private async Task<ProviderFundamentals?> GetPartAsync(string symbol, string types, CancellationToken ct)
+    {
+        // Twenty-five years back; the source returns what it has (about four fiscal years and five quarters).
         var p2 = DateTimeOffset.UtcNow.AddDays(1).ToUnixTimeSeconds();
-        var p1 = DateTimeOffset.UtcNow.AddYears(-10).ToUnixTimeSeconds();
+        var p1 = DateTimeOffset.UtcNow.AddYears(-25).ToUnixTimeSeconds();
         var url = $"/ws/fundamentals-timeseries/v1/finance/timeseries/{Uri.EscapeDataString(SymbolMapper.ForYahoo(symbol))}?type={types}&period1={p1}&period2={p2}";
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.UserAgent.ParseAdd(options.Value.UserAgent);
@@ -78,7 +98,7 @@ public sealed class YahooFundamentalsProvider(HttpClient http, IOptions<YahooFun
         }
         using var _ = response;
         var body = await response.Content.ReadAsStringAsync(ct);
-        if (response.StatusCode == HttpStatusCode.NotFound) return new ProviderFundamentals(false, [], "the source does not know this listing.");
+        if (response.StatusCode == HttpStatusCode.NotFound) return null;
         if (response.StatusCode == HttpStatusCode.TooManyRequests)
             throw new FundamentalsProviderException(ProviderName, "Rate limited (HTTP 429). Try again later.", isRateLimit: true);
         if (!response.IsSuccessStatusCode) throw new FundamentalsProviderException(ProviderName, $"HTTP {(int)response.StatusCode}.");
@@ -93,7 +113,10 @@ public sealed class YahooFundamentalsProvider(HttpClient http, IOptions<YahooFun
         }
     }
 
-    /// <summary>Parses a timeseries response; empty series are skipped, London pence are converted to pounds.</summary>
+    /// <summary>
+    /// Parses a timeseries response: "annual…" → FY, "quarterly…" → Q, "trailing…" → TTM; empty series are skipped, London
+    /// pence are converted to pounds.
+    /// </summary>
     public static ProviderFundamentals Parse(JsonElement root)
     {
         if (!root.TryGetProperty("timeseries", out var ts) || ts.ValueKind != JsonValueKind.Object)
@@ -109,6 +132,7 @@ public sealed class YahooFundamentalsProvider(HttpClient http, IOptions<YahooFun
                     || typeArr.ValueKind != JsonValueKind.Array || typeArr.GetArrayLength() == 0) continue;
                 var type = typeArr[0].GetString() ?? "";
                 var (periodType, concept) = type.StartsWith("annual", StringComparison.Ordinal) ? (FundamentalMetrics.FiscalYear, type["annual".Length..])
+                    : type.StartsWith("quarterly", StringComparison.Ordinal) ? (FundamentalMetrics.Quarter, type["quarterly".Length..])
                     : type.StartsWith("trailing", StringComparison.Ordinal) ? (FundamentalMetrics.Trailing, type["trailing".Length..])
                     : ("", "");
                 if (concept.Length == 0 || !r.TryGetProperty(type, out var points) || points.ValueKind != JsonValueKind.Array) continue;
@@ -179,6 +203,10 @@ public sealed class MockFundamentalsProvider(IOptions<MockFundamentalsOptions> o
             new("StockholdersEquity", FundamentalMetrics.FiscalYear, y2, M(1100), ccy),
             new("OperatingRevenue", FundamentalMetrics.FiscalYear, y2, M(1100), ccy),
             new("NonInterestExpense", FundamentalMetrics.FiscalYear, y2, M(800), ccy),
+            // Quarters and trailing twelve months (stored for later cards; the stock list ignores them).
+            new("TotalRevenue", FundamentalMetrics.Quarter, new DateOnly(2025, 9, 30), M(270), ccy),
+            new("TotalRevenue", FundamentalMetrics.Quarter, y2, M(290), ccy),
+            new("TotalRevenue", FundamentalMetrics.Trailing, y2, M(1100), ccy),
         };
         if (!symbol.StartsWith("BANK", StringComparison.OrdinalIgnoreCase))
         {

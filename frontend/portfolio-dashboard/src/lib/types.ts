@@ -1251,6 +1251,51 @@ export interface StockFundamentals {
   message: string | null
 }
 
+/** One accounting-card row: a value per period (newest first), null where not reported or not computable, with the reason in `notes`. */
+export interface FinancialRow {
+  key: string
+  label: string
+  kind: 'amount' | 'perShare' | 'shares' | 'ratio' | 'multiple'
+  currency: string | null
+  values: (number | null)[]
+  notes: (string | null)[]
+}
+
+export interface FinancialSection {
+  key: 'income' | 'balance' | 'cashflow' | 'ratios'
+  title: string
+  rows: FinancialRow[]
+}
+
+/** Statement table of one period type ("FY" fiscal years, "Q" quarters), newest period first. */
+export interface FinancialTable {
+  periodType: 'FY' | 'Q'
+  periodEnds: string[]
+  sections: FinancialSection[]
+}
+
+export interface ValuationFigure {
+  key: string
+  label: string
+  kind: 'amount' | 'multiple'
+  value: number | null
+  currency: string | null
+  asOf: string | null
+}
+
+/** Accounting card of one stock (`GET /stocks/{symbol}/financials`); amounts in the company's reporting currency, not converted. */
+export interface StockFinancials {
+  symbol: string
+  status: StockFundamentals['status']
+  annual: FinancialTable | null
+  quarterly: FinancialTable | null
+  valuation: ValuationFigure[]
+  usesFinancialMeasures: boolean
+  retrievedAtUtc: string | null
+  isSimulated: boolean
+  message: string | null
+}
+
 export interface PeriodChange {
   range: HistoryRange
   change: number | null
