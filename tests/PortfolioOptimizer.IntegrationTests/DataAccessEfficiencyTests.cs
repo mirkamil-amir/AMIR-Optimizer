@@ -84,6 +84,27 @@ public sealed class DataAccessEfficiencyTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task FullAndPerAssetRebuilds_RunConcurrently_WithoutCollision_AndEndCorrect()
+    {
+        // The full rebuild runs in the background after the start (AMIR-43) while downloads rewrite their assets' coverage;
+        // the advisory lock serializes them. Without it, an asset's insert can hit the rows of the full rebuild.
+        var ids = await WithScope(async sp => (await CoverageFromPricesAsync(sp.GetRequiredService<AppDbContext>())).Select(c => c.AssetId).Distinct().ToList());
+        Assert.NotEmpty(ids);
+        for (var round = 0; round < 10; round++)
+        {
+            var work = new List<Task<int>> { WithScope(sp => sp.GetRequiredService<AppDbContext>().RebuildPriceCoverageAsync(null, CancellationToken.None)) };
+            work.AddRange(ids.Select(id => WithScope(sp => sp.GetRequiredService<AppDbContext>().RebuildPriceCoverageAsync([id], CancellationToken.None))));
+            await Task.WhenAll(work); // throws on a unique violation
+        }
+        await WithScope(async sp =>
+        {
+            var db = sp.GetRequiredService<AppDbContext>();
+            Assert.Equal(Rows(await CoverageFromPricesAsync(db)), Rows(await db.PriceCoverage.AsNoTracking().ToListAsync()));
+            return 0;
+        });
+    }
+
+    [Fact]
     public async Task Status_ListsJobsWithoutLogs_AndTheJobEndpointHasThem()
     {
         var status = await (await _user.GetAsync("/api/v1/market-data/status")).ReadAsync<MarketDataStatusDto>();
