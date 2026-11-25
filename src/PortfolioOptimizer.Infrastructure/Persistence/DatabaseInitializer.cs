@@ -93,12 +93,13 @@ public sealed class DatabaseInitializer(
         }
 
         await SeedAsync(ct);
-        await RebuildPriceCoverageAsync(ct);
+        // The price coverage is rebuilt after the start, in the background (PriceCoverageRebuildService).
     }
 
     /// <summary>
-    /// Rebuilds the stored price coverage from the prices (one pass, ~1–3 s on 13.8M prices), so prices changed outside the
-    /// application – SQL, a restore, the SQLite import – never leave stale counts in the market-data status.
+    /// Rebuilds the stored price coverage from the prices (one pass, ~1.5–6 s on 5.3M prices), so prices changed outside the
+    /// application – SQL, a restore, the SQLite import – never leave stale counts in the market-data status. Run after the
+    /// start by <see cref="PriceCoverageRebuildService"/> (AMIR-43), not before the API accepts requests.
     /// </summary>
     public async Task RebuildPriceCoverageAsync(CancellationToken ct)
     {

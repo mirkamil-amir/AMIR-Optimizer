@@ -173,6 +173,7 @@ public static class DependencyInjection
 
         services.AddSingleton<IBackgroundJobQueue, ChannelBackgroundJobQueue>();
         services.AddHostedService<BackgroundJobWorker>();
+        services.AddHostedService<PriceCoverageRebuildService>();
         services.AddSingleton<NewsRefreshWorker>();
         services.AddSingleton<PortfolioOptimizer.Application.News.INewsRefreshScheduler>(sp => sp.GetRequiredService<NewsRefreshWorker>());
         services.AddHostedService(sp => sp.GetRequiredService<NewsRefreshWorker>());

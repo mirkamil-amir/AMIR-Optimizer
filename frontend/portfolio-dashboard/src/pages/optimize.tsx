@@ -27,7 +27,7 @@ import { interpretOptimization } from '@/lib/interpretation'
 import { guideForObjective } from '@/lib/strategy-guide'
 import { errorMessage } from '@/lib/api'
 import { portfolioPath, usePortfolioContext } from '@/lib/portfolio-context'
-import { useAssets, useCreateProposal, useFetchPrices, useMarketStatus, usePortfolio, useRun, useRunOptimization, useRuns, useStocks } from '@/lib/queries'
+import { useAssets, useCreateProposal, useFetchPrices, useHistoryCoverage, usePortfolio, useRun, useRunOptimization, useRuns, useStocks } from '@/lib/queries'
 import { useMissingDataGuard } from '@/components/missing-data-dialog'
 import { lookbackStart } from '@/lib/data-check'
 import { useSelection } from '@/lib/selection'
@@ -186,7 +186,6 @@ function ConfigFormInner({ portfolio: portfolioData, assets: assetList }: { port
   const portfolioId = portfolioData.id
   const portfolio = { data: portfolioData }
   const assets = { data: assetList }
-  const status = useMarketStatus()
   const runMutation = useRunOptimization(portfolioId)
   const navigate = useNavigate()
   const selection = useSelection()
@@ -207,7 +206,11 @@ function ConfigFormInner({ portfolio: portfolioData, assets: assetList }: { port
   const objective = watch('objective')
   const watchedUniverse = watch('universe') ?? []
   const benchmark = watch('benchmarkSymbol')
-  const coverage = useMemo(() => new Map((status.data?.coverage ?? []).map((c) => [c.symbol, c])), [status.data])
+  // Stored prices of the benchmark only (not the full per-instrument status of every stock, ~1.2 MB): a benchmark outside
+  // the universe without any stored price gets a warning.
+  const benchmarkOutside = benchmark && !watchedUniverse.includes(benchmark) ? benchmark.trim().toUpperCase() : null
+  const benchmarkCoverage = useHistoryCoverage(benchmarkOutside ? [benchmarkOutside] : [])
+  const benchmarkMissing = !!benchmarkOutside && benchmarkCoverage.data?.find((c) => c.symbol === benchmarkOutside)?.observations === 0
   const enabledAssets = (assets.data ?? []).filter((a) => a.isEnabled)
   const assetBySymbol = useMemo(() => new Map((assets.data ?? []).map((a) => [a.symbol, a])), [assets.data])
   const universeStocks = useStocks({ symbols: watchedUniverse, pageSize: 200 }, watchedUniverse.length > 0)
@@ -361,7 +364,7 @@ function ConfigFormInner({ portfolio: portfolioData, assets: assetList }: { port
             <Label htmlFor="persist" className="font-normal">Save these settings as the portfolio's defaults</Label>
             <InfoTip>Every run stores its own inputs. Turn this on to also make this universe and these constraints the portfolio's saved configuration.</InfoTip>
           </div>
-          {benchmark && !watchedUniverse.includes(benchmark) && coverage.get(benchmark)?.freshness === 'Missing' && (
+          {benchmarkMissing && (
             <p className="text-xs text-warn">The benchmark has no price data – synchronize it in Atlas (Market Data).</p>
           )}
 

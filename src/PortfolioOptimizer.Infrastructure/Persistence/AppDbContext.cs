@@ -694,12 +694,18 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
                 ORDER BY p."Date" DESC LIMIT {4}) h
             """, assetIds.ToArray(), source, from, to, count).AsNoTracking();
 
+    /// <summary>Advisory lock key of the price-coverage rebuild ("PCOV").</summary>
+    private const long PriceCoverageLockKey = 0x50434F56;
+
     public async Task<int> RebuildPriceCoverageAsync(IReadOnlyCollection<int>? assetIds, CancellationToken ct)
     {
         // Parameterized; one aggregate per asset over its own index range (all assets: one pass over the price table).
         var own = Database.CurrentTransaction is null ? await Database.BeginTransactionAsync(ct) : null;
         try
         {
+            // One rebuild at a time (until commit): the full rebuild after the start runs while downloads rewrite their
+            // assets; without the lock an asset's insert could collide with the full rebuild's rows (unique violation).
+            await Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock({0})", [PriceCoverageLockKey], ct);
             int written;
             if (assetIds is null)
             {
